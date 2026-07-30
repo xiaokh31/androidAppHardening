@@ -1,0 +1,44 @@
+# Gradle and build output
+.gradle/
+**/build/
+.cxx/
+.externalNativeBuild/
+out/
+
+# Local toolchains and IDE state
+.idea/
+*.iml
+.vscode/
+local.properties
+.toolchains/
+
+# APK and Android binary artifacts
+*.apk
+*.apks
+*.aab
+*.idsig
+*.dex
+*.so
+artifacts/
+reports/
+
+# Signing material and secrets
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.key
+.env
+.env.*
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+tmp/
+work/

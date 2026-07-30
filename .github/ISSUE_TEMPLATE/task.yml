@@ -1,0 +1,42 @@
+name: Development task
+description: Track one repository task card through one branch and one PR.
+title: "[Task] "
+body:
+  - type: input
+    id: task_id
+    attributes:
+      label: Task ID
+      description: Use the exact ID from docs/tasks/INDEX.md.
+      placeholder: M1-01
+    validations:
+      required: true
+  - type: input
+    id: task_card
+    attributes:
+      label: Canonical task card
+      description: Link the matching file under docs/tasks on main.
+      placeholder: https://github.com/xiaokh31/androidAppHardening/blob/main/docs/tasks/M1-01-untrusted-apk-inspector.md
+    validations:
+      required: true
+  - type: input
+    id: owner
+    attributes:
+      label: Owner
+      description: Agent or developer assigned by the coordinator.
+    validations:
+      required: true
+  - type: input
+    id: branch
+    attributes:
+      label: Branch
+      description: One task uses one branch.
+      placeholder: feat/m1-01-untrusted-apk-inspector
+    validations:
+      required: true
+  - type: textarea
+    id: status
+    attributes:
+      label: Current state
+      description: Record only workflow state, blockers, discussion, and PR links. Technical requirements live in the task card.
+    validations:
+      required: true

@@ -1,0 +1,40 @@
+name: Bug report
+description: Report a reproducible defect using synthetic or authorized material.
+title: "[Bug] "
+labels:
+  - "type:bug"
+body:
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Observed behavior
+      description: Describe the failure without including customer data or secrets.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Use a synthetic fixture and exact commands.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include commit, OS, JDK, SDK, Build Tools, NDK, API, ABI, commands, and exit codes.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: This report contains no production APK, signing secret, access token, customer path, plaintext DEX, or decompiled customer code.
+          required: true

@@ -583,7 +583,17 @@ function validateMarkdownLinks(text, file) {
 function walk(dir) {
   const result = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name === ".git" || entry.name === "work") continue;
+    if ([
+      ".git",
+      ".gradle",
+      ".toolchains",
+      ".cxx",
+      ".externalNativeBuild",
+      "artifacts",
+      "build",
+      "reports",
+      "work",
+    ].includes(entry.name)) continue;
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) result.push(...walk(full));
     else result.push(full);

@@ -67,7 +67,7 @@ security_sensitive: true
 
 ## Public Interfaces
 
-- `DexContainerBuilder.build(ApkInspection inspection, SignerPolicy signer, Path encryptedTemp): ContainerBuildResult`。
+- `DexContainerBuilder.build(ApkInspection inspection, SignerPolicyV1 signer, Path encryptedTemp): ContainerBuildResult`。
 - `DexContainerVerifier.verify(Path container, ExpectedBinding expected): DexContainerDescriptor`。
 - `ContainerBuildResult` 包含 `descriptor` 与 `KeyPackagingPlanV1`；后者仅能被 Runtime materializer 消费一次并在使用后销毁。
 - `DexContainerDescriptor` 包含版本、package、规范化 `SignerPolicyV1`、DEX 顺序/大小/摘要、container SHA-256，不暴露 key、nonce 之外的恢复材料或明文。

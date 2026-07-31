@@ -32,15 +32,18 @@ security_sensitive: false
 ## Expected Outputs
 
 - 可重复执行的 Host 与 Android benchmark harness。
-- 原始/加固大小、处理耗时、冷启动和 PSS 的原始样本与统计汇总。
+- 输入/未签名输出/外部签名输出大小、处理耗时、两个冷启动终点、峰值 PSS、稳定 PSS 和 Native heap 峰值的原始样本与统计汇总。
+- bootstrap、实际注入 ABI、四 ABI 全集基准、container metadata 和其余 ZIP 结构开销的可复算分项清单。
 - 固定预算判定和趋势报告。
 - `benchmark-results.json`、环境描述和 SHA-256 manifest。
 
 ## In Scope
 
-- 未签名输出 APK 与输入 APK 的文件大小差值。
+- 输入 APK、未签名输出 APK 和使用 M3-01 同一张一次性证书外部签名后的测试副本大小，以及三者差值。
+- bootstrap DEX、当前设备实际注入 Runtime ABI、四 ABI Runtime 全集基准、container metadata 与其余 ZIP 结构开销的分项增量。
 - Windows/Ubuntu Host 处理时间与峰值 RSS。
-- Android 冷启动 median/p95 与启动后稳定 PSS median。
+- Android 从 process start 到 `Application.onCreate`、从 process start 到首个测试 Activity 可交互的 P50/P95。
+- 启动窗口峰值 PSS、启动窗口 Native heap 峰值和启动完成 5 秒后的稳定 PSS 的 P50/P95。
 - `LOW` 和 `HIGH` 风险策略的额外启动成本。
 
 ## Out of Scope
@@ -53,16 +56,19 @@ security_sensitive: false
 ## Implementation Decisions
 
 - 固定三类样本：`java-single-dex`、`kotlin-multidex`、`jni-four-abi`；输入和加固 APK 均使用 Release 配置，测量对象为未签名字节。
-- 每个 Host 场景预热 3 次、测量 10 次；Android 冷启动和 PSS 预热 5 次、测量 30 次，报告 median 与 p95。
-- 冷启动使用 Macrobenchmark 并在每次样本前 force-stop；PSS 在启动事件完成后 5 秒采集 `dumpsys meminfo`。
-- 发布预算固定为：APK 增量不超过 `max(12 MiB, inputSize × 15%)`；冷启动 median 增量不超过 300 ms、p95 增量不超过 500 ms；稳定 PSS median 增量不超过 32 MiB。
+- 每个 Host 场景预热 3 次、测量 10 次；Android 两个启动终点和三项内存指标均预热 5 次、测量 30 次，报告 P50 与 P95。
+- 冷启动使用 Macrobenchmark 并在每次样本前 force-stop；instrumentation 记录 `Application.onCreate` 与首个测试 Activity 可交互的单调时钟事件。每次启动期间轮询 `dumpsys meminfo` 得到 peak PSS 与 Native heap peak，并在可交互事件后 5 秒采集稳定 PSS。
+- 发布预算固定为：未签名 APK 增量不超过 `max(12 MiB, inputSize × 15%)`；两个启动终点的 P50 增量均不超过 300 ms、P95 增量均不超过 500 ms；peak PSS P50/P95 增量分别不超过 48/64 MiB，Native heap peak P50/P95 增量分别不超过 24/32 MiB，稳定 PSS P50/P95 增量分别不超过 32/48 MiB。
+- 外部签名输出只用于测量签名块带来的大小差值和安装测试，必须使用 M3-01 当前 case 的同一张一次性证书；产品不参与签名，签名耗时不进入 Host 性能预算。
+- 大小分项字段固定为 `bootstrapDexBytes`、`selectedRuntimeAbiBytes`、`fourAbiRuntimeBaselineBytes`、`containerMetadataBytes`、`encryptedPayloadBytes` 和 `zipStructureDeltaBytes`。对实际未签名输出，适用分项与输入大小必须无遗漏地调和到输出总字节数；四 ABI 全集基准单独报告，不重复计入单 ABI 实际输出。
 - Host 对 100 MiB 合成输入的处理 median 不超过 60 秒、峰值 RSS 不超过 1 GiB；输入文件前后 SHA-256 必须相同。
 - 高风险策略的额外延迟需单列，M2-06 固定抖动仍必须落在 20–50 ms，不从冷启动总开销中剔除。
 
 ## Public Interfaces
 
 - Gradle 入口 `:benchmarks:host:jmh` 与 `:benchmarks:android:connectedBenchmarkAndroidTest`。
-- `benchmark-results.json` 字段为 `fixtureId`、`environmentId`、`metric`、`samples`、`median`、`p95`、`baseline`、`delta`、`budget` 和 `pass`。
+- `benchmark-results.json` 字段为 `fixtureId`、`environmentId`、`metric`、`samples`、`p50`、`p95`、`baseline`、`delta`、`budget` 和 `pass`；`metric` 固定枚举 `hostProcessMs`、`hostPeakRssBytes`、`processToApplicationOnCreateMs`、`processToInteractiveMs`、`peakPssBytes`、`nativeHeapPeakBytes`、`stablePssBytes`。
+- 每个 fixture 另有 `artifactSizes`，固定包含 `inputSignedApkBytes`、`outputUnsignedApkBytes`、`outputExternallySignedApkBytes` 和上述六个 `sizeBreakdown` 字段。
 - 环境文件 `benchmarks/environment.json` 与汇总 `build/reports/benchmark-summary.md`。
 - 失败时进程退出码固定为非零且列出超预算 metric。
 
@@ -83,7 +89,8 @@ security_sensitive: false
 ## Acceptance Criteria
 
 - `./gradlew :benchmarks:host:jmh :benchmarks:android:connectedBenchmarkAndroidTest` 退出码为 `0`。
-- 三类 fixture 的 APK 增量、冷启动 median/p95 和稳定 PSS median 均不超过固定预算。
+- 三类 fixture 的未签名 APK 增量、两个冷启动终点 P50/P95、peak PSS P50/P95、Native heap peak P50/P95 和稳定 PSS P50/P95 均不超过固定预算。
+- 三种 APK 大小全部存在；外部签名测试副本与输入使用同一当前 signer。六项大小分解字段齐全，实际输出分项可精确调和，四 ABI 全集基准单列且不重复计数。
 - 100 MiB 合成输入在 Windows/Ubuntu 的 Host median 与峰值 RSS 均达标，输入哈希前后相同。
 - 每个 metric 具备规定样本数、原始样本、环境描述、基线、增量和 pass 判定，连续两次汇总差异在 10% 内。
 - 报告明确写明大小只控制增量、不保证输出更小，且未隐藏高风险策略的额外开销。
@@ -91,15 +98,15 @@ security_sensitive: false
 ## Required Tests
 
 - 统计器、单位换算、预算边界、缺失样本和异常值标注测试。
-- 三类 fixture 的 Host 大小/耗时/RSS benchmark。
-- 两个 reference profile 的冷启动、PSS、LOW/HIGH 策略 benchmark。
+- 三类 fixture 的 Host 三种 APK 大小、六项大小分解、耗时与 RSS benchmark。
+- 两个 reference profile 的两个启动终点、peak/stable PSS、Native heap peak 与 LOW/HIGH 策略 benchmark。
 - x86/x86_64 不自动进入高风险以及输入只读回归测试。
 
 ## Required Evidence
 
 - 所有命令、退出码、commit、toolchain、OS 和设备 profile。
-- 原始样本、统计结果、预算判定和两次重复运行差异。
-- 输入/输出 APK、Runtime ABI 库和结果文件 SHA-256。
+- 原始样本、两个启动终点与三项内存统计、预算判定和两次重复运行差异。
+- 输入、未签名输出、同证书外部签名输出 APK、bootstrap、各 Runtime ABI、container metadata、大小分解 manifest 和结果文件 SHA-256。
 - 临时测试证书清理、敏感信息扫描与已知测量限制。
 
 ## Likely Files

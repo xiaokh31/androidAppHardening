@@ -47,6 +47,10 @@ const source = fs.readFileSync(sourceFile, "utf8")
   .replace(
     /## Relevant Files and Artifacts[\s\S]*?## Resume Checklist/,
     "## Relevant Files and Artifacts\n\nNone\n\n## Resume Checklist",
+  )
+  .replace(
+    /## Blockers and Required Approvals[\s\S]*?## Ordered Next Actions/,
+    "## Blockers and Required Approvals\n\nNone\n\n## Ordered Next Actions",
   );
 
 const cases = [

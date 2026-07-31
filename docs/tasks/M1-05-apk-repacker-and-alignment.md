@@ -24,7 +24,7 @@ security_sensitive: true
 
 ## Inputs
 
-- M1-01 `ApkInspection`、M1-02 `SignerPolicy`、M1-03 transformed Manifest、M1-04 encrypted container。
+- M1-01 `ApkInspection`、M1-02 `SignerPolicyV1`、M1-03 transformed Manifest、M1-04 encrypted container。
 - 版本匹配的 `RuntimeBundle`：bootstrap `classes.dex`、四 ABI 各含唯一 `.ah_share_v1` placeholder 的 `libah_runtime.so` template，以及 M1-04 一次性 `KeyPackagingPlanV1`。
 - 不存在且与 input 不同文件身份的目标 output path。
 

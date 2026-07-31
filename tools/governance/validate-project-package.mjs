@@ -259,6 +259,89 @@ for (const [taskId, skills] of taskRequiredSkills) {
   }
 }
 
+const m301Text = readUtf8(path.join(root, "docs", "tasks", "M3-01-android-fixtures.md"));
+requireOrderedPhrases(
+  m301Text,
+  [
+    "build unsigned fixture",
+    "生成一次性证书",
+    "签成产品输入",
+    "运行产品",
+    "同一证书签名输出副本",
+  ],
+  "docs/tasks/M3-01-android-fixtures.md",
+  "signed fixture flow",
+);
+for (const phrase of [
+  "连续两次 unsigned fixture build",
+  "输入与已签名输出的当前证书 SHA-256 完全相同",
+]) {
+  requirePhrase(m301Text, phrase, "docs/tasks/M3-01-android-fixtures.md");
+}
+
+if (!(dependencyGraph.get("M3-03") ?? []).includes("M2-06")) {
+  errors.push("M3-03 must depend on M2-06 before comparing final Runtime bytes");
+}
+
+const validationSkillText = readUtf8(
+  path.join(root, ".agents", "skills", "validate-protected-apk", "SKILL.md"),
+);
+for (const phrase of [
+  "`pre-cli`",
+  "`full-flow`",
+  "Do not invent, stub, or prematurely expose a product CLI",
+  "If the current task provides a synthetic fixture",
+  "`fixture_validation: not_applicable`",
+  "M0-03 must skip fixture execution",
+]) {
+  requirePhrase(validationSkillText, phrase, ".agents/skills/validate-protected-apk/SKILL.md");
+}
+
+const m305Text = readUtf8(
+  path.join(root, "docs", "tasks", "M3-05-size-startup-memory-benchmarks.md"),
+);
+for (const phrase of [
+  "processToApplicationOnCreateMs",
+  "processToInteractiveMs",
+  "peakPssBytes",
+  "nativeHeapPeakBytes",
+  "outputExternallySignedApkBytes",
+  "bootstrapDexBytes",
+  "selectedRuntimeAbiBytes",
+  "fourAbiRuntimeBaselineBytes",
+  "containerMetadataBytes",
+]) {
+  requirePhrase(m305Text, phrase, "docs/tasks/M3-05-size-startup-memory-benchmarks.md");
+}
+
+const m401Text = readUtf8(
+  path.join(root, "docs", "tasks", "M4-01-security-and-supply-chain-review.md"),
+);
+for (const phrase of ["rc-component-manifest.json", "最终 archive 不属于本任务前置条件"]) {
+  requirePhrase(m401Text, phrase, "docs/tasks/M4-01-security-and-supply-chain-review.md");
+}
+
+const m403Text = readUtf8(
+  path.join(root, "docs", "tasks", "M4-03-release-evidence-and-documentation.md"),
+);
+for (const phrase of ["work/input/signed-app.apk", "包外挂载"]) {
+  requirePhrase(m403Text, phrase, "docs/tasks/M4-03-release-evidence-and-documentation.md");
+}
+if (m403Text.includes("fixtures/java-single-dex.apk")) {
+  errors.push("M4-03 Quickstart must not reference a fixture path absent from release archives");
+}
+
+for (const taskName of [
+  "M1-02-signer-policy.md",
+  "M1-04-encrypted-dex-container.md",
+  "M1-05-apk-repacker-and-alignment.md",
+]) {
+  const rel = `docs/tasks/${taskName}`;
+  if (/\bSignerPolicy\b(?!V1)/.test(readUtf8(path.join(root, rel)))) {
+    errors.push(`${rel}: use the frozen public type SignerPolicyV1, not SignerPolicy`);
+  }
+}
+
 for (const extra of [
   ".agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs",
   ".agents/skills/coordinate-project-handoff/references/handoff-schema.md",
@@ -378,6 +461,22 @@ function readUtf8(file) {
   const text = fs.readFileSync(file, "utf8");
   if (text.includes("\uFFFD")) errors.push(`${relative(file)}: contains a Unicode replacement character`);
   return text;
+}
+
+function requirePhrase(text, phrase, file) {
+  if (!text.includes(phrase)) errors.push(`${file}: missing frozen contract phrase: ${phrase}`);
+}
+
+function requireOrderedPhrases(text, phrases, file, contractName) {
+  let previous = -1;
+  for (const phrase of phrases) {
+    const current = text.indexOf(phrase, previous + 1);
+    if (current < 0) {
+      errors.push(`${file}: ${contractName} is missing ordered phrase: ${phrase}`);
+      return;
+    }
+    previous = current;
+  }
 }
 
 function parseFrontmatter(text, file) {

@@ -8,6 +8,7 @@ depends_on:
   - M0-03
   - M1-05
   - M1-06
+  - M2-06
   - M3-01
 required_skills:
   - validate-protected-apk
@@ -27,6 +28,7 @@ Host 后处理器是跨平台离线工具。路径分隔符、文件排序、ZIP
 - M1-06 CLI、JSON schema 和退出码。
 - M1-05 的确定性 ZIP/对齐规则。
 - ADR-0004 的随机字段、认证容器和解密后验证合同。
+- M2-06 已完成的最终 Runtime Native、policy 与 bootstrap 测试产物。
 - M3-01 的九个合成 fixture。
 - M0-03 锁定的 JDK、Gradle、Android build-tools 与依赖版本。
 
@@ -121,7 +123,7 @@ Host 后处理器是跨平台离线工具。路径分隔符、文件排序、ZIP
 
 ## Dependencies and Blockers
 
-M1-05 的结构规则、ADR-0004 随机字段合同或 M1-06 的 JSON schema 未冻结时不得设为发布门禁。任一 fixture 出现非随机语义差异、相同随机标识符、认证失败或输出 hash 意外相同时任务保持 blocked；不得把平台名加入密钥派生、加密或 ZIP 输入来伪造差异或等价性。
+M1-05 的结构规则、ADR-0004 随机字段合同、M1-06 的 JSON schema 或 M2-06 的最终 Runtime 控制未冻结时不得设为发布门禁。证据必须来自包含 M2-06 的同一 Release Candidate commit；后续任何 Runtime Native、policy 或 bootstrap 字节变化都会使本任务证据失效并要求重跑。任一 fixture 出现非随机语义差异、相同随机标识符、认证失败或输出 hash 意外相同时任务保持 blocked；不得把平台名加入密钥派生、加密或 ZIP 输入来伪造差异或等价性。
 
 ## Agent Handoff Requirements
 

@@ -31,13 +31,13 @@ security_sensitive: false
 
 - 具备源码的合成 fixture Gradle 工程。
 - 版本化 `fixtures/catalog.yaml` 与机器可读预期结果。
-- 构建、加固、外部测试签名、安装、启动、断言和清理驱动器。
+- 构建、生成一次性证书、签名临时输入、加固、同证书签名输出、安装、启动、断言和清理驱动器。
 - 输入/输出哈希、设备信息和测试报告。
 
 ## In Scope
 
 - `java-single-dex`、`kotlin-single-dex`、`kotlin-multidex`、`custom-application`、`custom-factory`、`startup-provider`、`multi-process`、`jni-four-abi` 和 `jni-arm-only` 九个 fixture。
-- 每个 fixture 的确定性成功信号、组件初始化顺序和原始 APK SHA-256。
+- 每个 fixture 的确定性成功信号、组件初始化顺序、可重复构建的 unsigned fixture SHA-256 和本轮 signed-input SHA-256。
 - Host 输入只读验证和未签名输出验证。
 - 外部测试签名与设备安装仅属于集成测试驱动器。
 
@@ -52,22 +52,22 @@ security_sensitive: false
 
 - fixture 源码位于 `fixtures/android/src/<fixtureFlavor>/`，九个固定 product flavors 生成独立 APK，构建产物只进入模块 `build/`；仓库不提交 APK、DEX、keystore 或私钥。
 - `catalog.yaml` 为每个 fixture 固定记录 `id`、语言、DEX 模式、启动定制、payload ABI、预期组件事件和预期兼容结果。
-- 测试驱动顺序固定为 build、记录输入哈希、运行产品、复核输入哈希不变、检查输出未签名、在外部生成一次性证书、外部签名、安装、启动、断言、卸载、删除证书。
-- 一次性证书固定生成到 `integration-tests/build/test-signing/`，每次运行重新生成，别名只存在于测试驱动器进程；该目录必须被 Git 忽略。
+- 测试驱动顺序固定为：build unsigned fixture；验证两次 unsigned build SHA-256 可重复；在产品外生成一次性证书；把 unsigned fixture 的临时副本用该证书签成产品输入；记录 signed-input SHA-256；运行产品；复核 signed input 哈希不变；检查产品输出未签名；再用同一证书签名输出副本；验证输入与已签名输出的唯一当前 signer 摘要相同；安装、启动、断言、卸载并删除证书及全部签名副本。
+- 一次性证书、signed input 和 signed output 固定生成到 `integration-tests/build/test-signing/`，每个测试运行重新生成；同一 fixture case 的输入和输出必须复用同一张证书，别名和密码只存在于测试驱动器进程。该目录必须被 Git 忽略并在结束时清空。
 - `jni-arm-only` 在 ARM 设备应运行，在 x86/x86_64 设备只验证报告明确限制，不要求安装成功。
 - fixture 的成功信号通过应用内只读事件序列和 instrumentation 断言获取，不解析不稳定的人类日志文本。
 
 ## Public Interfaces
 
 - `fixtures/catalog.yaml` 及其 schema。
-- `FixtureDescriptor`，字段为 `id`、`inputApk`、`expectedEvents`、`payloadAbis` 和 `expectedOutcome`。
+- `FixtureDescriptor`，字段为 `id`、`unsignedFixtureApk`、`expectedEvents`、`payloadAbis` 和 `expectedOutcome`；`signedInputApk` 与 `signedOutputApk` 只属于单次 `FixtureRunResult` 的忽略构建目录，不进入 catalog。
 - Gradle 入口 `:fixtures:android:assembleFixtures` 与 `:integration-tests:runFixtureMatrix`。
 - 测试结果 `integration-tests/build/reports/fixture-results.json`。
 
 ## Security Constraints
 
 - 产品代码和产品 CLI 永不签名，永不接收私钥、keystore、alias 或密码。
-- 集成测试只能使用运行时生成的一次性非生产证书；生成目录必须被忽略，测试结束后删除，提交扫描不得发现私钥或 keystore。
+- 集成测试只能使用运行时生成的一次性非生产证书；同一 case 必须先用它生成已签名输入，再用它签署产品输出副本。生成目录必须被忽略，测试结束后删除，提交扫描不得发现私钥或 keystore。
 - fixture 不含真实应用代码、证书、网络凭据、用户数据或明文客户 DEX。
 - 测试日志不得输出一次性证书密码、完整设备路径或应用私有数据。
 
@@ -81,23 +81,24 @@ security_sensitive: false
 ## Acceptance Criteria
 
 - `./gradlew :fixtures:android:assembleFixtures :integration-tests:test` 退出码为 `0`。
-- 九个 fixture 均可从干净 checkout 重建，连续两次构建的输入 APK SHA-256 相同。
-- 每次加固前后输入 APK SHA-256 不变，产品输出均通过未签名检查。
-- 支持场景经外部一次性证书签名后按预期启动并产生完整事件序列；`jni-arm-only` 在 x86/x86_64 上产生明确兼容限制。
+- 九个 fixture 均可从干净 checkout 重建，连续两次 unsigned fixture build 的 SHA-256 相同；该可重复性声明不适用于每轮随机生成证书后的 signed input。
+- 每个产品输入在调用前已由本轮一次性证书有效签名且只有一个当前 signer；加固前后 signed-input SHA-256 不变，产品输出均通过未签名检查。
+- 每个产品输出副本使用该 case 的同一张证书外部签名，输入与已签名输出的当前证书 SHA-256 完全相同；支持场景随后按预期启动并产生完整事件序列，`jni-arm-only` 在 x86/x86_64 上产生明确兼容限制。
 - 测试结束后 `integration-tests/build/test-signing/` 不再包含密钥文件，仓库敏感材料扫描结果为零。
 
 ## Required Tests
 
 - catalog schema、fixture ID 唯一性和预期事件完整性测试。
-- 每个 fixture 的构建、输入只读、未签名输出、外部签名、安装、启动与卸载测试。
+- 每个 fixture 的 unsigned 可重复构建、同证书 signed input/output、输入只读、未签名产品输出、安装、启动与卸载测试。
+- 未签名输入、不同证书签名输出和多个当前 signer 输入的负向测试必须分别在产品输入校验或 Runtime signer 门禁失败。
 - 自定义工厂、早期 Provider、多进程和多 DEX 顺序回归测试。
 - 四 ABI 与 ARM-only 限制测试。
 
 ## Required Evidence
 
 - 构建与运行命令、退出码、JDK/Gradle/SDK 和设备 API/ABI。
-- 九个输入 APK、未签名输出 APK、外部签名测试 APK 与结果报告 SHA-256。
-- 输入哈希前后对照、组件事件序列和 ABI 兼容结果。
+- 九个 unsigned fixture、每轮 signed input、未签名产品输出、同证书 signed output 与结果报告 SHA-256。
+- unsigned build 可重复哈希、signed-input 调用前后哈希、输入/输出 signer 摘要对照、组件事件序列和 ABI 兼容结果。
 - 一次性证书生成/删除记录和敏感材料扫描结果，不包含私钥内容。
 
 ## Likely Files

@@ -1,12 +1,12 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260731-082534
-updated_at: 2026-07-31T08:25:34+08:00
+handoff_id: HO-20260731-090220
+updated_at: 2026-07-31T09:02:20+08:00
 updated_by: /root
 state: ready
 source_branch: main
-base_commit: 467f491f7356f88aeede451701ac6093768d36fd
+base_commit: cc09d8c11835391085ee6db57ee92a96ec1bece7
 working_tree: clean
 current_milestone: M0
 active_task: M0-03
@@ -17,22 +17,26 @@ next_owner: unassigned
 
 ## Objective
 
-以只读独立 APK 为输入，开发一个离线后处理工具，将业务 DEX 转换为版本化认证加密容器并注入四 ABI Android Runtime，最终只生成新的未签名 APK。M0-01 与 M0-02 已完成；下一项是 M0-03 工具链与 CI，仓库仍不包含 Host 或 Android Runtime 业务实现。
+以只读独立 APK 为输入，开发一个离线后处理工具，将业务 DEX 转换为版本化认证加密容器并注入四 ABI Android Runtime，最终只生成新的未签名 APK。M0-01 与 M0-02 的仓库、策划、任务、Skill 和交接治理包已经完成，下一入口是 M0-03 工具链与 CI；仓库仍不包含 Host 或 Android Runtime 业务实现。
 
 ## Current State
 
 - M0-01 仓库种子位于 `main`，提交为 `1fc5fb6380b97ba2a2a54df0409429f4730f6d77`。
-- M0-02 通过 [PR #26](https://github.com/xiaokh31/androidAppHardening/pull/26) 合并：包含 11 份核心文档、6 份 ADR、25 张任务卡、6 个项目 Skills、严格 HandOff 工具和双平台治理工作流。
-- GitHub 已建立 5 个 Milestone、14 个项目 Label 和与任务索引一一对应的 25 个 Issue；任务卡保留技术权威，Issue 仅跟踪负责人、状态、讨论和 PR。
-- M0-03 已成为活动任务但尚未分配；M0-04 按已批准顺序在 M0-03 门禁通过后启动，M0-05 仍受 M0-04 门禁约束。
+- M0-02 初始包通过 [PR #26](https://github.com/xiaokh31/androidAppHardening/pull/26) 合并到 `142ecc5afc21123e9f05c60f09c4152de5094fae`；`main` 本地严格校验与 Windows/Ubuntu push CI 均通过。
+- 合并后的独立语义审计发现七项高置信合同阻塞，因此 Issue #2 重新打开，限定修复由 [PR #27](https://github.com/xiaokh31/androidAppHardening/pull/27) 跟踪。
+- `e0a7860a6fb3fce12fc4ed69389948343b82055a` 修复 fixture 同 signer 顺序、最终 Runtime 等价性依赖、发布审查/打包边界、pre-CLI Skill 模式、完整性能指标、包外 Quickstart 输入和唯一 `SignerPolicyV1` 类型，并加入治理回归断言；该提交双平台 PR CI 均通过。
+- 独立复审在 `e0a7860a6fb3fce12fc4ed69389948343b82055a` 又定位到两个语义缺口；`101c2736eed032dae703272aaf1b3ee4a8f3e82a` 与 `cc09d8c11835391085ee6db57ee92a96ec1bece7` 已分别修复条件化 fixture 验证和提交态 HandOff。
+- PR #27 的冻结提交 `cc09d8c11835391085ee6db57ee92a96ec1bece7` 已取得 Windows/Ubuntu CI 与独立只读审计 `PASS`，具备普通 merge commit 合并条件；本快照不预称 PR 已合并。
+- GitHub 已建立 5 个里程碑、14 个计划自定义标签和与 25 张任务卡一一对应的 Issues；`main` 分支保护要求两项严格治理检查和 PR 流程。
+- M0-03 已恢复为下一活动任务，等待分配给 `qa-governance-agent`。
 
 ## Active Workstreams
 
 | Task | Owner | Branch | Status | Dependencies | Next checkpoint |
 |---|---|---|---|---|---|
-| M0-03 | `unassigned` | `feat/m0-03-toolchain-gradle-ci` | planned | M0-02 | 分配 owner 并建立十四模块工具链骨架 |
-| M0-04 | `unassigned` | `spike/m0-04-classloader-poc` | planned | M0-03 | M0-03 门禁满足后验证 API 29/36 公开加载链 |
-| M0-05 | `unassigned` | `spike/m0-05-application-factory-provider-jni-poc` | planned | M0-04 | M0-04 通过后验证早期 metadata、签名与 JNI 兼容性 |
+| M0-03 | `unassigned` | `feat/m0-03-toolchain-gradle-ci` | planned | M0-02 | 分配给 `qa-governance-agent` 并冻结工具链骨架 |
+| M0-04 | `unassigned` | `spike/m0-04-api29-classloader-poc` | planned | M0-03 | M0-03 完成后并行启动 ClassLoader PoC |
+| M0-05 | `unassigned` | `spike/m0-05-application-factory-provider-jni-poc` | planned | M0-04 | M0-04 通过后启动兼容性 PoC |
 
 ## Decisions and Invariants
 
@@ -50,7 +54,11 @@ next_owner: unassigned
 - `1e5264e208ac37f3b8bd5331f59ed5a6d5eef78b`：加入核心策划文档、ADR、25 张任务卡、Agent 角色规则和 GitHub 模板。
 - `cb491af037ce1f9597b7792dc66b5f8f383187dc`：加入 6 个项目 Skills、严格 HandOff 校验及 11 个负向测试、项目包校验、不可变提交树哈希工具和双平台治理工作流，并冻结启动早期公开 API、模块边界、无环依赖图与 AHDC v1 二进制协议合同。
 - `467f491f7356f88aeede451701ac6093768d36fd`：把 `actions/checkout` 与 `actions/setup-node` 更新为官方 v7 的完整固定提交，工作流 Action 运行时统一为 Node 24。
-- GitHub 同步完成：5 个 Milestone、14 个 Label、25 个同编号 Issue、PR #26 的治理标签与双平台 CI 证据均已建立。
+- `142ecc5afc21123e9f05c60f09c4152de5094fae`：以普通 merge commit 合并 PR #26；随后 `main` 严格 HandOff 与双平台治理 CI 通过。
+- `e0a7860a6fb3fce12fc4ed69389948343b82055a`：修复首轮独立审计的七项合同阻塞并新增对应治理回归断言，不实现 APK 加固业务代码。
+- `101c2736eed032dae703272aaf1b3ee4a8f3e82a`：把 synthetic fixture 验证限定到提供或明确消费 fixture 的任务，明确 M0-03 记录 `not_applicable`，并为该规则加入自动回归断言。
+- `cc09d8c11835391085ee6db57ee92a96ec1bece7`：删除已完成动作和提交前工作树描述，准确记录 PR #27、冻结提交及复审解除条件。
+- 当前 merger-ready 交接快照：记录双平台 CI、独立审计和 GitHub 治理核验均已通过，把状态恢复为 `ready` 并将继续入口固定为 M0-03。
 
 ## Verification Evidence
 
@@ -114,6 +122,78 @@ next_owner: unassigned
 - sha256: `4fa64772061314da20248dd28e1223bad6c1284bda1e461cd103953ae49c0eb8`
 - result: `PASS; syntax, governance-only snapshot, pending-main HandOff, negative tests, and Git object database verified`
 
+### M0-02 audit-remediation immutable manifest
+
+- task_id: `M0-02`
+- git_commit: `101c2736eed032dae703272aaf1b3ee4a8f3e82a`
+- command: `node tools/governance/hash-project-package.mjs --commit 101c2736eed032dae703272aaf1b3ee4a8f3e82a`
+- exit_code: `0`
+- environment: `Windows NT 10.0.19045; Git 2.52.0; Node.js 24.12.0`
+- timestamp: `2026-07-31T08:54:00+08:00`
+- artifact: `immutable commit-tree manifest over 80 files, excluding HandOff.md`
+- sha256: `9a9039aa64b89c4e50394fbb83f42874063358868f6f2dd9787fbd0fe1dd5197`
+- result: `PASS; manifest covers the complete governance-only package including both independent-audit remediation rounds`
+
+### M0-02 conditional-fixture regression validation
+
+- task_id: `M0-02`
+- git_commit: `101c2736eed032dae703272aaf1b3ee4a8f3e82a`
+- command: `validate-project-package.mjs --require-governance-only; quick_validate.py .agents/skills/validate-protected-apk; git diff --check`
+- exit_code: `0`
+- environment: `Windows NT 10.0.19045; Node.js 24.12.0; bundled Python 3.12.13; PyYAML 6.0.2 in ignored local validation directory`
+- timestamp: `2026-07-31T08:53:00+08:00`
+- artifact: `.agents/skills/validate-protected-apk/SKILL.md; tools/governance/validate-project-package.mjs`
+- sha256: `9a9039aa64b89c4e50394fbb83f42874063358868f6f2dd9787fbd0fe1dd5197`
+- result: `PASS; M0-03 cannot regress to unconditional fixture execution`
+
+### M0-02 remediation Ubuntu governance CI
+
+- task_id: `M0-02`
+- git_commit: `cc09d8c11835391085ee6db57ee92a96ec1bece7`
+- command: `GitHub Actions Governance / Governance (ubuntu-24.04)`
+- exit_code: `0`
+- environment: `GitHub-hosted ubuntu-24.04; Node.js 24.12.0`
+- timestamp: `2026-07-31T00:55:56Z`
+- artifact: `https://github.com/xiaokh31/androidAppHardening/actions/runs/30594933052/job/91045144692`
+- sha256: `9a9039aa64b89c4e50394fbb83f42874063358868f6f2dd9787fbd0fe1dd5197`
+- result: `PASS; strict HandOff, governance-only package, negative tests, sensitive scan and Git object database verified`
+
+### M0-02 remediation Windows governance CI
+
+- task_id: `M0-02`
+- git_commit: `cc09d8c11835391085ee6db57ee92a96ec1bece7`
+- command: `GitHub Actions Governance / Governance (windows-2025)`
+- exit_code: `0`
+- environment: `GitHub-hosted windows-2025; Node.js 24.12.0`
+- timestamp: `2026-07-31T00:56:12Z`
+- artifact: `https://github.com/xiaokh31/androidAppHardening/actions/runs/30594933052/job/91045144698`
+- sha256: `9a9039aa64b89c4e50394fbb83f42874063358868f6f2dd9787fbd0fe1dd5197`
+- result: `PASS; strict HandOff, governance-only package, negative tests, sensitive scan and Git object database verified`
+
+### M0-02 independent governance audit
+
+- task_id: `M0-02`
+- git_commit: `cc09d8c11835391085ee6db57ee92a96ec1bece7`
+- command: `independent read-only review; strict HandOff; project package; 11 negative cases; six Skill validators; git diff/fsck`
+- exit_code: `0`
+- environment: `independent governance audit Agent; read-only frozen commit; Windows workspace plus GitHub-hosted Windows/Ubuntu CI evidence`
+- timestamp: `2026-07-31T09:02:10+08:00`
+- artifact: `https://github.com/xiaokh31/androidAppHardening/pull/27#issuecomment-5137955553`
+- sha256: `9a9039aa64b89c4e50394fbb83f42874063358868f6f2dd9787fbd0fe1dd5197`
+- result: `PASS; all nine findings across the independent audit rounds are resolved`
+
+### GitHub governance state verification
+
+- task_id: `M0-02`
+- git_commit: `cc09d8c11835391085ee6db57ee92a96ec1bece7`
+- command: `GitHub repository, protection, milestone, label, Issue and PR API read-only verification`
+- exit_code: `0`
+- environment: `GitHub public API plus authenticated GitHub CLI`
+- timestamp: `2026-07-31T09:02:20+08:00`
+- artifact: `https://github.com/xiaokh31/androidAppHardening`
+- sha256: `9a9039aa64b89c4e50394fbb83f42874063358868f6f2dd9787fbd0fe1dd5197`
+- result: `PASS; public Apache-2.0 repository, five milestones, fourteen custom labels, twenty-five indexed Issues, merge-only policy and strict protected-main checks match the project package`
+
 ## Blockers and Required Approvals
 
 None
@@ -121,13 +201,9 @@ None
 ## Ordered Next Actions
 
 1. 分配并完成 M0-03 工具链与 CI。
-   - Owner: `unassigned`；前置条件：PR #26 合并且 M0-02 验证完成；证据：双平台构建命令、退出码、工具版本和产物 SHA-256。
 2. 并行启动 M0-04 ClassLoader PoC。
-   - Owner: `unassigned`；前置条件：M0-03 通过；证据：API 29/36 设备测试、失败用例和 PoC 产物 SHA-256。
 3. M0-04 通过后启动 M0-05 兼容性 PoC。
-   - Owner: `unassigned`；前置条件：M0-04 公开 API 门禁通过；证据：Application、Factory、Provider、multidex 与 JNI 兼容矩阵。
 4. M0 门禁通过后冻结容器接口，再并行启动 M1 与 M2。
-   - Owner: `/root`；前置条件：M0-03 至 M0-05 验收；证据：冻结合同、关联 ADR 和独立安全复核记录。
 
 ## Relevant Files and Artifacts
 
@@ -147,15 +223,15 @@ None
 
 ## Resume Checklist
 
-1. 确认位于 `main`、HEAD 包含 PR #26 的 merge commit 且工作树为 clean。
-2. 按 `AGENTS.md` → `HandOff.md` → `docs/README_FIRST.md` → `docs/tasks/M0-03-toolchain-gradle-ci.md` → 相关架构与 ADR → 项目 Skill 的顺序阅读。
-3. 运行 `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict`。
-4. 运行 `node tools/governance/validate-project-package.mjs --require-governance-only` 与 `node tools/governance/test-handoff-validator.mjs`。
-5. 在 Issue #3 分配唯一 owner 后创建 `feat/m0-03-toolchain-gradle-ci`，不得在该任务中实现 Host 或 Runtime 业务能力。
+1. 在 `main` 确认工作树 clean，并无豁免运行 strict HandOff 与项目治理校验。
+2. 按固定阅读顺序打开 `docs/tasks/M0-03-toolchain-gradle-ci.md` 及其 required Skills。
+3. 确认 Issue #3 保持 planned，分配 `qa-governance-agent`，并创建 `feat/m0-03-toolchain-gradle-ci`。
+4. 仅实现 M0-03 的工具链、十四模块空骨架和 CI，不提前实现 fixture、Host 或 Runtime 行为。
+5. 完成后返回结构化 Worker Handoff，由 `/root` 更新本文件。
 
 ## Handoff Sign-off
 
 - generated_by: `/root`
-- generated_at: `2026-07-31T08:25:34+08:00`
+- generated_at: `2026-07-31T09:02:20+08:00`
 - validation_command: `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict --allow-pending-branch`
-- validation_result: `PASS on PR target; strict validation required again on main`
+- validation_result: `PASS as merger-ready main snapshot; final strict validation without allowances is required after merge`

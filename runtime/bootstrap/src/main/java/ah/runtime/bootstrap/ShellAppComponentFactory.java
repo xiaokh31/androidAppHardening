@@ -26,14 +26,11 @@ public final class ShellAppComponentFactory extends AppComponentFactory {
                             classLoader);
             ClassLoaderProbe.record(ClassLoaderProbe.LOADER_CREATED, null, result);
             return result;
-        } catch (IllegalStateException exception) {
-            if (exception.getMessage() != null
-                    && exception.getMessage().startsWith(PocFailure.CODE + ":")) {
+        } catch (RuntimeException exception) {
+            if (PocFailure.isPocFailure(exception)) {
                 throw exception;
             }
-            throw PocFailure.create("ClassLoader creation failed", exception);
-        } catch (RuntimeException exception) {
-            throw PocFailure.create("ClassLoader creation failed", exception);
+            throw PocFailure.create("ClassLoader creation failed");
         }
     }
 

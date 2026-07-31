@@ -9,7 +9,9 @@ final class PocFailure {
         return new IllegalStateException(CODE + ": " + detail);
     }
 
-    static IllegalStateException create(String detail, Throwable cause) {
-        return new IllegalStateException(CODE + ": " + detail, cause);
+    static boolean isPocFailure(Throwable failure) {
+        return failure instanceof IllegalStateException
+                && failure.getMessage() != null
+                && failure.getMessage().startsWith(CODE + ":");
     }
 }

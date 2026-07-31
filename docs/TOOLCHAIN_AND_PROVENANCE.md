@@ -68,6 +68,16 @@ M0-03 必须以仓库配置固化以下基线，不允许依赖开发者全局�
 - 发布记录 Native 编译器版本、flags、符号处理与 stripping 步骤。
 - release 与 symbol artifact 分离；symbol artifact 受发布权限控制，但不得包含密钥或 DEX 明文。
 
+M0-04 的设备验收额外固定以下官方 Android 包：
+
+| 用途 | SDK package / 版本 | 官方归档 | 字节数 | 官方 SHA-1 | 项目 SHA-256 |
+| --- | --- | --- | ---: | --- | --- |
+| API 29 x86_64 | `system-images;android-29;default;x86_64` revision 8 | `x86_64-29_r08-windows.zip` | 689676765 | `e4b798d6fcddff90d528d74ef22ce3dd4a2ca798` | `b5c3fda1f4b4931c30518d342e4ad5f7464945e0cdced3538d4ff2e12f7bf201` |
+| API 36 x86_64 | `system-images;android-36;default;x86_64` revision 2 | `x86_64-36_r02.zip` | 844217077 | `829c076e8ff448a336097ae25a355b495ba36e2c` | `e1b9d9fb665001ef27b16e57d8762a2d54aec6bff617e17506edb8676667b9da` |
+| Emulator | `emulator` 37.1.11 build 15917651 | `emulator-windows_x64-15917651.zip` | 441926448 | `54fa750822ff462d57e04fc8e98e60f08df2bb61` | `5ff441f3b12ace9b13e9cf96fb0007d233967718652a8110705e995ac47bfeb7` |
+
+机器可读锁位于 `tools/validation/m0-04-android-packages.json`。这些大体积包、解压后的 SDK、AVD、Android 用户目录和缓存只允许位于仓库根的 `.toolchains/android-m0-04/`，该目录被 Git 忽略且不得提交；归档通过 `node tools/validation/verify-m0-04-android-packages.mjs` 同时核对字节数、官方 SHA-1 和项目 SHA-256。
+
 ## 6. GitHub Actions
 
 - 第三方 Action 使用完整 commit SHA 固定，不使用浮动 tag。

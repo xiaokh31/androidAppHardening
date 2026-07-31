@@ -11,9 +11,11 @@ import android.os.Bundle;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -62,8 +64,10 @@ public final class ClassLoaderPocRunner extends Instrumentation {
     private String runGate() throws Exception {
         String diagnostic = verifyCallbackOrderLoaderIdentityAndPayloadOnlyMethod();
         verifyInvalidPayloadsFailClosed();
+        verifyFailureDoesNotExposeSourcePath();
         verifyNoPlaintextPayloadWasWrittenToAppStorage();
-        return diagnostic + "; negative_payloads=3; plaintext_files=0";
+        return diagnostic
+                + "; negative_payloads=4; source_path_redacted=true; plaintext_files=0";
     }
 
     private String verifyCallbackOrderLoaderIdentityAndPayloadOnlyMethod() throws Exception {
@@ -114,14 +118,41 @@ public final class ClassLoaderPocRunner extends Instrumentation {
         Arrays.fill(corruptBytes, (byte) 0x5a);
         File corrupt = createStoredZip(corruptBytes);
         File empty = createStoredZip(new byte[0]);
+        File duplicate = createDuplicateStoredZip();
         try {
             requireP001(missing);
             requireP001(corrupt);
             requireP001(empty);
+            requireP001(duplicate);
         } finally {
             missing.delete();
             corrupt.delete();
             empty.delete();
+            duplicate.delete();
+        }
+    }
+
+    private void verifyFailureDoesNotExposeSourcePath() {
+        File sourceApk =
+                new File(
+                        getTargetContext().getCacheDir(),
+                        "SENSITIVE-M0-04-PATH-does-not-exist.apk");
+        sourceApk.delete();
+        ApplicationInfo applicationInfo = new ApplicationInfo();
+        applicationInfo.sourceDir = sourceApk.getAbsolutePath();
+        applicationInfo.nativeLibraryDir =
+                getTargetContext().getApplicationInfo().nativeLibraryDir;
+        try {
+            new ShellAppComponentFactory()
+                    .instantiateClassLoader(getClass().getClassLoader(), applicationInfo);
+            throw new AssertionError("missing APK produced a ClassLoader");
+        } catch (IllegalStateException expected) {
+            String trace = stackTrace(expected);
+            require(trace.contains("AAH-P001:"), "stable failure code is missing");
+            require(
+                    !trace.contains(sourceApk.getAbsolutePath())
+                            && !trace.contains("SENSITIVE-M0-04-PATH"),
+                    "failure exposed sourceDir");
         }
     }
 
@@ -202,6 +233,89 @@ public final class ClassLoaderPocRunner extends Instrumentation {
             }
         }
         return output;
+    }
+
+    private File createDuplicateStoredZip() throws Exception {
+        File output =
+                File.createTempFile(
+                        "m0-04-duplicate-", ".apk", getTargetContext().getCacheDir());
+        byte[] name = PAYLOAD_ENTRY.getBytes(StandardCharsets.UTF_8);
+        byte[] payload = new byte[112];
+        CRC32 crc = new CRC32();
+        crc.update(payload);
+        long localRecordSize = 30L + name.length + payload.length;
+        long centralOffset = localRecordSize * 2L;
+        long centralRecordSize = 46L + name.length;
+
+        try (FileOutputStream stream = new FileOutputStream(output)) {
+            writeLocalEntry(stream, name, payload, crc.getValue());
+            writeLocalEntry(stream, name, payload, crc.getValue());
+            writeCentralEntry(stream, name, payload.length, crc.getValue(), 0L);
+            writeCentralEntry(
+                    stream, name, payload.length, crc.getValue(), localRecordSize);
+            writeIntLe(stream, 0x06054b50L);
+            writeShortLe(stream, 0);
+            writeShortLe(stream, 0);
+            writeShortLe(stream, 2);
+            writeShortLe(stream, 2);
+            writeIntLe(stream, centralRecordSize * 2L);
+            writeIntLe(stream, centralOffset);
+            writeShortLe(stream, 0);
+        }
+        return output;
+    }
+
+    private void writeLocalEntry(
+            OutputStream output, byte[] name, byte[] payload, long crc32)
+            throws Exception {
+        writeIntLe(output, 0x04034b50L);
+        writeShortLe(output, 20);
+        writeShortLe(output, 0);
+        writeShortLe(output, ZipEntry.STORED);
+        writeShortLe(output, 0);
+        writeShortLe(output, 0);
+        writeIntLe(output, crc32);
+        writeIntLe(output, payload.length);
+        writeIntLe(output, payload.length);
+        writeShortLe(output, name.length);
+        writeShortLe(output, 0);
+        output.write(name);
+        output.write(payload);
+    }
+
+    private void writeCentralEntry(
+            OutputStream output, byte[] name, int payloadSize, long crc32, long localOffset)
+            throws Exception {
+        writeIntLe(output, 0x02014b50L);
+        writeShortLe(output, 20);
+        writeShortLe(output, 20);
+        writeShortLe(output, 0);
+        writeShortLe(output, ZipEntry.STORED);
+        writeShortLe(output, 0);
+        writeShortLe(output, 0);
+        writeIntLe(output, crc32);
+        writeIntLe(output, payloadSize);
+        writeIntLe(output, payloadSize);
+        writeShortLe(output, name.length);
+        writeShortLe(output, 0);
+        writeShortLe(output, 0);
+        writeShortLe(output, 0);
+        writeShortLe(output, 0);
+        writeIntLe(output, 0);
+        writeIntLe(output, localOffset);
+        output.write(name);
+    }
+
+    private void writeShortLe(OutputStream output, int value) throws Exception {
+        output.write(value & 0xff);
+        output.write((value >>> 8) & 0xff);
+    }
+
+    private void writeIntLe(OutputStream output, long value) throws Exception {
+        output.write((int) (value & 0xff));
+        output.write((int) ((value >>> 8) & 0xff));
+        output.write((int) ((value >>> 16) & 0xff));
+        output.write((int) ((value >>> 24) & 0xff));
     }
 
     private byte[] packagedPayloadHash() throws Exception {

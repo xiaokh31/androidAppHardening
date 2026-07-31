@@ -25,6 +25,8 @@ final class StoredDexReader {
     private static final int ENCRYPTED_FLAG = 1;
     private static final int DATA_DESCRIPTOR_FLAG = 1 << 3;
     private static final int MAX_DEX_SIZE = 16 * 1024 * 1024;
+    private static final int MAX_CENTRAL_DIRECTORY_SIZE = 4 * 1024 * 1024;
+    private static final int MAX_ENTRY_COUNT = 4096;
     private static final byte[] DEX_MAGIC = {'d', 'e', 'x', '\n'};
     private static final int DEX_HEADER_SIZE = 112;
     private static final int DEX_ENDIAN_CONSTANT = 0x12345678;
@@ -48,10 +50,13 @@ final class StoredDexReader {
             payload.flip();
             validateDex(payload, entry.crc32);
             return payload.asReadOnlyBuffer();
-        } catch (IllegalStateException exception) {
-            throw exception;
-        } catch (IOException | RuntimeException exception) {
-            throw PocFailure.create("cannot read packaged payload", exception);
+        } catch (IOException exception) {
+            throw PocFailure.create("cannot read packaged payload");
+        } catch (RuntimeException exception) {
+            if (PocFailure.isPocFailure(exception)) {
+                throw exception;
+            }
+            throw PocFailure.create("cannot read packaged payload");
         }
     }
 
@@ -84,7 +89,10 @@ final class StoredDexReader {
                     || centralDisk != 0
                     || entriesOnDisk != totalEntries
                     || totalEntries == 0xffff
-                    || centralOffset + centralSize > fileSize) {
+                    || totalEntries == 0
+                    || totalEntries > MAX_ENTRY_COUNT
+                    || centralSize > MAX_CENTRAL_DIRECTORY_SIZE
+                    || centralOffset > fileSize - centralSize) {
                 throw PocFailure.create("unsupported or malformed APK directory");
             }
             return new CentralDirectory(centralOffset, centralSize, totalEntries);
@@ -97,6 +105,7 @@ final class StoredDexReader {
         long cursor = central.offset;
         long end = central.offset + central.size;
         byte[] expectedName = ENTRY_NAME.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        Entry result = null;
 
         for (int index = 0; index < central.entryCount; index++) {
             if (cursor + CENTRAL_FIXED_SIZE > end) {
@@ -124,9 +133,16 @@ final class StoredDexReader {
                 throw PocFailure.create("invalid central directory bounds");
             }
 
-            ByteBuffer name = ByteBuffer.allocate(nameLength);
-            readFully(channel, name, cursor + CENTRAL_FIXED_SIZE);
-            if (Arrays.equals(name.array(), expectedName)) {
+            if (nameLength == expectedName.length) {
+                ByteBuffer name = ByteBuffer.allocate(nameLength);
+                readFully(channel, name, cursor + CENTRAL_FIXED_SIZE);
+                if (!Arrays.equals(name.array(), expectedName)) {
+                    cursor = next;
+                    continue;
+                }
+                if (result != null) {
+                    throw PocFailure.create("payload entry is duplicated");
+                }
                 if ((flags & (ENCRYPTED_FLAG | DATA_DESCRIPTOR_FLAG)) != 0
                         || method != STORED_METHOD
                         || compressedSize != uncompressedSize
@@ -134,17 +150,24 @@ final class StoredDexReader {
                         || uncompressedSize > MAX_DEX_SIZE) {
                     throw PocFailure.create("payload ZIP contract is invalid");
                 }
-                return new Entry(
-                        flags,
-                        method,
-                        Math.toIntExact(uncompressedSize),
-                        crc32,
-                        localOffset,
-                        expectedName);
+                result =
+                        new Entry(
+                                flags,
+                                method,
+                                Math.toIntExact(uncompressedSize),
+                                crc32,
+                                localOffset,
+                                expectedName);
             }
             cursor = next;
         }
-        throw PocFailure.create("payload entry is missing");
+        if (cursor != end) {
+            throw PocFailure.create("central directory size does not match entries");
+        }
+        if (result == null) {
+            throw PocFailure.create("payload entry is missing");
+        }
+        return result;
     }
 
     private static long findDataOffset(FileChannel channel, Entry entry, long fileSize)
@@ -223,7 +246,7 @@ final class StoredDexReader {
                 throw PocFailure.create("payload DEX signature mismatch");
             }
         } catch (NoSuchAlgorithmException exception) {
-            throw PocFailure.create("platform SHA-1 is unavailable", exception);
+            throw PocFailure.create("platform SHA-1 is unavailable");
         }
 
         Adler32 adler32 = new Adler32();

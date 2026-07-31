@@ -1,11 +1,14 @@
 package ah.runtime.bootstrap;
 
+import android.util.Log;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 /** Read-only diagnostics for the API 29 ClassLoader feasibility gate. */
 public final class ClassLoaderProbe {
+    private static final String LOG_TAG = "AAH-M0-04";
+
     public static final String FACTORY_ENTER = "FACTORY_ENTER";
     public static final String LOADER_CREATED = "LOADER_CREATED";
     public static final String APPLICATION_CREATED = "APPLICATION_CREATED";
@@ -33,6 +36,7 @@ public final class ClassLoaderProbe {
             String type,
             String componentClassName,
             ClassLoader classLoader) {
+        Log.i(LOG_TAG, type);
         EVENTS[writeIndex] =
                 new ProbeEvent(++nextSequence, type, componentClassName, classLoader);
         writeIndex = (writeIndex + 1) % CAPACITY;

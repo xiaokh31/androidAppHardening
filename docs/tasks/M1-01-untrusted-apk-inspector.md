@@ -53,6 +53,7 @@ APK 是攻击者可控 ZIP。路径、计数、长度、压缩比、AXML、DEX h
 - v0.1 限制固定为：APK 小于等于 `2147483647` bytes、条目不超过 `65535`、UTF-8 路径不超过 `1024` bytes、单条目解压后不超过 `1073741824` bytes、总解压量不超过 `4294967296` bytes、压缩比不超过 `200:1`、Manifest 不超过 `16777216` bytes、单 DEX 不超过 `536870912` bytes、DEX 不超过 `64` 个。
 - 仅接受合法 UTF-8 条目名；以 Unicode NFC 和 `/` 规范化后检测碰撞，但在模型中保留原始名称 bytes 的 SHA-256。
 - DEX 名称只接受 `classes.dex`、`classes2.dex` 至 `classes64.dex`，序号必须从 1 连续且 header magic/file size/header checksum 可验证。
+- package name 必须是 AXML 中唯一、非空且可由 `aapt2` 接受的应用 ID；模型保留解码后的精确字符串及其 UTF-8 SHA-256，不做大小写折叠或 Unicode 规范化。后续 Host 任务只能消费该字段，不得重新解析或猜测包名。
 - 保留命名空间固定为 `assets/ah/runtime/`、`ah/runtime/` 类描述符及 `lib/*/libah_runtime.so`；任一冲突返回 `COMPAT_RESERVED_NAMESPACE`。
 - 框架规则以版本化只读表实现；Flutter、Unity、React Native、Tinker/Sophix 等热修复、插件 Runtime 或已有壳出现至少一个高置信 marker 即拒绝，并在模型中记录命中的 marker ID。
 - 分支名固定为 `feat/m1-01-untrusted-apk-inspector`，Issue 标题固定为 `[M1-01] Untrusted APK inspector`，仅允许一个关联 PR。
@@ -61,6 +62,7 @@ APK 是攻击者可控 ZIP。路径、计数、长度、压缩比、AXML、DEX h
 
 - `ApkInspector.inspect(Path input): ApkInspection`。
 - `ApkInspection` 至少包含 `inputSha256`、`packageName`、`minSdk`、`targetSdk`、`applicationClass`、`appComponentFactoryClass`、`dexEntries`、`nativeAbis`、`findings`、`limitsApplied`。
+- `ApkInspection.packageNameSha256` 是 `packageName` 精确 UTF-8 bytes 的 32-byte SHA-256 只读副本。
 - `InspectionException.code` 使用 `INPUT_IO`、`INPUT_ZIP_STRUCTURE`、`INPUT_LIMIT_EXCEEDED`、`INPUT_DUPLICATE_ENTRY`、`INPUT_PATH_UNSAFE`、`INPUT_MANIFEST_INVALID`、`INPUT_DEX_INVALID`、`COMPAT_MIN_SDK`、`COMPAT_SPLIT`、`COMPAT_FRAMEWORK`、`COMPAT_EXISTING_SHELL`、`COMPAT_RESERVED_NAMESPACE`。
 - 模型集合保持输入顺序且不可变；错误自动化只解析 code，不解析自然语言。
 
@@ -88,6 +90,7 @@ APK 是攻击者可控 ZIP。路径、计数、长度、压缩比、AXML、DEX h
 5. 处理前后输入 SHA-256 相同；成功、异常和取消路径都关闭文件句柄。
 6. Windows 与 Ubuntu corpus 运行结果 JSON 规范化后字节相同。
 7. 10,000 个由 seeded fuzzer 生成的结构样本不发生进程崩溃、无限循环、未界定分配或非稳定错误。
+8. package name 的缺失、重复/冲突字符串池引用、非法语法与解码异常均返回 `INPUT_MANIFEST_INVALID`；正常模型的 `packageNameSha256` 与独立 UTF-8 SHA-256 一致。
 
 ## Required Tests
 

@@ -29,7 +29,7 @@ security_sensitive: false
 - 名为 `origin` 的远程指向指定 HTTPS 地址。
 - `main` 上只有一个标题为 `chore(repo): initialize repository` 的种子提交。
 - 种子提交只包含 `README.md`、`LICENSE`、`.gitignore`、`.gitattributes`、`.editorconfig`。
-- 一个与任务同名的 Issue、一个任务分支和一个 PR 审计记录；不得借该 PR 加入后续项目包。
+- 文本包建立后补建的同编号 Issue，链接种子提交及验证证据；M0-01 是唯一允许直接初始化空远程 `main` 且没有任务分支/PR 的引导例外。
 
 ## In Scope
 
@@ -49,7 +49,8 @@ security_sensitive: false
 - 远程检查使用 `git ls-remote --heads --tags origin`；输出非空时立即标记任务 blocked，不执行 push。
 - 许可证固定为 Apache-2.0，`README.md` 只描述项目目标、非目标和文档入口。
 - 文本文件统一 UTF-8、LF；`.gitattributes` 固定 Markdown、YAML、JSON、Kotlin、Java、C/C++ 和脚本的行尾策略。
-- 分支名固定为 `docs/m0-01-repository-bootstrap`，Issue 标题固定为 `[M0-01] Repository bootstrap`，仅允许一个关联 PR。
+- 由于远程在本任务开始时没有默认分支或治理规则，种子提交直接推送到 `main`；这是一次性引导例外。M0-02 合并后所有任务（包括治理任务）都必须使用同编号分支、Issue 和唯一 PR，禁止援引本例外。
+- 补建 Issue 标题固定为 `[M0-01] Repository bootstrap`，正文只链接种子提交、五文件清单与验证证据，不虚构任务分支或 PR。
 - 禁止使用 `--force`、`--force-with-lease`、`git reset --hard` 或覆盖式远程操作。
 
 ## Public Interfaces
@@ -76,10 +77,10 @@ security_sensitive: false
 1. `git remote get-url origin` 的标准输出严格等于指定远程地址，退出码为 `0`。
 2. 初次写入前保存的 `git ls-remote --heads --tags origin` 输出为空；若不为空，任务状态只能为 blocked。
 3. `git show -s --format=%s main` 输出 `chore(repo): initialize repository`。
-4. `git diff-tree --no-commit-id --name-only -r main` 排序后严格等于五个种子文件名。
+4. `git diff-tree --root --no-commit-id --name-only -r main` 排序后严格等于五个种子文件名。
 5. `git show main:LICENSE` 包含 `Apache License` 和 `Version 2.0, January 2004`。
 6. `git status --porcelain` 为空，远程 `main` 与本地 `main` 指向同一 40 位提交 SHA。
-7. GitHub 仓库可见性为 public，Issue、任务分支和唯一 PR 均能互相追溯。
+7. GitHub 仓库可见性为 public；补建 Issue 链接种子提交并明确记录“一次性无 PR 引导例外”，不存在虚构任务分支或 PR。
 
 ## Required Tests
 
@@ -93,7 +94,7 @@ security_sensitive: false
 - 种子提交 40 位 SHA、文件清单和 `git fsck --full` 结果。
 - 两个测试环境的 OS、Git 版本、命令和退出码。
 - 五个种子文件的 SHA-256。
-- Issue、分支和 PR 链接；若任务 blocked，则提供远程引用名称而不修改远程。
+- Issue 与种子提交链接，以及“一次性无 PR 引导例外”的说明；若任务 blocked，则提供远程引用名称而不修改远程。
 
 ## Likely Files
 
@@ -111,7 +112,7 @@ security_sensitive: false
 
 ## Agent Handoff Requirements
 
-- 本任务固定使用分支 `docs/m0-01-repository-bootstrap`、同编号 Issue 和一个 PR，不与其他任务合并。
+- 本任务是唯一直接初始化空远程 `main` 的例外；完成后补建同编号 Issue 并链接种子提交，不创建或声称存在虚构的任务 PR。
 - 完成状态必须列出执行命令、逐项退出码、测试环境、种子提交 SHA 和五个文件 SHA-256。
 - 工作 Agent 不修改根 `HandOff.md`；将结构化交接包返回 `/root`。
 - 发现远程状态与任务前提不一致时，仅提交 blocked 交接，不扩大任务范围。

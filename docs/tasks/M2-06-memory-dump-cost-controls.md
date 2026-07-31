@@ -6,6 +6,7 @@ status: planned
 owner_role: runtime-security-agent
 depends_on:
   - M2-02
+  - M2-04
   - M2-05
 required_skills:
   - implement-runtime-protection
@@ -23,8 +24,8 @@ ART 可能在 payload `ClassLoader` 生命周期内继续依赖解密 DEX 映射
 
 ## Inputs
 
-- M2-02 的 `PayloadMemoryHandle`、匿名映射所有权和密钥清零点。
-- M2-05 的 `RiskReportV1` 与固定风险等级。
+- M2-02 的公开 `LoadedPayload`、内部 `PayloadMemoryHandle`、匿名映射所有权和密钥清零点。
+- M2-05 的 `RiskReportV1`、固定风险等级和 `RiskAction`。
 - 威胁模型中的内存转储攻击与可接受兼容性边界。
 - M2-04 的四 ABI 构建配置。
 
@@ -56,14 +57,15 @@ ART 可能在 payload `ClassLoader` 生命周期内继续依赖解密 DEX 映射
 - payload 映射认证完成后切换为只读，并调用 `madvise(MADV_DONTDUMP)`；不支持时记录稳定能力位，不降低为磁盘明文。
 - `mlock` 只覆盖密钥页和每个 DEX 首尾各 64 KiB，进程总上限 1 MiB；失败是可观测的 best-effort 结果，不造成兼容性崩溃。
 - `LOW` 启用清零、只读与 `DONTDUMP`；`MEDIUM` 额外启用受限 `mlock`；`HIGH` 再调用 `prctl(PR_SET_DUMPABLE, 0)` 并施加 20–50 ms 的密码学随机启动抖动。
-- 风险等级只增强控制，不允许降低签名/容器校验；x86/x86_64 ABI 本身不能改变策略。
+- `RiskAction.ALLOW` 使用 `LOW` 基础控制，`RiskAction.DEGRADE` 再按 `MEDIUM`/`HIGH` 逐级增强；环境结果没有拒绝动作，任何等级都不允许降低签名/容器校验，x86/x86_64 ABI 本身不能改变策略。
 - payload 映射保留到 `PayloadMemoryHandle` 安全关闭；接口注释必须说明 ART 生命周期约束和残余可读窗口。
 
 ## Public Interfaces
 
 - Native `SecureBuffer`、`PayloadMapping::seal()` 与 `PayloadMapping::capabilities()`。
+- `ah.runtime.loader.PayloadRuntime.applyMemoryProfile(LoadedPayload payload, MemoryProfile profile)` 是 policy 到 native 的唯一控制入口；`MemoryProfile` 固定为 `BASELINE`、`ELEVATED`、`HIGH`，返回不可变 `MemoryProtectionCapabilities`。facade 校验 payload 所有权后才能访问内部 handle。
 - `public final class MemoryProtectionReport`，以只读访问器公开 `boolean dontDump`、`long lockedBytes`、`boolean processDumpable` 和 `RiskLevel level`。
-- `public final class MemoryControls`，通过静态方法 `static MemoryProtectionReport apply(PayloadMemoryHandle handle, RiskReportV1 risk)` 应用控制并禁止实例化。
+- `public final class MemoryControls`，通过模块内静态方法 `static MemoryProtectionReport apply(LoadedPayload payload, RiskReportV1 risk)` 映射 profile 并调用上述 facade；必须同时校验 `risk.action()` 与 `risk.level()` 的固定映射，失配时以稳定策略错误失败。
 - 错误/能力码前缀 `AAH-RUNTIME-MEMORY-`。
 
 ## Security Constraints
@@ -86,7 +88,7 @@ ART 可能在 payload `ClassLoader` 生命周期内继续依赖解密 DEX 映射
 - `./gradlew :runtime:native:test :runtime:native:connectedCheck :runtime:policy:test :runtime:policy:connectedCheck :runtime:bootstrap:connectedCheck` 退出码为 `0`。
 - 四 ABI 的密钥与临时缓冲清零测试通过；异常注入后的所有可释放敏感区均为零。
 - 支持设备的 `/proc/self/smaps` 显示 payload 映射不可写且排除 core dump；不支持能力时报告准确且应用正常启动。
-- 三档风险严格启用既定控制，高风险额外延迟落在 20–50 ms，单独改变为 x86/x86_64 不改变等级。
+- `ALLOW/LOW` 与 `DEGRADE/MEDIUM|HIGH` 映射严格启用既定控制，高风险额外延迟落在 20–50 ms，单独改变为 x86/x86_64 不改变等级；任何环境风险组合都不终止应用。
 - 类加载稳定性测试证明 payload 映射未被过早擦除；安全文档没有“绝对防止”“无法提取”等不可验证承诺。
 
 ## Required Tests
@@ -113,6 +115,8 @@ ART 可能在 payload `ClassLoader` 生命周期内继续依赖解密 DEX 映射
 - `runtime/native/src/androidTest/`
 - `runtime/policy/src/main/java/ah/runtime/MemoryControls.java`
 - `runtime/policy/src/main/java/ah/runtime/MemoryProtectionReport.java`
+- `runtime/native/src/main/java/ah/runtime/loader/MemoryProfile.java`
+- `runtime/native/src/main/java/ah/runtime/loader/MemoryProtectionCapabilities.java`
 - `runtime/policy/src/test/`
 - `runtime/bootstrap/src/androidTest/`
 

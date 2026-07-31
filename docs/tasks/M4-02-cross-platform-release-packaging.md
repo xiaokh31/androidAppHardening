@@ -5,6 +5,8 @@ milestone: M4
 status: planned
 owner_role: qa-governance-agent
 depends_on:
+  - M1-06
+  - M2-04
   - M3-03
   - M4-01
 required_skills:
@@ -54,14 +56,14 @@ security_sensitive: true
 - 固定包名与版本为 `androidAppHardening-0.1.0-windows-x86_64.zip` 和 `androidAppHardening-0.1.0-ubuntu-x86_64.tar.gz`。
 - 两包根目录固定包含 `bin/`、`lib/`、`runtime/`、`docs/QUICKSTART.md`、`LICENSE`、`THIRD_PARTY_NOTICES.md`、`bom.cdx.json` 和 `release-manifest.json`。
 - 构建时间取 Release Candidate commit 时间并转换为 UTC；文件按 UTF-8 字节序排序，ZIP 使用固定时间/权限，tar 使用固定 owner/group，gzip 禁用原始文件名和当前时间。
-- launcher 只转发参数并强制 UTF-8；Windows 为 `aah.cmd`，Ubuntu 为可执行 `aah`。
+- launcher 只转发参数并强制 UTF-8；Windows 为 `android-app-hardening.cmd`，Ubuntu 为可执行 `android-app-hardening`，不提供第二个 CLI 别名。
 - `release-manifest.json` 固定记录版本、commit、toolchain、平台、文件 SHA-256、Runtime 四 ABI 和输出“unsigned APK only”能力声明。
 - GitHub/OIDC provenance 可证明发布包来源，但不得被描述为 APK 签名；产品二进制内不得存在签名命令。
 
 ## Public Interfaces
 
 - Gradle 入口 `:distribution:packageWindows`、`:distribution:packageUbuntu` 和 `:distribution:verifyRelease`。
-- CLI 入口 `bin/aah.cmd` 与 `bin/aah`。
+- CLI 入口 `bin/android-app-hardening.cmd` 与 `bin/android-app-hardening`。
 - 发布文件名固定为上述两个压缩包、`SHA256SUMS`、`bom.cdx.json` 和 `provenance.json`。
 - `release-manifest.json` schema 位于 `distribution/release-manifest.schema.json`。
 
@@ -104,8 +106,8 @@ security_sensitive: true
 ## Likely Files
 
 - `distribution/build.gradle.kts`
-- `distribution/src/main/scripts/aah`
-- `distribution/src/main/scripts/aah.cmd`
+- `distribution/src/main/scripts/android-app-hardening`
+- `distribution/src/main/scripts/android-app-hardening.cmd`
 - `distribution/release-manifest.schema.json`
 - `distribution/docs/QUICKSTART.md`
 - `.github/workflows/release-packaging.yml`

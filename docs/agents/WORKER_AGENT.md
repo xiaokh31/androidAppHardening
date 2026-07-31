@@ -10,7 +10,7 @@
 4. 使用合成或明确授权 fixture，不提交 APK、密钥、明文 DEX 或反编译内容。
 5. 运行任务卡全部 Required Tests，并保留命令、退出码、环境和哈希。
 6. 检查 diff 中没有签名入口、动态依赖、绝对用户路径、敏感信息和无关格式化。
-7. 使用工作交接模板返回结果。
+7. 使用 [工作交接模板](../../.agents/skills/coordinate-project-handoff/assets/worker-handoff-template.md) 返回结构化结果。
 
 ## 禁止
 

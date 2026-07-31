@@ -120,7 +120,7 @@ v0.1 接受标准 Java/Kotlin 应用的单 DEX 或多 DEX 结构，并允许自�
 
 ### FR-008 环境风险
 
-收集调试、Hook、模拟和运行时篡改等风险信号，通过版本化策略合并为 `allow`、`degrade` 或 `deny`。默认策略只对高置信完整性或 signer 失败执行 `deny`；启发式环境信号不得单独导致不可解释的兼容性失败。
+收集调试、Hook、模拟和运行时篡改等风险信号，通过版本化策略合并为 `allow` 或 `degrade`：`LOW` 映射为 `allow`，`MEDIUM`/`HIGH` 映射为逐级增强的 `degrade` 成本控制。启发式环境信号不得单独终止应用。signer、AEAD 或受认证完整性失败由独立校验器直接 fail closed，不经过风险评分映射。
 
 ### FR-009 内存暴露控制
 

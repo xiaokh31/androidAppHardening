@@ -29,7 +29,7 @@ security_sensitive: false
 ## Expected Outputs
 
 - Kotlin DSL Gradle 根工程和 Wrapper。
-- `:host:cli`、`:host:apk-inspector`、`:host:axml`、`:host:container`、`:host:repacker`、`:runtime:bootstrap`、`:runtime:native`、`:runtime:policy`、`:fixtures:android`、`:tools:validation` 十个可编译空骨架。
+- `:host:cli`、`:host:apk-inspector`、`:host:axml`、`:host:container`、`:host:repacker`、`:runtime:bootstrap`、`:runtime:native`、`:runtime:policy`、`:fixtures:android`、`:integration-tests`、`:benchmarks:host`、`:benchmarks:android`、`:tools:validation`、`:distribution` 十四个可编译空骨架。
 - Linux 全量检查与 Windows JVM/治理检查工作流。
 - 依赖锁、Gradle verification metadata、版本目录和构建缓存策略。
 
@@ -53,6 +53,7 @@ security_sensitive: false
 - `minSdk` 全局固定为 `29`；生产代码的 Java/Kotlin bytecode target 为 `17`。
 - 仓库仅允许 `google()` 与 `mavenCentral()`，`RepositoriesMode.FAIL_ON_PROJECT_REPOS` 生效；禁止 `mavenLocal()`、动态版本和 snapshot。
 - Gradle Wrapper distribution 使用 `-bin` 包并记录 SHA-256；依赖锁覆盖所有可解析 configuration，verification mode 为 strict。
+- M0-02 的治理工作流为“纯文本包快照”使用 `--require-governance-only`；本任务首次加入十四个模块骨架时必须在同一 PR 删除该参数，并证明默认永久治理校验与新增空骨架兼容，禁止关闭整个治理工作流。
 - CI 使用 `ubuntu-24.04` 执行 `clean check lint` 与四 ABI native configure/build，使用 `windows-2025` 执行 JVM、治理和路径兼容检查；第三方 Actions 固定到完整 commit SHA。
 - 分支名固定为 `feat/m0-03-toolchain-gradle-ci`，Issue 标题固定为 `[M0-03] Toolchain, Gradle, and CI`，仅允许一个关联 PR。
 
@@ -60,7 +61,7 @@ security_sensitive: false
 
 - Unix 入口：`./gradlew`；Windows 入口：`.\gradlew.bat`。
 - 基线验证任务：`clean check lint verifyGovernance`。
-- 模块坐标与 `docs/ARCHITECTURE.md` 一致：`:host:cli`、`:host:apk-inspector`、`:host:axml`、`:host:container`、`:host:repacker`、`:runtime:bootstrap`、`:runtime:native`、`:runtime:policy`、`:fixtures:android`、`:tools:validation`。
+- 模块坐标与 `docs/ARCHITECTURE.md` 一致：`:host:cli`、`:host:apk-inspector`、`:host:axml`、`:host:container`、`:host:repacker`、`:runtime:bootstrap`、`:runtime:native`、`:runtime:policy`、`:fixtures:android`、`:integration-tests`、`:benchmarks:host`、`:benchmarks:android`、`:tools:validation`、`:distribution`。
 - 版本唯一来源：`gradle/libs.versions.toml`。
 
 ## Security Constraints
@@ -81,7 +82,7 @@ security_sensitive: false
 
 1. Ubuntu 执行 `./gradlew --no-daemon clean check lint verifyGovernance` 退出码为 `0`。
 2. Windows 执行 `.\gradlew.bat --no-daemon clean check verifyGovernance` 退出码为 `0`。
-3. `./gradlew projects` 输出十个规定模块且无额外业务模块。
+3. `./gradlew projects` 输出十四个规定模块且无额外业务模块。
 4. `./gradlew :runtime:native:assemble` 生成四个规定 ABI 的共享库，`readelf`/`llvm-readobj` 证实架构匹配。
 5. 删除或篡改一个 verification metadata checksum 后，依赖解析以非零退出；恢复后通过。
 6. 仓库扫描不存在动态版本、snapshot、`mavenLocal()`、未固定 Actions 标签或业务实现。
@@ -90,7 +91,7 @@ security_sensitive: false
 ## Required Tests
 
 - Gradle Wrapper SHA-256 验证和 `./gradlew --version` 版本断言。
-- 十模块 compile/test/lint smoke test。
+- 十四模块 compile/test/lint smoke test。
 - 四 ABI CMake configure/build smoke test。
 - 依赖校验负向测试和 lockfile 一致性测试。
 - Windows/Ubuntu 路径、换行和治理脚本等价测试。
@@ -116,6 +117,7 @@ security_sensitive: false
 - M0-02 的治理校验入口必须稳定。
 - 任一固定工具版本不可从允许的官方来源取得时，提交 blocked 交接，不擅自升级或换源。
 - 版本组合发生已证实的不兼容时，由 `/root` 通过 ADR 修订后再继续。
+- 若 `--require-governance-only` 未随十四模块骨架一起移除，本任务不得标记完成。
 
 ## Agent Handoff Requirements
 

@@ -7,6 +7,13 @@ import path from "node:path";
 
 const root = process.cwd();
 const errors = [];
+const allowedArgs = new Set(["--require-governance-only"]);
+const unknownArgs = process.argv.slice(2).filter((arg) => !allowedArgs.has(arg));
+if (unknownArgs.length > 0) {
+  console.error(`Unknown argument(s): ${unknownArgs.join(", ")}`);
+  process.exit(2);
+}
+const requireGovernanceOnly = process.argv.includes("--require-governance-only");
 
 const expectedTasks = [
   "M0-01-repository-bootstrap.md",
@@ -97,6 +104,7 @@ for (const name of actualTasks) {
 const taskIds = new Map();
 const dependencyGraph = new Map();
 const taskRequiredSkills = new Map();
+const taskOwnerRoles = new Map();
 for (const name of actualTasks) {
   const file = path.join(taskDir, name);
   const text = readUtf8(file);
@@ -124,6 +132,7 @@ for (const name of actualTasks) {
   taskIds.set(yaml.id, file);
   dependencyGraph.set(yaml.id, parseList(yaml.depends_on));
   taskRequiredSkills.set(yaml.id, parseList(yaml.required_skills));
+  taskOwnerRoles.set(yaml.id, yaml.owner_role);
 
   checkHeadingOrder(text, taskHeadings, file);
 }
@@ -144,6 +153,81 @@ if (!fs.existsSync(indexFile)) {
   for (const name of expectedTasks) {
     const count = [...indexText.matchAll(new RegExp(escapeRegExp(name), "g"))].length;
     if (count !== 1) errors.push(`docs/tasks/INDEX.md: ${name} must be linked exactly once`);
+  }
+  const indexedTasks = new Set();
+  for (const row of indexText.split(/\r?\n/)) {
+    if (!/^\|\s*M[0-4]-\d{2}\s*\|/.test(row)) continue;
+    const cells = row.split("|").slice(1, -1).map((cell) => cell.trim());
+    if (cells.length !== 5) {
+      errors.push(`docs/tasks/INDEX.md: invalid task row: ${row}`);
+      continue;
+    }
+    const [id, issueCell, taskCell, ownerCell, dependencyCell] = cells;
+    if (indexedTasks.has(id)) errors.push(`docs/tasks/INDEX.md: duplicate task row ${id}`);
+    indexedTasks.add(id);
+    if (!taskIds.has(id)) {
+      errors.push(`docs/tasks/INDEX.md: unknown task row ${id}`);
+      continue;
+    }
+    const expectedFile = path.basename(taskIds.get(id));
+    const issueMatch = issueCell.match(
+      /^\[#(\d+)]\(https:\/\/github\.com\/xiaokh31\/androidAppHardening\/issues\/(\d+)\)$/,
+    );
+    const expectedIssue = String(expectedTasks.indexOf(expectedFile) + 1);
+    if (!issueMatch || issueMatch[1] !== issueMatch[2] || issueMatch[1] !== expectedIssue) {
+      errors.push(`docs/tasks/INDEX.md: ${id} must link its GitHub Issue`);
+    }
+    const taskLink = taskCell.match(/^\[[^\]]+]\(([^)]+)\)$/);
+    if (!taskLink || taskLink[1] !== expectedFile) {
+      errors.push(`docs/tasks/INDEX.md: ${id} must link ${expectedFile}`);
+    }
+    const indexedOwner = ownerCell.replaceAll("`", "");
+    if (indexedOwner !== taskOwnerRoles.get(id)) {
+      errors.push(`docs/tasks/INDEX.md: ${id} owner ${indexedOwner} does not match task card ${taskOwnerRoles.get(id)}`);
+    }
+    const indexedDependencies = parseList(dependencyCell);
+    const taskDependencies = dependencyGraph.get(id) ?? [];
+    if (indexedDependencies.join("|") !== taskDependencies.join("|")) {
+      errors.push(
+        `docs/tasks/INDEX.md: ${id} dependencies [${indexedDependencies.join(", ")}] `
+        + `do not match task card [${taskDependencies.join(", ")}]`,
+      );
+    }
+  }
+  for (const id of taskIds.keys()) {
+    if (!indexedTasks.has(id)) errors.push(`docs/tasks/INDEX.md: missing task row ${id}`);
+  }
+}
+
+const roadmapFile = path.join(root, "docs", "ROADMAP.md");
+if (fs.existsSync(roadmapFile)) {
+  const roadmapText = readUtf8(roadmapFile);
+  const roadmapTasks = new Set();
+  for (const row of roadmapText.split(/\r?\n/)) {
+    if (!/^\|\s*M[0-4]-\d{2}\s*\|/.test(row)) continue;
+    const cells = row.split("|").slice(1, -1).map((cell) => cell.trim());
+    if (cells.length !== 3) {
+      errors.push(`docs/ROADMAP.md: invalid task row: ${row}`);
+      continue;
+    }
+    const [id, , dependencyCell] = cells;
+    if (roadmapTasks.has(id)) errors.push(`docs/ROADMAP.md: duplicate task row ${id}`);
+    roadmapTasks.add(id);
+    if (!dependencyGraph.has(id)) {
+      errors.push(`docs/ROADMAP.md: unknown task row ${id}`);
+      continue;
+    }
+    const roadmapDependencies = parseList(dependencyCell);
+    const taskDependencies = dependencyGraph.get(id) ?? [];
+    if (roadmapDependencies.join("|") !== taskDependencies.join("|")) {
+      errors.push(
+        `docs/ROADMAP.md: ${id} dependencies [${roadmapDependencies.join(", ")}] `
+        + `do not match task card [${taskDependencies.join(", ")}]`,
+      );
+    }
+  }
+  for (const id of taskIds.keys()) {
+    if (!roadmapTasks.has(id)) errors.push(`docs/ROADMAP.md: missing task row ${id}`);
   }
 }
 
@@ -181,6 +265,14 @@ for (const extra of [
   ".agents/skills/coordinate-project-handoff/assets/worker-handoff-template.md",
 ]) {
   if (!fs.existsSync(path.join(root, extra))) errors.push(`Missing handoff Skill resource: ${extra}`);
+}
+
+for (const tool of [
+  "tools/governance/validate-project-package.mjs",
+  "tools/governance/hash-project-package.mjs",
+  "tools/governance/test-handoff-validator.mjs",
+]) {
+  if (!fs.existsSync(path.join(root, tool))) errors.push(`Missing governance tool: ${tool}`);
 }
 
 const expectedCoreDocs = [
@@ -247,25 +339,29 @@ for (const file of walk(root)) {
   if (rel.endsWith(".md")) validateMarkdownLinks(text, file);
 }
 
-for (const forbidden of [
-  "cli",
-  "host",
-  "host-core",
-  "runtime",
-  "fixtures",
-  "test-fixtures",
-  "integration-tests",
-]) {
-  if (fs.existsSync(path.join(root, forbidden))) {
-    errors.push(`Business implementation directory must not exist in this package: ${forbidden}`);
+if (requireGovernanceOnly) {
+  for (const forbidden of [
+    "cli",
+    "host",
+    "host-core",
+    "runtime",
+    "fixtures",
+    "test-fixtures",
+    "integration-tests",
+    "benchmarks",
+    "distribution",
+  ]) {
+    if (fs.existsSync(path.join(root, forbidden))) {
+      errors.push(`Business implementation directory must not exist in the governance-only snapshot: ${forbidden}`);
+    }
   }
-}
 
-for (const file of walk(root)) {
-  const rel = relative(file);
-  if (rel.startsWith("work/") || rel.startsWith(".git/")) continue;
-  if (/\.(?:apk|aab|apks|dex|aar|so|class|java|kt|c|cc|cpp|h|hpp)$/i.test(rel)) {
-    errors.push(`Business implementation or binary artifact is forbidden in this package: ${rel}`);
+  for (const file of walk(root)) {
+    const rel = relative(file);
+    if (rel.startsWith("work/") || rel.startsWith(".git/")) continue;
+    if (/\.(?:apk|aab|apks|dex|aar|so|class|java|kt|c|cc|cpp|h|hpp)$/i.test(rel)) {
+      errors.push(`Business implementation or binary artifact is forbidden in the governance-only snapshot: ${rel}`);
+    }
   }
 }
 
@@ -273,7 +369,10 @@ if (errors.length > 0) {
   for (const error of errors) console.error(`ERROR: ${error}`);
   process.exit(1);
 }
-console.log(`OK: ${expectedTasks.length} task cards, ${expectedCoreDocs.length} core docs, ${expectedAdrs.length} ADRs`);
+console.log(
+  `OK: ${expectedTasks.length} task cards, ${expectedCoreDocs.length} core docs, `
+  + `${expectedAdrs.length} ADRs${requireGovernanceOnly ? ", governance-only snapshot" : ""}`,
+);
 
 function readUtf8(file) {
   const text = fs.readFileSync(file, "utf8");

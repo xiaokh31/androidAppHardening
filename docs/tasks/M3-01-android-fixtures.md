@@ -50,7 +50,7 @@ security_sensitive: false
 
 ## Implementation Decisions
 
-- fixture 源码位于 `test-fixtures/apps/`，构建产物只进入各模块 `build/`；仓库不提交 APK、DEX、keystore 或私钥。
+- fixture 源码位于 `fixtures/android/src/<fixtureFlavor>/`，九个固定 product flavors 生成独立 APK，构建产物只进入模块 `build/`；仓库不提交 APK、DEX、keystore 或私钥。
 - `catalog.yaml` 为每个 fixture 固定记录 `id`、语言、DEX 模式、启动定制、payload ABI、预期组件事件和预期兼容结果。
 - 测试驱动顺序固定为 build、记录输入哈希、运行产品、复核输入哈希不变、检查输出未签名、在外部生成一次性证书、外部签名、安装、启动、断言、卸载、删除证书。
 - 一次性证书固定生成到 `integration-tests/build/test-signing/`，每次运行重新生成，别名只存在于测试驱动器进程；该目录必须被 Git 忽略。
@@ -61,7 +61,7 @@ security_sensitive: false
 
 - `fixtures/catalog.yaml` 及其 schema。
 - `FixtureDescriptor`，字段为 `id`、`inputApk`、`expectedEvents`、`payloadAbis` 和 `expectedOutcome`。
-- Gradle 入口 `:test-fixtures:assembleFixtures` 与 `:integration-tests:runFixtureMatrix`。
+- Gradle 入口 `:fixtures:android:assembleFixtures` 与 `:integration-tests:runFixtureMatrix`。
 - 测试结果 `integration-tests/build/reports/fixture-results.json`。
 
 ## Security Constraints
@@ -80,7 +80,7 @@ security_sensitive: false
 
 ## Acceptance Criteria
 
-- `./gradlew :test-fixtures:assembleFixtures :integration-tests:test` 退出码为 `0`。
+- `./gradlew :fixtures:android:assembleFixtures :integration-tests:test` 退出码为 `0`。
 - 九个 fixture 均可从干净 checkout 重建，连续两次构建的输入 APK SHA-256 相同。
 - 每次加固前后输入 APK SHA-256 不变，产品输出均通过未签名检查。
 - 支持场景经外部一次性证书签名后按预期启动并产生完整事件序列；`jni-arm-only` 在 x86/x86_64 上产生明确兼容限制。
@@ -102,9 +102,9 @@ security_sensitive: false
 
 ## Likely Files
 
-- `test-fixtures/apps/`
-- `test-fixtures/catalog.yaml`
-- `test-fixtures/catalog.schema.json`
+- `fixtures/android/src/`
+- `fixtures/android/catalog.yaml`
+- `fixtures/android/catalog.schema.json`
 - `integration-tests/build.gradle.kts`
 - `integration-tests/src/test/`
 - `integration-tests/src/androidTest/`
@@ -116,4 +116,4 @@ M1-06 CLI 或 M2-04 Runtime 装配格式未稳定时不得冻结 fixture 驱动�
 
 ## Agent Handoff Requirements
 
-使用分支 `test/m3-01-android-fixtures`，只处理 Issue `M3-01` 并仅创建一个对应 PR。交接包必须列出九个 fixture、事件契约、全部命令与退出码、设备矩阵、前后哈希、测试报告 SHA-256 和临时证书清理证据；不得提交生成 APK 或任何密钥。
+使用分支 `chore/m3-01-android-fixtures`，只处理 Issue `M3-01` 并仅创建一个对应 PR。交接包必须列出九个 fixture、事件契约、全部命令与退出码、设备矩阵、前后哈希、测试报告 SHA-256 和临时证书清理证据；不得提交生成 APK 或任何密钥。

@@ -28,14 +28,14 @@ Runtime 必须避免把解密后的 DEX 写回文件系统。Android 公开的 `
 
 ## Expected Outputs
 
-- 隔离的 `:fixtures:android:classloader-poc` 与 instrumentation test source set。
+- 既有 `:fixtures:android` 模块内隔离的 `classloaderPoc` product flavor、`src/classloaderPoc` 与 instrumentation test source set；不得创建额外 Gradle 模块。
 - `ah.runtime.bootstrap.ShellAppComponentFactory` PoC。
 - 展示调用顺序、ClassLoader 身份、内存 DEX 加载和禁止落盘结果的可复现实验报告。
 - 明确的 pass/fail M0 gate，不产生可发布 Runtime。
 
 ## In Scope
 
-- 在 `instantiateClassLoader(ClassLoader, ApplicationInfo)` 中读取仓库自有 asset、创建只读 direct `ByteBuffer` 并返回 `InMemoryDexClassLoader`。
+- 在 `instantiateClassLoader(ClassLoader, ApplicationInfo)` 中仅凭 `ApplicationInfo.sourceDir` 从当前测试 APK 的固定 ZIP 条目读取仓库自有 DEX、创建只读 direct `ByteBuffer` 并返回 `InMemoryDexClassLoader`。
 - 让 fixture 的 `Application` 与 `Activity` 由返回的 loader 解析。
 - 记录 framework 回调顺序与组件类的实际 ClassLoader。
 - 检查进程私有目录和外部存储没有新增 `.dex`、`.jar`、`.odex` 或明文 payload。
@@ -49,8 +49,8 @@ Runtime 必须避免把解密后的 DEX 写回文件系统。Android 公开的 `
 ## Implementation Decisions
 
 - manifest 中只把 `android:appComponentFactory` 指向 `ah.runtime.bootstrap.ShellAppComponentFactory`，保留原始 `android:name`。
-- PoC 使用 `dalvik.system.InMemoryDexClassLoader(ByteBuffer, parent)`；parent 固定为 framework 传入的 ClassLoader。
-- DEX asset 仅用于可行性验证，构建时由 fixture 源码生成；运行时以 `AssetManager.open` 读入 direct buffer，不调用 `DexClassLoader`。
+- PoC 使用 API 29 的 `dalvik.system.InMemoryDexClassLoader(ByteBuffer[], String librarySearchPath, ClassLoader parent)`；parent 固定为 framework 传入的 ClassLoader。`librarySearchPath` 只由 Framework `ApplicationInfo.nativeLibraryDir`、`sourceDir`、公开 `Process.is64Bit()`/`Build.SUPPORTED_32_BIT_ABIS`/`SUPPORTED_64_BIT_ABIS` 和当前 APK 的有界 ZIP ABI 清单确定，不反射读取 parent 内部 path list。
+- DEX asset 仅用于可行性验证，构建时由 fixture 源码生成并以唯一规范名称 `assets/ah/poc/classes.dex`、ZIP method `STORED`、无 encryption、无 data descriptor 的形式打包。运行时只使用 Framework 传入的 `ApplicationInfo.sourceDir` 和有界只读 ZIP/FileChannel 读取 direct buffer，不调用 `Context`、`AssetManager` 或 `DexClassLoader`。
 - 回调事件写入进程内 ring buffer，由 instrumentation 读取；禁止依赖 logcat 作为唯一断言。
 - 失败时抛出带稳定错误码 `AAH-P001` 的 `IllegalStateException`，不得静默回退到原 ClassLoader。
 - 分支名固定为 `spike/m0-04-classloader-poc`，Issue 标题固定为 `[M0-04] API 29 ClassLoader PoC`，仅允许一个关联 PR。
@@ -77,17 +77,17 @@ Runtime 必须避免把解密后的 DEX 写回文件系统。Android 公开的 `
 
 ## Acceptance Criteria
 
-1. `./gradlew :fixtures:android:classloader-poc:connectedDebugAndroidTest` 在 API 29 与 API 36 均退出 `0`。
+1. `./gradlew :fixtures:android:connectedClassloaderPocDebugAndroidTest` 在 API 29 与 API 36 均退出 `0`。
 2. 事件序列严格满足 `FACTORY_ENTER < LOADER_CREATED < APPLICATION_CREATED < ACTIVITY_CREATED`。
 3. `Application` 与 `Activity` 的 ClassLoader 均为返回的 `InMemoryDexClassLoader`，且能调用只存在于 payload DEX 的方法。
 4. 对安装前后应用私有目录快照求差，不出现 `.dex`、`.jar`、`.odex` 或与 payload SHA-256 相同的文件。
-5. 静态扫描和运行日志中不存在 hidden API、反射 `pathList`、`DexClassLoader` 或 hiddenapi denial。
+5. 静态扫描和运行日志中不存在 `Context`、`AssetManager`、hidden API、反射 `pathList`、`DexClassLoader` 或 hiddenapi denial；回调的 APK、package 与 Native 路径输入仅来自 Framework `ApplicationInfo` 和公开进程 ABI API。
 6. 删除 payload asset 后启动失败并产生 `AAH-P001`，不回退加载。
 7. PoC 报告将结果标为 pass 后，M0-05 才可开始。
 
 ## Required Tests
 
-- API 29/35 冷启动与 Activity 实例化 instrumentation test。
+- API 29/36 冷启动与 Activity 实例化 instrumentation test。
 - payload 缺失、损坏 DEX 和空 buffer 的负向测试。
 - 回调顺序、ClassLoader identity 和 payload-only 方法测试。
 - 安装前后文件系统差异与 logcat hidden API 扫描。
@@ -103,9 +103,9 @@ Runtime 必须避免把解密后的 DEX 写回文件系统。Android 公开的 `
 
 ## Likely Files
 
-- `fixtures/android/classloader-poc/`
-- `fixtures/android/classloader-poc/src/main/AndroidManifest.xml`
-- `fixtures/android/classloader-poc/src/androidTest/`
+- `fixtures/android/src/classloaderPoc/`
+- `fixtures/android/src/classloaderPoc/AndroidManifest.xml`
+- `fixtures/android/src/androidTest/`
 - `docs/evidence/M0-04/`
 
 ## Dependencies and Blockers

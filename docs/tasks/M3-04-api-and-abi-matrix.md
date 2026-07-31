@@ -5,6 +5,7 @@ milestone: M3
 status: planned
 owner_role: qa-governance-agent
 depends_on:
+  - M0-03
   - M2-04
   - M3-01
   - M3-02
@@ -104,7 +105,7 @@ security_sensitive: false
 ## Likely Files
 
 - `integration-tests/src/main/kotlin/ApiAbiMatrix.kt`
-- `integration-tests/src/androidTest/`
+- `fixtures/android/src/androidTest/`
 - `integration-tests/schemas/compatibility-matrix.schema.json`
 - `tools/device-capability-probe/`
 - `docs/generated/COMPATIBILITY_RESULTS.md`
@@ -116,4 +117,4 @@ security_sensitive: false
 
 ## Agent Handoff Requirements
 
-使用分支 `test/m3-04-api-abi-matrix`，只处理 Issue `M3-04` 并仅创建一个对应 PR。交接必须提交完整矩阵、设备事实、命令与退出码、重试/缺陷清单、全部哈希、临时证书清理证据和兼容声明；明确记录任何未验证组合。
+使用分支 `chore/m3-04-api-abi-matrix`，只处理 Issue `M3-04` 并仅创建一个对应 PR。交接必须提交完整矩阵、设备事实、命令与退出码、重试/缺陷清单、全部哈希、临时证书清理证据和兼容声明；明确记录任何未验证组合。

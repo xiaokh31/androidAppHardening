@@ -65,10 +65,10 @@ Host 处理器面对不可信 APK，Runtime 面对可被篡改的本地容器。
 
 ## Public Interfaces
 
-- Gradle 入口 `:fuzz-tests:regressionFuzz`、`:fuzz-tests:prFuzz` 和 `:fuzz-tests:nightlyFuzz`。
-- `tamper-tests/catalog.yaml`，字段为 `id`、`target`、`mutation`、`expectedStage`、`expectedCode` 和 `payloadLoaded`。
+- 既有 `:tools:validation` 模块内的 Gradle 入口 `regressionFuzz`、`prFuzz`、`nightlyFuzz` 和 `tamperTest`；不得创建额外 `fuzz-tests` 或 `tamper-tests` 模块。
+- `tools/validation/src/tamper/resources/catalog.yaml`，字段为 `id`、`target`、`mutation`、`expectedStage`、`expectedCode` 和 `payloadLoaded`。
 - 统一结果 `build/reports/security/fuzz-summary.json`。
-- corpus 目录 `fuzz-tests/corpus/` 与回归目录 `fuzz-tests/fuzz-regressions/`。
+- corpus 目录 `tools/validation/src/fuzz/resources/corpus/` 与回归目录 `tools/validation/src/fuzz/resources/regressions/`。
 
 ## Security Constraints
 
@@ -86,7 +86,7 @@ Host 处理器面对不可信 APK，Runtime 面对可被篡改的本地容器。
 
 ## Acceptance Criteria
 
-- `./gradlew :fuzz-tests:regressionFuzz :tamper-tests:test` 退出码为 `0`。
+- `./gradlew :tools:validation:regressionFuzz :tools:validation:tamperTest` 退出码为 `0`。
 - 每个 JVM/Native target 完成 10 分钟 PR fuzz，无 crash、sanitizer、超时、OOM 或未捕获异常。
 - tamper catalog 的全部案例均在预期阶段返回预期错误码，且 `payloadLoaded` 全为 `false`。
 - 原始 fixture 前后 SHA-256 完全一致，构建输出中不存在落盘明文 payload。
@@ -108,13 +108,13 @@ Host 处理器面对不可信 APK，Runtime 面对可被篡改的本地容器。
 
 ## Likely Files
 
-- `fuzz-tests/build.gradle.kts`
-- `fuzz-tests/src/jazzer/`
-- `fuzz-tests/src/native/`
-- `fuzz-tests/corpus/`
-- `fuzz-tests/fuzz-regressions/`
-- `tamper-tests/catalog.yaml`
-- `tamper-tests/src/test/`
+- `tools/validation/build.gradle.kts`
+- `tools/validation/src/fuzz/jazzer/`
+- `tools/validation/src/fuzz/native/`
+- `tools/validation/src/fuzz/resources/corpus/`
+- `tools/validation/src/fuzz/resources/regressions/`
+- `tools/validation/src/tamper/resources/catalog.yaml`
+- `tools/validation/src/test/`
 
 ## Dependencies and Blockers
 
@@ -122,4 +122,4 @@ AXML、容器、CLI 或 Runtime 错误码未冻结时不得冻结 tamper catalog
 
 ## Agent Handoff Requirements
 
-使用分支 `test/m3-02-tamper-fuzz`，只处理 Issue `M3-02` 并仅创建一个对应 PR。交接必须给出 targets、语料来源、命令与退出码、运行时长、sanitizer 结果、最小样本哈希、篡改矩阵和独立安全复核；不得附真实 APK、测试私钥或敏感 crash 数据。
+使用分支 `chore/m3-02-tamper-fuzz`，只处理 Issue `M3-02` 并仅创建一个对应 PR。交接必须给出 targets、语料来源、命令与退出码、运行时长、sanitizer 结果、最小样本哈希、篡改矩阵和独立安全复核；不得附真实 APK、测试私钥或敏感 crash 数据。

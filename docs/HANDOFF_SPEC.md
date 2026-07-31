@@ -2,7 +2,7 @@
 
 ## 1. 目的与所有权
 
-根 `HandOff.md` 是项目恢复工作的唯一入口，描述已合并事实、当前状态、阻塞和有序下一步。仅 `/root` 可以更新根交接文件。Worker 不直接编辑它，而是在任务结束时提交本规范定义的结构化交接包，由 `/root` 在合并前整合。
+根 `HandOff.md` 是项目恢复工作的唯一入口，描述其所在提交树中已经验证的事实、当前状态、阻塞和有序下一步。仅 `/root` 可以更新根交接文件。Worker 不直接编辑它，而是在任务结束时提交本规范定义的结构化交接包，由 `/root` 在合并前整合。
 
 交接不是状态口号。任何 `done` 结论必须带有可复现命令、退出码、环境和产物 SHA-256。
 
@@ -27,7 +27,7 @@ next_owner: unassigned
 ---
 ```
 
-示例值用于说明格式；实际文件必须使用生成时的真实时间、分支和 commit。
+示例值用于说明格式；实际文件必须使用生成时的真实时间、目标恢复分支和 commit。
 
 字段规则：
 
@@ -39,14 +39,14 @@ next_owner: unassigned
 | `updated_at` | 带时区的 ISO-8601 |
 | `updated_by` | 固定为 `/root` |
 | `state` | `active`、`ready` 或 `blocked` |
-| `source_branch` | 生成交接时的真实分支 |
+| `source_branch` | 本快照合并后作为恢复入口的目标分支；普通任务等于生成分支，merger-ready 根快照固定为 PR 的真实 base branch |
 | `base_commit` | 40 位小写 Git SHA，尚无提交时才允许 `UNBORN` |
 | `working_tree` | `clean` 或 `dirty`，必须与生成时状态一致 |
 | `current_milestone` | `M0`、`M1`、`M2`、`M3` 或 `M4` |
 | `active_task` | 合法任务 ID 或 `NONE` |
 | `next_owner` | 已定义角色、Agent 名或 `unassigned` |
 
-`base_commit` 必须是当前 `HEAD` 的祖先。`source_branch` 与 `working_tree` 必须通过 Git 读取，不得凭记忆填写。
+`base_commit` 必须是当前 `HEAD` 的祖先。`working_tree` 必须通过 Git 读取，不得凭记忆填写。普通任务的 `source_branch` 必须等于当前分支；只有 `/root` 为即将合并的最终根快照设置 PR 的真实 base branch 时，才可在 PR 校验中显式使用 `--allow-pending-branch`。合并到目标分支后的 push 校验不允许该豁免。
 
 ## 3. 根 HandOff 正文章节
 
@@ -75,7 +75,7 @@ next_owner: unassigned
 
 ### Current State
 
-列出当前里程碑、活动任务、最近已合并任务和工作树状态。只写已验证事实。
+列出当前里程碑、活动任务、最近完成任务及其 `review`/`merged` 状态和工作树状态。只写当前提交树可验证的事实，不把尚未执行的外部操作写成已完成。
 
 ### Active Workstreams
 
@@ -99,6 +99,7 @@ git_commit
 command
 exit_code
 environment
+timestamp
 artifact
 sha256
 result
@@ -133,6 +134,7 @@ result
 - `blocked`：存在阻止关键路径继续的明确条件；阻塞章节必须非空。
 
 任务状态只允许任务卡定义的枚举。根 HandOff 不创建独立、冲突的状态体系。
+严格校验器要求 `active` 使用非 `NONE` 的活动任务并在 workstream 表中存在对应行，`blocked` 的阻塞章节不得为 `None`，`ready` 的阻塞章节必须精确为 `None`。
 
 ## 5. 更新触发条件
 
@@ -146,7 +148,7 @@ result
 - 并行 PR 按顺序 rebase/merge 后；
 - 当前会话结束且仍有后续工作。
 
-并行 PR 必须逐个更新到最新 `main`、验证、合并。最后一个合并完成后，再基于真实 `main` 生成最终 HandOff。
+并行 PR 必须逐个更新到最新 `main`、验证、合并。最后一个内容 PR 的 `/root` 可在同一 PR 最后提交 merger-ready 根快照：以最新 `main` 为基线、`source_branch` 写真实 base branch、内容只陈述提交树已经具备的事实，不预称 PR 已合并。PR 使用 `--allow-pending-branch`，合并后的目标分支 push 必须无豁免通过 strict；失败即视为合并后治理阻塞。
 
 ## 6. 初始 ready 状态
 
@@ -208,7 +210,7 @@ Worker 返回 Markdown，章节固定为：
 - 不含 Windows 用户目录、Unix home 目录等绝对用户路径；
 - 不含私钥、token、密码值、客户 APK 路径或 DEX 明文；
 - `base_commit` 格式及其为 `HEAD` 祖先；
-- 分支和工作树状态与 Git 一致；
+- 分支和工作树状态与 Git 一致；仅 merger-ready PR 可显式允许目标分支尚未成为当前分支；
 - `active_task` 存在于任务索引；
 - `done` 证据具备命令、退出码、环境和 SHA-256；
 - 相对路径存在，或被明确标记为预期后续产物。

@@ -16,14 +16,16 @@ v0.1 要求输入 `minSdk >= 29`，并以 Shell `AppComponentFactory` 替换 Man
 
 Shell Factory：
 
-1. 在 `instantiateClassLoader` 中验证安装 signer 和容器。
-2. 通过 Native Loader 将认证通过的 DEX 解密到有界内存。
-3. 按原 `classes.dex`、`classes2.dex` 顺序构建 `InMemoryDexClassLoader` 链。
-4. 返回能够解析原业务类的 ClassLoader。
-5. 在该 ClassLoader 可用后实例化输入声明的原 `AppComponentFactory`。
-6. 对 Application、Activity、Service、Receiver 和 Provider 的创建委托给原 Factory；未声明原 Factory 时使用平台默认语义。
+1. 在 `instantiateClassLoader` 中只使用 Framework 传入的 `ApplicationInfo`，通过固定版本的 Android `apksig` `ApkVerifier` 以最低平台 29 语义只读验证 `sourceDir` 指向的当前已安装 APK，并取得唯一当前 signer；该回调没有 `Context`，不得伪称能调用 `PackageManager`。
+2. 签名结构验证成功后，从同一 `sourceDir` 的唯一、未压缩且无 data descriptor 的规范 ZIP 条目 `assets/ah/runtime/payload.ahdc` 对容器固定边界和 `SPV1` 预读视图做有界解析，不假设该回调存在 `AssetManager`。
+3. 唯一 `RuntimeStartupGuard` 比较实测 signer 与有界预读摘要，再把实测摘要交给 Native Loader；Native 恢复 CEK、验证覆盖 `SPV1` 的 manifest MAC，并将已认证 signer 再次与实测 signer 比较。
+4. 通过 Native Loader 将认证通过的 DEX 解密并有界解压到匿名内存。
+5. 按原 `classes.dex`、`classes2.dex` 顺序，使用 API 29 的 `InMemoryDexClassLoader(ByteBuffer[], String, ClassLoader)` 构造 payload loader。Native 搜索路径只由 Framework `ApplicationInfo.nativeLibraryDir`/`sourceDir`、公开进程 bitness/ABI 列表与当前 APK 有界 ZIP 清单派生，按“可读 extracted 目录（若有）+ `sourceDir!/lib/<selectedAbi>`”固定顺序传入；不得假设 parent 自动继承业务 SO 路径。
+6. 返回能够解析原业务类的 ClassLoader。
+7. 在该 ClassLoader 可用后实例化输入声明的原 `AppComponentFactory`。
+8. 对 Application、Activity、Service、Receiver 和 Provider 的创建委托给原 Factory；未声明原 Factory 时使用平台默认语义。
 
-Host 在 Manifest 项目元数据中保存规范化的原 Application 与原 Factory 类名。Runtime 只使用公开 Android API，不反射读写 Framework 私有 ClassLoader 字段，也不将明文 DEX 写入磁盘。
+Host 在 Manifest 项目元数据中保存规范化的原 Application 与原 Factory 类名。Shell 只读取 Framework 回调传入的 `ApplicationInfo.metaData` typed Bundle；M0-05 必须在真实 API 29/36 回调证明这些键可见，空/缺失/错型均失败关闭。启动路径只依赖公开 `ApplicationInfo`/文件 API和固定来源的 `apksig` 库，不反射获取 `Context`，不读写 Framework 私有 ClassLoader 字段，也不将明文 DEX 写入磁盘。`PackageManager` 可在 Context 可用后的诊断测试中做一致性复核，但不是启动安全门禁或 metadata 回退路径。
 
 ## Consequences
 
@@ -40,6 +42,8 @@ Host 在 Manifest 项目元数据中保存规范化的原 Application 与原 Fac
 - 最低 API 固定为 29；
 - Shell 必须正确覆盖并委托所有组件实例化方法；
 - Factory 递归、类加载顺序和多进程启动需要专门 PoC；
+- `apksig` 验证增加壳 DEX 体积和启动 I/O，必须纳入大小与冷启动预算；
+- `apksig` 官方以设备外使用为主要定位；即使它是纯 Java 库，也必须先由 M0-05 证明 release/R8 后在 API 29/36 ARM/x86 Runtime 可链接、可验证且签名执行类已裁掉，否则本 ADR 的生产路径保持阻塞；
 - `InMemoryDexClassLoader` 的内存生命周期仍可被有权限攻击者观察。
 
 ## Rejected Alternatives
@@ -64,6 +68,9 @@ Host 在 Manifest 项目元数据中保存规范化的原 Application 与原 Fac
 
 - M0-04 在 API 29 证明 hook 发生在 Application/Provider 业务类解析前。
 - M0-05 覆盖默认与自定义 Application、Factory、eager Provider、所有组件类型和 JNI。
+- M0-05 对 `extractNativeLibs=true/false` 分别证明三参数 `InMemoryDexClassLoader` 能从公开派生的搜索路径加载业务 JNI；无匹配 ABI、重复 ABI 或不规范 SO 路径必须失败关闭。
+- M0-05 在 `instantiateClassLoader` 的实际回调中证明 `ApplicationInfo.sourceDir` 可只读访问，固定 `apksig` 能在 API 29/36 的 ARM/x86 环境返回与安装时相同的唯一 signer；异 signer、多个 signer、损坏 APK 必须在 payload 打开前失败。
+- M0-05 证明同一回调可从 `sourceDir` 定位唯一 `STORED` payload entry；重复名称、压缩条目、data descriptor、CRC/长度错误和截断 ZIP 均在 payload 分配前失败。
 - API 29 至仓库锁定 `compileSdk` 的每个整数 API记录启动事件序列并与未加固 fixture 比较。
 - 静态扫描和运行时 strict mode 证明没有 hidden API 使用。
 - 文件系统监控证明无明文 DEX 写入。

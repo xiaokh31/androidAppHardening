@@ -5,6 +5,9 @@ milestone: M2
 status: planned
 owner_role: runtime-security-agent
 depends_on:
+  - M0-03
+  - M1-01
+  - M2-01
   - M2-02
   - M2-03
 required_skills:
@@ -31,6 +34,7 @@ security_sensitive: true
 ## Expected Outputs
 
 - `:runtime:native` 的四 ABI 可重现构建配置和裁剪后的 `libah_runtime.so`。
+- 每个 ABI template 含一个 ADR 0006 定义的 104-byte 只读 `.ah_share_v1` placeholder，ABI ID 与 ELF machine 固定匹配。
 - Runtime ABI 清单、符号归档、尺寸报告和装配测试。
 - 每个 ABI 的 Native 单元测试或设备测试证据。
 - 输入应用 ABI 与 Runtime ABI 的兼容性判定函数。
@@ -54,6 +58,7 @@ security_sensitive: true
 - Native 模块路径固定为 `runtime/native`，ABI 策略 Java 源码位于 `runtime/policy/src/main/java` 并使用 Java 17；Android Runtime 模块不得应用 Kotlin Android plugin。
 - 固定输出目录分别为 `runtime/native/build/intermediates/stripped_native_libs/release/out/lib/armeabi-v7a/`、`arm64-v8a/`、`x86/` 和 `x86_64/`，每个目录必须包含 `libah_runtime.so`，四个 ABI 缺一即构建失败。
 - 四 ABI 使用相同源码、预处理宏和安全逻辑；仅允许 NDK toolchain 自动提供的架构差异，业务分支必须有显式评审。
+- `.ah_share_v1` section 必须设置 alloc/read-only、保留在发布 template 且不被 strip；placeholder 为 `AHP0/version/abi_id/zero fill`，template SHA-256 进入 RuntimeBundle provenance。
 - Release 固定启用 stack protector、FORTIFY、RELRO、NOW、不可执行栈和隐藏默认符号；JNI 必需符号通过版本脚本白名单导出。
 - 输入无 Native 库时四 ABI Runtime 全部装配；输入含 Native 库时，输出只允许设备同时满足 Runtime ABI 与输入应用 ABI，报告不得声称补齐输入应用 ABI。
 - `x86` 或 `x86_64` 单独出现时风险分为 `0`，不得触发拒绝、降级或高风险判定。
@@ -62,9 +67,9 @@ security_sensitive: true
 ## Public Interfaces
 
 - Gradle variant `release` 生成四 ABI AAR。
-- `public final class AbiCompatibility`，构造时复制并保存不可变的 `Set<String>`：`runtimeAbis`、`payloadAbis` 和 `compatibleAbis`。
-- `public final class AbiCompatibilityPolicy`，通过静态方法 `public static AbiCompatibility evaluate(Set<String> payloadAbis)` 返回兼容结果。
-- JSON 报告字段固定为 `runtimeAbis`、`payloadAbis`、`compatibleAbis` 和 `limitations`。
+- `public final class AbiCompatibility`，构造时复制并保存不可变的 `Set<String>`：`runtimeAvailableAbis`、`inputNativeAbis` 和 `outputEffectiveAbis`。
+- `public final class AbiCompatibilityPolicy`，通过静态方法 `public static AbiCompatibility evaluate(Set<String> inputNativeAbis)` 返回兼容结果。
+- JSON 报告字段与 ADR-0005 固定为 `runtime_available_abis`、`input_native_abis`、`output_effective_abis` 和 `limitations`。
 
 ## Security Constraints
 
@@ -85,9 +90,10 @@ security_sensitive: true
 
 - `./gradlew :runtime:native:assembleRelease :runtime:native:test :runtime:native:connectedCheck :runtime:policy:test` 退出码为 `0`，AAR 中四个 ABI 各且仅有一个 `libah_runtime.so`。
 - `llvm-readelf` 检查四个库均具备 RELRO、NOW、不可执行栈，导出符号与 JNI 白名单完全相等。
+- `llvm-readelf`/专用 verifier 证明每个 template 只有一个 104-byte `.ah_share_v1`，为只读且 placeholder ABI ID 与 ELF machine 匹配；模拟 M1-05 patch 后四 ABI 均能读取并验证 `AHS1` slot。
 - 四 ABI 的共享容器向量均得到相同 DEX SHA-256 和错误码。
 - Java/Kotlin-only fixture 在四 ABI 设备均启动；ARM-only Native fixture 在 x86 设备被报告为输入兼容性限制，不宣称已转换。
-- 单独将设备 ABI 设为 `x86` 或 `x86_64` 时，环境风险分不增加且功能测试通过。
+- 单独将设备 ABI 设为 `x86` 或 `x86_64` 时，ABI 兼容分类与功能测试通过；本任务不计算 M2-05 尚未实现的环境风险分。
 
 ## Required Tests
 

@@ -48,18 +48,18 @@ APK 后处理与 Runtime 保护涉及不可信输入、签名身份和本地代�
 
 ## Implementation Decisions
 
-- 分支名固定为 `docs/m0-02-handoff-rules`，Issue 标题固定为 `[M0-02] Governance, skills, and handoff`，仅允许一个关联 PR。
+- 初始治理文本包按用户预先批准的分支 `docs/m0-project-package` 执行，Issue 标题固定为 `[M0-02] Governance, skills, and handoff`，仅允许一个关联 PR；后续任务不得复用该命名例外。
 - 根 `HandOff.md` 仅 `/root` 可写；worker 只返回 `assets/worker-handoff-template.md` 定义的交接包。
 - `validate-handoff.mjs` 仅使用 Node.js 标准库，严格验证字段集合、枚举、标题顺序、空章节值、SHA 祖先关系和禁用内容。
 - 所有项目 Skill 的 frontmatter 只保留可执行的 `name` 与 `description`，正文明确触发条件、输入、步骤、停止条件、证据和安全限制。
-- 第三方 Skill 默认拒绝；只有审计报告结论为 approved、许可证兼容且引用固定 commit SHA 时才可引入。
+- 第三方 Skill 默认拒绝；只有审计报告结论为 `approve` 或完成 `approve-with-changes` 的全部条件、许可证兼容且引用固定 commit SHA 时才可引入；`reject` 不得引入。
 - 文档正文使用中文，命令、代码标识、分支名和提交标题使用英文。
 
 ## Public Interfaces
 
 - 阅读入口：`AGENTS.md` → `HandOff.md` → `docs/README_FIRST.md` → 当前任务卡 → 相关设计文档 → 对应 Skill。
 - 校验命令：`node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict`。
-- worker 交接结构：`task_id`、`status`、`branch`、`commit`、`changes`、`verification`、`artifacts`、`risks`、`blockers`、`next_actions`。
+- worker 交接固定采用模板的十个标题：`Task`、`Outcome`、`Scope`、`Files Changed`、`Public Interfaces`、`Verification Evidence`、`Security and Compatibility`、`Remaining Risks`、`Blockers`、`Recommended Next Action`；字段和顺序以模板为准。
 - HandOff schema 固定为 `schema_version: 1`。
 
 ## Security Constraints
@@ -71,7 +71,7 @@ APK 后处理与 Runtime 保护涉及不可信输入、签名身份和本地代�
 
 ## Compatibility Requirements
 
-- 校验器支持 Node.js 22 LTS，在 Windows PowerShell 和 Ubuntu shell 中行为一致。
+- 校验器固定使用 Node.js `24.12.0`，在 Windows PowerShell 和 Ubuntu shell 中行为一致。
 - 所有仓库内相对链接使用 `/` 分隔符并区分文件名大小写。
 - Markdown 与 YAML 必须可按 UTF-8 严格解码，不得出现 replacement character。
 
@@ -81,7 +81,7 @@ APK 后处理与 Runtime 保护涉及不可信输入、签名身份和本地代�
 2. 删除任一必需 frontmatter 字段、交换两个必需标题、写入禁用词或伪造非祖先 `base_commit` 的隔离测试均以非零退出。
 3. 六个 Skill 目录都含 `SKILL.md` 与 `agents/openai.yaml`，且不存在脚手架说明或未完成标记。
 4. `AGENTS.md` 明确固定阅读顺序、单任务边界、根 HandOff 所有权和安全复核门禁。
-5. `docs/agents/WORKER_AGENT.md` 明确六条 worker 规则并链接交接模板。
+5. `docs/agents/WORKER_AGENT.md` 明确七条 worker 规则并链接交接模板。
 6. 内部 Markdown 链接检查结果为零断链，任务索引编号唯一且依赖无环。
 7. 仓库扫描确认本任务没有新增 APK、DEX、SO、密钥、证书或 Host/Runtime 业务源码。
 
@@ -115,7 +115,7 @@ APK 后处理与 Runtime 保护涉及不可信输入、签名身份和本地代�
 
 ## Agent Handoff Requirements
 
-- 本任务固定使用分支 `docs/m0-02-handoff-rules`、同编号 Issue 和一个 PR。
+- 本任务固定使用预先批准的分支 `docs/m0-project-package`、同编号 Issue 和一个 PR。
 - 完成状态必须附命令、退出码、测试环境、产物 SHA-256、提交 SHA 和负向测试证据。
 - worker 不修改根 `HandOff.md`，由 `/root` 根据结构化交接包整合状态。
 - 与既有文档冲突时停止扩写范围，记录准确文件与冲突条款并提交 blocked 交接。

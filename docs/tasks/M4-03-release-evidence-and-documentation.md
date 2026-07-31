@@ -5,6 +5,9 @@ milestone: M4
 status: planned
 owner_role: qa-governance-agent
 depends_on:
+  - M3-03
+  - M3-04
+  - M3-05
   - M4-01
   - M4-02
 required_skills:

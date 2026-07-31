@@ -53,7 +53,7 @@ Bootstrap Runtime -> verified in-memory business DEX -> original app components
 
 ### 3.3 Signer Policy
 
-使用 Android 标准签名验证库验证输入，并输出唯一当前 signer 的证书 SHA-256 和可验证轮换历史。v0.1 要求输出由相同当前 signer 在产品外签名；多当前 signer、无签名或无效签名均拒绝。
+使用固定 Android `apksig` 验证输入，并输出唯一当前 signer 的证书 SHA-256 和可验证轮换历史。安全字段按 [ADR-0004](adr/0004-versioned-encrypted-dex-container.md) 的 `SPV1` wire layout 写入容器并受 manifest MAC 认证；Host 报告 JSON 不是 Runtime 信任输入。v0.1 要求输出由相同当前 signer 在产品外签名；多当前 signer、无签名或无效签名均拒绝。
 
 ### 3.4 Binary AXML Transformer
 
@@ -66,7 +66,7 @@ Bootstrap Runtime -> verified in-memory business DEX -> original app components
 
 ### 3.5 DEX Container Builder
 
-按原 DEX 序号稳定排序，为每个 DEX 派生独立子密钥并生成唯一 nonce，使用 AES-256-GCM 加密，将 header、记录表和密文写入 `assets/ah/runtime/payload.ahdc`。容器格式见 [ADR-0004](adr/0004-versioned-encrypted-dex-container.md)。
+按原 DEX 序号稳定排序，为每个 DEX 派生独立子密钥并生成唯一 nonce，使用 AES-256-GCM 加密，将 128-byte header、`SPV1`、104-byte records 和 payload 写入 `assets/ah/runtime/payload.ahdc`；同时生成 ADR 0006 的 176-byte `config.bin`，其 SHA-256 受容器 manifest MAC 绑定。M1-01 对输入 package name 的精确 UTF-8 bytes 计算 SHA-256，该摘要参与 KEK 与每条 DEX 的 GCM AAD；Runtime 只从 Framework `ApplicationInfo.packageName` 重算。容器格式见 [ADR-0004](adr/0004-versioned-encrypted-dex-container.md)。
 
 ### 3.6 Runtime Assembler
 
@@ -93,22 +93,23 @@ Bootstrap Runtime -> verified in-memory business DEX -> original app components
 系统在组件创建前实例化 Shell Factory。Shell 在 `instantiateClassLoader` 中：
 
 1. 读取受限 Manifest 元数据。
-2. 验证已安装 signer 与容器结构。
-3. 调用 Native Loader 建立业务 DEX ClassLoader。
-4. 返回能够解析原应用类的 ClassLoader。
-5. 在保护 ClassLoader 可用后实例化原 `AppComponentFactory`，并对 Application、Activity、Service、Receiver 和 Provider 创建进行委托。
+2. 把 Framework 传入的 `ApplicationInfo`、shell loader 和容器 asset 交给唯一 `RuntimeStartupGuard`。
+3. Guard 先使用 `ApplicationInfo.sourceDir` 与固定 `apksig` 验证当前已安装 APK并取得唯一 signer，再有界预读容器 binding；该回调没有 `Context`，不调用 `PackageManager`。
+4. Guard 调用 Native Loader 认证 signer policy、建立业务 DEX ClassLoader，并返回拥有内存生命周期的 `VerifiedPayloadSession`。
+5. Shell 强引用 session 并返回能够解析原应用类的 ClassLoader。
+6. 在保护 ClassLoader 可用后实例化原 `AppComponentFactory`，并对 Application、Activity、Service、Receiver 和 Provider 创建进行委托。
 
-没有原 Factory 时使用平台默认实例化语义。不得通过隐藏 API 修改系统 ClassLoader 内部字段。
+没有原 Factory 时使用平台默认实例化语义。`:runtime:bootstrap` 只编译依赖 `:runtime:policy` 的 guard API；`:runtime:native` 是 policy 的非传递 implementation dependency，bootstrap 不得导入低层 loader。不得通过隐藏 API 获取 Context 或修改系统 ClassLoader 内部字段。
 
 ### 4.2 Native Loader
 
-Native Loader 解析有界容器，恢复每包内容密钥，验证 header 与 signer 绑定，逐 DEX 验证 AES-GCM tag，将明文保留在最短生命周期的直接内存中，并构建 `InMemoryDexClassLoader` 链。不得将明文 DEX 写入 code cache、临时目录或外部存储。
+Native Loader 的顺序固定为：无 payload 分配地检查容器结构边界，恢复每包内容密钥，验证 manifest MAC，再逐 record 验证 AES-GCM tag。只有 tag 通过后的压缩明文才允许进入有界 zlib-wrapped DEFLATE 解压器；解压必须恰好命中 record 的原始 DEX 长度和 SHA-256，拒绝 dictionary、尾随/拼接流、checksum 错误和超过单 DEX/总 payload 上限的输出。恢复出的原始 DEX 保留在最短生命周期的直接匿名内存中，再使用 API 29 三参数 `InMemoryDexClassLoader` 构建 loader；Native 搜索路径按 M0-05 合同从 `ApplicationInfo`、公开进程 ABI 与当前 APK 清单派生，同时覆盖 extracted 和 APK 内直接加载 SO。不得将明文 DEX 写入 code cache、临时目录或外部存储，也不得反射复制 parent loader 的 path list。
 
 多 DEX 的类查找顺序必须与输入的 `classes.dex`、`classes2.dex` 顺序一致。
 
 ### 4.3 Signer and Integrity Guard
 
-通过 Android 公共 PackageManager 签名 API读取当前安装 signer，计算证书 SHA-256，与 Host 嵌入的允许身份进行常量时间比较。随后验证：
+唯一 `RuntimeStartupGuard` 通过 Framework 提供的 `ApplicationInfo.sourceDir` 只读验证当前安装 APK，使用与 Host 相同的固定 `apksig` 和最低平台 29 语义计算证书 SHA-256。Guard 先与有界但未认证的 `SPV1` 预读值做常量时间预比较，再把实测摘要交给 Native；Native 恢复 CEK、验证覆盖 `SPV1` 的 manifest MAC，并对已认证当前摘要做第二次比较。随后验证：
 
 - 容器 magic、版本、长度和记录边界；
 - header 认证信息；
@@ -119,11 +120,12 @@ Native Loader 解析有界容器，恢复每包内容密钥，验证 header 与 
 
 ### 4.4 Environment Risk Engine
 
-风险引擎将多个信号规范化为版本化决策，不允许单个低置信启发式信号直接阻止启动。策略输出：
+风险引擎将多个信号规范化为版本化决策，不允许启发式环境信号直接阻止启动。v0.1 输出固定为：
 
-- `allow`：继续正常启动；
-- `degrade`：减少诊断细节、提高校验频率或关闭可选能力；
-- `deny`：仅用于 signer、认证完整性等高置信失败，或经明确批准的高置信组合。
+- `allow`：`LOW`，继续正常启动并保留基础内存控制；
+- `degrade`：`MEDIUM` 或 `HIGH`，逐级增强内存保护、降低诊断暴露并提高校验频率。
+
+`deny` 不属于 v0.1 环境风险引擎输出。signer、AEAD 和受认证完整性失败由独立 Guard 直接 fail closed，不能通过风险分数降低或覆盖。
 
 ### 4.5 Memory Exposure Controls
 
@@ -143,7 +145,11 @@ runtime/bootstrap
 runtime/native
 runtime/policy
 fixtures/android
+integration-tests
+benchmarks/host
+benchmarks/android
 tools/validation
+distribution
 ```
 
 规划的输出 APK 关键条目如下；`lib/` 条目是项目可用全集，单个输出按 ADR-0005 取合法子集：
@@ -165,17 +171,23 @@ lib/x86_64/libah_runtime.so
 
 ### 6.1 Container Contract
 
-容器以 ASCII magic `AHDC` 开始，使用 little-endian 固定宽度整数，当前格式版本为 `1`。记录按原 DEX 序号递增。未知 major version 必须拒绝；已知 major version 的未知 flags 也必须拒绝。
+容器以 ASCII magic `AHDC` 开始，使用 little-endian 固定宽度整数，当前格式版本为 `1`。逐字节 layout 以 ADR 0004 为唯一来源：128-byte `HeaderV1`、可变长 `SPV1`、`dex_count * 104` record table 和无空洞 Payload。header 后、record table 前固定放置 `SPV1` signer policy block；manifest MAC 覆盖 header、完整 `SPV1` 与 record table。记录按原 DEX 序号递增。未知 major/version/flags、非法 signer policy、重复 lineage 或末项不等于当前摘要必须拒绝。
+
+离线恢复材料以 ADR 0006 为唯一来源：`config.bin` 固定 176 bytes，四 ABI template 各有一个 104-byte `.ah_share_v1` slot。M1-05 只 materialize 选中 ABI 的 slot，不 patch bootstrap DEX；Runtime 必须把 config SHA-256、build ID、key slot、signer、Framework package name、ABI ID、CEK envelope 与 AHDC manifest 串成同一失败关闭链。
 
 ### 6.2 Manifest Metadata Contract
 
-项目元数据键使用 `ah.runtime.*` 前缀，至少表达：
+项目元数据键固定为：
 
-- 原始 Application 类名；
-- 原始 `AppComponentFactory` 类名或不存在状态；
-- 容器路径与 major version；
-- signer policy version；
-- risk policy version。
+- `ah.runtime.original_application`：原始 Application 完全限定类名；
+- `ah.runtime.original_app_component_factory`：原始 `AppComponentFactory` 完全限定类名，仅在原值存在时写入；
+- `ah.runtime.has_original_app_component_factory`：原工厂是否存在；
+- `ah.runtime.container_asset`：容器 asset 路径；
+- `ah.runtime.container_major`：容器 major version；
+- `ah.runtime.signer_policy_version`：signer policy version；
+- `ah.runtime.risk_policy_version`：risk policy version。
+
+Manifest 的壳入口类固定为 `ah.runtime.bootstrap.ShellAppComponentFactory`。
 
 类名在 Host 侧解析为完全限定名称，Runtime 不再根据 package name 猜测。
 
@@ -207,10 +219,15 @@ JSON 报告使用独立整数 `schema_version`。新增可选字段不改变 maj
 Android process creation
 -> instantiate Shell AppComponentFactory
 -> Shell.instantiateClassLoader
--> verify installed signer
--> parse and authenticate container
+-> verify ApplicationInfo.sourceDir with pinned apksig, no Context
+-> RuntimeStartupGuard bounded pre-read of signer binding
+-> compare exactly one installed signer with pre-read binding
 -> recover protected content key
--> decrypt DEX into bounded memory
+-> verify manifest MAC over SPV1 and record table
+-> compare authenticated SPV1 signer with measured installed signer
+-> verify each record GCM tag
+-> bounded zlib inflate of authenticated compressed bytes
+-> verify original DEX length and SHA-256
 -> build InMemoryDexClassLoader chain
 -> instantiate original AppComponentFactory when declared
 -> create original Application and providers through delegated semantics

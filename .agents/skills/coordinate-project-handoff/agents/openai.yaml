@@ -1,0 +1,4 @@
+interface:
+  display_name: "Coordinate Project Handoff"
+  short_description: "Maintain evidence-based project handoffs"
+  default_prompt: "Use $coordinate-project-handoff to reconcile workstreams and update the project HandOff.md."

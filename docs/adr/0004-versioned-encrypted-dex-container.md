@@ -22,10 +22,45 @@ assets/ah/runtime/payload.ahdc
 
 - magic 为 4 字节 ASCII `AHDC`。
 - 所有整数使用 little-endian 固定宽度无符号表示。
-- header 包含 major、minor、header size、flags、DEX count、record table size、payload size、16 字节随机 build ID、16 字节 key slot ID 和 32 字节 manifest MAC。
+- 文件严格按 `HeaderV1 || SignerPolicyV1 || RecordV1[dex_count] || Payload` 拼接，不允许节间 padding、空洞或文件尾随字节。所有 offset 均从相应规范基准计算，不使用 ZIP/APK 绝对 offset。
+- `HeaderV1` 固定 128 字节，offset/字段如下：
+
+| Offset | Size | Field | v1 rule |
+| ---: | ---: | --- | --- |
+| 0 | 4 | magic | ASCII `AHDC` |
+| 4 | 2 | major | `1` |
+| 6 | 2 | minor | `0` |
+| 8 | 2 | header_size | `128` |
+| 10 | 2 | flags | `0` |
+| 12 | 4 | dex_count | `1..128` |
+| 16 | 4 | signer_policy_size | `44 + lineage_count * 32` |
+| 20 | 4 | record_table_size | `dex_count * 104` |
+| 24 | 8 | payload_size | 所有 ciphertext 与 16-byte tag 的总长度 |
+| 32 | 16 | build_id | CSPRNG |
+| 48 | 16 | key_slot_id | CSPRNG |
+| 64 | 32 | config_sha256 | 完整 `config.bin` 的 SHA-256 |
+| 96 | 32 | manifest_mac | HMAC-SHA-256 |
+
+- signer policy block 紧随 header、位于 record table 之前；其 wire layout 固定为：4 字节 ASCII `SPV1`、`u16le schema_version=1`、`u16le flags=0`、`u16le lineage_count`、`u16le reserved=0`、32 字节当前证书 SHA-256 原始摘要、随后 `lineage_count * 32` 字节的证书 SHA-256 原始摘要。`lineage_count` 为 `1..16`，列表按旧到新排列、无重复，最后一项必须等于当前摘要；未轮换 signer 的列表只有当前摘要。
 - major `1` 的 flags 必须为 `0`；`flags=0` 隐含本 ADR 规定的固定压缩语义，不表示“未压缩”。未知 major 或未知 flags 失败关闭。
-- record 按原 DEX ordinal 严格递增，名称只允许规范形式 `classes.dex`、`classes2.dex` 等。
-- 每条 record 包含 ordinal、名称、明文长度、密文长度、payload offset、12 字节 nonce 和明文 SHA-256。其中“明文长度”和“明文 SHA-256”始终指压缩前的原始 DEX；“密文长度”指压缩后字节经 AES-GCM 加密所得 ciphertext 的长度，不包含其后的 16 字节 tag。AES-GCM 不改变输入字节长度，因此该值也等于压缩后字节长度。
+- `RecordV1` 固定 104 字节，按零基 ordinal `0..dex_count-1` 严格递增：
+
+| Offset | Size | Field | v1 rule |
+| ---: | ---: | --- | --- |
+| 0 | 4 | ordinal | 首条 `0`，连续递增 |
+| 4 | 2 | name_length | canonical ASCII name 的字节数 |
+| 6 | 2 | reserved | `0` |
+| 8 | 8 | original_length | 压缩前原始 DEX 长度 |
+| 16 | 8 | ciphertext_length | 压缩后字节长度，不含 tag |
+| 24 | 8 | payload_offset | 相对 Payload 起点；首条为 `0` |
+| 32 | 12 | nonce | 该 record 的 GCM nonce |
+| 44 | 24 | name | ASCII 名称后以零填满；填充必须全零 |
+| 68 | 32 | original_sha256 | 压缩前原始 DEX SHA-256 |
+| 100 | 4 | reserved2 | `0` |
+
+- canonical name 由 ordinal 唯一决定：ordinal `0` 为 `classes.dex`，ordinal `n>=1` 为 `classes{n+1}.dex`，不允许前导零、别名或非 ASCII。`name_length` 必须等于该规范名长度并且不超过 24。
+- “原始长度”和“原始 SHA-256”始终指压缩前的原始 DEX；“ciphertext length”指压缩后字节经 AES-GCM 加密所得 ciphertext 的长度，不包含其后的 16 字节 tag。AES-GCM 不改变输入字节长度，因此该值也等于压缩后字节长度。
+- `record_table_size` 必须恰好为 `dex_count * 104`。每条 `payload_offset` 必须等于前面所有 `ciphertext_length + 16` 之和；最后一条结束位置必须恰好等于 `payload_size`。
 - payload 保存每条 DEX 的 AES-GCM ciphertext 与紧随其后的 16 字节 tag；ciphertext 解密后的内容是 zlib 数据流，不是原始 DEX。不允许 payload 重叠、空洞或包含尾随未声明字节。
 - parser 必须完整消费文件，拒绝截断、额外尾随数据、重复 ordinal、非规范名称和大小不一致。
 
@@ -57,13 +92,14 @@ K_manifest = HKDF(CEK, build_id, "AHDC manifest v1", 32)
 K_dex_i    = HKDF(CEK, build_id, "AHDC dex v1" || ordinal_u32le, 32)
 ```
 
-manifest MAC 使用 HMAC-SHA-256，覆盖固定 header 与完整 record table，计算时 manifest MAC 字段置零。每条 DEX 先按固定 zlib 语义压缩，再使用 `K_dex_i` 和 AES-256-GCM 加密压缩后字节；AAD 为 magic、major、minor、build ID、key slot ID 与该条规范 record。
+manifest MAC 使用 HMAC-SHA-256，按文件字节顺序覆盖 128-byte header、完整 signer policy block 与完整 record table，计算时 header `[96,128)` 的 manifest MAC 字段置零；不覆盖 Payload。每条 DEX 先按固定 zlib 语义压缩，再使用 `K_dex_i` 和 AES-256-GCM 加密压缩后字节。
+`package_name_sha256` 精确定义为输入 Binary AXML 中、经 M1-01 验证且不做大小写或 Unicode 变换的 package name UTF-8 bytes 的 SHA-256。每条 DEX 的 AAD 精确为 `ASCII("AHDC-GCM-V1") || header[4,8) || build_id || key_slot_id || current_signer_sha256 || package_name_sha256 || RecordV1`，其中 `RecordV1` 是文件中该 104-byte canonical record。Runtime 只能从 Framework 传入的 `ApplicationInfo.packageName` 计算同一摘要，不接受调用方或未认证元数据覆盖。
 
 Runtime 的验证顺序固定为：
 
 1. 在不分配 payload 大小内存的情况下检查 magic、版本、flags 和全局边界。
 2. 恢复 CEK。
-3. 验证 manifest MAC。
+3. 验证 manifest MAC，并只在成功后把 `SPV1` signer policy 视为已认证；已安装 signer 必须与已认证当前摘要再次相等。
 4. 按 ordinal 逐条验证边界，完成 AES-GCM tag 鉴权并解密得到经过认证的 zlib 数据流；认证完成前不得解压或使用其内容。
 5. 使用 zlib-wrapped DEFLATE、无 dictionary 语义解压，并以 record 声明的原始 DEX 长度作为严格输出上限；需要 dictionary、流未完整结束、存在压缩流尾随数据或超出上限时失败。
 6. 解压完成后验证所得原始 DEX 的实际长度和 SHA-256 与 record 一致。
@@ -117,7 +153,7 @@ DEX ordinal 和类查找顺序与输入一致。v0.1 reader 只接受 major `1`�
 - 每个单/多 DEX vector 在鉴权、解密和解压后，其实际长度、SHA-256、字节内容与原始 DEX 完全一致；record 的明文长度/SHA-256 与原始 DEX 对应，ciphertext 长度与压缩后字节长度对应且不包含 tag。
 - raw DEFLATE、gzip、要求 dictionary、截断压缩流、带尾随字节的压缩流、解压超出声明原始长度，以及带有效认证但原始长度/SHA-256 错误的测试向量均失败。
 - 对每个字段执行截断、溢出、最大值、重复、乱序、未知版本与未知 flags 测试。
-- 修改 header、record、nonce、ciphertext 或 tag 时在解压和业务 DEX 加载前失败。
+- 修改 header、`SPV1` 任一字段、record、nonce、ciphertext 或 tag 时在解压和业务 DEX 加载前失败。
 - 同一 CEK 下 nonce 唯一性由构建器断言，跨大量样本执行统计检查。
 - parser 接受覆盖引导模糊测试和 Native sanitizer。
 - 输出扫描确认不存在原 DEX 明文条目或额外 DEX magic。

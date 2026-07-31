@@ -48,8 +48,12 @@ docs(adr): define container version policy
 | `runtime/bootstrap` | runtime-security-agent | Shell Factory 与公开 ClassLoader 接入 |
 | `runtime/native` | runtime-security-agent | 容器解析、密钥恢复和内存解密 |
 | `runtime/policy` | runtime-security-agent | signer、完整性和环境风险决策 |
-| `fixtures/android` | qa-governance-agent | 仅含合成代码的兼容性 fixture |
+| `fixtures/android` | qa-governance-agent | 仅含合成代码、以 product flavors 构建的兼容性 fixture |
+| `integration-tests` | qa-governance-agent | 跨平台 Host/设备编排、fixture 矩阵和语义等价性 |
+| `benchmarks/host` | qa-governance-agent | Host 大小、耗时和内存基准 |
+| `benchmarks/android` | qa-governance-agent | Android Macrobenchmark 与设备性能证据 |
 | `tools/validation` | qa-governance-agent | 文档、结构、矩阵和发布校验 |
+| `distribution` | qa-governance-agent | Windows/Ubuntu 可复现发布包、SBOM 与 provenance |
 
 跨模块合同只能通过已记录接口修改。Host 不引用 Runtime 内部实现；Runtime 不读取 Host 报告作为启动依赖。
 

@@ -30,7 +30,7 @@ M0-03 必须以仓库配置固化以下基线，不允许依赖开发者全局�
 
 开发机可以继续保留供其他软件使用的全局 JDK 8，但本项目的终端、Gradle daemon 和 CI 必须显式使用上述 JDK 17，不得修改全局配置来破坏旧项目。
 
-版本来源以 [AGP 9.3.0 release notes](https://developer.android.com/build/releases/agp-9-3-0-release-notes)、[Kotlin Gradle compatibility](https://kotlinlang.org/docs/gradle-configure-project.html)、[Android NDK releases](https://github.com/android/ndk/releases) 和 [Eclipse Temurin 17 releases](https://github.com/adoptium/temurin17-binaries/releases) 为准。M0-03 必须把具体下载产物的 SHA-256 写入 verification metadata 或工具链清单。
+版本来源以 [AGP 9.3.0 release notes](https://developer.android.com/build/releases/agp-9-3-0-release-notes)、[Gradle 9.5.0 release notes](https://docs.gradle.org/9.5.0/release-notes.html)、[Kotlin releases](https://kotlinlang.org/docs/releases.html)、[SDK Build Tools releases](https://developer.android.com/tools/releases/build-tools)、[Android NDK downloads](https://developer.android.com/ndk/downloads)、[CMake 4.1 documentation](https://cmake.org/cmake/help/v4.1/)、[Node.js 24.12.0 release](https://nodejs.org/en/blog/release/v24.12.0) 和 [Eclipse Temurin 17 releases](https://github.com/adoptium/temurin17-binaries/releases) 为准。M0-03 必须把具体下载产物的 SHA-256 写入 verification metadata 或工具链清单；网页中未列出精确 SDK package revision 时，还必须保存官方 SDK manager 的 package-list 输出作为证据。
 
 ## 3. 允许来源
 

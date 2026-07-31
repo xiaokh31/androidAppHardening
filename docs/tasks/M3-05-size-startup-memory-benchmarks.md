@@ -7,6 +7,7 @@ owner_role: qa-governance-agent
 depends_on:
   - M1-06
   - M2-04
+  - M2-06
   - M3-01
 required_skills:
   - validate-protected-apk
@@ -60,7 +61,7 @@ security_sensitive: false
 
 ## Public Interfaces
 
-- Gradle 入口 `:benchmarks:hostBenchmark` 与 `:benchmarks:androidBenchmark`。
+- Gradle 入口 `:benchmarks:host:jmh` 与 `:benchmarks:android:connectedBenchmarkAndroidTest`。
 - `benchmark-results.json` 字段为 `fixtureId`、`environmentId`、`metric`、`samples`、`median`、`p95`、`baseline`、`delta`、`budget` 和 `pass`。
 - 环境文件 `benchmarks/environment.json` 与汇总 `build/reports/benchmark-summary.md`。
 - 失败时进程退出码固定为非零且列出超预算 metric。
@@ -81,7 +82,7 @@ security_sensitive: false
 
 ## Acceptance Criteria
 
-- `./gradlew :benchmarks:hostBenchmark :benchmarks:androidBenchmark` 退出码为 `0`。
+- `./gradlew :benchmarks:host:jmh :benchmarks:android:connectedBenchmarkAndroidTest` 退出码为 `0`。
 - 三类 fixture 的 APK 增量、冷启动 median/p95 和稳定 PSS median 均不超过固定预算。
 - 100 MiB 合成输入在 Windows/Ubuntu 的 Host median 与峰值 RSS 均达标，输入哈希前后相同。
 - 每个 metric 具备规定样本数、原始样本、环境描述、基线、增量和 pass 判定，连续两次汇总差异在 10% 内。
@@ -103,11 +104,12 @@ security_sensitive: false
 
 ## Likely Files
 
-- `benchmarks/build.gradle.kts`
-- `benchmarks/src/jmh/`
-- `benchmarks/src/androidTest/`
+- `benchmarks/host/build.gradle.kts`
+- `benchmarks/host/src/jmh/`
+- `benchmarks/android/build.gradle.kts`
+- `benchmarks/android/src/main/java/`
 - `benchmarks/environment.json`
-- `benchmarks/schemas/benchmark-results.schema.json`
+- `benchmarks/host/src/main/resources/benchmark-results.schema.json`
 - `.github/workflows/benchmarks.yml`
 
 ## Dependencies and Blockers
@@ -116,4 +118,4 @@ M1-06 或 M2-04 尚未形成 Release 候选产物时不得建立发布基线。�
 
 ## Agent Handoff Requirements
 
-使用分支 `test/m3-05-performance-benchmarks`，只处理 Issue `M3-05` 并仅创建一个对应 PR。交接必须包含环境、原始样本、统计方法、命令与退出码、预算结果、全部 SHA-256、波动说明和临时证书清理证据；明确 APK 大小不保证小于输入。
+使用分支 `chore/m3-05-performance-benchmarks`，只处理 Issue `M3-05` 并仅创建一个对应 PR。交接必须包含环境、原始样本、统计方法、命令与退出码、预算结果、全部 SHA-256、波动说明和临时证书清理证据；明确 APK 大小不保证小于输入。

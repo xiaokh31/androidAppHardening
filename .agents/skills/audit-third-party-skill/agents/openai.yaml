@@ -1,0 +1,4 @@
+interface:
+  display_name: "Audit Third-Party Skill"
+  short_description: "Audit external skills before adoption"
+  default_prompt: "Use $audit-third-party-skill to audit an external skill before adding it to this repository."

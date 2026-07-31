@@ -23,7 +23,7 @@
 
 ## 工作范围
 
-- 一个 Agent 同时只领取一个任务卡；一个任务对应一个 Issue、一个工作分支和一个 PR。
+- 一个 Agent 同时只领取一个任务卡；除 M0-01 对全空远程直接创建首个 `main` 的一次性引导例外外，一个任务对应一个 Issue、一个工作分支和一个 PR。M0-01 必须补建 Issue 并链接种子提交，不得虚构分支或 PR；M0-02 的首个治理文本包按用户预先批准的 `docs/m0-project-package` 分支执行，此后不得援引这两个引导例外。
 - 不实现相邻任务，不借安全修复进行无关重构，不改变任务卡外的公共接口。
 - 发现任务缺失关键决策、依赖不成立或真实环境冲突时，提交 `blocked` 交接包，不自行扩大范围。
 - 跨模块、容器格式、签名、ABI、兼容性、安全策略或难以撤销的决策必须先新增或更新 ADR。
@@ -41,7 +41,7 @@
 
 - 开始前检查分支、HEAD、远程和工作区；保留用户与其他 Agent 的既有改动。
 - 禁止 `git reset --hard`、强推、删除未确认分支、批量覆盖或不经检查暂存整个混合工作区。
-- 分支使用 `feat/`、`fix/`、`docs/`、`chore/` 或 `spike/` 加任务 ID。
+- 分支使用 `feat/`、`fix/`、`docs/`、`chore/` 或 `spike/` 加任务 ID；仅 M0-02 初始治理文本包使用预先批准的 `docs/m0-project-package`。
 - 提交与 PR 标题使用 Conventional Commits。一个 PR 只解决一个任务。
 - 依赖升级、安全逻辑和格式化重写不得混入同一个 PR。
 
@@ -60,7 +60,7 @@ node tools/governance/validate-project-package.mjs
 
 ## 交接
 
-- 根 `HandOff.md` 只由 `/root` 项目协调者或明确指定的接任协调者修改。
+- 根 `HandOff.md` 只由 `/root` 项目协调者修改；需要更换协调者时先由用户更新本规则和交接 schema。
 - 工作 Agent 使用 `.agents/skills/coordinate-project-handoff/assets/worker-handoff-template.md` 返回结构化交接包。
 - 协调者必须核验实际 Git 状态、命令和产物后再整合 HandOff；不得仅根据聊天声明标记完成。
 - `HandOff.md` 必须通过：

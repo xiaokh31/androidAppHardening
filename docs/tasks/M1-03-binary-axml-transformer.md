@@ -54,7 +54,7 @@ security_sensitive: true
 - 原 Application 缺失时记录 `android.app.Application`；原 factory 缺失时不写 string 值，boolean `has_original_app_component_factory=false`，存在时为 `true` 并写规范化全限定名。
 - container asset 值固定为 `assets/ah/runtime/payload.ahdc`，三个版本字段均为 binary integer `1`。
 - 输入已声明任一保留 metadata、Shell factory 或保留 namespace 时返回 `AXML_RESERVED_COLLISION`，不覆盖。
-- string pool 只追加新字符串，保持所有原 index 不变；resource map 保持原项并只为新增 Android 属性追加 SDK 35 的固定 framework resource ID。未知 chunk 按原 bytes/顺序保留。
+- string pool 只追加新字符串，保持所有原 index 不变；resource map 保持原项并只为新增 Android 属性追加 compileSdk 36 的固定 framework resource ID。未知 chunk 按原 bytes/顺序保留。
 - 分支名固定为 `feat/m1-03-binary-axml-transformer`，Issue 标题固定为 `[M1-03] Binary AXML transformer`，仅允许一个关联 PR。
 
 ## Public Interfaces
@@ -77,7 +77,7 @@ security_sensitive: true
 - 支持 UTF-8/UTF-16 string pool、未知 chunk、现有 resource map、缩写/相对/全限定类名。
 - 保持 package、min/target SDK、Application、组件、权限、intent、provider 和所有未批准属性语义。
 - Windows/Ubuntu 对相同输入与 request 产生字节相同输出和相同 diff。
-- 变换结果必须可由 API 29/35 framework 与固定 `aapt2` 读取。
+- 变换结果必须可由 API 29/36 framework 与固定 `aapt2` 读取。
 
 ## Acceptance Criteria
 
@@ -86,7 +86,7 @@ security_sensitive: true
 3. semantic diff 只包含 factory 属性变化和七个规定 metadata 的新增，不含其他 element/attribute/value 差异。
 4. 原 string index、未知 chunk bytes/顺序和未变属性 typed value/resource ID 均保持。
 5. 任一保留键冲突、截断 chunk、长度溢出、重复 application 或白名单外变化返回对应 `AXML_*` code 且不产生结果。
-6. API 29/35 安装解析测试确认 framework 读取到 Shell factory 与正确 typed metadata。
+6. API 29/36 安装解析测试确认 Shell factory 的真实 `instantiateClassLoader` 回调收到非空 `ApplicationInfo.metaData`，且七个键逐项具有正确 typed value；仅用 `PackageManager.GET_META_DATA` 后置读取不算通过。
 7. Windows 与 Ubuntu 输出 SHA-256 相同；5,000 个 seeded malformed samples 无崩溃或超预算分配。
 
 ## Required Tests
@@ -95,7 +95,7 @@ security_sensitive: true
 - 类名规范化和七个 metadata 组合测试。
 - semantic diff 白名单正反测试。
 - malformed chunk、string length、resource map 和 nesting fuzz/property tests。
-- `aapt2` 交叉解析及 API 29/35 安装读取测试。
+- `aapt2` 交叉解析及 API 29/36 安装读取测试。
 
 ## Required Evidence
 

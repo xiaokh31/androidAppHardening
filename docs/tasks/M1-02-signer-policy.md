@@ -44,7 +44,7 @@ security_sensitive: true
 - 生成、导入、选择或调用私钥、keystore、alias、密码、HSM、远程签名服务。
 - 对输出 APK 执行 `apksigner` 或任何签名操作。
 - 支持换用新 signer 签署输出；v0.1 只接受输入捕获的当前 signer。
-- Runtime 侧 PackageManager 校验；属于 M2-03。
+- Runtime 侧启动早期 APK signer 校验；属于 M2-03。
 
 ## Implementation Decisions
 
@@ -52,14 +52,15 @@ security_sensitive: true
 - `ApkVerifier.Result.isVerified` 必须为 true，且 `getSignerCertificates()` 解析后的当前 signer 数必须严格为 `1`。
 - v1/v2/v3 是否足够由 API 29 验证语义决定，不自行实现签名算法；v4 辅助文件不作为独立 APK 输入的一部分。
 - 经官方库验证的 signing certificate lineage 以旧到新顺序记录 SHA-256；Runtime allowlist 只包含唯一当前 signer，不接受仅匹配历史 signer。
-- `SignerPolicy` 固定 `policyVersion=1`、`requiredAfterProtection=true`、`performedByProduct=false`。
+- `SignerPolicyV1` 固定 `policyVersion=1`、`requiredAfterProtection=true`、`performedByProduct=false`；可序列化安全字段只有 32 字节当前证书摘要和 `1..16` 个旧到新、无重复且以当前摘要结束的 32 字节 lineage 摘要。
+- M1-04 必须按 ADR 0004 的 `SPV1` wire layout 序列化上述安全字段；M1-02 不自创 JSON/Java serialization 作为 Runtime 输入。`verifiedSchemes`、`requiredAfterProtection` 与 `performedByProduct` 只进入 Host 报告，不进入 `SPV1`。
 - 生产 CLI/API 不得出现名称或别名等价于 `keystore`、`privateKey`、`keyPassword`、`storePassword`、`alias` 或签名执行器的参数。
 - 分支名固定为 `feat/m1-02-signer-policy`，Issue 标题固定为 `[M1-02] Signer policy`，仅允许一个关联 PR。
 
 ## Public Interfaces
 
-- `SignerPolicyVerifier.verify(Path input, ApkInspection inspection): SignerPolicy`。
-- `SignerPolicy` 字段：`policyVersion`、`currentCertificateSha256`、`lineageCertificateSha256`、`verifiedSchemes`、`requiredAfterProtection`、`performedByProduct`。
+- `SignerPolicyVerifier.verify(Path input, ApkInspection inspection): SignerPolicyV1`。
+- `SignerPolicyV1` 字段：`policyVersion`、`currentCertificateSha256`、`lineageCertificateSha256`、`verifiedSchemes`、`requiredAfterProtection`、`performedByProduct`；提供面向 M1-04 的原始 32 字节摘要只读副本，不提供独立 wire encoder。
 - 错误码：`SIGNER_UNSIGNED`、`SIGNER_INVALID`、`SIGNER_MULTIPLE_CURRENT`、`SIGNER_LINEAGE_INVALID`、`SIGNER_INPUT_CHANGED`、`SIGNER_INTERNAL`。
 - 报告字段：`signing.input_verified=true`、`signing.current_certificate_sha256`、`signing.required=true`、`signing.performed=false`。
 
@@ -87,6 +88,7 @@ security_sensitive: true
 5. 对 APK 字节做并发修改时返回 `SIGNER_INPUT_CHANGED`，且不输出可消费 policy。
 6. 源码/API 扫描确认生产模块没有签名选项、私钥类型、keystore 读取或签名工具调用。
 7. Windows 与 Ubuntu 的规范化 policy JSON 相同。
+8. `SPV1` 合同测试证明未轮换、有效轮换、空列表、超过 16 项、重复摘要和末项不等于当前摘要的处理与 ADR 0004 一致。
 
 ## Required Tests
 

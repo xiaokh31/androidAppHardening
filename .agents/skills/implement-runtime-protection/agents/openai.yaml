@@ -1,0 +1,4 @@
+interface:
+  display_name: "Implement Runtime Protection"
+  short_description: "Build Android runtime hardening safely"
+  default_prompt: "Use $implement-runtime-protection to implement one Android runtime protection task."

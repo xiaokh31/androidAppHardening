@@ -29,6 +29,27 @@ Host：
 - 不接受 AAB、Split APK、动态特性模块或 APK set；
 - 不修复不支持输入，而是在写出前以稳定错误码拒绝。
 
+仓库物理边界固定为十四个 Gradle 模块，避免 Host、Runtime、测试与发布职责在后续任务中隐式耦合：
+
+```text
+:host:cli
+:host:apk-inspector
+:host:axml
+:host:container
+:host:repacker
+:runtime:bootstrap
+:runtime:native
+:runtime:policy
+:fixtures:android
+:integration-tests
+:benchmarks:host
+:benchmarks:android
+:tools:validation
+:distribution
+```
+
+M0-03 只建立这些模块的无业务能力骨架。改变模块坐标、移动跨模块公共合同或引入第十五个生产/验证模块，必须先修订本 ADR 或新增 ADR；普通任务不得以实现便利为由改变边界。
+
 未来若支持其他输入形态，必须建立独立架构决策、产品合同和测试矩阵，不能复用“APK 后处理”名称静默扩大范围。
 
 ## Consequences
@@ -39,6 +60,7 @@ Host：
 - 输入/输出边界清晰，便于做字节级不变性验证；
 - Windows 与 Ubuntu 可使用同一 Host 流程；
 - 任务可按 Inspector、AXML、Container、Repacker 分离。
+- 十四个模块为依赖方向、代码所有权、CI 门禁和发布边界提供稳定坐标。
 
 代价：
 

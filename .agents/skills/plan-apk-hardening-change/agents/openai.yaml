@@ -1,0 +1,4 @@
+interface:
+  display_name: "Plan APK Hardening Change"
+  short_description: "Plan scoped APK hardening changes"
+  default_prompt: "Use $plan-apk-hardening-change to plan a bounded APK hardening change."

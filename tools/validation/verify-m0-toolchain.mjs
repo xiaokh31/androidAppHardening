@@ -36,7 +36,7 @@ const EXPECTED_VERSIONS = new Map([
   ["node", "24.12.0"],
 ]);
 
-export function validate(root) {
+export function validate(root, { requireEmptySkeleton = false } = {}) {
   const errors = [];
   const read = (relativePath) => {
     const file = path.join(root, relativePath);
@@ -164,17 +164,19 @@ export function validate(root) {
     }
   }
 
-  const sourceFiles = walk(root).filter((file) =>
-    /\/src\//.test(file.replaceAll("\\", "/"))
-    && /\.(?:java|kt|kts|c|cc|cpp|h|hpp)$/i.test(file));
-  const allowedSource = "runtime/native/src/main/cpp/empty.cpp";
-  for (const file of sourceFiles) {
-    const relative = path.relative(root, file).replaceAll("\\", "/");
-    if (relative !== allowedSource) errors.push(`${relative}: M0-03 must not contain business source`);
-  }
-  const emptySource = read(allowedSource).trim();
-  if (emptySource !== 'extern "C" void ah_runtime_empty_anchor() {}') {
-    errors.push(`${allowedSource}: native skeleton must contain only the empty anchor`);
+  if (requireEmptySkeleton) {
+    const sourceFiles = walk(root).filter((file) =>
+      /\/src\//.test(file.replaceAll("\\", "/"))
+      && /\.(?:java|kt|kts|c|cc|cpp|h|hpp)$/i.test(file));
+    const allowedSource = "runtime/native/src/main/cpp/empty.cpp";
+    for (const file of sourceFiles) {
+      const relative = path.relative(root, file).replaceAll("\\", "/");
+      if (relative !== allowedSource) errors.push(`${relative}: M0-03 must not contain business source`);
+    }
+    const emptySource = read(allowedSource).trim();
+    if (emptySource !== 'extern "C" void ah_runtime_empty_anchor() {}') {
+      errors.push(`${allowedSource}: native skeleton must contain only the empty anchor`);
+    }
   }
 
   return errors;
@@ -197,10 +199,12 @@ function escapeRegExp(value) {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const errors = validate(process.cwd());
+  const requireEmptySkeleton = process.argv.includes("--require-empty-skeleton");
+  const errors = validate(process.cwd(), { requireEmptySkeleton });
   if (errors.length > 0) {
     for (const error of errors) console.error(`ERROR: ${error}`);
     process.exit(1);
   }
-  console.log(`OK: pinned toolchain and ${EXPECTED_MODULES.length} empty modules`);
+  const sourceScope = requireEmptySkeleton ? " and M0-03 empty-source boundary" : "";
+  console.log(`OK: pinned toolchain and ${EXPECTED_MODULES.length} module graph${sourceScope}`);
 }

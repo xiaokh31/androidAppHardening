@@ -10,6 +10,10 @@ const baseline = validate(root);
 if (baseline.length > 0) {
   throw new Error(`Baseline validation failed:\n${baseline.join("\n")}`);
 }
+const frozenSkeletonErrors = validate(root, { requireEmptySkeleton: true });
+if (!frozenSkeletonErrors.some((error) => error.includes("M0-03 must not contain business source"))) {
+  throw new Error("M0-03 empty-source mode did not reject post-M0-03 business source");
+}
 
 runTamperCase(
   "project repository injection",
@@ -33,7 +37,7 @@ runTamperCase(
   "kotlin must be 2.4.10",
 );
 
-console.log("OK: M0-03 policy validator positive and tamper cases");
+console.log("OK: toolchain policy positive, stage-aware source, and tamper cases");
 
 function runTamperCase(name, relativeFile, mutate, expectedError) {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aah-m0-03-policy-"));

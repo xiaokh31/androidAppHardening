@@ -11,6 +11,8 @@ out/
 .vscode/
 local.properties
 .toolchains/
+# M0-04 pinned Emulator, system images, AVDs, and Android user/cache state.
+/.toolchains/android-m0-04/
 
 # APK and Android binary artifacts
 *.apk

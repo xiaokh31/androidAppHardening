@@ -1,0 +1,4 @@
+-keep class ah.runtime.bootstrap.ShellAppComponentFactory { public *; }
+-keep class ah.fixtures.android.CompatibilityPocRunner { public *; }
+-keep class ah.fixtures.android.ProbeSignal { public *; }
+-keepattributes *Annotation*,InnerClasses,EnclosingMethod

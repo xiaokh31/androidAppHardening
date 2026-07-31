@@ -26,4 +26,5 @@ android {
 
 dependencies {
     api(project(":runtime:policy"))
+    implementation(libs.android.apksig)
 }

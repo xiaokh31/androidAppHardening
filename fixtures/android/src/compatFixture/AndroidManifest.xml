@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application
+        android:name="ah.fixtures.android.payload.PayloadApplication"
+        android:appComponentFactory="ah.runtime.bootstrap.ShellAppComponentFactory"
+        android:hasCode="true"
+        android:label="M0-05 Compatibility PoC"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+
+        <meta-data
+            android:name="ah.runtime.original_application"
+            android:value="ah.fixtures.android.payload.PayloadApplication" />
+        <meta-data
+            android:name="ah.runtime.original_app_component_factory"
+            android:value="ah.fixtures.android.payload.OriginalAppComponentFactory" />
+        <meta-data
+            android:name="ah.runtime.has_original_app_component_factory"
+            android:value="true" />
+        <meta-data
+            android:name="ah.runtime.container_asset"
+            android:value="assets/ah/runtime/payload.ahdc" />
+        <meta-data
+            android:name="ah.runtime.container_major"
+            android:value="1" />
+        <meta-data
+            android:name="ah.runtime.signer_policy_version"
+            android:value="1" />
+        <meta-data
+            android:name="ah.runtime.risk_policy_version"
+            android:value="1" />
+
+        <provider
+            android:name="ah.fixtures.android.payload.PayloadProvider"
+            android:authorities="${applicationId}.startup"
+            android:exported="false"
+            android:initOrder="100" />
+
+        <activity
+            android:name="ah.fixtures.android.payload.PayloadActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name="ah.fixtures.android.payload.PayloadService"
+            android:exported="false" />
+
+        <receiver
+            android:name="ah.fixtures.android.payload.PayloadReceiver"
+            android:exported="false" />
+    </application>
+</manifest>

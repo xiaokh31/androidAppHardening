@@ -2,7 +2,7 @@ package ah.fixtures.android;
 
 import ah.runtime.bootstrap.ClassLoaderProbe;
 import ah.runtime.bootstrap.ProbeEvent;
-import ah.runtime.bootstrap.ShellAppComponentFactory;
+import ah.runtime.bootstrap.M004ClassLoaderFactory;
 import android.app.Activity;
 import android.app.Instrumentation;
 import android.content.Intent;
@@ -143,7 +143,7 @@ public final class ClassLoaderPocRunner extends Instrumentation {
         applicationInfo.nativeLibraryDir =
                 getTargetContext().getApplicationInfo().nativeLibraryDir;
         try {
-            new ShellAppComponentFactory()
+            new M004ClassLoaderFactory()
                     .instantiateClassLoader(getClass().getClassLoader(), applicationInfo);
             throw new AssertionError("missing APK produced a ClassLoader");
         } catch (IllegalStateException expected) {
@@ -205,7 +205,7 @@ public final class ClassLoaderPocRunner extends Instrumentation {
         applicationInfo.sourceDir = sourceApk.getAbsolutePath();
         applicationInfo.nativeLibraryDir = getTargetContext().getApplicationInfo().nativeLibraryDir;
         try {
-            new ShellAppComponentFactory()
+            new M004ClassLoaderFactory()
                     .instantiateClassLoader(getClass().getClassLoader(), applicationInfo);
             throw new AssertionError("invalid payload produced a ClassLoader");
         } catch (IllegalStateException expected) {

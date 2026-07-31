@@ -1,0 +1,139 @@
+name: Build
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ubuntu:
+    name: Build (ubuntu-24.04)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        # actions/checkout v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Set up Temurin JDK
+        # actions/setup-java v5
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95
+        with:
+          distribution: temurin
+          java-version: "17.0.19+10"
+
+      - name: Set up Node.js
+        # actions/setup-node v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24.12.0
+          check-latest: false
+
+      - name: Cache verified Gradle inputs
+        # actions/cache v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*gradle.lockfile', 'gradle/verification-metadata.xml', 'gradle/wrapper/gradle-wrapper.properties', 'gradle/wrapper/gradle-wrapper.jar', 'gradle/libs.versions.toml') }}
+
+      - name: Install pinned Android packages
+        shell: bash
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platforms;android-36" \
+            "build-tools;36.1.0" \
+            "ndk;29.0.14206865" \
+            "cmake;4.1.2"
+
+      - name: Verify pinned entry points
+        shell: bash
+        run: |
+          test "$(node --version)" = "v24.12.0"
+          test "$(java -XshowSettings:properties -version 2>&1 | sed -n 's/.*java.version = //p')" = "17.0.19"
+          ./gradlew --no-daemon --version
+
+      - name: Run full Linux checks
+        shell: bash
+        run: ./gradlew --no-daemon clean check lint verifyGovernance :runtime:native:assemble
+
+      - name: Test dependency verification failure
+        shell: bash
+        run: node tools/validation/test-dependency-verification.mjs
+
+      - name: Verify four Native ABIs
+        shell: bash
+        run: |
+          for abi in armeabi-v7a arm64-v8a x86 x86_64; do
+            file="runtime/native/build/intermediates/stripped_native_libs/debug/stripDebugDebugSymbols/out/lib/$abi/libah_runtime.so"
+            test -f "$file"
+            "$ANDROID_HOME/ndk/29.0.14206865/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf" -h "$file"
+          done
+
+  windows:
+    name: Build (windows-2025)
+    runs-on: windows-2025
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        # actions/checkout v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Set up Temurin JDK
+        # actions/setup-java v5
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95
+        with:
+          distribution: temurin
+          java-version: "17.0.19+10"
+
+      - name: Set up Node.js
+        # actions/setup-node v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24.12.0
+          check-latest: false
+
+      - name: Cache verified Gradle inputs
+        # actions/cache v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*gradle.lockfile', 'gradle/verification-metadata.xml', 'gradle/wrapper/gradle-wrapper.properties', 'gradle/wrapper/gradle-wrapper.jar', 'gradle/libs.versions.toml') }}
+
+      - name: Install pinned Android packages
+        shell: pwsh
+        run: |
+          & "$env:ANDROID_HOME\cmdline-tools\latest\bin\sdkmanager.bat" `
+            "platforms;android-36" `
+            "build-tools;36.1.0" `
+            "ndk;29.0.14206865" `
+            "cmake;4.1.2"
+
+      - name: Verify pinned entry points
+        shell: pwsh
+        run: |
+          if ((node --version) -ne "v24.12.0") { exit 1 }
+          $javaVersion = (& java -version 2>&1 | Select-Object -First 1)
+          if ($javaVersion -notmatch '"17\.0\.19"') { exit 1 }
+          .\gradlew.bat --no-daemon --version
+
+      - name: Run Windows checks
+        shell: pwsh
+        run: .\gradlew.bat --no-daemon clean check verifyGovernance

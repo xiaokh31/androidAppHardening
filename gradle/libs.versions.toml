@@ -1,0 +1,20 @@
+[versions]
+agp = "9.3.0"
+android-build-tools = "36.1.0"
+android-cmake = "4.1.2"
+android-compile-sdk = "36"
+android-min-sdk = "29"
+android-ndk = "29.0.14206865"
+android-target-sdk = "36"
+gradle = "9.5.0"
+jdk = "17.0.19+10"
+kotlin = "2.4.10"
+node = "24.12.0"
+
+[libraries]
+android-apksig = { module = "com.android.tools.build:apksig", version.ref = "agp" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

@@ -22,6 +22,25 @@
 
 完整产品合同见 [`docs/PRODUCT_REQUIREMENTS.md`](docs/PRODUCT_REQUIREMENTS.md)，安全边界见 [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md)。
 
+## 构建基线
+
+M0-03 固定 Eclipse Temurin `17.0.19+10`、Gradle `9.5.0`、Kotlin/JVM `2.4.10`、Android Gradle Plugin `9.3.0`、Android Platform `36`、Build Tools `36.1.0`、NDK `29.0.14206865`、CMake `4.1.2` 和 Node.js `24.12.0`。版本唯一来源是 [`gradle/libs.versions.toml`](gradle/libs.versions.toml)；开发者必须让当前项目终端的 `JAVA_HOME` 指向固定 JDK 17，不需要也不应替换其他项目使用的全局 JDK。
+
+Windows 基线：
+
+```powershell
+.\gradlew.bat --no-daemon clean check verifyGovernance
+```
+
+Ubuntu 全量基线：
+
+```bash
+./gradlew --no-daemon clean check lint verifyGovernance
+./gradlew --no-daemon :runtime:native:assemble
+```
+
+当前工程只有十四个无业务行为的模块骨架。依赖解析使用严格 SHA-256 verification metadata、全 configuration lockfile 与 settings 级 `google()`/`mavenCentral()` 白名单。
+
 ## 许可证
 
 本项目采用 [Apache License 2.0](LICENSE)。

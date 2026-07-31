@@ -1,36 +1,38 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260731-080900
-updated_at: 2026-07-31T08:09:00+08:00
+handoff_id: HO-20260731-082043
+updated_at: 2026-07-31T08:20:43+08:00
 updated_by: /root
-state: active
-source_branch: docs/m0-project-package
-base_commit: 1e5264e208ac37f3b8bd5331f59ed5a6d5eef78b
+state: ready
+source_branch: main
+base_commit: cb491af037ce1f9597b7792dc66b5f8f383187dc
 working_tree: clean
 current_milestone: M0
-active_task: M0-02
-next_owner: /root
+active_task: M0-03
+next_owner: unassigned
 ---
 
 # Project HandOff
 
 ## Objective
 
-以只读独立 APK 为输入，开发一个离线后处理工具，将业务 DEX 转换为版本化认证加密容器并注入四 ABI Android Runtime，最终只生成新的未签名 APK。当前工作仅完成 M0-02 治理、任务合同与交接门禁，不包含 Host 或 Android Runtime 业务实现。
+以只读独立 APK 为输入，开发一个离线后处理工具，将业务 DEX 转换为版本化认证加密容器并注入四 ABI Android Runtime，最终只生成新的未签名 APK。M0-01 与 M0-02 已完成；下一项是 M0-03 工具链与 CI，仓库仍不包含 Host 或 Android Runtime 业务实现。
 
 ## Current State
 
-- M0-01 仓库种子已经位于 `main`，提交为 `1fc5fb6380b97ba2a2a54df0409429f4730f6d77`。
-- M0-02 的核心文档、6 份 ADR、25 张任务卡、6 个项目 Skills、HandOff 工具和双平台治理工作流正在 [PR #26](https://github.com/xiaokh31/androidAppHardening/pull/26) 审查。
-- 当前分支为 `docs/m0-project-package`；本 HandOff 随待提交工作树进入该 PR，提交后工作树预期为 clean。
-- M0-03 尚未分配，必须在 PR #26 合并且 M0-02 证据完成后领取。
+- M0-01 仓库种子位于 `main`，提交为 `1fc5fb6380b97ba2a2a54df0409429f4730f6d77`。
+- M0-02 通过 [PR #26](https://github.com/xiaokh31/androidAppHardening/pull/26) 合并：包含 11 份核心文档、6 份 ADR、25 张任务卡、6 个项目 Skills、严格 HandOff 工具和双平台治理工作流。
+- GitHub 已建立 5 个 Milestone、14 个项目 Label 和与任务索引一一对应的 25 个 Issue；任务卡保留技术权威，Issue 仅跟踪负责人、状态、讨论和 PR。
+- M0-03 已成为活动任务但尚未分配；M0-04 按已批准顺序在 M0-03 门禁通过后启动，M0-05 仍受 M0-04 门禁约束。
 
 ## Active Workstreams
 
 | Task | Owner | Branch | Status | Dependencies | Next checkpoint |
 |---|---|---|---|---|---|
-| M0-02 | `/root` | `docs/m0-project-package` | review | M0-01 | 提交治理工具并取得 Windows/Ubuntu CI 证据 |
+| M0-03 | `unassigned` | `feat/m0-03-toolchain-gradle-ci` | planned | M0-02 | 分配 owner 并建立十四模块工具链骨架 |
+| M0-04 | `unassigned` | `spike/m0-04-classloader-poc` | planned | M0-03 | M0-03 门禁满足后验证 API 29/36 公开加载链 |
+| M0-05 | `unassigned` | `spike/m0-05-application-factory-provider-jni-poc` | planned | M0-04 | M0-04 通过后验证早期 metadata、签名与 JNI 兼容性 |
 
 ## Decisions and Invariants
 
@@ -46,7 +48,8 @@ next_owner: /root
 
 - `1fc5fb6380b97ba2a2a54df0409429f4730f6d77`：建立 Apache-2.0 公共仓库种子和基础文本规范。
 - `1e5264e208ac37f3b8bd5331f59ed5a6d5eef78b`：加入核心策划文档、ADR、25 张任务卡、Agent 角色规则和 GitHub 模板。
-- 待提交工作树：加入 6 个项目 Skills、严格 HandOff 校验及负向测试、项目包校验、不可变提交树哈希工具和双平台治理工作流，并修正启动早期公开 API、模块边界、依赖图与二进制协议合同。
+- `cb491af037ce1f9597b7792dc66b5f8f383187dc`：加入 6 个项目 Skills、严格 HandOff 校验及 11 个负向测试、项目包校验、不可变提交树哈希工具和双平台治理工作流，并冻结启动早期公开 API、模块边界、无环依赖图与 AHDC v1 二进制协议合同。
+- GitHub 同步完成：5 个 Milestone、14 个 Label、25 个同编号 Issue、PR #26 的治理标签与双平台 CI 证据均已建立。
 
 ## Verification Evidence
 
@@ -61,6 +64,54 @@ next_owner: /root
 - artifact: `immutable commit-tree manifest over 5 files, excluding HandOff.md`
 - sha256: `2db831de0981c715a62df6007d8c2c9219069940d5f951950a6f5b5ca41b977f`
 - result: `PASS; the root commit contains only README.md, LICENSE, .gitignore, .gitattributes, and .editorconfig`
+
+### M0-02 immutable governance manifest
+
+- task_id: `M0-02`
+- git_commit: `cb491af037ce1f9597b7792dc66b5f8f383187dc`
+- command: `node tools/governance/hash-project-package.mjs --commit cb491af037ce1f9597b7792dc66b5f8f383187dc`
+- exit_code: `0`
+- environment: `Windows NT 10.0.19045; Git 2.52.0; Node.js 24.12.0`
+- timestamp: `2026-07-31T08:19:56+08:00`
+- artifact: `immutable commit-tree manifest over 80 files, excluding HandOff.md`
+- sha256: `1446311366c3e9d9f91cf382be0006c02862f8ce254d8a5a5e03e1a02e4a866c`
+- result: `PASS; manifest covers the complete governance-only package at the evidenced commit`
+
+### M0-02 local governance and Skill validation
+
+- task_id: `M0-02`
+- git_commit: `cb491af037ce1f9597b7792dc66b5f8f383187dc`
+- command: `validate-handoff.mjs HandOff.md --strict; test-handoff-validator.mjs; validate-project-package.mjs --require-governance-only; quick_validate.py for each .agents/skills directory`
+- exit_code: `0`
+- environment: `Windows NT 10.0.19045; Git 2.52.0; Node.js 24.12.0; bundled Python and skill-creator validator`
+- timestamp: `2026-07-31T08:20:43+08:00`
+- artifact: `25 task cards; 11 core documents; 6 ADRs; 6 valid Skills; 11 negative HandOff cases`
+- sha256: `1446311366c3e9d9f91cf382be0006c02862f8ce254d8a5a5e03e1a02e4a866c`
+- result: `PASS; task IDs and links are complete, dependencies are acyclic, and the repository remains governance-only`
+
+### M0-02 Ubuntu governance CI
+
+- task_id: `M0-02`
+- git_commit: `cb491af037ce1f9597b7792dc66b5f8f383187dc`
+- command: `GitHub Actions Governance / Governance (ubuntu-24.04)`
+- exit_code: `0`
+- environment: `GitHub-hosted ubuntu-24.04; Node.js 24.12.0`
+- timestamp: `2026-07-31T00:18:12Z`
+- artifact: `https://github.com/xiaokh31/androidAppHardening/actions/runs/30593139095/job/91039542620`
+- sha256: `1446311366c3e9d9f91cf382be0006c02862f8ce254d8a5a5e03e1a02e4a866c`
+- result: `PASS; syntax, governance-only snapshot, pending-main HandOff, negative tests, and Git object database verified`
+
+### M0-02 Windows governance CI
+
+- task_id: `M0-02`
+- git_commit: `cb491af037ce1f9597b7792dc66b5f8f383187dc`
+- command: `GitHub Actions Governance / Governance (windows-2025)`
+- exit_code: `0`
+- environment: `GitHub-hosted windows-2025; Node.js 24.12.0`
+- timestamp: `2026-07-31T00:18:30Z`
+- artifact: `https://github.com/xiaokh31/androidAppHardening/actions/runs/30593139095/job/91039542606`
+- sha256: `1446311366c3e9d9f91cf382be0006c02862f8ce254d8a5a5e03e1a02e4a866c`
+- result: `PASS; syntax, governance-only snapshot, pending-main HandOff, negative tests, and Git object database verified`
 
 ## Blockers and Required Approvals
 
@@ -95,15 +146,15 @@ None
 
 ## Resume Checklist
 
-1. 确认当前分支、HEAD 和工作树状态，并按固定顺序读取治理文件。
-2. 运行 `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict`。
-3. 运行 `node tools/governance/validate-project-package.mjs --require-governance-only` 与 `node tools/governance/test-handoff-validator.mjs`。
-4. 核对 PR #26 两个平台检查、Issue #1 至 #25 映射和 M0-02 独立审计结论。
-5. 仅在全部门禁通过并合并后，把状态更新为 `ready`、活动任务更新为 `M0-03`。
+1. 确认位于 `main`、HEAD 包含 PR #26 的 merge commit 且工作树为 clean。
+2. 按 `AGENTS.md` → `HandOff.md` → `docs/README_FIRST.md` → `docs/tasks/M0-03-toolchain-gradle-ci.md` → 相关架构与 ADR → 项目 Skill 的顺序阅读。
+3. 运行 `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict`。
+4. 运行 `node tools/governance/validate-project-package.mjs --require-governance-only` 与 `node tools/governance/test-handoff-validator.mjs`。
+5. 在 Issue #3 分配唯一 owner 后创建 `feat/m0-03-toolchain-gradle-ci`，不得在该任务中实现 Host 或 Runtime 业务能力。
 
 ## Handoff Sign-off
 
 - generated_by: `/root`
-- generated_at: `2026-07-31T08:09:00+08:00`
-- validation_command: `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict --allow-pending-clean`
-- validation_result: `PASS expected after local validation`
+- generated_at: `2026-07-31T08:20:43+08:00`
+- validation_command: `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict --allow-pending-branch`
+- validation_result: `PASS on PR target; strict validation required again on main`

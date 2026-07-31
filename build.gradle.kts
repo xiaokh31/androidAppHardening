@@ -19,7 +19,7 @@ allprojects {
 
 val verifyToolchainPolicy by tasks.registering(Exec::class) {
     group = "verification"
-    description = "Validates the pinned M0-03 toolchain and empty module graph."
+    description = "Validates the pinned toolchain and fourteen-module graph."
     commandLine("node", "tools/validation/verify-m0-toolchain.mjs")
 }
 
@@ -37,7 +37,7 @@ tasks.register<Exec>("testDependencyVerification") {
 
 tasks.register<Exec>("verifyGovernance") {
     group = "verification"
-    description = "Validates governance plus the pinned M0-03 project skeleton."
+    description = "Validates governance plus the pinned project toolchain."
     commandLine("node", "tools/governance/validate-project-package.mjs")
     dependsOn(verifyToolchainPolicy)
 }

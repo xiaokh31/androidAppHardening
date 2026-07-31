@@ -30,11 +30,13 @@ security_sensitive: true
 - M3-04 API/ABI 兼容矩阵。
 - M3-05 性能预算结果。
 - ADR、威胁模型、依赖锁、源码和 Release Candidate commit。
+- 同一 commit 的可解析 classpath、Host Release 产物和四 ABI Runtime 产物，供 `securityReview` 生成 `rc-component-manifest.json`；不输入或假设 M4-02 的最终发布归档。
 
 ## Expected Outputs
 
 - `security-review-v0.1.0.md` 与机器可读发布门禁结果。
 - CycloneDX SBOM、依赖/许可证清单和漏洞扫描报告。
+- 与 SBOM 一一对应的 Release Candidate component manifest。
 - 密钥/签名能力/敏感材料扫描报告。
 - 由非实现者完成的安全复核结论和残余风险登记。
 
@@ -42,7 +44,7 @@ security_sensitive: true
 
 - Host 不可信输入边界、Runtime 容器/签名/内存保护和错误处理。
 - 依赖锁、来源、哈希、许可证、已知漏洞和构建插件。
-- 仓库、构建产物、日志和发布包的秘密/明文 DEX 扫描。
+- 仓库、Release Candidate Host/Runtime 产物、日志和 component staging tree 的秘密/明文 DEX 扫描。
 - fuzz、篡改、兼容、性能与可重现证据的完整性。
 
 ## Out of Scope
@@ -56,6 +58,7 @@ security_sensitive: true
 
 - 由未实现被审查安全敏感任务的 `security-review-agent` 执行复核，`/root` 只负责确认门禁与合并；实现作者不得自我批准。
 - Gradle 依赖必须启用 dependency locking 与 verification metadata；SBOM 固定为 CycloneDX JSON，组件包含版本、许可证、来源和哈希。
+- `securityReview` 固定生成 `build/reports/security/rc-component-manifest.json`，逐项列出同一 commit 的 Host Release artifact、Runtime 四 ABI artifact、运行依赖、文件 SHA-256 和来源 configuration。M4-01 只审查此 component 集合，不创建或假设 M4-02 的 archive entry、launcher 或最终归档哈希。
 - 漏洞门禁固定为：未解决 Critical/High 为失败；Medium 必须有负责人、影响分析、到期日和 `/root` 明确接受；Low 进入风险登记。
 - 分发依赖必须具有 SPDX 可识别许可证并登记于 `THIRD_PARTY_NOTICES.md`；未知许可证、来源不明二进制或未固定版本为失败。
 - 源码/产物扫描必须确认产品不调用 APK 签名工具或 API，不包含私钥、keystore、alias、密码、真实客户 APK、明文客户 DEX或凭据。
@@ -66,6 +69,7 @@ security_sensitive: true
 - Gradle 门禁 `./gradlew securityReview`。
 - `build/reports/security/release-gate.json`，字段为 `commit`、`sbomSha256`、`checks`、`findings`、`residualRisks`、`reviewer` 和 `decision`。
 - `build/reports/security/bom-v0.1.0.cdx.json`。
+- `build/reports/security/rc-component-manifest.json`，字段为 `commit`、`toolchain`、`components[]` 与 `sbomSha256`。
 - 审查决定仅允许 `PASS` 或 `BLOCKED`。
 
 ## Security Constraints
@@ -85,14 +89,14 @@ security_sensitive: true
 ## Acceptance Criteria
 
 - `./gradlew securityReview` 退出码为 `0`，`release-gate.json` 的 `decision` 为 `PASS`。
-- SBOM 中每个分发组件都有固定版本、来源、SHA-256 和 SPDX 许可证，且与依赖锁及发布包内容一致。
+- SBOM 中每个 Release Candidate component 都有固定版本、来源、SHA-256 和 SPDX 许可证，且与依赖锁及 `rc-component-manifest.json` 一致；本任务不得把尚未由 M4-02 创建的最终 archive 当作输入。
 - 未解决 Critical/High 漏洞为零，所有 Medium 均具备完整接受记录，未知许可证和来源不明二进制为零。
 - 源码与产物扫描确认产品无 APK 签名能力、无私钥/keystore/密码、无真实客户 APK 和明文客户 DEX。
 - 独立复核者确认 M3 全部证据哈希可复算，文档明确动态防护只能提高成本。
 
 ## Required Tests
 
-- dependency lock/verification、SBOM schema、组件与发布包一致性测试。
+- dependency lock/verification、SBOM schema、component manifest 与 Host/Runtime staging artifact 一致性测试。
 - 漏洞严重度门禁、许可证 allowlist/denylist 和未知来源失败测试。
 - 产品签名能力、秘密、证书、APK/DEX 敏感材料与绝对安全措辞扫描。
 - tamper/fuzz、API/ABI、跨平台和性能证据引用完整性测试。
@@ -100,7 +104,7 @@ security_sensitive: true
 ## Required Evidence
 
 - 所有扫描命令、工具版本、退出码和 Release Candidate commit。
-- SBOM、依赖锁、许可证报告、漏洞报告和发布门禁文件 SHA-256。
+- SBOM、component manifest、依赖锁、许可证报告、漏洞报告和发布门禁文件 SHA-256。
 - 独立复核者、发现项处置、残余风险与最终决定。
 - 一次性测试证书清理结果和产品无签名能力证明。
 
@@ -116,7 +120,7 @@ security_sensitive: true
 
 ## Dependencies and Blockers
 
-任一 M3 门禁未完成、证据 commit 不一致、存在未解决 Critical/High、许可证不明或独立复核者不可用时，本任务保持 blocked。不得通过降低严重度、删除测试或省略组件来获得通过。
+任一 M3 门禁未完成、证据 commit 不一致、RC component manifest 与依赖/SBOM 不一致、存在未解决 Critical/High、许可证不明或独立复核者不可用时，本任务保持 blocked。M4-02 的最终 archive 不属于本任务前置条件；不得通过降低严重度、删除测试或省略组件来获得通过。
 
 ## Agent Handoff Requirements
 

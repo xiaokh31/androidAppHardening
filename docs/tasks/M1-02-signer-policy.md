@@ -27,7 +27,7 @@ security_sensitive: true
 
 ## Expected Outputs
 
-- `SignerPolicyVerifier` 与不可变 `SignerPolicy`。
+- `SignerPolicyVerifier` 与不可变 `SignerPolicyV1`。
 - 唯一当前 signer 的 DER certificate SHA-256、小写十六进制表示和经验证的轮换历史摘要。
 - 稳定 `SIGNER_*` 错误码、报告字段和 Runtime config 输入模型。
 - 证明生产模块没有签名或私钥入口的架构测试。

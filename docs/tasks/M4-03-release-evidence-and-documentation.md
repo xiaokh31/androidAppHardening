@@ -54,7 +54,8 @@ security_sensitive: false
 
 ## Implementation Decisions
 
-- 快速开始使用固定合成路径：`fixtures/java-single-dex.apk` 作为只读输入，`build/out/java-single-dex-protected-unsigned.apk` 作为新输出。
+- 快速开始使用工作目录中的 `work/input/signed-app.apk` 作为使用者自行提供且已获授权的已签名单 APK，只读生成新的 `work/output/protected-unsigned.apk` 和 `work/output/protect.json`。发布包不得包含或声称提供该输入。
+- 文档驱动 smoke harness 必须从仓库源码生成合成 fixture，在包外生成一次性证书并签成 `work/input/signed-fixture.apk`，再把该工作目录挂载给已解包的发行版；fixture、证书和签名副本都不得进入发布 archive。
 - 示例流程固定为 `android-app-hardening protect`、验证 JSON 与输出未签名；后续生产签名明确由使用者在产品外部的既有安全发布流水线完成。
 - 支持声明固定包含独立 APK、`minSdk >= 29`、Java/Kotlin、单/多 DEX、自定义 `Application/AppComponentFactory` 和四 ABI Runtime。
 - 不支持声明固定包含 AAB、Split APK、Flutter、Unity、React Native、热修复和已有加固壳。
@@ -63,13 +64,14 @@ security_sensitive: false
 
 ## Public Interfaces
 
-- CLI 示例：`android-app-hardening protect --input fixtures/java-single-dex.apk --output build/out/java-single-dex-protected-unsigned.apk --report build/out/protect.json`
+- CLI 示例：`android-app-hardening protect --input work/input/signed-app.apk --output work/output/protected-unsigned.apk --report work/output/protect.json`
 - 发布说明 `docs/releases/RELEASE_NOTES_v0.1.0.md`。
 - 证据索引 `docs/releases/release-evidence-v0.1.0.json` 及其 JSON schema。
 
 ## Security Constraints
 
 - 文档不得要求产品接收私钥、keystore、alias 或密码；产品永不签名。
+- 快速开始必须要求使用者只选择自己拥有或获授权处理的已签名单 APK，并明确 `work/input/signed-app.apk` 是包外占位路径而非随包样例。
 - 外部签名只描述责任边界和官方工具链入口，不嵌入真实密钥、证书路径或凭据示例。
 - 文档、日志样例和证据不得包含真实客户 APK、明文客户 DEX、设备序列号或用户绝对路径。
 - 安全能力必须使用可验证措辞，并明确 root/注入/进程控制攻击的残余风险。
@@ -84,7 +86,7 @@ security_sensitive: false
 ## Acceptance Criteria
 
 - `./gradlew docsCheck releaseEvidenceCheck` 退出码为 `0`。
-- 在干净 Windows 与 Ubuntu 环境按快速开始执行，输入哈希不变、生成新的未签名 APK、JSON 通过 schema 校验。
+- 在干净 Windows 与 Ubuntu 环境中，由 smoke harness 从包外挂载已签名合成输入后按快速开始执行，输入哈希不变、生成新的未签名 APK、JSON 通过 schema 校验；只解包发行文件而不提供输入时，文档不得暗示 `protect` 可自行运行。
 - 发布说明完整列出支持项、不支持项、API/ABI 证据、性能门禁、已知限制和残余风险。
 - 证据索引的每个文件存在且 SHA-256 可复算，并全部对应同一 Release Candidate commit。
 - 文档扫描确认无绝对安全承诺、无产品签名能力、无敏感材料、无失效内部链接。
@@ -92,14 +94,14 @@ security_sensitive: false
 ## Required Tests
 
 - Markdown 内部链接、命令、文件名、版本号和 JSON schema 测试。
-- Windows/Ubuntu 快速开始的文档驱动 smoke test。
+- Windows/Ubuntu 快速开始的文档驱动 smoke test，输入由包外 harness 挂载；archive 白名单测试确认不存在 fixture APK、测试证书或 `fixtures/` 目录。
 - 支持/不支持范围、未签名输出、x86 非风险和大小声明的必备文本测试。
 - 证据 commit 一致性、文件存在性和 SHA-256 复算测试。
 
 ## Required Evidence
 
 - 文档检查和 smoke test 命令、退出码、OS/toolchain 版本。
-- 快速开始输入前后哈希、未签名输出证明和 JSON schema 结果。
+- 包外挂载的快速开始输入前后哈希、输入 signer 证明、未签名输出证明和 JSON schema 结果。
 - 发布文档、证据索引、链接报告和最终发布包 SHA-256。
 - 结构化 worker handoff，供 `/root` 生成最终根交接。
 

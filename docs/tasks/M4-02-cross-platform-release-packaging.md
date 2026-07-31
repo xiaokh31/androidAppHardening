@@ -17,7 +17,7 @@ security_sensitive: true
 
 ## Goal
 
-从已通过安全门禁的同一 commit 生成可重现的 Windows x86_64 与 Ubuntu x86_64 v0.1.0 发布包、校验和、SBOM 和来源证明。
+从已通过安全门禁的同一 commit 和已审查 component 集合生成可重现的 Windows x86_64 与 Ubuntu x86_64 v0.1.0 发布包、校验和与来源证明，并原样纳入 M4-01 的 SBOM。
 
 ## Background
 
@@ -25,7 +25,7 @@ security_sensitive: true
 
 ## Inputs
 
-- M4-01 `PASS` 的 Release Candidate commit 和 SBOM。
+- M4-01 `PASS` 的 Release Candidate commit、SBOM 及 `rc-component-manifest.json`。
 - M3-03 的跨平台确定性规则。
 - M1-06 Host CLI 与 M2-04 四 ABI Runtime Release 产物。
 - Apache-2.0 `LICENSE` 与 `THIRD_PARTY_NOTICES.md`。
@@ -34,7 +34,7 @@ security_sensitive: true
 
 - `androidAppHardening-0.1.0-windows-x86_64.zip`。
 - `androidAppHardening-0.1.0-ubuntu-x86_64.tar.gz`。
-- `SHA256SUMS`、CycloneDX SBOM、构建 provenance 和发布 manifest。
+- `SHA256SUMS`、与 M4-01 SHA-256 相同的 CycloneDX SBOM、构建 provenance 和发布 manifest。
 - 两个平台的离线 smoke test 与可重现构建报告。
 
 ## In Scope
@@ -57,7 +57,9 @@ security_sensitive: true
 - 两包根目录固定包含 `bin/`、`lib/`、`runtime/`、`docs/QUICKSTART.md`、`LICENSE`、`THIRD_PARTY_NOTICES.md`、`bom.cdx.json` 和 `release-manifest.json`。
 - 构建时间取 Release Candidate commit 时间并转换为 UTC；文件按 UTF-8 字节序排序，ZIP 使用固定时间/权限，tar 使用固定 owner/group，gzip 禁用原始文件名和当前时间。
 - launcher 只转发参数并强制 UTF-8；Windows 为 `android-app-hardening.cmd`，Ubuntu 为可执行 `android-app-hardening`，不提供第二个 CLI 别名。
+- smoke harness 从仓库源码构建并在产品外签名合成 fixture，再以包外工作目录 `work/input/signed-fixture.apk` 挂载给两个已解包发行版；fixture、一次性证书和签名副本均不进入 archive。
 - `release-manifest.json` 固定记录版本、commit、toolchain、平台、文件 SHA-256、Runtime 四 ABI 和输出“unsigned APK only”能力声明。
+- 最终 archive layout、launcher、文档和归档哈希只由 M4-02 创建；Host/Runtime/依赖 component 必须逐项来自 M4-01 的 manifest，SBOM 文件必须字节不变。新增或替换 component 会使 M4-01 `PASS` 失效并阻塞打包。
 - GitHub/OIDC provenance 可证明发布包来源，但不得被描述为 APK 签名；产品二进制内不得存在签名命令。
 
 ## Public Interfaces
@@ -70,9 +72,9 @@ security_sensitive: true
 ## Security Constraints
 
 - 发布包与 launcher 不得接收、读取或转发私钥、keystore、alias 或密码，也不得调用 APK 签名工具。
-- 仅包含经过 M4-01 SBOM 审查的依赖；内容哈希与 SBOM 不一致即失败。
+- 仅包含经过 M4-01 SBOM/component manifest 审查的产品 component；任一 component 内容哈希或 SBOM SHA-256 不一致即失败。
 - 不包含 source map、未剥离 Native 符号、测试证书、fixture APK、明文 DEX 或环境凭据。
-- smoke test 输入使用合成 fixture，若需安装则在产品外部使用一次性非生产证书。
+- smoke test 输入使用由包外 harness 挂载的已签名合成 fixture；若需安装则继续在产品外部使用同一张一次性非生产证书。
 
 ## Compatibility Requirements
 
@@ -84,9 +86,9 @@ security_sensitive: true
 ## Acceptance Criteria
 
 - `./gradlew :distribution:packageWindows :distribution:packageUbuntu :distribution:verifyRelease` 退出码为 `0`。
-- 在干净 Windows/Ubuntu 环境解包后，`--help`、`--version` 和 `protect` smoke test 均成功，输出通过未签名检查且输入 SHA-256 不变。
+- 在干净 Windows/Ubuntu 环境解包并从包外挂载已签名合成输入后，`--help`、`--version` 和 `protect` smoke test 均成功，输出通过未签名检查且输入 SHA-256 不变；archive 自身不含 fixture。
 - 同一 commit 与 toolchain 连续构建两次，各平台发布包 SHA-256 分别完全一致。
-- 发布包内容与 `release-manifest.json`、`SHA256SUMS` 和 SBOM 完全一致，四 ABI Runtime 齐全。
+- 发布包内容与 `release-manifest.json`、`SHA256SUMS`、M4-01 component manifest 和原样 SBOM 完全一致，四 ABI Runtime 齐全。
 - 敏感/签名能力扫描为零，离线 smoke test 在网络阻断时仍成功。
 
 ## Required Tests

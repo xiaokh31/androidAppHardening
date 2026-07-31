@@ -1,61 +1,58 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260731-150847
-updated_at: 2026-07-31T15:08:47+08:00
+handoff_id: HO-20260801-003121
+updated_at: 2026-08-01T00:31:21+08:00
 updated_by: /root
 state: ready
-source_branch: spike/m0-04-classloader-poc
-base_commit: e9f89734aa3d4148ec6ebe9a6b970a9276128d00
+source_branch: main
+base_commit: 09c654b36a3ec19225926521dca5127ffef7a556
 working_tree: clean
 current_milestone: M0
-active_task: M0-04
-next_owner: /root
+active_task: NONE
+next_owner: unassigned
 ---
 
 # Project HandOff
 
 ## Objective
 
-在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的既定边界内，完成 M0-04 ClassLoader PoC：使用公开 `AppComponentFactory` 与 `InMemoryDexClassLoader` 验证内存 DEX 加载，并在固定的 API 29/36 x86_64 官方 system image 上完成正向、篡改、兼容和失败路径验收。
+在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内推进离线 APK 加固工具。M0-04 已用公开 `AppComponentFactory` 与 `InMemoryDexClassLoader` 证明 API 29+ 内存 DEX 接入可行性；下一任务 M0-05 只能在独立领取后验证原始 Factory、Provider、JNI 和兼容性路径。
 
 ## Current State
 
-- M0-03 已由 PR #28 合并，`main` 已无豁免通过 strict HandOff，M0-04 的前置条件成立。
-- M0-04 实现提交为 `e9f89734aa3d4148ec6ebe9a6b970a9276128d00`，对应分支 `spike/m0-04-classloader-poc` 和草稿 PR #29。
-- Emulator 37.1.11、API 29 rev8 和 API 36 rev2 官方包已固定并校验；下载、SDK、AVD、Android 用户状态和新增 Gradle 缓存均位于项目根目录下被忽略的 `.toolchains/`。
-- API 29/36 两套非 root x86_64 设备验收均通过：instrumentation 1/1、冷启动 20/20、四项文件快照完整、零禁止日志、零明文 DEX、三种真实变异 APK 3/3 failure-closed。
+- M0-04 的唯一 [PR #29](https://github.com/xiaokh31/androidAppHardening/pull/29) 已于 `2026-08-01T00:30:34+08:00` 以普通 merge commit `09c654b36a3ec19225926521dca5127ffef7a556` 合并到 `main`。
+- PR head `12ce7c11a7b4cf8286a86cd2ce150a33a98cfe3e` 的 Build #9 与 Governance #18 在 Ubuntu 24.04 和 Windows 2025 四项门禁全部通过。
+- API 29 rev8 与 API 36 rev2 两套非 root x86_64 验收均通过：instrumentation 1/1、冷启动 20/20、三种真实变异 APK 3/3 failure-closed、零禁止日志/文件/payload 哈希落盘命中。
 - 独立安全复核结果为 `PASS`，没有剩余 P0/P1/P2 发现。
-- 验收后没有遗留项目 Emulator 或 watchdog；`adb devices` 只显示用户原有的 `20a24423 unauthorized` 设备。
-- M0-04 仅证明公开 ClassLoader 接入可行性，不提前声称 M0-05 或后续生产 Runtime 能力已实现。
+- Emulator 37.1.11、API 29 rev8 和 API 36 rev2 官方大体积包只位于项目根下被忽略的 `.toolchains/`；未提交到 Git，验收后没有遗留项目 Emulator 或 watchdog。
+- M0-04 仅证明公开 ClassLoader PoC，不表示 M0-05 或生产 signer、加密容器、多 DEX 与完整 Runtime 能力已实现。
+- 当前没有活动开发任务；M0-05 尚未领取或启动。
 
 ## Active Workstreams
 
 | Task | Owner | Branch | Status | Dependencies | Next checkpoint |
 |---|---|---|---|---|---|
-| M0-04 | `runtime-security-agent` | `spike/m0-04-classloader-poc` | review | M0-03 | 推送证据与 HandOff，等待 PR #29 的 Build/Governance 全绿并完成评审 |
-| M0-05 | `unassigned` | `spike/m0-05-application-factory-provider-jni-poc` | planned | M0-04 | 仅在 PR #29 合并且 `main` 无豁免通过 strict HandOff 后启动 |
+| M0-04 | `runtime-security-agent` | `spike/m0-04-classloader-poc` | done | M0-03 | PR #29、正式设备矩阵、独立安全复核及四项 PR CI 均通过 |
+| M0-05 | `unassigned` | `spike/m0-05-application-factory-provider-jni-poc` | planned | M0-04 | 从最新 `main` 领取任务，先规划兼容性 PoC 与独立复核所有权 |
 
 ## Decisions and Invariants
 
 - 继续遵守 [ADR-0001](docs/adr/0001-apk-postprocessing-only.md) 至 [ADR-0006](docs/adr/0006-offline-key-protection-boundary.md)。
-- 输入 APK 始终只读；产品输出始终为新的未签名 APK；生产模块不得读取或传递签名凭据。
-- M0-04 的测试签名能力仅存在于被忽略的集成测试产物中，不进入生产模块、分发包或版本库。
-- APK/ZIP/AXML/DEX/证书和所有长度字段均视为不可信输入；payload 中央目录有明确大小和条目数上限，并拒绝重复 payload。
-- 错误和日志只暴露稳定错误码与安全事件类型，不泄露 `sourceDir`、异常 cause 或 payload 内容。
-- API 29/36 镜像和 Emulator 的大体积文件只能位于项目根 `.toolchains/`，不得提交到 Git。
-- 模拟器验收必须限时执行并在 `finally` 中关闭；结束后必须核对 `adb devices` 和本地 Emulator/watchdog 进程。
+- 输入 APK 始终只读；产品输出始终为新的未签名 APK；生产模块不得读取、传递或使用签名凭据。
+- API 29+ 只使用公开 `AppComponentFactory.instantiateClassLoader()` 接入，不使用 hidden API、反射修改 `pathList` 或明文 DEX 落盘回退。
+- M0-04 测试签名能力只存在于被忽略的集成测试产物中，不进入产品模块、分发包或版本库。
+- APK/ZIP/AXML/DEX/证书和所有长度字段均视为不可信输入；日志和异常不得泄露 payload、用户路径或异常 cause。
+- API 镜像与 Emulator 大文件只允许位于项目根 `.toolchains/` 且必须被 Git 忽略。
+- 模拟器验收必须限时执行并在 `finally` 中清理；结束后核对 `adb devices` 与 Emulator/watchdog 进程。
 - 反 dump、反调试、环境检测、签名校验和离线密钥隐藏只能描述为成本防御，不作绝对安全承诺。
 
 ## Changes Since Previous Handoff
 
-- 固定 Emulator 37.1.11 build 15917651、API 29 rev8 和 API 36 rev2，并加入机器可读校验清单与官方来源说明。
-- 将 `.toolchains/` 纳入 `.gitignore`，避免下载包、解压 SDK、AVD 和测试缓存进入版本库。
-- 完整扫描 ZIP 中央目录，限制中央目录和条目数量，拒绝重复 payload，统一安全错误边界。
-- 增加受限 probe 事件、异常路径脱敏、四项文件快照、payload 哈希落盘扫描和验证器自测。
-- 增加缺失、损坏、空 payload 三种真实变异 APK 的冷启动 failure-close 验证。
-- 在固定 API 29/36 x86_64 system image 上完成两套正式验收，并完成独立安全复核。
-- 新增正式证据文档 [docs/evidence/M0-04/formal-api29-api36.md](docs/evidence/M0-04/formal-api29-api36.md)。
+- 将 PR #29 从 draft 转为 ready，并在所有门禁保持全绿、head SHA 未变化的前提下以普通 merge commit 合并。
+- 将 M0-04 工作流状态从 `review` 更新为 `done`，清除活动任务与 owner。
+- 将恢复点从 `spike/m0-04-classloader-poc` 更新为合并后的 `main`。
+- 保留 M0-05 为未分配的 `planned` 状态，不提前实现相邻任务。
 
 ## Verification Evidence
 
@@ -93,7 +90,19 @@ next_owner: /root
 - timestamp: 2026-07-31T15:06:44+08:00
 - artifact: `docs/evidence/M0-04/formal-api29-api36.md`
 - sha256: `57ed7fda2539a8053ea7e361b1db51950dc0096305ae2c514780cc9ec6edef0b`
-- result: PASS; no remaining P0/P1/P2 findings, with later production protections explicitly retained outside M0-04 scope
+- result: PASS; no remaining P0/P1/P2 findings, with later production protections explicitly outside M0-04 scope
+
+### M0-04 PR CI and merge
+
+- task_id: M0-04
+- git_commit: 09c654b36a3ec19225926521dca5127ffef7a556
+- command: `GitHub Actions Build run 30612038332; Governance run 30612038433; merge PR #29 with expected head 12ce7c11a7b4cf8286a86cd2ce150a33a98cfe3e`
+- exit_code: 0
+- environment: GitHub-hosted ubuntu-24.04 and windows-2025; protected main; normal merge commit
+- timestamp: 2026-08-01T00:30:34+08:00
+- artifact: `https://github.com/xiaokh31/androidAppHardening/pull/29`
+- sha256: not_applicable
+- result: PASS; four required PR checks succeeded and GitHub reports PR #29 merged into main
 
 ## Blockers and Required Approvals
 
@@ -101,16 +110,16 @@ None
 
 ## Ordered Next Actions
 
-1. 提交并推送本 HandOff 和正式证据到 `spike/m0-04-classloader-poc`。
-2. 检查草稿 PR #29 的 Windows/Ubuntu Build 和 Governance checks，若失败只修复 M0-04 范围内的原因。
-3. checks 全绿后完成 PR #29 的正常评审；是否从草稿转为 ready 及合并由项目协调者按授权执行。
-4. PR #29 合并后，在最新 `main` 上无 `--allow-pending-branch` 或 `--allow-pending-clean` 运行 strict HandOff、治理、工具链和 diff 校验。
-5. 只有第 4 步通过后，才可领取 M0-05；不得提前实现相邻任务。
+1. 提交并推送本次合并后 HandOff 快照，在最新 `main` 上无豁免运行 strict HandOff、项目治理、固定工具链和 diff 校验。
+2. 检查 merge commit 触发的 `main` Build/Governance 状态，并在完成后补充证据。
+3. 由用户或项目协调者明确授权并分配 M0-05；在授权前保持无活动任务。
+4. M0-05 必须从最新 `main` 创建规定分支，只处理其任务卡范围并预先指定独立安全复核者。
 
 ## Relevant Files and Artifacts
 
 - `HandOff.md`
 - `docs/tasks/M0-04-api29-classloader-poc.md`
+- `docs/tasks/M0-05-application-factory-provider-jni-poc.md`
 - `docs/evidence/M0-04/formal-api29-api36.md`
 - `docs/TOOLCHAIN_AND_PROVENANCE.md`
 - `tools/validation/m0-04-android-packages.json`
@@ -118,20 +127,18 @@ None
 - `tools/validation/verify-m0-04-apk.mjs`
 - `tools/validation/run-m0-04-cold-start.mjs`
 - `tools/validation/run-m0-04-tamper-start.mjs`
-- `runtime/bootstrap/src/main/java/ah/runtime/bootstrap/`
-- `fixtures/android/`
 
 ## Resume Checklist
 
-- [ ] 确认当前分支为 `spike/m0-04-classloader-poc`，工作树干净且 HEAD 包含本 HandOff。
-- [ ] 运行 `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict`。
-- [ ] 运行 `node tools/governance/validate-project-package.mjs`、固定工具链验证和 `git diff --check`。
-- [ ] 检查 PR #29 的 Build/Governance 状态和独立评审结论。
+- [ ] 确认当前分支为 `main`、工作树干净且 HEAD 包含本 HandOff。
+- [ ] 运行 `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict`，不使用任何 pending 豁免。
+- [ ] 运行 `node tools/governance/validate-project-package.mjs`、`node tools/validation/verify-m0-toolchain.mjs` 和 `git diff --check`。
+- [ ] 检查 merge commit 的 Build/Governance push CI。
 - [ ] 不使用用户的 `20a24423 unauthorized` 物理设备，不遗留项目 Emulator/watchdog。
-- [ ] 在 PR #29 合并和最新 `main` strict 验证之前，不启动 M0-05。
+- [ ] 未获 M0-05 明确授权前，不创建分支或实现相邻任务。
 
 ## Handoff Sign-off
 
-- Coordinator `/root` 已核验实际 Git 状态、固定包哈希、两套设备原始证据、独立安全复核和本地进程清理状态。
-- 本 HandOff 提交前使用 `--allow-pending-clean` 验证；提交后必须无豁免通过 strict HandOff。
-- PR CI 是本地离线 lint 依赖缺失后的最终全量 Build/Governance 验证来源；该限制已在正式证据中披露。
+- Coordinator `/root` 已核验 PR #29 head、四项 PR CI、普通 merge commit、正式设备证据、独立安全复核及本地 Git 状态。
+- 本 HandOff 提交前使用 `--allow-pending-clean` 验证；提交后必须在 `main` 无豁免通过 strict HandOff。
+- M0-04 完成不扩大 M0-05 或生产 Runtime 的能力声明。

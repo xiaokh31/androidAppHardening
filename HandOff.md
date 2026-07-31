@@ -68,7 +68,7 @@ next_owner: /root
 - environment: Windows 10 10.0.19045 x64; Temurin 17.0.19+10; Gradle 9.5.0; Node.js 24.12.0; Emulator 37.1.11; API 29 rev8 and API 36 rev2 x86_64 non-root AVDs
 - timestamp: 2026-07-31T15:06:44+08:00
 - artifact: `docs/evidence/M0-04/formal-api29-api36.md`; ignored raw evidence under `build/m0-04/evidence/`
-- sha256: 57ed7fda2539a8053ea7e361b1db51950dc0096305ae2c514780cc9ec6edef0b
+- sha256: `57ed7fda2539a8053ea7e361b1db51950dc0096305ae2c514780cc9ec6edef0b`
 - result: PASS; both devices passed 1/1 instrumentation, 20/20 cold starts, complete snapshots, zero forbidden log/file/hash hits, and 3/3 real failure-close variants
 
 ### M0-04 pinned Android packages
@@ -80,7 +80,7 @@ next_owner: /root
 - environment: Windows 10 10.0.19045 x64; Node.js 24.12.0; project-local `.toolchains/android-m0-04`
 - timestamp: 2026-07-31T15:06:44+08:00
 - artifact: `tools/validation/m0-04-android-packages.json`
-- sha256: cbc44d8325f44f3bef1f1529c0bbf77d42c8fd13e494aba4e10e27ba6813b6c2
+- sha256: `cbc44d8325f44f3bef1f1529c0bbf77d42c8fd13e494aba4e10e27ba6813b6c2`
 - result: PASS; all three official archive SHA-1 and project SHA-256 values match the fixed manifest
 
 ### M0-04 independent security review
@@ -92,7 +92,7 @@ next_owner: /root
 - environment: independent `m0_04_security_review` Agent; reviewed commit and ignored evidence hashes independently
 - timestamp: 2026-07-31T15:06:44+08:00
 - artifact: `docs/evidence/M0-04/formal-api29-api36.md`
-- sha256: 57ed7fda2539a8053ea7e361b1db51950dc0096305ae2c514780cc9ec6edef0b
+- sha256: `57ed7fda2539a8053ea7e361b1db51950dc0096305ae2c514780cc9ec6edef0b`
 - result: PASS; no remaining P0/P1/P2 findings, with later production protections explicitly retained outside M0-04 scope
 
 ## Blockers and Required Approvals

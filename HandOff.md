@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260801-003121
-updated_at: 2026-08-01T00:31:21+08:00
+handoff_id: HO-20260801-003228
+updated_at: 2026-08-01T00:32:28+08:00
 updated_by: /root
 state: ready
 source_branch: main
@@ -23,6 +23,7 @@ next_owner: unassigned
 
 - M0-04 的唯一 [PR #29](https://github.com/xiaokh31/androidAppHardening/pull/29) 已于 `2026-08-01T00:30:34+08:00` 以普通 merge commit `09c654b36a3ec19225926521dca5127ffef7a556` 合并到 `main`。
 - PR head `12ce7c11a7b4cf8286a86cd2ce150a33a98cfe3e` 的 Build #9 与 Governance #18 在 Ubuntu 24.04 和 Windows 2025 四项门禁全部通过。
+- 合并后的 `main@fdf43361ff42680bb69daa24783ef528dba1411c` 已无任何 pending 豁免通过 strict HandOff、项目治理、固定工具链、官方包哈希和 diff 校验。
 - API 29 rev8 与 API 36 rev2 两套非 root x86_64 验收均通过：instrumentation 1/1、冷启动 20/20、三种真实变异 APK 3/3 failure-closed、零禁止日志/文件/payload 哈希落盘命中。
 - 独立安全复核结果为 `PASS`，没有剩余 P0/P1/P2 发现。
 - Emulator 37.1.11、API 29 rev8 和 API 36 rev2 官方大体积包只位于项目根下被忽略的 `.toolchains/`；未提交到 Git，验收后没有遗留项目 Emulator 或 watchdog。
@@ -52,6 +53,7 @@ next_owner: unassigned
 - 将 PR #29 从 draft 转为 ready，并在所有门禁保持全绿、head SHA 未变化的前提下以普通 merge commit 合并。
 - 将 M0-04 工作流状态从 `review` 更新为 `done`，清除活动任务与 owner。
 - 将恢复点从 `spike/m0-04-classloader-poc` 更新为合并后的 `main`。
+- 在合并后的 `main` 提交 HandOff 快照并完成无豁免 strict 验证。
 - 保留 M0-05 为未分配的 `planned` 状态，不提前实现相邻任务。
 
 ## Verification Evidence
@@ -104,16 +106,27 @@ next_owner: unassigned
 - sha256: not_applicable
 - result: PASS; four required PR checks succeeded and GitHub reports PR #29 merged into main
 
+### M0-04 merged-main strict validation
+
+- task_id: M0-04
+- git_commit: fdf43361ff42680bb69daa24783ef528dba1411c
+- command: `validate-handoff.mjs HandOff.md --strict; validate-project-package.mjs; verify-m0-toolchain.mjs; verify-m0-04-android-packages.mjs; git diff --check HEAD^ HEAD`
+- exit_code: 0
+- environment: Windows 10 10.0.19045 x64; Git 2.52.0; Node.js 24.12.0; main branch with clean working tree
+- timestamp: 2026-08-01T00:32:28+08:00
+- artifact: `HandOff.md`
+- sha256: `b085cb274afdbaa24f7b545d7676d459a24d9fbb6a0d7cd992d09edc6a262118`
+- result: PASS; strict HandOff ran on merged main without pending-branch or pending-clean exemptions, and all companion validations succeeded
+
 ## Blockers and Required Approvals
 
 None
 
 ## Ordered Next Actions
 
-1. 提交并推送本次合并后 HandOff 快照，在最新 `main` 上无豁免运行 strict HandOff、项目治理、固定工具链和 diff 校验。
-2. 检查 merge commit 触发的 `main` Build/Governance 状态，并在完成后补充证据。
-3. 由用户或项目协调者明确授权并分配 M0-05；在授权前保持无活动任务。
-4. M0-05 必须从最新 `main` 创建规定分支，只处理其任务卡范围并预先指定独立安全复核者。
+1. 推送最终 HandOff 证据快照，并检查 `main` Build/Governance push CI。
+2. 由用户或项目协调者明确授权并分配 M0-05；在授权前保持无活动任务。
+3. M0-05 必须从最新 `main` 创建规定分支，只处理其任务卡范围并预先指定独立安全复核者。
 
 ## Relevant Files and Artifacts
 
@@ -140,5 +153,5 @@ None
 ## Handoff Sign-off
 
 - Coordinator `/root` 已核验 PR #29 head、四项 PR CI、普通 merge commit、正式设备证据、独立安全复核及本地 Git 状态。
-- 本 HandOff 提交前使用 `--allow-pending-clean` 验证；提交后必须在 `main` 无豁免通过 strict HandOff。
+- 合并后 `main@fdf43361ff42680bb69daa24783ef528dba1411c` 已无豁免通过 strict HandOff；最终证据提交后必须再次复验。
 - M0-04 完成不扩大 M0-05 或生产 Runtime 的能力声明。

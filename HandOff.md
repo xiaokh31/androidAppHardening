@@ -1,12 +1,12 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260731-082043
-updated_at: 2026-07-31T08:20:43+08:00
+handoff_id: HO-20260731-082534
+updated_at: 2026-07-31T08:25:34+08:00
 updated_by: /root
 state: ready
 source_branch: main
-base_commit: cb491af037ce1f9597b7792dc66b5f8f383187dc
+base_commit: 467f491f7356f88aeede451701ac6093768d36fd
 working_tree: clean
 current_milestone: M0
 active_task: M0-03
@@ -49,6 +49,7 @@ next_owner: unassigned
 - `1fc5fb6380b97ba2a2a54df0409429f4730f6d77`：建立 Apache-2.0 公共仓库种子和基础文本规范。
 - `1e5264e208ac37f3b8bd5331f59ed5a6d5eef78b`：加入核心策划文档、ADR、25 张任务卡、Agent 角色规则和 GitHub 模板。
 - `cb491af037ce1f9597b7792dc66b5f8f383187dc`：加入 6 个项目 Skills、严格 HandOff 校验及 11 个负向测试、项目包校验、不可变提交树哈希工具和双平台治理工作流，并冻结启动早期公开 API、模块边界、无环依赖图与 AHDC v1 二进制协议合同。
+- `467f491f7356f88aeede451701ac6093768d36fd`：把 `actions/checkout` 与 `actions/setup-node` 更新为官方 v7 的完整固定提交，工作流 Action 运行时统一为 Node 24。
 - GitHub 同步完成：5 个 Milestone、14 个 Label、25 个同编号 Issue、PR #26 的治理标签与双平台 CI 证据均已建立。
 
 ## Verification Evidence
@@ -68,49 +69,49 @@ next_owner: unassigned
 ### M0-02 immutable governance manifest
 
 - task_id: `M0-02`
-- git_commit: `cb491af037ce1f9597b7792dc66b5f8f383187dc`
-- command: `node tools/governance/hash-project-package.mjs --commit cb491af037ce1f9597b7792dc66b5f8f383187dc`
+- git_commit: `467f491f7356f88aeede451701ac6093768d36fd`
+- command: `node tools/governance/hash-project-package.mjs --commit 467f491f7356f88aeede451701ac6093768d36fd`
 - exit_code: `0`
 - environment: `Windows NT 10.0.19045; Git 2.52.0; Node.js 24.12.0`
-- timestamp: `2026-07-31T08:19:56+08:00`
+- timestamp: `2026-07-31T08:25:06+08:00`
 - artifact: `immutable commit-tree manifest over 80 files, excluding HandOff.md`
-- sha256: `1446311366c3e9d9f91cf382be0006c02862f8ce254d8a5a5e03e1a02e4a866c`
+- sha256: `4fa64772061314da20248dd28e1223bad6c1284bda1e461cd103953ae49c0eb8`
 - result: `PASS; manifest covers the complete governance-only package at the evidenced commit`
 
 ### M0-02 local governance and Skill validation
 
 - task_id: `M0-02`
-- git_commit: `cb491af037ce1f9597b7792dc66b5f8f383187dc`
+- git_commit: `467f491f7356f88aeede451701ac6093768d36fd`
 - command: `validate-handoff.mjs HandOff.md --strict; test-handoff-validator.mjs; validate-project-package.mjs --require-governance-only; quick_validate.py for each .agents/skills directory`
 - exit_code: `0`
 - environment: `Windows NT 10.0.19045; Git 2.52.0; Node.js 24.12.0; bundled Python and skill-creator validator`
-- timestamp: `2026-07-31T08:20:43+08:00`
+- timestamp: `2026-07-31T08:25:34+08:00`
 - artifact: `25 task cards; 11 core documents; 6 ADRs; 6 valid Skills; 11 negative HandOff cases`
-- sha256: `1446311366c3e9d9f91cf382be0006c02862f8ce254d8a5a5e03e1a02e4a866c`
+- sha256: `4fa64772061314da20248dd28e1223bad6c1284bda1e461cd103953ae49c0eb8`
 - result: `PASS; task IDs and links are complete, dependencies are acyclic, and the repository remains governance-only`
 
 ### M0-02 Ubuntu governance CI
 
 - task_id: `M0-02`
-- git_commit: `cb491af037ce1f9597b7792dc66b5f8f383187dc`
+- git_commit: `467f491f7356f88aeede451701ac6093768d36fd`
 - command: `GitHub Actions Governance / Governance (ubuntu-24.04)`
 - exit_code: `0`
 - environment: `GitHub-hosted ubuntu-24.04; Node.js 24.12.0`
-- timestamp: `2026-07-31T00:18:12Z`
-- artifact: `https://github.com/xiaokh31/androidAppHardening/actions/runs/30593139095/job/91039542620`
-- sha256: `1446311366c3e9d9f91cf382be0006c02862f8ce254d8a5a5e03e1a02e4a866c`
+- timestamp: `2026-07-31T00:24:33Z`
+- artifact: `https://github.com/xiaokh31/androidAppHardening/actions/runs/30593439005/job/91040491406`
+- sha256: `4fa64772061314da20248dd28e1223bad6c1284bda1e461cd103953ae49c0eb8`
 - result: `PASS; syntax, governance-only snapshot, pending-main HandOff, negative tests, and Git object database verified`
 
 ### M0-02 Windows governance CI
 
 - task_id: `M0-02`
-- git_commit: `cb491af037ce1f9597b7792dc66b5f8f383187dc`
+- git_commit: `467f491f7356f88aeede451701ac6093768d36fd`
 - command: `GitHub Actions Governance / Governance (windows-2025)`
 - exit_code: `0`
 - environment: `GitHub-hosted windows-2025; Node.js 24.12.0`
-- timestamp: `2026-07-31T00:18:30Z`
-- artifact: `https://github.com/xiaokh31/androidAppHardening/actions/runs/30593139095/job/91039542606`
-- sha256: `1446311366c3e9d9f91cf382be0006c02862f8ce254d8a5a5e03e1a02e4a866c`
+- timestamp: `2026-07-31T00:25:05Z`
+- artifact: `https://github.com/xiaokh31/androidAppHardening/actions/runs/30593439005/job/91040491344`
+- sha256: `4fa64772061314da20248dd28e1223bad6c1284bda1e461cd103953ae49c0eb8`
 - result: `PASS; syntax, governance-only snapshot, pending-main HandOff, negative tests, and Git object database verified`
 
 ## Blockers and Required Approvals
@@ -155,6 +156,6 @@ None
 ## Handoff Sign-off
 
 - generated_by: `/root`
-- generated_at: `2026-07-31T08:20:43+08:00`
+- generated_at: `2026-07-31T08:25:34+08:00`
 - validation_command: `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict --allow-pending-branch`
 - validation_result: `PASS on PR target; strict validation required again on main`

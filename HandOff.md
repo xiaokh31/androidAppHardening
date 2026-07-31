@@ -1,12 +1,12 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260731-101221
-updated_at: 2026-07-31T10:12:21+08:00
+handoff_id: HO-20260731-101736
+updated_at: 2026-07-31T10:17:36+08:00
 updated_by: /root
 state: active
 source_branch: feat/m0-03-toolchain-gradle-ci
-base_commit: 44fb8811a3f7639d9e2a57fd8b028107ecf2a2a0
+base_commit: 305a60898e04d5ab631534705d7b37c2f533021d
 working_tree: dirty
 current_milestone: M0
 active_task: M0-03
@@ -28,13 +28,13 @@ next_owner: qa-governance-agent
 - 独立复审在 `e0a7860a6fb3fce12fc4ed69389948343b82055a` 又定位到两个语义缺口；`101c2736eed032dae703272aaf1b3ee4a8f3e82a` 与 `cc09d8c11835391085ee6db57ee92a96ec1bece7` 已分别修复条件化 fixture 验证和提交态 HandOff。
 - PR #27 已通过普通 merge commit `44fb8811a3f7639d9e2a57fd8b028107ecf2a2a0` 合并到 `main`。
 - GitHub 已建立 5 个里程碑、14 个计划自定义标签和与 25 张任务卡一一对应的 Issues；`main` 分支保护要求两项严格治理检查和 PR 流程。
-- M0-03 已分配给 `qa-governance-agent`，固定分支 `feat/m0-03-toolchain-gradle-ci` 正在实现工具链、十四模块空骨架与 CI。
+- M0-03 已分配给 `qa-governance-agent`；固定分支 `feat/m0-03-toolchain-gradle-ci` 的实现提交 `305a60898e04d5ab631534705d7b37c2f533021d` 已完成本地验证，正在补充证据并发布唯一 PR。
 
 ## Active Workstreams
 
 | Task | Owner | Branch | Status | Dependencies | Next checkpoint |
 |---|---|---|---|---|---|
-| M0-03 | `qa-governance-agent` | `feat/m0-03-toolchain-gradle-ci` | in_progress | M0-02 | 审查、提交、推送并创建唯一 PR |
+| M0-03 | `qa-governance-agent` | `feat/m0-03-toolchain-gradle-ci` | in_progress | M0-02 | 提交本地证据、推送并创建唯一 PR，等待双平台 CI |
 | M0-04 | `unassigned` | `spike/m0-04-api29-classloader-poc` | planned | M0-03 | M0-03 完成后并行启动 ClassLoader PoC |
 | M0-05 | `unassigned` | `spike/m0-05-application-factory-provider-jni-poc` | planned | M0-04 | M0-04 通过后启动兼容性 PoC |
 
@@ -59,7 +59,8 @@ next_owner: qa-governance-agent
 - `101c2736eed032dae703272aaf1b3ee4a8f3e82a`：把 synthetic fixture 验证限定到提供或明确消费 fixture 的任务，明确 M0-03 记录 `not_applicable`，并为该规则加入自动回归断言。
 - `cc09d8c11835391085ee6db57ee92a96ec1bece7`：删除已完成动作和提交前工作树描述，准确记录 PR #27、冻结提交及复审解除条件。
 - `44fb8811a3f7639d9e2a57fd8b028107ecf2a2a0`：以普通 merge commit 合并 PR #27，完成 M0-02 治理审计修复。
-- 当前活动快照：M0-03 的锁定工具链、十四模块空骨架、依赖验证和双平台 CI 已完成本地 Windows/离线验证；GitHub CLI 认证已恢复，正在进行发布前审查，尚未标记完成。
+- `305a60898e04d5ab631534705d7b37c2f533021d`：建立锁定工具链、十四模块空骨架、严格依赖验证、四 ABI 空库构建和双平台 CI；删除治理工作流的纯文本快照限制，同时保留永久治理校验。
+- 当前活动快照：M0-03 已完成本地 Windows 在线缓存与离线复验；详细证据正在写入 `docs/evidence/M0-03/local-windows.md`，尚未创建 PR 或取得双平台 CI 结果，因此未标记完成。
 
 ## Verification Evidence
 
@@ -195,6 +196,18 @@ next_owner: qa-governance-agent
 - sha256: `9a9039aa64b89c4e50394fbb83f42874063358868f6f2dd9787fbd0fe1dd5197`
 - result: `PASS; public Apache-2.0 repository, five milestones, fourteen custom labels, twenty-five indexed Issues, merge-only policy and strict protected-main checks match the project package`
 
+### M0-03 local Windows and offline validation
+
+- task_id: `M0-03`
+- git_commit: `305a60898e04d5ab631534705d7b37c2f533021d`
+- command: `.\gradlew.bat --no-daemon projects; .\gradlew.bat --no-daemon clean check lint verifyGovernance :runtime:native:assemble; repeat full command with --offline; test-dependency-verification.mjs; llvm-readobj --file-headers for four stripped debug libraries`
+- exit_code: `0`
+- environment: `Windows NT 10.0.19045 x64; Temurin JDK 17.0.19+10; Gradle 9.5.0; Node.js 24.12.0; Android Platform 36; Build Tools 36.1.0; NDK 29.0.14206865; CMake 4.1.2`
+- timestamp: `2026-07-31T10:16:15+08:00`
+- artifact: `docs/evidence/M0-03/local-windows.md; immutable commit-tree manifest over 130 files excluding HandOff.md`
+- sha256: `ab4dadcc7b9a5e2ca120f1a97d11df43b59ba7de3555163ccc5ea3bbdc70b8fa`
+- result: `PASS; fourteen required modules, strict dependency verification including tamper failure, permanent governance checks, offline rebuild and four architecture-matched empty libraries verified; fixture validation is not_applicable`
+
 ## Blockers and Required Approvals
 
 None
@@ -228,18 +241,19 @@ None
 - `tools/governance/validate-project-package.mjs`
 - `tools/governance/hash-project-package.mjs`
 - `tools/governance/test-handoff-validator.mjs`
+- `docs/evidence/M0-03/local-windows.md`
 
 ## Resume Checklist
 
 1. 在 `feat/m0-03-toolchain-gradle-ci` 确认工作树状态，并运行 strict HandOff 与项目治理校验。
 2. 确认 Issue #3 仍为 open，唯一工作分支为 `feat/m0-03-toolchain-gradle-ci`。
-3. 复核 diff、敏感信息和 UTF-8，显式暂存 M0-03 文件并提交。
-4. 推送固定分支，创建唯一 draft PR，等待 Windows/Ubuntu checks。
+3. 复核本地证据、敏感信息和 UTF-8，提交证据与活动 HandOff。
+4. 推送固定分支，创建唯一 draft PR，等待 Windows/Ubuntu build 与 governance checks。
 5. CI 通过后由 `/root` 整合证据与 Worker Handoff，准备 merger-ready HandOff。
 
 ## Handoff Sign-off
 
 - generated_by: `/root`
-- generated_at: `2026-07-31T10:12:21+08:00`
+- generated_at: `2026-07-31T10:17:36+08:00`
 - validation_command: `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict`
-- validation_result: `PASS for active M0-03 publish state with dirty worktree`
+- validation_result: `PASS for active M0-03 evidence state with dirty worktree`

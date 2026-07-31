@@ -1,13 +1,13 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260731-101736
-updated_at: 2026-07-31T10:17:36+08:00
+handoff_id: HO-20260731-103643
+updated_at: 2026-07-31T10:36:43+08:00
 updated_by: /root
 state: active
 source_branch: feat/m0-03-toolchain-gradle-ci
-base_commit: 305a60898e04d5ab631534705d7b37c2f533021d
-working_tree: dirty
+base_commit: 8fec1a57f3f10f9bcf5a83e2163618db22eac735
+working_tree: clean
 current_milestone: M0
 active_task: M0-03
 next_owner: qa-governance-agent
@@ -28,13 +28,14 @@ next_owner: qa-governance-agent
 - 独立复审在 `e0a7860a6fb3fce12fc4ed69389948343b82055a` 又定位到两个语义缺口；`101c2736eed032dae703272aaf1b3ee4a8f3e82a` 与 `cc09d8c11835391085ee6db57ee92a96ec1bece7` 已分别修复条件化 fixture 验证和提交态 HandOff。
 - PR #27 已通过普通 merge commit `44fb8811a3f7639d9e2a57fd8b028107ecf2a2a0` 合并到 `main`。
 - GitHub 已建立 5 个里程碑、14 个计划自定义标签和与 25 张任务卡一一对应的 Issues；`main` 分支保护要求两项严格治理检查和 PR 流程。
-- M0-03 已分配给 `qa-governance-agent`；固定分支 `feat/m0-03-toolchain-gradle-ci` 的实现提交 `305a60898e04d5ab631534705d7b37c2f533021d` 已完成本地验证，正在补充证据并发布唯一 PR。
+- M0-03 已分配给 `qa-governance-agent`；固定分支 `feat/m0-03-toolchain-gradle-ci` 的实现与本地证据已提交，并由唯一草稿 [PR #28](https://github.com/xiaokh31/androidAppHardening/pull/28) 跟踪。
+- PR #28 首轮 Windows Build 已成功；双平台 Governance 因已提交 HandOff 仍声明 dirty 而失败，Ubuntu Build 因 `sdkmanager` 未使用 Android SDK 内固定路径而失败，限定 CI 修复正在提交。
 
 ## Active Workstreams
 
 | Task | Owner | Branch | Status | Dependencies | Next checkpoint |
 |---|---|---|---|---|---|
-| M0-03 | `qa-governance-agent` | `feat/m0-03-toolchain-gradle-ci` | in_progress | M0-02 | 提交本地证据、推送并创建唯一 PR，等待双平台 CI |
+| M0-03 | `qa-governance-agent` | `feat/m0-03-toolchain-gradle-ci` | in_progress | M0-02 | 推送限定 CI 修复并等待 PR #28 双平台门禁 |
 | M0-04 | `unassigned` | `spike/m0-04-api29-classloader-poc` | planned | M0-03 | M0-03 完成后并行启动 ClassLoader PoC |
 | M0-05 | `unassigned` | `spike/m0-05-application-factory-provider-jni-poc` | planned | M0-04 | M0-04 通过后启动兼容性 PoC |
 
@@ -60,7 +61,8 @@ next_owner: qa-governance-agent
 - `cc09d8c11835391085ee6db57ee92a96ec1bece7`：删除已完成动作和提交前工作树描述，准确记录 PR #27、冻结提交及复审解除条件。
 - `44fb8811a3f7639d9e2a57fd8b028107ecf2a2a0`：以普通 merge commit 合并 PR #27，完成 M0-02 治理审计修复。
 - `305a60898e04d5ab631534705d7b37c2f533021d`：建立锁定工具链、十四模块空骨架、严格依赖验证、四 ABI 空库构建和双平台 CI；删除治理工作流的纯文本快照限制，同时保留永久治理校验。
-- 当前活动快照：M0-03 已完成本地 Windows 在线缓存与离线复验；详细证据正在写入 `docs/evidence/M0-03/local-windows.md`，尚未创建 PR 或取得双平台 CI 结果，因此未标记完成。
+- `8fec1a57f3f10f9bcf5a83e2163618db22eac735`：记录 M0-03 本地 Windows、离线、依赖篡改与四 ABI 架构证据，并更新活动 HandOff。
+- 当前活动快照：唯一草稿 PR #28 已创建；首轮 Windows Build 成功，Ubuntu 工具路径和提交态 HandOff 的两项限定 CI 修复待推送，任务尚未标记完成。
 
 ## Verification Evidence
 
@@ -214,7 +216,7 @@ None
 
 ## Ordered Next Actions
 
-1. 由 `/root` 完成 M0-03 diff 审查、提交、推送和唯一 PR，等待双平台 CI。
+1. 由 `/root` 推送 PR #28 的限定 CI 修复，等待 Windows/Ubuntu Build 与 Governance 全部成功并记录链接。
 2. M0-03 合并后启动 M0-04 ClassLoader PoC。
 3. M0-04 通过后启动 M0-05 兼容性 PoC。
 4. M0 门禁通过后冻结容器接口，再并行启动 M1 与 M2。
@@ -247,13 +249,13 @@ None
 
 1. 在 `feat/m0-03-toolchain-gradle-ci` 确认工作树状态，并运行 strict HandOff 与项目治理校验。
 2. 确认 Issue #3 仍为 open，唯一工作分支为 `feat/m0-03-toolchain-gradle-ci`。
-3. 复核本地证据、敏感信息和 UTF-8，提交证据与活动 HandOff。
-4. 推送固定分支，创建唯一 draft PR，等待 Windows/Ubuntu build 与 governance checks。
+3. 复核限定 CI 修复、敏感信息和 UTF-8，确认 HandOff 的 post-commit clean 状态。
+4. 推送固定分支并等待 PR #28 的 Windows/Ubuntu Build 与 Governance checks。
 5. CI 通过后由 `/root` 整合证据与 Worker Handoff，准备 merger-ready HandOff。
 
 ## Handoff Sign-off
 
 - generated_by: `/root`
-- generated_at: `2026-07-31T10:17:36+08:00`
-- validation_command: `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict`
-- validation_result: `PASS for active M0-03 evidence state with dirty worktree`
+- generated_at: `2026-07-31T10:36:43+08:00`
+- validation_command: `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict --allow-pending-clean`
+- validation_result: `PASS for active M0-03 CI-fix snapshot declaring post-commit clean worktree`

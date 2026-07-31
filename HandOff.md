@@ -1,23 +1,23 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260731-112236
-updated_at: 2026-07-31T11:22:36+08:00
+handoff_id: HO-20260731-122012
+updated_at: 2026-07-31T12:20:12+08:00
 updated_by: /root
-state: ready
-source_branch: main
-base_commit: cd182b0e762eda914ca297a5f9fdeada13dad6a9
+state: blocked
+source_branch: spike/m0-04-classloader-poc
+base_commit: 1fc855c71bbd16141b419b928ffdad4f998ad3d6
 working_tree: clean
 current_milestone: M0
 active_task: M0-04
-next_owner: unassigned
+next_owner: runtime-security-agent
 ---
 
 # Project HandOff
 
 ## Objective
 
-以只读独立 APK 为输入，开发一个离线后处理工具，将业务 DEX 转换为版本化认证加密容器并注入四 ABI Android Runtime，最终只生成新的未签名 APK。M0-01、M0-02 与 M0-03 的仓库治理和跨平台工具链基线已完成验证；PR #28 合并后的下一入口是 M0-04 ClassLoader PoC，仓库仍不包含 Host 或 Android Runtime 业务实现。
+以只读独立 APK 为输入，开发一个离线后处理工具，将业务 DEX 转换为版本化认证加密容器并注入四 ABI Android Runtime，最终只生成新的未签名 APK。M0-01、M0-02 与 M0-03 的仓库治理和跨平台工具链基线已完成验证；当前只执行 M0-04 ClassLoader PoC，用 API 29+ 公开入口验证内存 DEX 加载可行性，不提前实现 M0-05 或可发布 Runtime。
 
 ## Current State
 
@@ -28,16 +28,19 @@ next_owner: unassigned
 - 独立复审在 `e0a7860a6fb3fce12fc4ed69389948343b82055a` 又定位到两个语义缺口；`101c2736eed032dae703272aaf1b3ee4a8f3e82a` 与 `cc09d8c11835391085ee6db57ee92a96ec1bece7` 已分别修复条件化 fixture 验证和提交态 HandOff。
 - PR #27 已通过普通 merge commit `44fb8811a3f7639d9e2a57fd8b028107ecf2a2a0` 合并到 `main`。
 - GitHub 已建立 5 个里程碑、14 个计划自定义标签和与 25 张任务卡一一对应的 Issues；`main` 分支保护要求两项严格治理检查和 PR 流程。
-- M0-03 固定分支 `feat/m0-03-toolchain-gradle-ci` 由唯一草稿 [PR #28](https://github.com/xiaokh31/androidAppHardening/pull/28) 跟踪；实现、跨平台修复、本地证据和 CI 证据均已提交。
-- PR #28 在 `cd182b0e762eda914ca297a5f9fdeada13dad6a9` 上的 Windows/Ubuntu Build 与 Governance 四项门禁全部成功；本快照只准备合并后的 `main` 恢复状态，不预称 PR 已合并。
-- M0-04 尚未分配，必须在 PR #28 合并并由 `main` 无豁免通过 strict HandOff 后领取。
+- M0-03 固定分支 `feat/m0-03-toolchain-gradle-ci` 的唯一 [PR #28](https://github.com/xiaokh31/androidAppHardening/pull/28) 已通过普通 merge commit `978d357a8f0203ee90ebcfff6ede64c09bf6135e` 合并；Issue #3 已关闭。
+- 合并后的 `main` 已无 `--allow-pending-branch` 或 `--allow-pending-clean` 通过 strict HandOff、项目治理、工具链和 diff 校验；push 触发的 Windows/Ubuntu Build 与 Governance 也全部成功。
+- M0-04 已由 `runtime-security-agent` 在规定分支 `spike/m0-04-classloader-poc` 启动，唯一跟踪项为 [Issue #4](https://github.com/xiaokh31/androidAppHardening/issues/4)。GitHub App 对添加 assignee 返回 `403 Resource not accessible by integration`，因此 Issue 页面 assignee 暂为空，但根 HandOff 已记录实际所有权。
+- `1fc855c71bbd16141b419b928ffdad4f998ad3d6` 已实现隔离 `classloaderPoc` flavor、公开 `AppComponentFactory`/`InMemoryDexClassLoader` PoC、固定 STORED payload DEX、稳定 `AAH-P001` 失败路径、instrumentation 与静态/冷启动验证器；未实现 M0-05 范围。
+- 固定 JDK 的全仓构建和 API 34 x86_64 非 root AVD 烟测已通过，包含 1/1 instrumentation、3 个负向 payload、20/20 冷启动、零禁止日志和零明文落盘命中；API 34 仅为非验收证据。
+- 本地 Android SDK 不含任务卡要求的 API 29 与 API 36 x86_64 system image，仓库也未固定可下载的 system-image 包版本、校验值和来源。依照工具链来源规则未下载任意最新镜像，因此 M0-04 正式 gate 保持 blocked，M0-05 不得启动。
 
 ## Active Workstreams
 
 | Task | Owner | Branch | Status | Dependencies | Next checkpoint |
 |---|---|---|---|---|---|
-| M0-03 | `qa-governance-agent` | `feat/m0-03-toolchain-gradle-ci` | done | M0-02 | 合并唯一 PR #28，并在 `main` 复验 strict HandOff |
-| M0-04 | `unassigned` | `spike/m0-04-api29-classloader-poc` | planned | M0-03 | PR #28 合并且 `main` 严格校验通过后启动 ClassLoader PoC |
+| M0-03 | `qa-governance-agent` | `feat/m0-03-toolchain-gradle-ci` | done | M0-02 | PR #28、合并后 strict HandOff 与 push CI 证据完整 |
+| M0-04 | `runtime-security-agent` | `spike/m0-04-classloader-poc` | blocked | M0-03 | 固定并提供 API 29/36 x86_64 image 后补跑两套正式设备门禁 |
 | M0-05 | `unassigned` | `spike/m0-05-application-factory-provider-jni-poc` | planned | M0-04 | M0-04 通过后启动兼容性 PoC |
 
 ## Decisions and Invariants
@@ -67,6 +70,9 @@ next_owner: unassigned
 - `f755296251f42cd40f3a0f77f1dd31340317c92f`：将 Unix Gradle Wrapper 入口的 Git 模式从 `100644` 修正为 `100755`，脚本内容不变。
 - `cd182b0e762eda914ca297a5f9fdeada13dad6a9`：为官方 Google Maven Linux `aapt2` artifact 补充重复下载核验的 SHA-256，保持严格依赖校验。
 - 当前 merger-ready 快照：PR #28 的 Windows/Ubuntu Build 与 Governance 四项门禁全部成功；详细 CI 证据位于 `docs/evidence/M0-03/ci-pr-28.md`。
+- `978d357a8f0203ee90ebcfff6ede64c09bf6135e`：以普通 merge commit 合并 PR #28；合并后的 `main` 无豁免通过 strict HandOff、本地治理和工具链校验，push Build 与 Governance 全部成功。
+- 从上述已验证 `main` 创建 `spike/m0-04-classloader-poc`，按 Issue #4 和任务卡启动 M0-04；未启动 M0-05。
+- `1fc855c71bbd16141b419b928ffdad4f998ad3d6`：实现 M0-04 的公开 ClassLoader PoC、隔离 fixture flavor、构建期单 DEX 生成、失败关闭、instrumentation、静态 APK 合同与冷启动验证脚本；把 M0-03 空源码边界保留为显式历史校验模式，默认永久校验继续检查固定工具链和十四模块图。
 
 ## Verification Evidence
 
@@ -238,16 +244,67 @@ next_owner: unassigned
 - sha256: `18c63310289a6c03781250430188da0bcb90bab7b106adf6c38992708ad3c4d1`
 - result: `PASS; permanent project package validation, pending-main HandOff, negative cases, sensitive scan and Git object verification succeeded on both platforms`
 
+### M0-03 merged-main strict validation
+
+- task_id: `M0-03`
+- git_commit: `978d357a8f0203ee90ebcfff6ede64c09bf6135e`
+- command: `validate-handoff.mjs HandOff.md --strict; validate-project-package.mjs; verify-m0-toolchain.mjs; git diff --check; git merge-base --is-ancestor cd182b0e762eda914ca297a5f9fdeada13dad6a9 HEAD`
+- exit_code: `0`
+- environment: `Windows NT 10.0.19045 x64; Git 2.52.0; Node.js 24.12.0; main at merge commit with clean working tree`
+- timestamp: `2026-07-31T11:28:00+08:00`
+- artifact: `https://github.com/xiaokh31/androidAppHardening/commit/978d357a8f0203ee90ebcfff6ede64c09bf6135e`
+- sha256: `dadf51d8438cde27ecf9a3d951eb4d7efee7c42a8d80a3185cb9b70b401300d3`
+- result: `PASS; strict HandOff ran on main without pending exemptions and the merge contains the final M0-03 head`
+
+### M0-03 merged-main push CI
+
+- task_id: `M0-03`
+- git_commit: `978d357a8f0203ee90ebcfff6ede64c09bf6135e`
+- command: `GitHub Actions Build run 30601930828; Governance run 30601930798`
+- exit_code: `0`
+- environment: `GitHub-hosted ubuntu-24.04 and windows-2025 x64`
+- timestamp: `2026-07-31T03:39:00Z`
+- artifact: `https://github.com/xiaokh31/androidAppHardening/actions/runs/30601930828`
+- sha256: `dadf51d8438cde27ecf9a3d951eb4d7efee7c42a8d80a3185cb9b70b401300d3`
+- result: `PASS; merged-main Build and Governance jobs succeeded on Ubuntu and Windows`
+
+### M0-04 local Windows build and API 34 smoke
+
+- task_id: `M0-04`
+- git_commit: `1fc855c71bbd16141b419b928ffdad4f998ad3d6`
+- command: `gradlew.bat --no-daemon check lint verifyGovernance :runtime:native:assemble :fixtures:android:assembleClassloaderPocDebugAndroidTest; connectedClassloaderPocDebugAndroidTest; verify-m0-04-apk.mjs; run-m0-04-cold-start.mjs --iterations 20`
+- exit_code: `0`
+- environment: `Windows 10 10.0 amd64; Temurin JDK 17.0.19+10; Gradle 9.5.0; Node.js 24.12.0; API 34 x86_64 AVD; shell uid 2000`
+- timestamp: `2026-07-31T12:18:09+08:00`
+- artifact: `fixtures/android/build/outputs/apk/classloaderPoc/debug/android-classloaderPoc-debug.apk; detailed report docs/evidence/M0-04/local-windows-api34-smoke.md`
+- sha256: `4c0dc83351511de4728baa27c36858f5cd98f2faa7d0fb389fd3857d278bba7c`
+- result: `PASS smoke only; APK hash is recorded above, payload DEX 77fdfdb6e35a0f09747c09c28b245a289cdc5126af0c7e2a719581548318cda1 and test APK 069ce8488eb842361821488085d376da58517f13f683a827f17bd6431e5a846d; 1/1 instrumentation, required event order, InMemoryDexClassLoader identity, three AAH-P001 negative paths, 20/20 cold starts, zero forbidden logs and files`
+
+### M0-04 formal API matrix gate
+
+- task_id: `M0-04`
+- git_commit: `1fc855c71bbd16141b419b928ffdad4f998ad3d6`
+- command: `inventory installed SDK system images; compare with task-required API 29 and API 36 x86_64 emulators`
+- exit_code: `1`
+- environment: `local Android SDK contains API 30, 33, 34 and 35 images; required API 29 and API 36 images absent`
+- timestamp: `2026-07-31T12:18:09+08:00`
+- artifact: `docs/evidence/M0-04/local-windows-api34-smoke.md`
+- sha256: `not_applicable`
+- result: `BLOCKED; no acceptance APK was executed on either required API because the repository does not pin an allowed API 29/36 system-image revision, checksum and source, so no unpinned download was performed`
+
 ## Blockers and Required Approvals
 
-None
+- Impact: M0-04 cannot receive a formal `PASS`, and dependent M0-05, M1 and M2 work must not start.
+- Verified fact: the local SDK has no API 29 or API 36 x86_64 system image; the available API 34 smoke cannot substitute for either required acceptance row.
+- Required owner/action: the project coordinator must pin approved `system-images;android-29;...;x86_64` and `system-images;android-36;...;x86_64` package revisions, SHA-256 values and official source, then provision both images.
+- Observable unblock condition: on each unrooted image, `connectedClassloaderPocDebugAndroidTest` exits `0`, the public loader and three negative paths pass, and 20/20 cold starts show zero forbidden logs and zero forbidden files with complete environment and artifact hashes.
 
 ## Ordered Next Actions
 
-1. 由 `/root` 或仓库维护者在四项门禁保持成功时合并 PR #28；合并后的 `main` 必须无豁免通过 strict HandOff，证据为合并提交和 push CI 链接。
-2. M0-04 由 `unassigned` 在上述合并与严格复验后领取 ClassLoader PoC，证据为同编号 Issue、`spike/m0-04-api29-classloader-poc` 分支和唯一 PR。
-3. M0-04 通过后由 `unassigned` 启动 M0-05 兼容性 PoC。
-4. M0 门禁通过后冻结容器接口，再并行启动 M1 与 M2。
+1. 项目协调者固定并提供 API 29 与 API 36 x86_64 system-image 包版本、SHA-256 和官方来源，不以未锁定下载绕过来源治理。
+2. 在两个未 root AVD 上分别运行固定 instrumentation 入口和 20 次冷启动，记录 API、ABI、fingerprint、非 root 状态、XML、日志、文件系统差异与 SHA-256。
+3. 两个正式 API 行全部通过后，将 M0-04 gate 改为 `PASS`；任一公开 API 核心条件失败则保留 blocked 最小复现，不改用 hidden API 或明文落盘。
+4. 只有 M0-04 唯一 PR 合并后才分配 M0-05；此前不实现 Provider、JNI、多 DEX 或原始自定义 factory。
 
 ## Relevant Files and Artifacts
 
@@ -273,18 +330,28 @@ None
 - `tools/governance/test-handoff-validator.mjs`
 - `docs/evidence/M0-03/local-windows.md`
 - `docs/evidence/M0-03/ci-pr-28.md`
+- `docs/evidence/M0-04/local-windows-api34-smoke.md`
+- `docs/tasks/M0-04-api29-classloader-poc.md`
+- `docs/adr/0003-api29-public-classloader-hook.md`
+- `fixtures/android/build.gradle.kts`
+- `fixtures/android/src/classloaderPoc/`
+- `fixtures/android/src/classloaderPocPayload/`
+- `fixtures/android/src/androidTestClassloaderPoc/`
+- `runtime/bootstrap/src/main/java/ah/runtime/bootstrap/`
+- `tools/validation/verify-m0-04-apk.mjs`
+- `tools/validation/run-m0-04-cold-start.mjs`
 
 ## Resume Checklist
 
-1. 确认 PR #28 仍以 `main` 为 base、四项 required checks 成功且没有第二个 M0-03 PR。
-2. 合并 PR #28 后检出 `main`，确认工作树 clean、合并提交包含 `cd182b0e762eda914ca297a5f9fdeada13dad6a9`。
-3. 在 `main` 无 `--allow-pending-branch` 或 `--allow-pending-clean` 运行 strict HandOff 与项目治理校验。
-4. 核对 `docs/evidence/M0-03/local-windows.md` 与 `docs/evidence/M0-03/ci-pr-28.md` 的提交、CI 链接和 SHA-256。
-5. 关闭 Issue #3 后，按依赖图分配 M0-04，不提前实现 M0-05。
+1. 确认分支为 `spike/m0-04-classloader-poc`、base commit 是当前 HEAD 的祖先，工作树只包含 M0-04 文件。
+2. 阅读 `docs/evidence/M0-04/local-windows-api34-smoke.md`；API 34 是非验收烟测，不得改写为正式 gate 通过。
+3. 在下载前核对协调者固定的 API 29/36 system-image 完整包名、版本、SHA-256 和官方来源；缺少任一项继续 blocked。
+4. 在两个要求的 x86_64 AVD 上复用现有静态、instrumentation 和冷启动入口，补充独立测试 XML、环境、文件系统差异、日志扫描和 SHA-256。
+5. 只有全部 M0-04 gate 通过时才将 HandOff 标为 ready；公开 API 路径失败则提交 blocked 证据，不以 hidden API 或明文落盘绕过。
 
 ## Handoff Sign-off
 
 - generated_by: `/root`
-- generated_at: `2026-07-31T11:22:36+08:00`
-- validation_command: `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict --allow-pending-clean --allow-pending-branch`
-- validation_result: `PASS for merger-ready M0-03 snapshot targeting main with post-commit clean worktree`
+- generated_at: `2026-07-31T12:20:12+08:00`
+- validation_command: `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict`
+- validation_result: `PASS after commit; blocked state and required API 29/36 acceptance condition validated without exemptions`

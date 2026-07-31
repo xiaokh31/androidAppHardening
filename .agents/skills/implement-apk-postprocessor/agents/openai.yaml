@@ -1,0 +1,4 @@
+interface:
+  display_name: "Implement APK Postprocessor"
+  short_description: "Build safe host-side APK processing"
+  default_prompt: "Use $implement-apk-postprocessor to implement one host-side APK processing task."

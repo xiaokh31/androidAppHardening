@@ -1,0 +1,4 @@
+interface:
+  display_name: "Validate Protected APK"
+  short_description: "Run APK hardening acceptance checks"
+  default_prompt: "Use $validate-protected-apk to validate a protected APK against its task acceptance criteria."

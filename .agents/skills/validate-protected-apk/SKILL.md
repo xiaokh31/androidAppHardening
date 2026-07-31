@@ -24,7 +24,7 @@ If the task requires an artifact that its dependencies cannot produce in the sel
 ## Validation Flow
 
 1. Record the selected mode, input hash, task ID, branch, commit, OS, JDK, SDK, Build Tools, NDK, and tool versions.
-2. Run the original synthetic fixture to establish expected behavior.
+2. If the current task provides a synthetic fixture, or its Required Tests explicitly consume one, run the original fixture to establish expected behavior. Otherwise record `fixture_validation: not_applicable` with the task-card reason and continue; M0-03 must skip fixture execution because it owns only the toolchain and empty module graph.
 3. In `pre-cli` mode, run the exact task-card Gradle/module/PoC entry points and identify the internal test harness used. In `full-flow` mode, run the sole business command above. In both modes confirm the original input hash is unchanged.
 4. When the current task produces an APK, use its pinned Gradle verification entry points and standard Android tools to confirm the output has no valid v1/v2/v3/v4 signature or `.idsig`, has valid ZIP structure, and passes required 4-byte and 16 KiB native-library alignment checks. Do not invent additional public CLI commands.
 5. When the current task transforms DEX, confirm original root `classes*.dex` entries are absent and common static inspection exposes only the allowed shell surface.

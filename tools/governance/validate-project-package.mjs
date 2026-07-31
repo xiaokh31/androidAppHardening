@@ -286,7 +286,14 @@ if (!(dependencyGraph.get("M3-03") ?? []).includes("M2-06")) {
 const validationSkillText = readUtf8(
   path.join(root, ".agents", "skills", "validate-protected-apk", "SKILL.md"),
 );
-for (const phrase of ["`pre-cli`", "`full-flow`", "Do not invent, stub, or prematurely expose a product CLI"]) {
+for (const phrase of [
+  "`pre-cli`",
+  "`full-flow`",
+  "Do not invent, stub, or prematurely expose a product CLI",
+  "If the current task provides a synthetic fixture",
+  "`fixture_validation: not_applicable`",
+  "M0-03 must skip fixture execution",
+]) {
   requirePhrase(validationSkillText, phrase, ".agents/skills/validate-protected-apk/SKILL.md");
 }
 

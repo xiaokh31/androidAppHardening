@@ -125,13 +125,22 @@ function runVariant(variant) {
   const memoryPssKb = [];
   for (let index = 0; index < coldStartCount; index += 1) {
     runAdb(["shell", "am", "force-stop", variant.packageName]);
+    runAdb(["logcat", "-c"], commandTimeoutMs, true);
+    const expectedActivity = `${variant.packageName}/ah.fixtures.android.payload.PayloadActivity`;
     const started = runAdb([
       "shell", "am", "start", "-W", "-n",
-      `${variant.packageName}/ah.fixtures.android.payload.PayloadActivity`,
+      expectedActivity,
     ]);
     const status = matchValue(started.stdout, "Status");
+    const activity = matchValue(started.stdout, "Activity");
     const totalTime = Number(matchValue(started.stdout, "TotalTime"));
-    if (status !== "ok" || !Number.isFinite(totalTime) || totalTime < 0) {
+    if (status !== "ok" || activity !== expectedActivity ||
+        !Number.isFinite(totalTime) || totalTime < 0) {
+      const logcat = runAdb(["logcat", "-d", "-v", "threadtime"], commandTimeoutMs, true);
+      writeFileSync(
+        path.join(evidenceRoot, `${variant.name}.cold-start-${index + 1}.logcat.txt`),
+        logcat.stdout,
+      );
       fail(`${variant.name} cold start ${index + 1} failed:\n${started.stdout}`);
     }
     coldStarts.push(totalTime);

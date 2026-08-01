@@ -1,16 +1,16 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260801-012038
-updated_at: 2026-08-01T01:20:38+08:00
+handoff_id: HO-20260801-131748
+updated_at: 2026-08-01T13:17:48+08:00
 updated_by: /root
-state: active
+state: blocked
 source_branch: spike/m0-05-application-factory-provider-jni-poc
-base_commit: 43e10c38569dfdd64bc41d688d23d23e005906fb
+base_commit: 45f29740cd2abfb8054ae9d3a6af2ff2f89f9cf1
 working_tree: clean
 current_milestone: M0
 active_task: M0-05
-next_owner: runtime-security-agent
+next_owner: project-coordinator
 ---
 
 # Project HandOff
@@ -26,15 +26,17 @@ next_owner: runtime-security-agent
 - M0-05 起始提交为 `ea229e384bdcad549ffcc184fbd7f49969fb7154`，实现提交为 `d58a277681443a5e79b770a3e9162ae54006138d`。
 - 静态实现、Release/R8 构建、lint/check、APK 结构验证、`apksigner` 和 `zipalign` 已通过。
 - API 29 rev8 与 API 36 rev2 x86_64 模拟器均未在有界时间内完成启动，因此没有执行安装或 instrumentation；每次失败均自动清理，当前没有 emulator/qemu 遗留进程。
-- API 29+ arm64 非 root 环境仍未提供。
-- M0-05 仍为 `in_progress`，未完成设备矩阵、冻结提交和独立安全复核，不得标记 accepted/done。
+- 已授权真机确认是 API 29、arm64、user/release-keys、`ro.debuggable=0`、`ro.secure=1` 的非 root 环境。
+- extracted Release/R8 fixture 在该真机进入真实 `instantiateClassLoader` 后，早期 signer 验证通过，但 Framework `ApplicationInfo.metaData` 为 null，按合同以 `AAH-P009` 在 `LOADER_CREATED` 前失败。
+- M0-05 已转为 `blocked`。不得通过 `Context`、`PackageManager`、`ActivityThread`、`LoadedApk`、反射或 hidden API 补读 metadata；必须回到 ADR-0003 做缩减或终止决策。
+- 未启动 `m0_05_security_review`，未推送分支，未创建 PR；M1/M2 保持阻塞。
 
 ## Active Workstreams
 
 | Task | Owner | Branch | Status | Dependencies | Next checkpoint |
 |---|---|---|---|---|---|
 | M0-04 | `runtime-security-agent` | `spike/m0-04-classloader-poc` | done | M0-03 | PR #29 已合并，正式设备矩阵与独立复核已通过 |
-| M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | in_progress | M0-04 | 在可可靠启动的 API 29/36 x86_64 和 API 29+ arm64 非 root 环境完成矩阵，再冻结并交 `m0_05_security_review` |
+| M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | blocked | M0-04 | `/root` 与产品负责人决定修订 ADR-0003/兼容性合同还是终止 v0.1 当前启动方案；不得继续设备矩阵或绕过 metadata gate |
 
 ## Decisions and Invariants
 
@@ -55,6 +57,9 @@ next_owner: runtime-security-agent
 - 新增静态 APK/R8 验证器和有界设备验收脚本；设备脚本包含隐藏启动、逐命令 timeout、`finally` 卸载/关闭和 PID 差集清理。
 - 构建、lint/check、静态验证、签名验证和对齐验证通过，证据写入 `docs/evidence/M0-05/implementation-snapshot.md`。
 - API 29 冷启动 75 秒、API 29 snapshot 45 秒、API 36 snapshot 45 秒均超时；遵照用户要求停止继续重试，所有尝试已自动清理。
+- 在已授权 API 29 arm64 非 root 真机完成环境确认和 extracted Release/R8 基线；安装成功，但真实 Factory 回调收到 null metadata Bundle，触发 `AAH-P009`，instrumentation 进程崩溃且未执行业务 loader/JNI。
+- 使用 `aapt2 dump xmltree` 确认 APK 二进制 Manifest 确实包含 Shell Factory 与七个 typed metadata，因此该结果是 Framework 回调可见性失败，不是打包遗漏。
+- 遵守任务卡的显式 blocker 条款，停止 direct 变体、冷启动、篡改、内存、x86 CI 和独立复核；证据记录于 `docs/evidence/M0-05/arm64-api29-metadata-blocker.md`。
 
 ## Verification Evidence
 
@@ -94,45 +99,62 @@ next_owner: runtime-security-agent
 - sha256: not_applicable
 - result: NOT_ACCEPTED; both emulators timed out before `sys.boot_completed=1`, no install/instrumentation ran, and cleanup PASS left no emulator/qemu process
 
+### M0-05 API 29 arm64 callback metadata blocker
+
+- task_id: M0-05
+- git_commit: d58a277681443a5e79b770a3e9162ae54006138d
+- command: `gradlew.bat --offline --no-daemon --no-configuration-cache <four M0-05 assemble tasks>`; install extracted Release/R8 and instrumentation fixtures; `adb shell am instrument -w`; `aapt2 dump xmltree`
+- exit_code: 1
+- environment: Windows 10 10.0.19045 x64 host; Android API 29 arm64-v8a physical user/release-keys device; adb shell non-root; `ro.debuggable=0`; `ro.secure=1`
+- timestamp: 2026-08-01T13:17:48+08:00
+- artifact: `docs/evidence/M0-05/arm64-api29-metadata-blocker.md`
+- sha256: c0695656d20926c0aaa6dbc90d9e2591eb6027e74d9db57409b4934e657b0a75
+- result: BLOCKED; packaged metadata exists, early signer verification passed, but Framework callback metadata was null and `AAH-P009` occurred before `LOADER_CREATED`
+
 ## Blockers and Required Approvals
 
-- API 29 rev8 与 API 36 rev2 x86_64 项目 AVD 无法在用户允许的有界窗口内完成启动。需要可靠的已启动设备、外部设备实验室或 CI 设备环境；不得用无限等待解决。
-- 仍需要至少一个 API 29+ arm64 非 root 环境。
-- 设备矩阵通过并冻结 SHA 后，仍需由 `m0_05_security_review` 完成独立只读安全复核。
-- 上述事项不需要扩大 M0-05 代码范围，但会阻止 accepted/done、PR 合并和 M1/M2 启动。
+- Blocker owner: `/root` 项目协调者与产品负责人。
+- Required decision: 根据 ADR-0003 和 M0-05 任务卡，选择终止当前 v0.1 启动设计，或先修订 ADR/任务/兼容性声明并定义新的公开、已认证早期配置通道。
+- Observed conflict: API 29 arm64 user/release-keys 真机的真实 `instantiateClassLoader` 回调未提供 Manifest metadata Bundle；当前安全合同不能成立。
+- Prohibited workaround: 不得改用启动期 `Context`、`PackageManager`、`ActivityThread`、`LoadedApk`、反射、hidden API 或明文磁盘配置。
+- Secondary blocker: GitHub x86_64 KVM 必须先推送分支才能运行，而用户批准的顺序要求设备验收与独立复核后才推送。arm64 架构失败已优先阻止继续该流程。
+- Independent security review、PR、M1/M2 均不得启动，直至架构决策落地并通过新的任务门禁。
 
 ## Ordered Next Actions
 
-1. 在可靠启动的 API 29 rev8 x86_64 环境运行 extracted/direct 两个 Release/R8 变体的完整矩阵。
-2. 在可靠启动的 API 36 rev2 x86_64 环境运行相同矩阵。
-3. 在 API 29+ arm64 非 root 环境运行相同矩阵，记录 signer、metadata、生命周期、JNI、20 次冷启动、峰值内存与篡改结果。
-4. 设备验收通过后冻结提交，再启动预先指定的 `m0_05_security_review` 独立复核。
-5. 仅在矩阵、复核、strict HandOff 和双平台 CI 全部通过后，才可标记完成或合并唯一 PR。
+1. `/root` 与产品负责人审阅 `docs/evidence/M0-05/arm64-api29-metadata-blocker.md` 和 ADR-0003。
+2. 明确选择：终止当前 v0.1 方案，或授权一个独立规划变更来修订 ADR-0003、任务卡、威胁模型和兼容性声明。
+3. 若批准修订，先定义不依赖 Context/hidden API、且可在业务 DEX 释放前认证的早期配置通道，再创建独立决策提交；不得在当前实现中试探性绕过。
+4. 只有新合同经批准后，才恢复 arm64 与 API 29/36 x86_64 矩阵、冻结 SHA 和独立复核。
+5. 在此之前不推送、不创建 PR、不启动 M1/M2。
 
 ## Relevant Files and Artifacts
 
 - `HandOff.md`
 - `docs/tasks/M0-05-application-factory-provider-jni-poc.md`
 - `docs/evidence/M0-05/implementation-snapshot.md`
+- `docs/evidence/M0-05/arm64-api29-metadata-blocker.md`
+- `docs/adr/0003-api29-public-classloader-hook.md`
 - `runtime/bootstrap/src/main/java/ah/runtime/bootstrap/ShellAppComponentFactory.java`
 - `runtime/bootstrap/src/main/java/ah/runtime/bootstrap/EarlySignerProbe.java`
 - `runtime/bootstrap/src/main/java/ah/runtime/bootstrap/StoredDexReader.java`
-- `fixtures/android/src/androidTest/java/ah/fixtures/android/M005CompatibilityInstrumentedTest.java`
+- `fixtures/android/src/androidTestCompatFixture/java/ah/fixtures/android/CompatibilityPocRunner.java`
 - `tools/validation/verify-m0-05-apks.mjs`
 - `tools/validation/run-m0-05-device-acceptance.ps1`
 
 ## Resume Checklist
 
-- [ ] 确认当前分支为 `spike/m0-05-application-factory-provider-jni-poc`、工作树干净且基于 `main@43e10c38569dfdd64bc41d688d23d23e005906fb`。
+- [ ] 确认当前分支为 `spike/m0-05-application-factory-provider-jni-poc`、工作树干净且 blocker base 为 `45f29740cd2abfb8054ae9d3a6af2ff2f89f9cf1`。
 - [ ] 无豁免运行 `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict`。
 - [ ] 运行项目治理、固定工具链、M0-05 静态验证与 `git diff --check`。
-- [ ] 不使用 `20a24423 unauthorized` 物理设备，不遗留 emulator/watchdog/qemu 进程。
-- [ ] 不把构建和静态通过描述为设备验收；arm64 缺失时保持 `in_progress`。
-- [ ] 设备证据冻结前不启动独立复核，验收和复核完成前不进入 M1/M2。
+- [ ] 不在文档中记录设备序列号；确认 fixture 包已卸载且不遗留 emulator/watchdog/qemu 进程。
+- [ ] 不把早期 signer PASS 描述为兼容性通过；metadata callback gate 已失败。
+- [ ] 在 ADR/任务合同决策前不继续 direct、冷启动、篡改、内存或 x86 CI 验收。
+- [ ] 不启动独立复核、PR 或 M1/M2。
 
 ## Handoff Sign-off
 
-- Coordinator `/root` 已核验当前分支、实现提交、静态命令结果、APK 哈希和有界设备失败结果。
-- 当前交接明确区分静态 PASS 与设备 NOT_ACCEPTED，不把模拟器启动失败包装成兼容性通过。
-- 本次没有再次启动模拟器；最后一次清理后只剩预先存在的 `20a24423 unauthorized`，无 emulator/qemu 遗留进程。
-- M0-05 保持进行中，等待可靠的 x86_64 环境、arm64 非 root 环境和冻结后的独立复核。
+- Coordinator `/root` 已核验设备 API/ABI/非 root 属性、fixture 构建、安装、真实 callback 崩溃、`AAH-P009` 日志、Manifest 七键与清理状态。
+- 当前交接明确区分静态 PASS、早期 signer PASS 与整体兼容性 BLOCKED。
+- 本次没有启动任何模拟器；fixture 包已从真机卸载，无 emulator/qemu 遗留进程。
+- M0-05 停在 ADR-0003 决策点，不允许通过未批准的回退路径继续。

@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260801-140524
-updated_at: 2026-08-01T14:05:24+08:00
+handoff_id: HO-20260801-142506
+updated_at: 2026-08-01T14:25:06+08:00
 updated_by: /root
 state: active
 source_branch: docs/m0-06-early-startup-config-contract
@@ -28,14 +28,14 @@ next_owner: runtime-security-agent
 - 当前设计固定使用 768-byte ConfigV2：完整 config SHA-256 由已认证 AHDC HeaderV1 绑定，原 Factory/策略只能在 CEK envelope、manifest MAC、config digest、signer 和 build/key slot 全部验证后使用。
 - Manifest 变换缩减为只替换 `android:appComponentFactory`；原 `android:name` 和既有 metadata 保持，Runtime 不读取 `ApplicationInfo.metaData`。
 - 冻结提交 `8d1da620897ffc9f163d5d17dd9bd14213790ae5` 已通过第三次独立只读安全复核，P0/P1/P2 均为 `0`；前两轮的原 Factory 六入口、顶层旧 metadata 合同和 READY 前 session 所有权三项 P1 已全部关闭。
-- 用户已授权发布；分支已推送，草稿 PR [#31](https://github.com/xiaokh31/androidAppHardening/pull/31) 已创建并关联 Issue #30。首次 Ubuntu Governance 因 `invalid-evidence-hash` 负向夹具未实际注入无效值而失败，其余检查在初次读取时仍运行中；未运行任何模拟器或真机命令。
+- 用户已授权发布与 PR #31 CI 修复；提交 `ce35c7f114225e34c3bffa30cd0360c66993e8d0` 修正 `invalid-evidence-hash` 夹具并为全部负向变换增加 no-op 自检。草稿 PR [#31](https://github.com/xiaokh31/androidAppHardening/pull/31) 的 Ubuntu/Windows Governance 与 Build 四项检查均通过；未运行任何模拟器或真机命令。
 
 ## Active Workstreams
 
 | Task | Owner | Branch | Status | Dependencies | Next checkpoint |
 |---|---|---|---|---|---|
 | M0-04 | `runtime-security-agent` | `spike/m0-04-classloader-poc` | done | M0-03 | PR #29 已合并，正式设备矩阵和独立复核通过 |
-| M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | review | M0-04 | 草稿 PR #31 已创建；等待用户批准最小 CI 负向夹具修复并恢复双平台 Governance |
+| M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | review | M0-04 | 草稿 PR #31 独立复核与四项 CI 均通过；等待用户另行授权转 ready 与合并 |
 | M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | blocked | M0-04, M0-06 | M0-06 合并后，从既有 blocked 提交恢复实现与双平台设备矩阵 |
 
 ## Decisions and Invariants
@@ -64,6 +64,7 @@ next_owner: runtime-security-agent
 - 根据第二次独立复核固定 READY 前所有权：M0-05 PoC 与 M2-01 均以局部 `try/finally` 独占 session，任何 Factory 构造/hook、递归、重入、null 或 final loader 验证失败均恰好一次 close；M2-02/03 明确幂等关闭、Native handle/buffer/强引用清理和关闭后访问拒绝。
 - 为 M0-05、M2-01、M2-02、M2-03 与顶层测试策略补充 close-count、buffer 清零、部分引用释放及 cleanup-error precedence 验收矩阵。
 - 按用户授权把当前分支推送到 `origin`，并创建以 `main` 为 base、关联 Issue #30 的草稿 PR #31。
+- 按用户授权修复 HandOff 负向测试：无效哈希变换同时支持普通/反引号证据值，且任一负向变换未改变输入时测试自身立即失败；未修改认证启动合同。
 
 ## Verification Evidence
 
@@ -151,18 +152,29 @@ next_owner: runtime-security-agent
 - sha256: not_applicable
 - result: FAIL; `invalid-evidence-hash` negative fixture expected one validation error but mutated no line because its regex requires backticks while current HandOff evidence hashes are unquoted; focused test-fixture correction requires explicit CI-fix approval
 
+### M0-06 PR CI remediation
+
+- task_id: M0-06
+- git_commit: ce35c7f114225e34c3bffa30cd0360c66993e8d0
+- command: `node tools/governance/test-handoff-validator.mjs`; `node tools/governance/validate-project-package.mjs`; `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict --allow-pending-clean`; `node tools/validation/verify-m0-toolchain.mjs`; `node --check tools/governance/test-handoff-validator.mjs`; `git diff --check`; `gh pr checks 31`
+- exit_code: 0
+- environment: Windows 10 10.0.19045 x64; Node v24.12.0; Git 2.52.0; GitHub Actions Ubuntu 24.04 and Windows 2025
+- timestamp: 2026-08-01T14:23:41+08:00
+- artifact: `https://github.com/xiaokh31/androidAppHardening/actions/runs/30687589630`; `https://github.com/xiaokh31/androidAppHardening/actions/runs/30687589620`
+- sha256: not_applicable
+- result: PASS; all 11 HandOff negative cases pass locally, mutation no-op is now a hard test failure, and PR #31 Governance/Build succeeded on both Ubuntu and Windows
+
 ## Blockers and Required Approvals
 
 - M0-05 remains blocked on M0-06 merge and subsequent implementation adaptation; this is intentional dependency enforcement, not authorization to modify M0-05 code here.
 - M0-06 has no remaining technical P0/P1/P2 finding; its reviewed contract is published in draft PR #31.
-- PR #31 is blocked by the Ubuntu Governance negative-test fixture failure. Per the CI-fix workflow, `/root` needs explicit user approval before changing `tools/governance/test-handoff-validator.mjs`; the smallest action is to make the fixture mutate the actual plain `sha256` evidence form, assert that mutation occurred, rerun the full governance suite, and push the focused fix.
+- PR #31 has no remaining known CI failure. It remains draft and requires explicit user authorization before conversion to ready or merge.
 
 ## Ordered Next Actions
 
-1. Obtain explicit user approval for the focused PR #31 CI fix; do not change the authenticated startup contract.
-2. Update only the `invalid-evidence-hash` negative fixture to match the current evidence syntax and fail if its mutation is a no-op; run governance, strict HandOff, fixed-toolchain and diff checks locally, then push to the same branch.
-3. Wait for Ubuntu/Windows Governance and Build checks; keep PR #31 draft until all required checks pass and the user separately authorizes ready/merge.
-4. After M0-06 merges, run strict HandOff on `main`; only then resume M0-05 from `spike/m0-05-application-factory-provider-jni-poc@3d716dd` and keep M1/M2 blocked until M0-05 completes.
+1. Keep PR #31 draft until the user separately authorizes conversion to ready and merge.
+2. On authorization, recheck head SHA and required checks, convert PR #31 to ready, then merge under repository policy without force push.
+3. After M0-06 merges, run strict HandOff on `main`; only then resume M0-05 from `spike/m0-05-application-factory-provider-jni-poc@3d716dd` and keep M1/M2 blocked until M0-05 completes.
 
 ## Relevant Files and Artifacts
 
@@ -188,10 +200,11 @@ next_owner: runtime-security-agent
 - [x] 运行全仓废弃合同搜索、链接检查和 `git diff --check`。
 - [x] 冻结提交后由独立 reviewer 复核同一 SHA；结论 PASS，P0/P1/P2 均为 `0`。
 - [x] 经用户授权推送分支并创建草稿 PR #31；未转为 ready、未合并。
-- [ ] 获得明确 CI 修复授权并恢复 PR #31 双平台 Governance；M0-06 合并前不恢复 M0-05，不启动 M1/M2。
+- [x] 获得明确 CI 修复授权，PR #31 Ubuntu/Windows Governance 与 Build 全部通过。
+- [ ] 未经授权不转 ready、不合并；M0-06 合并前不恢复 M0-05，不启动 M1/M2。
 
 ## Handoff Sign-off
 
 - Coordinator `/root` 已核验当前 Git 分支、main 基线、M0-05 blocked 提交/证据和 Issue #30。
-- M0-06 的 docs-only 合同已完成、通过第三次独立安全复核并发布为草稿 PR #31；当前如实记录 Ubuntu Governance 失败，未把 draft/红灯状态冒充为 ready 或可合并。
+- M0-06 的 docs-only 合同已完成、通过第三次独立安全复核并发布为草稿 PR #31；CI 夹具回归已修复且四项双平台检查通过，仍未把 draft 状态冒充为已授权合并。
 - 本任务未启动模拟器、未访问真机、未修改 M0-05 实现，也未下载任何工具链。

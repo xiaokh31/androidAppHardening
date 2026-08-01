@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260801-135559
-updated_at: 2026-08-01T13:55:59+08:00
+handoff_id: HO-20260801-135839
+updated_at: 2026-08-01T13:58:39+08:00
 updated_by: /root
 state: active
 source_branch: docs/m0-06-early-startup-config-contract
@@ -27,7 +27,7 @@ next_owner: runtime-security-agent
 - ADR 0007 与 M0-06 任务卡已新增；ADR 0003/0006、架构、威胁模型、路线图和 M0-05/M1/M2 任务合同已同步并通过冻结前治理校验。
 - 当前设计固定使用 768-byte ConfigV2：完整 config SHA-256 由已认证 AHDC HeaderV1 绑定，原 Factory/策略只能在 CEK envelope、manifest MAC、config digest、signer 和 build/key slot 全部验证后使用。
 - Manifest 变换缩减为只替换 `android:appComponentFactory`；原 `android:name` 和既有 metadata 保持，Runtime 不读取 `ApplicationInfo.metaData`。
-- 冻结提交 `7e78c12871b0be33458d07f490d25fe8b1fea583` 的首次独立复核发现 2 个 P1；提交 `d03ed4bc1f638120b43b2488c135020a0f651e57` 已关闭两项，但第二次复核发现 READY 所有权转移前失败未强制关闭 `VerifiedPayloadSession` 的新 P1。当前工作树已补齐恰好一次关闭、Native handle/buffer/部分引用清理及 cleanup-error precedence，等待第三次冻结复核。
+- 冻结提交 `8d1da620897ffc9f163d5d17dd9bd14213790ae5` 已通过第三次独立只读安全复核，P0/P1/P2 均为 `0`；前两轮的原 Factory 六入口、顶层旧 metadata 合同和 READY 前 session 所有权三项 P1 已全部关闭。
 - M0-05 继续 blocked，M1/M2 不得启动；本分支未推送、未创建 PR，也未运行任何模拟器或真机命令。
 
 ## Active Workstreams
@@ -35,7 +35,7 @@ next_owner: runtime-security-agent
 | Task | Owner | Branch | Status | Dependencies | Next checkpoint |
 |---|---|---|---|---|---|
 | M0-04 | `runtime-security-agent` | `spike/m0-04-classloader-poc` | done | M0-03 | PR #29 已合并，正式设备矩阵和独立复核通过 |
-| M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | in_progress | M0-04 | 冻结 READY 前所有权清理合同并交 `m0_06_security_review` 第三次只读复核 |
+| M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | review | M0-04 | 本地合同与独立复核完成；等待用户另行授权推送分支并创建草稿 PR |
 | M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | blocked | M0-04, M0-06 | M0-06 合并后，从既有 blocked 提交恢复实现与双平台设备矩阵 |
 
 ## Decisions and Invariants
@@ -114,18 +114,30 @@ next_owner: runtime-security-agent
 - sha256: not_applicable
 - result: FAIL; both prior P1 findings closed, but a new P1 found that failures after `openVerifiedPayload()` and before READY could retain an unclosed session, Native handle, direct buffers and partial loader/factory references; corrected in the pending follow-up diff
 
+### M0-06 third independent security review
+
+- task_id: M0-06
+- git_commit: 8d1da620897ffc9f163d5d17dd9bd14213790ae5
+- command: `independent read-only review of the exact frozen contract SHA`; `node tools/governance/validate-project-package.mjs`; `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict`; `node tools/validation/verify-m0-toolchain.mjs`; `git diff --check 8d1da620^ 8d1da620`; independent ConfigV2 arithmetic and stale-contract searches
+- exit_code: 0
+- environment: independent `m0_06_security_review` Agent; exact frozen SHA; no file modifications, network, downloads, emulator or physical-device access
+- timestamp: 2026-08-01T13:57:30+08:00
+- artifact: `Codex task m0_06_security_review third review result`
+- sha256: not_applicable
+- result: PASS; P0=0, P1=0, P2=0; all three earlier P1 findings closed, docs-only scope preserved, ConfigV2 contiguous 768-byte layout and AAD `[0,132)` independently confirmed
+
 ## Blockers and Required Approvals
 
 - M0-05 remains blocked on M0-06 merge and subsequent implementation adaptation; this is intentional dependency enforcement, not authorization to modify M0-05 code here.
-- M0-06 completion is pending a new frozen commit and independent read-only re-review confirming the READY ownership/cleanup P1 is closed with no new P0/P1/P2.
-- Branch push and PR creation require separate user authorization; current user approval covers starting the local independent ADR/task revision only.
+- M0-06 has no remaining technical P0/P1/P2 finding; its reviewed local contract is ready for publication.
+- Branch push and draft PR creation require separate user authorization; current user approval covers the local independent ADR/task revision only.
 
 ## Ordered Next Actions
 
-1. Run governance validator, strict HandOff validator, fixed-toolchain check, stale-contract search and `git diff --check`; fix all failures.
-2. Commit the READY ownership/cleanup P1 corrections as a new frozen docs-only SHA and start independent `m0_06_security_review` re-review against exactly that SHA.
-3. Confirm the P1 is closed and no new P0/P1/P2 exists, then rerun validation and update this HandOff with final evidence.
-4. Stop before push/PR unless the user explicitly authorizes publication; do not resume M0-05 before M0-06 is merged.
+1. Stop before push/PR and request separate publication authorization from the user.
+2. If authorized, push `docs/m0-06-early-startup-config-contract` and create one draft PR linked to Issue #30; run its docs/governance CI without changing the reviewed contract unless CI exposes a real failure.
+3. Merge only after required checks pass and the PR is made ready under explicit authorization.
+4. After M0-06 merges, run strict HandOff on `main`; only then resume M0-05 from `spike/m0-05-application-factory-provider-jni-poc@3d716dd` and keep M1/M2 blocked until M0-05 completes.
 
 ## Relevant Files and Artifacts
 
@@ -144,16 +156,16 @@ next_owner: runtime-security-agent
 
 ## Resume Checklist
 
-- [ ] 确认当前分支为 `docs/m0-06-early-startup-config-contract`，基线为 `main@43e10c38569dfdd64bc41d688d23d23e005906fb`。
-- [ ] 只修改 M0-06 文档范围，保留 `spike/m0-05-application-factory-provider-jni-poc@3d716dd`。
-- [ ] 运行 `node tools/governance/validate-project-package.mjs`。
-- [ ] 运行 `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict`。
-- [ ] 运行全仓废弃合同搜索、链接检查和 `git diff --check`。
-- [ ] 冻结提交后由独立 reviewer 复核同一 SHA；P0/P1/P2 未关闭前不完成。
+- [x] 确认当前分支为 `docs/m0-06-early-startup-config-contract`，基线为 `main@43e10c38569dfdd64bc41d688d23d23e005906fb`。
+- [x] 只修改 M0-06 文档范围，保留 `spike/m0-05-application-factory-provider-jni-poc@3d716dd`。
+- [x] 运行 `node tools/governance/validate-project-package.mjs`。
+- [x] 运行 `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict`。
+- [x] 运行全仓废弃合同搜索、链接检查和 `git diff --check`。
+- [x] 冻结提交后由独立 reviewer 复核同一 SHA；结论 PASS，P0/P1/P2 均为 `0`。
 - [ ] 未经授权不推送、不创建 PR；M0-06 合并前不恢复 M0-05，不启动 M1/M2。
 
 ## Handoff Sign-off
 
 - Coordinator `/root` 已核验当前 Git 分支、main 基线、M0-05 blocked 提交/证据和 Issue #30。
-- 当前为 active docs-only 修订；第二次独立复核的新 P1 已在工作树修正，尚未声明第三次独立安全复核或 M0-06 完成。
+- M0-06 的本地 docs-only 合同已完成并通过第三次独立安全复核；当前只等待用户授权发布，未将未推送状态冒充为已完成 PR/合并。
 - 本任务未启动模拟器、未访问真机、未修改 M0-05 实现，也未下载任何工具链。

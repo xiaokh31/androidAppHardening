@@ -134,14 +134,15 @@ function runVariant(variant) {
     const status = matchValue(started.stdout, "Status");
     const activity = matchValue(started.stdout, "Activity");
     const totalTime = Number(matchValue(started.stdout, "TotalTime"));
-    if (status !== "ok" || activity !== expectedActivity ||
-        !Number.isFinite(totalTime) || totalTime < 0) {
+    const resumed = waitForResumedActivity(expectedActivity, variant.packageName);
+    if (status !== "ok" || !resumed || !Number.isFinite(totalTime) || totalTime < 0) {
       const logcat = runAdb(["logcat", "-d", "-v", "threadtime"], commandTimeoutMs, true);
       writeFileSync(
         path.join(evidenceRoot, `${variant.name}.cold-start-${index + 1}.logcat.txt`),
         logcat.stdout,
       );
-      fail(`${variant.name} cold start ${index + 1} failed:\n${started.stdout}`);
+      fail(`${variant.name} cold start ${index + 1} failed ` +
+        `(reported activity: ${activity || "<missing>"}):\n${started.stdout}`);
     }
     coldStarts.push(totalTime);
     const meminfo = runAdb(["shell", "dumpsys", "meminfo", variant.packageName]);
@@ -169,6 +170,28 @@ function runVariant(variant) {
     cold_start_p95_ms: percentile(sorted, 0.95),
     peak_total_pss_kb: Math.max(...memoryPssKb),
   };
+}
+
+function waitForResumedActivity(expectedActivity, packageName) {
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const activities = runAdb(
+      ["shell", "dumpsys", "activity", "activities"],
+      commandTimeoutMs,
+      true,
+    );
+    const resumedLines = activities.stdout
+      .split(/\r?\n/u)
+      .filter((line) => /(?:mResumedActivity|topResumedActivity|ResumedActivity)/u.test(line));
+    const pid = runAdb(["shell", "pidof", packageName], commandTimeoutMs, true);
+    if (pid.stdout.trim() !== "" &&
+        resumedLines.some((line) => line.includes(expectedActivity))) {
+      return true;
+    }
+    if (attempt < 9) {
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 200);
+    }
+  }
+  return false;
 }
 
 function runNoFactory(targetApk) {

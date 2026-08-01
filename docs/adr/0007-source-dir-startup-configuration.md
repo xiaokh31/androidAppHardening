@@ -20,6 +20,7 @@ M0-05 在已授权的 API 29 arm64 非 root 设备上证明：`AppComponentFacto
 6. 原始 Application 类名不重复写入 ConfigV2。Framework 传入 `instantiateApplication(ClassLoader, String)` 的 `className` 保留原 Manifest 语义，并在已验证 payload loader 下交给原 Factory或平台默认实现。
 7. `ApplicationInfo.metaData` 可以为 `null`，Runtime 不读取它，也不以它决定启动。Context 可用后的 `PackageManager` 读取只允许作为测试诊断，不能解锁 payload 或改变决定。
 8. 完整认证后先创建 provisional payload loader。原 Factory 存在时用它实例化 Factory并恰好一次委托 `instantiateClassLoader`，非空返回值成为 final loader；无原 Factory 时 provisional 即 final。五类组件创建再使用同一 Factory和 final loader。
+9. `VerifiedPayloadSession` 在 `READY` 所有权转移前由引导调用栈独占。Factory 构造/hook、递归、重入或 final loader 验证任一失败时必须恰好一次关闭 session、清除部分初始化引用且只缓存稳定非敏感错误；清理失败不得替换原失败或允许回退。
 
 ## Authentication Order
 
@@ -77,4 +78,5 @@ ConfigV1 在任何产品发布或实现冻结前被本决策替代；v0.1 reader
 - 对 ConfigV2 任一字节、CEK envelope、AHDC manifest MAC、`SPV1`、build/key slot、signer 或 package binding 的篡改均不得创建 payload loader。
 - M1-03 semantic diff 只允许 `android:appComponentFactory` 变化，并证明原 `android:name` 与所有既有 metadata 逐字节语义保持。
 - 自定义 Factory fixture 证明其 `instantiateClassLoader` 只调用一次、返回 loader 是 Framework/组件使用的 final loader；null/异常不回退。
+- 所有 `READY` 前 Factory 失败路径证明 session 只 close 一次、Native handle 与可清零 buffer 已清理、部分 loader/Factory 引用不可达；close 自身失败不覆盖原错误。
 - 静态扫描证明启动链不引用 `PackageManager`、`ActivityThread`、`LoadedApk` 或 hidden API。

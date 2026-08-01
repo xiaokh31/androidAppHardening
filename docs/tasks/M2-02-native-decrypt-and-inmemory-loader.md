@@ -69,6 +69,7 @@ payload 不得以明文文件落盘。离线应用内密钥只能增加提取成
 
 - 低层 facade 固定为 `public final class ah.runtime.loader.PayloadRuntime`，提供 `public static UntrustedPayloadBinding inspectBinding(ApplicationInfo applicationInfo)` 与 `public static LoadedPayload openVerified(ClassLoader shellLoader, ApplicationInfo applicationInfo, byte[] installedSignerSha256)`；facade 拒绝空/非绝对 `sourceDir` 或空 `packageName`，并只把 Framework 的 source/package 字段传入 Native。名称和文档必须明确前者未认证、后者仍要求调用者先完成安装 APK signer 验证。
 - 所有权对象固定为 `public final class ah.runtime.loader.LoadedPayload implements AutoCloseable`；只公开 `public ClassLoader classLoader()` 与幂等 `public void close()`，这里的 loader 是供 M2-01 原 Factory ClassLoader hook 消费的 provisional loader。对象内部强拥有 Native 句柄、direct buffers 和该 loader；M2-03 的 `VerifiedPayloadSession` 必须保留该对象，不得只保存裸 `ClassLoader`。
+- `LoadedPayload.close()` 必须幂等且可计数验证：先阻止新访问，再关闭 Native handle、清零仍可安全清理的密钥/临时/direct buffer，最后清除自身强引用。清理子步骤失败时继续其余清理并返回稳定 cleanup failure，不得恢复已关闭句柄。
 - `public final class ah.runtime.loader.UntrustedPayloadBinding` 只公开复制后的预读字段，类型名和访问器文档不得将其描述为已认证。
 - `NativePayloadBridge`、`PayloadMemoryHandle` 与 `PayloadClassLoaders` 均位于 `ah.runtime.loader` 且为 package-private；它们只分别承担 JNI、Native 句柄所有权和 loader 构造，不构成跨模块 API。
 - `:runtime:policy` 以 Gradle `implementation(project(":runtime:native"))` 消费本 facade，不能把它传递到 `:runtime:bootstrap` compile classpath；唯一生产调用者由 M2-03 的架构测试锁定为 `RuntimeStartupGuard`。
@@ -98,12 +99,14 @@ payload 不得以明文文件落盘。离线应用内密钥只能增加提取成
 - raw DEFLATE、gzip、preset dictionary、多拼接流、尾随字节、提前结束以及超过 record 原始长度或总上限的解压流均在分配超限内存或返回任何 `ByteBuffer` 前失败。
 - instrumentation 运行期间扫描应用私有目录，不存在 DEX magic 开头的新增明文文件。
 - `extractNativeLibs=true/false` fixture 均能由 payload 类加载业务 JNI；无匹配 ABI、重复 ABI 目录和路径篡改均在组件实例化前失败。
+- `LoadedPayload.close()` 重复调用仍只关闭一次 Native handle；关闭后访问器拒绝，仍可安全清理的 direct/key/temp buffer 已清零，自身不再强引用 loader 或 buffer；任一清理子步骤失败不妨碍其余步骤。
 - ASan/UBSan 主机解析测试无越界、整数溢出、use-after-free 或内存泄漏报告。
 
 ## Required Tests
 
 - 共享测试向量的 Native 单元测试和 JVM/JNI 集成测试。
 - 单/多 DEX 加载、重复类优先级、父加载器委派和句柄生命周期测试。
+- `LoadedPayload` 幂等 close-count、Native handle、关闭后访问、direct/key/temp buffer 清零、强引用释放和多清理错误聚合测试。
 - 截断、重叠、超大长度、未知版本、错误 tag、错误 signer/package 关联数据和随机输入测试。
 - zlib wrapper、checksum、dictionary、尾随/拼接流、提前结束、声明长度不符、SHA-256 不符和解压炸弹测试。
 - APK ZIP locator 的重复 asset、压缩 method、encryption、data descriptor、CRC/长度、local/central header 不一致、ZIP64 边界和截断测试。

@@ -61,6 +61,7 @@ M0-04 只证明最小 ClassLoader 接入。M0-05 的首次 API 29 arm64 真机�
 - 原 Application 不写入 ConfigV2；Shell factory 使用 Framework 传入的 `className` 并在 payload loader 下委托。
 - `ApplicationInfo.metaData` 不参与启动，`null` 是必须通过的正向用例；不得通过早期 `Context`/`PackageManager` 补读。
 - 原始 factory 的 `instantiateClassLoader` 和五类组件方法都被恰好一次委托。ClassLoader 委托返回 `null` 或任一委托抛出异常时保持稳定错误/cause并失败，不回退到 provisional loader 或 `super`。
+- PoC 用 `PocPayloadSession implements AutoCloseable` 拥有可清零 direct buffers 与 provisional loader。进入最终 `READY` 前由局部 `try/finally` 独占；Factory 构造/hook、递归、重入、null 或 final loader 验证失败时恰好一次 close、清零 buffer并清除 provisional/final/factory 引用。close 异常不得覆盖原失败，失败缓存不得保存 throwable、loader、Factory 或 session。
 - `InMemoryDexClassLoader` 使用 API 29 三参数数组构造器显式传入 Native 搜索路径。`NativeLibrarySearchPathResolver` 只使用 `ApplicationInfo.nativeLibraryDir`、`sourceDir`、`flags & FLAG_EXTRACT_NATIVE_LIBS`、公开 `Process.is64Bit()` 和对应 ABI 列表；拒绝无匹配 ABI、重复 ABI 目录或非规范 SO 路径。
 - 壳 DEX 使用 M0-03 固定、校验来源的 Android `apksig`，要求 APK 验证成功且当前 signer 数严格为 `1`。release/R8 设备测试必须证明类链接、JCA provider 和 verifier 裁剪有效，且无签名执行类或私钥入口。
 - Context 可用后只做测试断言：`SigningInfo` 当前证书摘要必须与早期 `apksig` 结果一致；该后置断言不解锁 payload。
@@ -80,6 +81,7 @@ M0-04 只证明最小 ClassLoader 接入。M0-05 的首次 API 29 arm64 真机�
 
 - 本 PoC 的 Factory 类名只能来自已通过期望测试 signer/APK 签名覆盖的 ConfigV2，并通过严格 UTF-8、Java 全限定类名、ClassLoader 归属和禁止 Shell 递归校验；生产实现仍必须等待 ADR 0007 的完整认证步骤。
 - 不捕获后静默忽略原始 factory 异常，不接受其 ClassLoader 委托的 `null` 返回，不加载网络或可写目录代码。
+- `READY` 前失败必须释放 PoC session；只缓存非敏感错误码/消息，不把 Factory cause、APK 路径、loader 或 buffer 保存在静态失败状态。
 - 认证完成前不得创建 payload loader、加载业务 JNI 或触发业务探针。
 - JNI fixture 只返回固定测试值，不读取设备身份、凭据或外部文件。
 - 文件系统扫描必须证明没有 payload DEX 明文落盘。
@@ -97,15 +99,16 @@ M0-04 只证明最小 ClassLoader 接入。M0-05 的首次 API 29 arm64 真机�
 1. API 29/36 x86_64 与 API 29+ arm64 的两种 Release/R8 变体执行组合 fixture instrumentation 均退出 `0`。
 2. 自定义 factory 的事件顺序满足 `EARLY_SIGNER_VERIFIED < EARLY_CONFIG_PARSED < EARLY_CONFIG_APK_AUTHENTICATED < PROVISIONAL_LOADER_CREATED < ORIGINAL_FACTORY_CREATED < ORIGINAL_FACTORY_CLASSLOADER_DELEGATED < LOADER_CREATED < PROVIDER_CREATED < APPLICATION_ON_CREATE`，各关键事件只出现一次；报告不得把 PoC 的 APK 签名覆盖表述为完整生产 config 认证。无原 factory 时不存在两个 `ORIGINAL_FACTORY_*` 事件，provisional 与 final loader identity 相同。
 3. 原始 factory 对 `instantiateClassLoader`、Application、Activity、Service、Receiver、Provider 的计数均为 `1`；其 ClassLoader 返回值与 `LOADER_CREATED`/Framework 实际使用的 final loader identity 相同，组件类可由该 final loader 解析。返回 null 或抛错产生 `AAH-P003` 且不回退；无原 factory 时保持平台默认语义。
-4. `classes2.dex` 独有类可从 Provider 与 Activity 调用，返回固定断言值。
-5. `extractNativeLibs=true/false` 的 `System.loadLibrary("fixture_jni")` 在 x86_64/arm64 均成功；删除选中 ABI、伪造重复 ABI 或非规范 ZIP native 路径时在业务 JNI 前失败。
-6. `ApplicationInfo.metaData == null` 与含任意无关 metadata 均通过相同正向矩阵；代码和日志证明未读取七个废弃 `ah.runtime.*` 键。
-7. 规范 config/payload entry 可在 loader 前只读定位；重复名称、DEFLATE、data descriptor、CRC/长度不一致、截断 ZIP、未知 major、非零 reserved、尾随字节分别稳定失败且不分配完整 payload。
-8. Factory flag/length 不一致、非法 UTF-8、NUL、超长、非零 slot 尾部、非法/递归类名返回 `AAH-P009`；签名后修改 ConfigV2、损坏 APK 签名或改用其他 signer 返回 `AAH-P005` 至 `AAH-P010`，均无 `LOADER_CREATED`。CEK envelope、manifest MAC和完整 config digest 的生产 tamper matrix保留给 M1-04/M2-02/M2-03。
-9. 后置 `SigningInfo` 摘要与早期 `apksig` 摘要逐字节一致；静态扫描证明启动门禁不引用 `Context`、`PackageManager`、`ActivityThread`、`LoadedApk` 或 hidden API。
-10. 安装前后文件扫描没有明文 DEX；API 29/36 各变体 20 次冷启动无超时/残留模拟器，报告包含 p50/p95 和峰值内存。
-11. release/R8 bootstrap 无缺类、JCA 或 verifier 行为差异；DEX 扫描不存在签名执行类，报告包含 verifier 引入前后字节增量。
-12. 冻结合同被 M1/M2 任务卡引用，独立 `m0_05_security_review` 对冻结设备证据和提交给出 PASS 后才可推送分支或创建 PR。
+4. 在 `READY` 前逐项注入 Factory 构造、hook null/异常、递归、重入和 final loader 验证失败，`PocPayloadSession.close()` 计数均为 `1`，direct buffer 清零且静态状态不保留 session/provisional/final/factory；close 自身异常不改变原始错误码。
+5. `classes2.dex` 独有类可从 Provider 与 Activity 调用，返回固定断言值。
+6. `extractNativeLibs=true/false` 的 `System.loadLibrary("fixture_jni")` 在 x86_64/arm64 均成功；删除选中 ABI、伪造重复 ABI 或非规范 ZIP native 路径时在业务 JNI 前失败。
+7. `ApplicationInfo.metaData == null` 与含任意无关 metadata 均通过相同正向矩阵；代码和日志证明未读取七个废弃 `ah.runtime.*` 键。
+8. 规范 config/payload entry 可在 loader 前只读定位；重复名称、DEFLATE、data descriptor、CRC/长度不一致、截断 ZIP、未知 major、非零 reserved、尾随字节分别稳定失败且不分配完整 payload。
+9. Factory flag/length 不一致、非法 UTF-8、NUL、超长、非零 slot 尾部、非法/递归类名返回 `AAH-P009`；签名后修改 ConfigV2、损坏 APK 签名或改用其他 signer 返回 `AAH-P005` 至 `AAH-P010`，均无 `LOADER_CREATED`。CEK envelope、manifest MAC 和完整 config digest 的生产 tamper matrix 保留给 M1-04/M2-02/M2-03。
+10. 后置 `SigningInfo` 摘要与早期 `apksig` 摘要逐字节一致；静态扫描证明启动门禁不引用 `Context`、`PackageManager`、`ActivityThread`、`LoadedApk` 或 hidden API。
+11. 安装前后文件扫描没有明文 DEX；API 29/36 各变体 20 次冷启动无超时/残留模拟器，报告包含 p50/p95 和峰值内存。
+12. release/R8 bootstrap 无缺类、JCA 或 verifier 行为差异；DEX 扫描不存在签名执行类，报告包含 verifier 引入前后字节增量。
+13. 冻结合同被 M1/M2 任务卡引用，独立 `m0_05_security_review` 对冻结设备证据和提交给出 PASS 后才可推送分支或创建 PR。
 
 ## Required Tests
 
@@ -114,6 +117,7 @@ M0-04 只证明最小 ClassLoader 接入。M0-05 的首次 API 29 arm64 真机�
 - x86_64/arm64、extracted/direct-from-APK JNI 正负向矩阵。
 - ConfigV2 ZIP 结构、结构字段、Factory 编码、签名后 byte tamper 和异 signer matrix。
 - factory 不存在、构造失败、ClassLoader 委托 null/抛错、组件委托抛错的错误码与 cause 保留。
+- `READY` 前各失败点的 session close 恰好一次、direct buffer 清零、部分引用释放和 cleanup-error precedence 测试。
 - API 29/36 各变体 20 次有整体超时与强制清理的冷启动测试及明文落盘扫描。
 - 早期 signer 同/异/多当前 signer、损坏签名块、不可读 sourceDir 与后置 `SigningInfo` 交叉验证。
 - release/R8 on-device linkage、裁剪、JCA provider、体积、冷启动和峰值内存。

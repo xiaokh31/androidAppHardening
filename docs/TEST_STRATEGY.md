@@ -73,6 +73,7 @@
 - 默认及自定义 `Application`；
 - 无 Factory 及自定义 `AppComponentFactory`；
 - 自定义 Factory 的 `instantiateClassLoader` 恰好调用一次，返回 loader 成为组件使用的 final loader；
+- Factory 构造/hook/null/重入失败在 `READY` 前恰好一次关闭 payload session，清理 Native handle/direct buffer/部分引用，cleanup 异常不覆盖主错误；
 - eager/lazy Provider；
 - Java/Kotlin JNI 调用；
 - 进程重启、冷启动、后台恢复和组件直接启动；

@@ -65,6 +65,7 @@ security_sensitive: true
 
 - 唯一生产入口为 `public final class ah.runtime.guard.RuntimeStartupGuard`，通过 `public static VerifiedPayloadSession openVerifiedPayload(ApplicationInfo applicationInfo, ClassLoader shellLoader)` 完成全序列并禁止实例化；ConfigV2/AHDC asset 名均为实现常量，接口不接受覆盖。
 - `public final class ah.runtime.guard.VerifiedPayloadSession implements AutoCloseable`，只公开 `ClassLoader provisionalClassLoader()`、只读 `VerifiedSignerIdentity signer()`、只读 `VerifiedStartupConfiguration startupConfiguration()` 和幂等 `close()`，内部拥有 M2-02 `LoadedPayload`。final loader 由 M2-01 委托原 Factory 后决定，不回写 Guard session。
+- `VerifiedPayloadSession.close()` 幂等转移给内部 `LoadedPayload.close()`；M2-01 在 `READY` 前拥有并负责失败关闭，成功转移后才允许进程状态强引用。关闭后所有访问器稳定拒绝且不暴露旧对象。
 - `public final class VerifiedSignerIdentity`，保存唯一当前证书摘要及复制后的不可变有序 lineage 列表。
 - `public final class VerifiedStartupConfiguration` 只在完整认证后构造，公开可选原 Factory 全限定名、container/signer/risk policy version 和 build/key slot 的不可变诊断副本；不暴露 share、nonce、wrapped CEK 或原始 config bytes。
 - `public final class IntegrityResult`，通过 `Status.VERIFIED`、`Status.REJECTED` 和稳定错误码表达结果。
@@ -91,6 +92,7 @@ security_sensitive: true
 - 输入 fixture 与受保护输出由同一一次性测试证书在外部签名时正常启动；改用另一张一次性证书签名时在 payload 加载前失败。
 - 当前 signer 数不是 `1`、当前摘要不匹配、仅历史 signer 匹配，或轮换历史顺序不合法时均以对应错误码失败。
 - 篡改策略、package name、容器标识、Factory slot 或 ConfigV2 摘要后，即使 APK 重新签名也不能加载 payload。
+- `VerifiedPayloadSession.close()` 重复调用只向 `LoadedPayload.close()` 转移一次；关闭后全部访问器稳定拒绝，READY 前所有失败路径均能由 M2-01 完成恰好一次关闭且不保留旧对象。
 - 架构测试证明 `:runtime:bootstrap` 不含 `:runtime:native` compile dependency，不引用 `ah.runtime.loader`，且生产源码中 `PayloadRuntime` 的唯一调用者是 `RuntimeStartupGuard`。
 - 仓库扫描确认产品源集不存在私钥、keystore、alias、密码字段和 APK 签名调用；测试密钥目录受 `.gitignore` 约束。
 
@@ -99,6 +101,7 @@ security_sensitive: true
 - 摘要规范化、唯一 signer 常量时间比较、有序 lineage、缓存失效和错误映射单元测试。
 - 同 signer、异 signer、多个当前 signer 拒绝、轮换历史和无签名 fixture 的 instrumentation 测试。
 - ConfigV2、Factory slot、容器标识、包名绑定和摘要篡改测试。
+- `VerifiedPayloadSession` 幂等 close-count、关闭后访问器拒绝、向 `LoadedPayload` 的单次委托和所有权转移边界测试。
 - 多进程并发校验与缓存一致性测试。
 
 ## Required Evidence

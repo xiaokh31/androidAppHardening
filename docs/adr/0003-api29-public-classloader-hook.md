@@ -22,8 +22,9 @@ Shell Factory：
 4. 通过 Native Loader 将认证通过的 DEX 解密并有界解压到匿名内存。
 5. 按原 `classes.dex`、`classes2.dex` 顺序，使用 API 29 的 `InMemoryDexClassLoader(ByteBuffer[], String, ClassLoader)` 构造 provisional payload loader。Native 搜索路径只由 Framework `ApplicationInfo.nativeLibraryDir`/`sourceDir`、公开进程 bitness/ABI 列表与当前 APK 有界 ZIP 清单派生，按“可读 extracted 目录（若有）+ `sourceDir!/lib/<selectedAbi>`”固定顺序传入；不得假设 parent 自动继承业务 SO 路径。
 6. 原 Factory 存在时，用 provisional loader 实例化一次，再恰好一次调用其 `instantiateClassLoader(provisionalLoader, applicationInfo)`；委托异常或返回 `null` 均失败关闭，返回值作为 final payload loader。原 Factory 不存在时 provisional loader 直接成为 final loader。
-7. 返回 final loader，并在进程生命周期内同时保留 Guard session、provisional loader、原 Factory 与 final loader 的强引用。
-8. 对 Application、Activity、Service、Receiver 和 Provider 的创建委托给同一原 Factory；未声明原 Factory 时使用平台默认语义。
+7. 只有 final loader 验证完成且状态转为 `READY` 时，Guard session 所有权才转入进程级状态并与 provisional loader、原 Factory、final loader 一起强引用。此前任一 Factory 构造、递归、重入、ClassLoader 委托 null/异常或 final loader 验证失败，都必须在 `finally` 中恰好一次关闭 session、清除部分引用并缓存非敏感稳定失败；close 异常不得覆盖原始失败或触发回退。
+8. 返回 final loader。
+9. 对 Application、Activity、Service、Receiver 和 Provider 的创建委托给同一原 Factory；未声明原 Factory 时使用平台默认语义。
 
 Host 只在 Manifest 中把 `android:appComponentFactory` 替换为 Shell Factory，并把规范化原 Factory 写入 ADR 0006 ConfigV2；原 `android:name` 保持不变。Shell 不读取 `ApplicationInfo.metaData`，其为 `null` 也是合法启动条件。原 Application 继续使用 Framework 传给 `instantiateApplication` 的 `className`。启动路径只依赖公开 `ApplicationInfo`/文件 API、固定来源的 `apksig` 库和 ADR 0007 的固定资产，不反射获取 `Context`，不读写 Framework 私有 ClassLoader 字段，也不将明文 DEX 写入磁盘。`PackageManager` 可在 Context 可用后的诊断测试中做一致性复核，但不是启动安全门禁或配置回退路径。
 
@@ -78,3 +79,4 @@ Host 只在 Manifest 中把 `android:appComponentFactory` 替换为 Shell Factor
 - 文件系统监控证明无明文 DEX 写入。
 - 原 Factory 指向 Shell、缺失类或抛出异常时得到稳定失败，而非递归或回退。
 - 自定义原 Factory 的时序固定为 `PROVISIONAL_LOADER_CREATED < ORIGINAL_FACTORY_CREATED < ORIGINAL_FACTORY_CLASSLOADER_DELEGATED < LOADER_CREATED`；无原 Factory 时 provisional 与 final loader 相同。
+- 在 `READY` 前注入 Factory 构造、hook null/异常、递归或重入失败时，session close 计数恰好为 `1`，Native handle关闭、可清零 buffer 已清理且无 provisional/final/factory 强引用残留。

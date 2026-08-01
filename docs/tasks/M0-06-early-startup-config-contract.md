@@ -84,9 +84,10 @@ API 29 arm64 非 root 设备的真实 `instantiateClassLoader` 回调中，`Appl
 4. M1-03 只允许替换 `android:appComponentFactory`；M1-01/M1-04 负责把规范化原 Factory 写入 ConfigV2。
 5. M2-01/M2-02/M2-03 只消费已认证启动配置，公开入口不接受调用方 asset 名或 Factory 名。
 6. 原 Factory 的 `instantiateClassLoader` 与五类组件入口均有唯一委托合同；provisional/final loader 顺序、identity、null/异常失败语义在 M0-05/M2-01 一致。
-7. 任务索引与路线图的关键路径固定为 `M0-04 -> M0-06 -> M0-05`，M1/M2 仍在 M0-05 完成前 blocked。
-8. `node tools/governance/validate-project-package.mjs` 和严格 HandOff 校验退出 `0`。
-9. 独立安全复核对冻结提交给出 PASS，且没有未关闭 P0/P1/P2。
+7. `READY` 前 session 所有权、恰好一次 close、Native handle/buffer/部分引用清理和 cleanup-error precedence 在 ADR、架构、M0-05 与 M2-01/02/03 一致。
+8. 任务索引与路线图的关键路径固定为 `M0-04 -> M0-06 -> M0-05`，M1/M2 仍在 M0-05 完成前 blocked。
+9. `node tools/governance/validate-project-package.mjs` 和严格 HandOff 校验退出 `0`。
+10. 独立安全复核对冻结提交给出 PASS，且没有未关闭 P0/P1/P2。
 
 ## Required Tests
 

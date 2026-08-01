@@ -34,7 +34,7 @@ The static implementation slice is complete enough for device testing, but M0-05
 
 ### APK and source-policy validator
 
-- Command: `node tools/validation/verify-m0-05-apks.mjs <extracted-release.apk> <direct-release.apk> <extracted-test.apk> <direct-test.apk> <extracted-mapping.txt> <direct-mapping.txt>`
+- Command: `node tools/validation/verify-m0-05-apks.mjs <extracted-release.apk> <direct-release.apk> <extracted-test.apk> <direct-test.apk> <extracted-mapping.txt> <extracted-usage.txt> <direct-mapping.txt> <direct-usage.txt> <baseline.apk> <fixture-signer-sha256>`
 - Exit code: `0`
 - Result: one STORED payload per APK; two bounded DEX files; `SecondaryApi` defined only by DEX 2; no payload implementation in root DEX; exact native ABI set; extracted/direct SO packaging modes match; no forbidden callback dependencies or project references to `com.android.apksig.internal.*`; signer verification precedes metadata validation and payload read.
 - R8 result: `ApkVerifier` path retained; `ApkSigner` and `ApkSignerEngine` signing execution paths removed.

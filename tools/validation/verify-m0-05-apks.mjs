@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import { inflateRawSync } from "node:zlib";
 import { crc32 } from "./create-m0-04-tampered-apks.mjs";
 
 const PAYLOAD_ENTRY = "assets/ah/runtime/payload.ahdc";
@@ -117,6 +118,45 @@ function storedEntryBytes(apk, entry) {
   const bytes = apk.subarray(dataOffset, dataEnd);
   if (crc32(bytes) !== entry.crc32) {
     fail(`CRC-32 differs for ${entry.name}`);
+  }
+  return bytes;
+}
+
+function zipEntryBytes(apk, entry) {
+  const offset = entry.localOffset;
+  if (offset + 30 > apk.length || apk.readUInt32LE(offset) !== LOCAL) {
+    fail(`local header is invalid for ${entry.name}`);
+  }
+  const flags = apk.readUInt16LE(offset + 6);
+  const method = apk.readUInt16LE(offset + 8);
+  const localCrc32 = apk.readUInt32LE(offset + 14);
+  const compressedSize = apk.readUInt32LE(offset + 18);
+  const uncompressedSize = apk.readUInt32LE(offset + 22);
+  const nameLength = apk.readUInt16LE(offset + 26);
+  const extraLength = apk.readUInt16LE(offset + 28);
+  const name = apk.subarray(offset + 30, offset + 30 + nameLength).toString("utf8");
+  if (
+    flags !== entry.flags ||
+    method !== entry.method ||
+    localCrc32 !== entry.crc32 ||
+    compressedSize !== entry.compressedSize ||
+    uncompressedSize !== entry.uncompressedSize ||
+    name !== entry.name
+  ) {
+    fail(`local and central headers differ for ${entry.name}`);
+  }
+  if (method !== 0 && method !== 8) {
+    fail(`${entry.name} uses unsupported ZIP method ${method}`);
+  }
+  const dataOffset = offset + 30 + nameLength + extraLength;
+  const dataEnd = dataOffset + compressedSize;
+  if (dataEnd > apk.length) {
+    fail(`entry data exceeds APK bounds for ${entry.name}`);
+  }
+  const compressed = apk.subarray(dataOffset, dataEnd);
+  const bytes = method === 0 ? compressed : inflateRawSync(compressed);
+  if (bytes.length !== uncompressedSize || crc32(bytes) !== entry.crc32) {
+    fail(`uncompressed bytes differ for ${entry.name}`);
   }
   return bytes;
 }
@@ -304,18 +344,33 @@ function verifyR8Mapping(mapping) {
   }
 }
 
+function verifyR8Usage(usage) {
+  if (/^com\.android\.apksig\.ApkVerifier$/mu.test(usage)) {
+    fail("R8 usage reports the verifier entry point as removed");
+  }
+  for (const className of ["ApkSigner", "ApkSignerEngine"]) {
+    if (!new RegExp(`^com\\.android\\.apksig\\.${className}$`, "mu").test(usage)) {
+      fail(`R8 usage does not prove removal of ${className}`);
+    }
+  }
+}
+
 async function inspectVariant(
   apkPath,
   testApkPath,
   mappingPath,
+  usagePath,
   expectExtracted,
   expectedSignerHex,
 ) {
-  const [apk, testApk, mapping] = await Promise.all([
+  const [apk, testApk, mappingBytes, usageBytes] = await Promise.all([
     readFile(apkPath),
     readFile(testApkPath),
-    readFile(mappingPath, "utf8"),
+    readFile(mappingPath),
+    readFile(usagePath),
   ]);
+  const mapping = mappingBytes.toString("utf8");
+  const usage = usageBytes.toString("utf8");
   const entries = readEntries(apk);
   for (const key of [
     "ah.runtime.original_application",
@@ -402,6 +457,7 @@ async function inspectVariant(
     }
   }
   verifyR8Mapping(mapping);
+  verifyR8Usage(usage);
   return {
     apk: { path: apkPath, bytes: apk.length, sha256: sha256(apk) },
     test_apk: { path: testApkPath, bytes: testApk.length, sha256: sha256(testApk) },
@@ -412,6 +468,23 @@ async function inspectVariant(
     },
     config,
     native_abis: nativeAbis,
+    native_libraries: nativeEntries
+      .map((entry) => {
+        const bytes = zipEntryBytes(apk, entry);
+        return {
+          abi: entry.name.split("/")[1],
+          path: entry.name,
+          bytes: bytes.length,
+          sha256: sha256(bytes),
+        };
+      })
+      .sort((left, right) => left.abi.localeCompare(right.abi)),
+    r8: {
+      mapping: { path: mappingPath, bytes: mappingBytes.length, sha256: sha256(mappingBytes) },
+      usage: { path: usagePath, bytes: usageBytes.length, sha256: sha256(usageBytes) },
+      signing_execution_classes: "REMOVED",
+      verifier_entry_point: "RETAINED",
+    },
     extract_native_libs: expectExtracted,
     root_dex_count: rootDexEntries.length,
     root_dex_bytes: rootDexEntries.reduce((total, entry) => total + entry.uncompressedSize, 0),
@@ -434,19 +507,35 @@ async function main() {
     extractedTestApk,
     directTestApk,
     extractedMapping,
+    extractedUsage,
     directMapping,
+    directUsage,
     baselineApk,
     expectedSignerHex,
   ] = process.argv.slice(2);
   if (!expectedSignerHex || !/^[0-9a-fA-F]{64}$/u.test(expectedSignerHex)) {
     fail(
-      "usage: verify-m0-05-apks.mjs <extracted.apk> <direct.apk> <extracted-test.apk> <direct-test.apk> <extracted-mapping.txt> <direct-mapping.txt> <baseline.apk> <signer-sha256>",
+      "usage: verify-m0-05-apks.mjs <extracted.apk> <direct.apk> <extracted-test.apk> <direct-test.apk> <extracted-mapping.txt> <extracted-usage.txt> <direct-mapping.txt> <direct-usage.txt> <baseline.apk> <signer-sha256>",
     );
   }
   await verifySourcePolicy(process.cwd());
   const [extracted, direct, baselineBytes] = await Promise.all([
-    inspectVariant(extractedApk, extractedTestApk, extractedMapping, true, expectedSignerHex),
-    inspectVariant(directApk, directTestApk, directMapping, false, expectedSignerHex),
+    inspectVariant(
+      extractedApk,
+      extractedTestApk,
+      extractedMapping,
+      extractedUsage,
+      true,
+      expectedSignerHex,
+    ),
+    inspectVariant(
+      directApk,
+      directTestApk,
+      directMapping,
+      directUsage,
+      false,
+      expectedSignerHex,
+    ),
     baselineRootDexBytes(baselineApk),
   ]);
   if (extracted.config.sha256 !== direct.config.sha256) {
@@ -460,6 +549,7 @@ async function main() {
         variants: { extracted, direct },
         source_policy: "PASS",
         r8_signing_execution_classes: "REMOVED",
+        verifier_peak_memory_kb: process.resourceUsage().maxRSS,
         verifier_root_dex_delta: {
           baseline_bytes: baselineBytes,
           extracted_bytes: extracted.root_dex_bytes,

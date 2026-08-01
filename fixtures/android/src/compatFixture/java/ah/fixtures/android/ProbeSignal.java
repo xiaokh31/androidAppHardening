@@ -13,6 +13,7 @@ public final class ProbeSignal {
     private static boolean failActivityDelegation;
     private static boolean failFactoryConstruction;
     private static String classLoaderHookMode = "normal";
+    private static String componentDelegationMode = "normal";
 
     private ProbeSignal() {}
 
@@ -78,10 +79,19 @@ public final class ProbeSignal {
         return classLoaderHookMode;
     }
 
+    public static synchronized void setComponentDelegationMode(String mode) {
+        componentDelegationMode = mode;
+    }
+
+    public static synchronized String componentDelegationMode() {
+        return componentDelegationMode;
+    }
+
     public static synchronized void resetFailureInjection() {
         failActivityDelegation = false;
         failFactoryConstruction = false;
         classLoaderHookMode = "normal";
+        componentDelegationMode = "normal";
         ClassLoaderProbe.setFailSessionCloseForTesting(false);
     }
 }

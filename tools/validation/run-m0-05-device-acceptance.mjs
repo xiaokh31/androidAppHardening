@@ -16,13 +16,23 @@ const commandTimeoutMs = Number(argumentsMap.get("command-timeout-ms") ?? "60000
 const noFactoryApk = argumentsMap.has("no-factory-apk")
   ? artifact(argumentsMap.get("no-factory-apk"))
   : null;
-const negativeSignedDirectory = argumentsMap.get("negative-signed-dir");
-const negativeUnsignedDirectory = argumentsMap.get("negative-unsigned-dir");
-if (Boolean(negativeSignedDirectory) !== Boolean(negativeUnsignedDirectory)) {
-  fail("--negative-signed-dir and --negative-unsigned-dir must be provided together");
+const negativeDirectoryArguments = {
+  extracted: {
+    signed: argumentsMap.get("extracted-negative-signed-dir"),
+    unsigned: argumentsMap.get("extracted-negative-unsigned-dir"),
+  },
+  direct: {
+    signed: argumentsMap.get("direct-negative-signed-dir"),
+    unsigned: argumentsMap.get("direct-negative-unsigned-dir"),
+  },
+};
+const negativeDirectoryValues = Object.values(negativeDirectoryArguments)
+  .flatMap((directories) => [directories.signed, directories.unsigned]);
+const providedNegativeDirectories = negativeDirectoryValues.filter(Boolean).length;
+if (providedNegativeDirectories !== 0 && providedNegativeDirectories !== 4) {
+  fail("all extracted/direct signed/unsigned negative directories must be provided together");
 }
-const negativeRemoteDirectory = "/data/local/tmp/ah-m0-05-negative";
-const negativeFiles = negativeSignedDirectory ? negativeFileSet() : [];
+const negativeRemoteRoot = "/data/local/tmp/ah-m0-05-negative";
 if (!Number.isInteger(coldStartCount) || coldStartCount < 1 || coldStartCount > 20) {
   fail("--cold-starts must be an integer from 1 through 20");
 }
@@ -50,6 +60,13 @@ const variants = [
     testApk: artifact("fixtures/android/build/outputs/apk/androidTest/compatDirect/debug/android-compatDirect-debug-androidTest.apk"),
   },
 ];
+for (const variant of variants) {
+  const directories = negativeDirectoryArguments[variant.name];
+  variant.negativeFiles = providedNegativeDirectories === 4
+    ? negativeFileSet(directories.signed, directories.unsigned)
+    : [];
+  variant.negativeRemoteDirectory = `${negativeRemoteRoot}/${variant.name}`;
+}
 
 const transcript = [];
 const results = [];
@@ -61,7 +78,7 @@ try {
     fail(`device ${serial} is not online: ${state.stdout.trim()}`);
   }
   const environment = collectEnvironment();
-  if (negativeFiles.length > 0) {
+  if (providedNegativeDirectories === 4) {
     prepareNegativeFiles();
   }
   for (const variant of variants) {
@@ -81,12 +98,15 @@ try {
     cold_start_count: coldStartCount,
     variants: results,
     no_factory: noFactory,
-    external_startup_negative_cases: negativeFiles.length,
+    external_startup_negative_cases: Object.fromEntries(
+      variants.map((variant) => [variant.name, variant.negativeFiles.length]),
+    ),
     cleanup_passed: cleanupPassed,
     emulator_lifecycle_owned_by_runner: false,
     result: "PASS",
   };
   writeFileSync(path.join(evidenceRoot, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
+  writeFileSync(path.join(evidenceRoot, "junit.xml"), deviceJUnit(report));
   writeFileSync(path.join(evidenceRoot, "commands.json"), `${JSON.stringify(transcript, null, 2)}\n`);
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
 } catch (error) {
@@ -106,8 +126,8 @@ function runVariant(variant) {
   runAdb(["install", "-r", "-t", "--no-streaming", variant.testApk]);
   const instrumentation = runAdb([
     "shell", "am", "instrument", "-w",
-    ...(negativeFiles.length > 0 && variant.name === "extracted"
-      ? ["-e", "negative_dir", negativeRemoteDirectory]
+    ...(variant.negativeFiles.length > 0
+      ? ["-e", "negative_dir", variant.negativeRemoteDirectory]
       : []),
     `${variant.packageName}.test/ah.fixtures.android.CompatibilityPocRunner`,
   ], 120000);
@@ -115,18 +135,23 @@ function runVariant(variant) {
       instrumentation.stdout.includes("FAILURES!!!")) {
     fail(`${variant.name} instrumentation failed:\n${instrumentation.stdout}\n${instrumentation.stderr}`);
   }
-  if (negativeFiles.length > 0 && variant.name === "extracted" &&
-      !instrumentation.stdout.includes(`external_startup_negative=${negativeFiles.length}`)) {
+  if (variant.negativeFiles.length > 0 &&
+      !instrumentation.stdout.includes(
+        `external_startup_negative=${variant.negativeFiles.length}`,
+      )) {
     fail(`${variant.name} did not report the external startup-negative matrix`);
   }
   writeFileSync(path.join(evidenceRoot, `${variant.name}.instrumentation.txt`), instrumentation.stdout);
 
   const coldStarts = [];
   const memoryPssKb = [];
+  const reportedActivities = [];
+  let confirmedTimingCount = 0;
   for (let index = 0; index < coldStartCount; index += 1) {
     runAdb(["shell", "am", "force-stop", variant.packageName]);
     runAdb(["logcat", "-c"], commandTimeoutMs, true);
     const expectedActivity = `${variant.packageName}/ah.fixtures.android.payload.PayloadActivity`;
+    const hostStart = process.hrtime.bigint();
     const started = runAdb([
       "shell", "am", "start", "-W", "-n",
       expectedActivity,
@@ -135,7 +160,9 @@ function runVariant(variant) {
     const activity = matchValue(started.stdout, "Activity");
     const totalTime = Number(matchValue(started.stdout, "TotalTime"));
     const resumed = waitForResumedActivity(expectedActivity, variant.packageName);
-    if (status !== "ok" || !resumed || !Number.isFinite(totalTime) || totalTime < 0) {
+    const confirmedTime = Number((process.hrtime.bigint() - hostStart) / 1_000_000n);
+    const targetTime = activity === expectedActivity ? totalTime : confirmedTime;
+    if (status !== "ok" || !resumed || !Number.isFinite(targetTime) || targetTime < 0) {
       const logcat = runAdb(["logcat", "-d", "-v", "threadtime"], commandTimeoutMs, true);
       writeFileSync(
         path.join(evidenceRoot, `${variant.name}.cold-start-${index + 1}.logcat.txt`),
@@ -144,7 +171,11 @@ function runVariant(variant) {
       fail(`${variant.name} cold start ${index + 1} failed ` +
         `(reported activity: ${activity || "<missing>"}):\n${started.stdout}`);
     }
-    coldStarts.push(totalTime);
+    if (activity !== expectedActivity) {
+      confirmedTimingCount += 1;
+    }
+    reportedActivities.push(activity);
+    coldStarts.push(targetTime);
     const meminfo = runAdb(["shell", "dumpsys", "meminfo", variant.packageName]);
     memoryPssKb.push(parseTotalPss(meminfo.stdout));
   }
@@ -163,9 +194,14 @@ function runVariant(variant) {
     jni_verified: true,
     signer_cross_check_verified: true,
     metadata_independence_verified: true,
-    runtime_negative_matrix_verified: true,
+    runtime_negative_matrix_verified: variant.negativeFiles.length === 17,
+    external_startup_negative_cases: variant.negativeFiles.length,
     plaintext_dex_files: 0,
     cold_start_ms: coldStarts,
+    cold_start_reported_activities: reportedActivities,
+    cold_start_confirmed_timing_count: confirmedTimingCount,
+    cold_start_timing_contract:
+      "target am TotalTime, or host elapsed upper bound when Android reports another Activity",
     cold_start_p50_ms: percentile(sorted, 0.50),
     cold_start_p95_ms: percentile(sorted, 0.95),
     peak_total_pss_kb: Math.max(...memoryPssKb),
@@ -246,28 +282,52 @@ function cleanup() {
       }
     }
   }
-  for (const file of negativeFiles) {
-    runAdb(["shell", "rm", `${negativeRemoteDirectory}/${file.name}`], commandTimeoutMs, true);
+  for (const variant of variants) {
+    for (const file of variant.negativeFiles) {
+      runAdb(
+        ["shell", "rm", `${variant.negativeRemoteDirectory}/${file.name}`],
+        commandTimeoutMs,
+        true,
+      );
+    }
+    if (variant.negativeFiles.length > 0) {
+      runAdb(["shell", "rmdir", variant.negativeRemoteDirectory], commandTimeoutMs, true);
+    }
   }
-  if (negativeFiles.length > 0) {
-    runAdb(["shell", "rmdir", negativeRemoteDirectory], commandTimeoutMs, true);
+  if (providedNegativeDirectories === 4) {
+    runAdb(["shell", "rmdir", negativeRemoteRoot], commandTimeoutMs, true);
   }
   return passed;
 }
 
 function prepareNegativeFiles() {
-  for (const file of negativeFiles) {
-    runAdb(["shell", "rm", `${negativeRemoteDirectory}/${file.name}`], commandTimeoutMs, true);
-  }
-  runAdb(["shell", "rmdir", negativeRemoteDirectory], commandTimeoutMs, true);
-  runAdb(["shell", "mkdir", negativeRemoteDirectory]);
-  for (const file of negativeFiles) {
-    runAdb(["push", file.localPath, `${negativeRemoteDirectory}/${file.name}`]);
-    runAdb(["shell", "chmod", "0644", `${negativeRemoteDirectory}/${file.name}`]);
+  cleanupNegativeFiles();
+  runAdb(["shell", "mkdir", negativeRemoteRoot]);
+  for (const variant of variants) {
+    runAdb(["shell", "mkdir", variant.negativeRemoteDirectory]);
+    for (const file of variant.negativeFiles) {
+      const remote = `${variant.negativeRemoteDirectory}/${file.name}`;
+      runAdb(["push", file.localPath, remote]);
+      runAdb(["shell", "chmod", "0644", remote]);
+    }
   }
 }
 
-function negativeFileSet() {
+function cleanupNegativeFiles() {
+  for (const variant of variants) {
+    for (const file of variant.negativeFiles) {
+      runAdb(
+        ["shell", "rm", `${variant.negativeRemoteDirectory}/${file.name}`],
+        commandTimeoutMs,
+        true,
+      );
+    }
+    runAdb(["shell", "rmdir", variant.negativeRemoteDirectory], commandTimeoutMs, true);
+  }
+  runAdb(["shell", "rmdir", negativeRemoteRoot], commandTimeoutMs, true);
+}
+
+function negativeFileSet(negativeSignedDirectory, negativeUnsignedDirectory) {
   const signedNames = [
     "config-major", "config-reserved", "config-signer-mismatch",
     "config-factory-flags", "config-invalid-utf8", "config-nul",
@@ -285,6 +345,49 @@ function negativeFileSet() {
       localPath: artifact(path.join(negativeUnsignedDirectory, `m0-05-${name}-unsigned.apk`)),
     })),
   ];
+}
+
+function deviceJUnit(report) {
+  const cases = [];
+  for (const variant of report.variants) {
+    cases.push(`${variant.name}.instrumentation`);
+    cases.push(`${variant.name}.startup-negative-matrix`);
+    cases.push(`${variant.name}.no-plaintext-dex`);
+    for (let index = 0; index < variant.cold_start_ms.length; index += 1) {
+      cases.push(`${variant.name}.cold-start-${index + 1}`);
+    }
+  }
+  if (report.no_factory) {
+    cases.push("no-original-factory");
+  }
+  cases.push("cleanup");
+  const properties = [
+    ["platform", report.platform],
+    ["api", report.environment.api],
+    ["abi_list", report.environment.abi_list],
+    ["process_bitness", report.environment.process_bitness],
+    ["non_root", String(report.environment.non_root)],
+  ];
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    `<testsuite name="M0-05 device acceptance" tests="${cases.length}" failures="0" errors="0">`,
+    "  <properties>",
+    ...properties.map(([name, value]) =>
+      `    <property name="${xml(name)}" value="${xml(value)}"/>`),
+    "  </properties>",
+    ...cases.map((name) =>
+      `  <testcase classname="M0-05.${xml(report.platform)}" name="${xml(name)}"/>`),
+    "</testsuite>",
+    "",
+  ].join("\n");
+}
+
+function xml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }
 
 function uninstall(variant) {

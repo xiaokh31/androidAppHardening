@@ -120,9 +120,14 @@ public final class ShellAppComponentFactory extends AppComponentFactory {
         } else {
             try {
                 application = originalFactory.instantiateApplication(classLoader, className);
-            } catch (ClassNotFoundException | IllegalAccessException | InstantiationException failure) {
+            } catch (ClassNotFoundException
+                    | IllegalAccessException
+                    | InstantiationException
+                    | RuntimeException
+                    | LinkageError failure) {
                 throw markDelegated(failure);
             }
+            requireDelegatedComponent(application);
         }
         ClassLoaderProbe.record(
                 ClassLoaderProbe.APPLICATION_CREATED,
@@ -144,9 +149,14 @@ public final class ShellAppComponentFactory extends AppComponentFactory {
         } else {
             try {
                 activity = originalFactory.instantiateActivity(classLoader, className, intent);
-            } catch (ClassNotFoundException | IllegalAccessException | InstantiationException failure) {
+            } catch (ClassNotFoundException
+                    | IllegalAccessException
+                    | InstantiationException
+                    | RuntimeException
+                    | LinkageError failure) {
                 throw markDelegated(failure);
             }
+            requireDelegatedComponent(activity);
         }
         ClassLoaderProbe.record(
                 ClassLoaderProbe.ACTIVITY_CREATED,
@@ -165,9 +175,14 @@ public final class ShellAppComponentFactory extends AppComponentFactory {
         } else {
             try {
                 service = originalFactory.instantiateService(classLoader, className, intent);
-            } catch (ClassNotFoundException | IllegalAccessException | InstantiationException failure) {
+            } catch (ClassNotFoundException
+                    | IllegalAccessException
+                    | InstantiationException
+                    | RuntimeException
+                    | LinkageError failure) {
                 throw markDelegated(failure);
             }
+            requireDelegatedComponent(service);
         }
         ClassLoaderProbe.record(
                 ClassLoaderProbe.SERVICE_CREATED,
@@ -189,9 +204,14 @@ public final class ShellAppComponentFactory extends AppComponentFactory {
         } else {
             try {
                 receiver = originalFactory.instantiateReceiver(classLoader, className, intent);
-            } catch (ClassNotFoundException | IllegalAccessException | InstantiationException failure) {
+            } catch (ClassNotFoundException
+                    | IllegalAccessException
+                    | InstantiationException
+                    | RuntimeException
+                    | LinkageError failure) {
                 throw markDelegated(failure);
             }
+            requireDelegatedComponent(receiver);
         }
         ClassLoaderProbe.record(
                 ClassLoaderProbe.RECEIVER_CREATED,
@@ -210,9 +230,14 @@ public final class ShellAppComponentFactory extends AppComponentFactory {
         } else {
             try {
                 provider = originalFactory.instantiateProvider(classLoader, className);
-            } catch (ClassNotFoundException | IllegalAccessException | InstantiationException failure) {
+            } catch (ClassNotFoundException
+                    | IllegalAccessException
+                    | InstantiationException
+                    | RuntimeException
+                    | LinkageError failure) {
                 throw markDelegated(failure);
             }
+            requireDelegatedComponent(provider);
         }
         ClassLoaderProbe.record(
                 ClassLoaderProbe.PROVIDER_CREATED,
@@ -347,7 +372,14 @@ public final class ShellAppComponentFactory extends AppComponentFactory {
         return PocFailure.create(PocFailure.PAYLOAD_CODE, "startup failed");
     }
 
-    private static InstantiationException markDelegated(Exception failure) {
+    private static void requireDelegatedComponent(Object component) throws InstantiationException {
+        if (component == null) {
+            throw new InstantiationException(
+                    PocFailure.DELEGATE_CODE + ": original Factory returned a null component");
+        }
+    }
+
+    private static InstantiationException markDelegated(Throwable failure) {
         InstantiationException marked =
                 new InstantiationException(PocFailure.DELEGATE_CODE + ": original Factory failed");
         marked.initCause(failure);

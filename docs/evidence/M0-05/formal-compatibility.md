@@ -18,7 +18,7 @@ Executed on Windows 10 x64 with project-local Temurin `17.0.19+10`, Gradle `9.5.
 
 ```text
 gradle --offline --no-daemon --no-configuration-cache --console=plain :runtime:bootstrap:check :fixtures:android:check :tools:validation:check verifyGovernance
-node tools/validation/verify-m0-05-apks.mjs <extracted> <direct> <extracted-test> <direct-test> <extracted-mapping> <direct-mapping> <baseline> <fixture-signer-sha256>
+node tools/validation/verify-m0-05-apks.mjs <extracted> <direct> <extracted-test> <direct-test> <extracted-mapping> <extracted-usage> <direct-mapping> <direct-usage> <baseline> <fixture-signer-sha256>
 apksigner verify --verbose <seven generated M0-05 APKs>
 zipalign -c -P 16 4 <seven generated M0-05 APKs>
 ```
@@ -31,7 +31,7 @@ All commands exited `0`. The Gradle gate reported `BUILD SUCCESSFUL`, the Config
 - Result: `PASS`
 - Environment: Android API 29; `arm64-v8a,armeabi-v7a,armeabi`; 64-bit process; Xiaomi user/release-keys build; `ro.secure=1`; `ro.debuggable=0`; adb shell uid 2000; non-root.
 - Device identifier: omitted. The ignored report stores only a SHA-256 digest of the serial.
-- Command: `node tools/validation/run-m0-05-device-acceptance.mjs --adb <project-local-adb> --serial <redacted> --platform arm64-api29-physical --cold-starts 20 --command-timeout-ms 60000 --no-factory-apk <ignored-signed-apk> --negative-signed-dir <ignored-dir> --negative-unsigned-dir <ignored-dir> --evidence build/m0-05/device-arm64-api29-physical`
+- Command: `node tools/validation/run-m0-05-device-acceptance.mjs --adb <project-local-adb> --serial <redacted> --platform arm64-api29-physical --cold-starts 20 --command-timeout-ms 60000 --no-factory-apk <ignored-signed-apk> --extracted-negative-signed-dir <ignored-dir> --extracted-negative-unsigned-dir <ignored-dir> --direct-negative-signed-dir <ignored-dir> --direct-negative-unsigned-dir <ignored-dir> --evidence build/m0-05/device-arm64-api29-physical`
 - Exit code: `0`
 - Raw ignored report: `build/m0-05/device-arm64-api29-physical/report.json`
 - Raw report SHA-256: `833ae034e7c99389a398bce2acdd24b17bb300f98374292c7da5988c9496731f`

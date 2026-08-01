@@ -19,6 +19,8 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.List;
@@ -31,10 +33,14 @@ public final class CompatibilityPocRunner extends Instrumentation {
     private static final String TEST_NAME = "m0_05_compatibility_gate";
     private static final String PAYLOAD_ACTIVITY =
             "ah.fixtures.android.payload.PayloadActivity";
+    private static final String PAYLOAD_APPLICATION =
+            "ah.fixtures.android.payload.PayloadApplication";
     private static final String PAYLOAD_SERVICE =
             "ah.fixtures.android.payload.PayloadService";
     private static final String PAYLOAD_RECEIVER =
             "ah.fixtures.android.payload.PayloadReceiver";
+    private static final String PAYLOAD_PROVIDER =
+            "ah.fixtures.android.payload.PayloadProvider";
     private static final String SECONDARY_API =
             "ah.fixtures.android.payload.SecondaryApi";
     private boolean expectedOriginalFactory = true;
@@ -80,7 +86,7 @@ public final class CompatibilityPocRunner extends Instrumentation {
             verifyMetadataIndependence();
             if (expectedOriginalFactory) {
                 verifyStartupFailureCleanup();
-                verifyDelegatedFailurePreservesCause();
+                verifyDelegatedFailureContract();
             }
             verifySignerFailures();
             verifyExternalStartupFailures();
@@ -333,7 +339,7 @@ public final class CompatibilityPocRunner extends Instrumentation {
         }
     }
 
-    private void verifyDelegatedFailurePreservesCause() {
+    private void verifyDelegatedFailureContract() {
         ApplicationInfo actual = getTargetContext().getApplicationInfo();
         ShellAppComponentFactory shell = new ShellAppComponentFactory();
         ClassLoader loader = shell.instantiateClassLoader(getClass().getClassLoader(), actual);
@@ -351,6 +357,12 @@ public final class CompatibilityPocRunner extends Instrumentation {
             throw new AssertionError("delegated failure changed checked type", unexpected);
         } finally {
             ProbeSignal.setFailActivityDelegation(false);
+        }
+        for (String component :
+                new String[] {"application", "activity", "service", "receiver", "provider"}) {
+            requireDelegatedFailure(shell, loader, component, "null", null);
+            requireDelegatedFailure(shell, loader, component, "runtime", IllegalStateException.class);
+            requireDelegatedFailure(shell, loader, component, "linkage", LinkageError.class);
         }
     }
 
@@ -373,12 +385,15 @@ public final class CompatibilityPocRunner extends Instrumentation {
         File missing = createNativeProbeApk("lib/not-a-process-abi/libfixture_jni.so");
         File nonCanonical =
                 createNativeProbeApk("lib/" + processAbis[0] + "/../libfixture_jni.so");
+        File duplicateAbi = createDuplicateNativeDirectoryApk(processAbis[0]);
         try {
             requireNativeFailure(missing);
             requireNativeFailure(nonCanonical);
+            requireNativeFailure(duplicateAbi);
         } finally {
             missing.delete();
             nonCanonical.delete();
+            duplicateAbi.delete();
         }
     }
 
@@ -424,7 +439,9 @@ public final class CompatibilityPocRunner extends Instrumentation {
                 + "; signer_negative=2"
                 + "; external_startup_negative="
                 + (externalNegativeDirectory == null ? 0 : 17)
-                + "; native_negative=2"
+                + "; component_delegate_negative="
+                + (expectedOriginalFactory ? 16 : 0)
+                + "; native_negative=3"
                 + "; plaintext_dex_files=0";
     }
 
@@ -471,6 +488,94 @@ public final class CompatibilityPocRunner extends Instrumentation {
             zip.closeEntry();
         }
         return result;
+    }
+
+    private File createDuplicateNativeDirectoryApk(String abi) throws Exception {
+        String canonical = "lib/" + abi + "/";
+        String alternateAbi = (abi.charAt(0) == 'x' ? "y" : "x") + abi.substring(1);
+        String alternate = "lib/" + alternateAbi + "/";
+        File result = File.createTempFile("m0-05-native-duplicate-", ".apk", getTargetContext().getCacheDir());
+        try (ZipOutputStream zip = new ZipOutputStream(new FileOutputStream(result))) {
+            zip.putNextEntry(new ZipEntry(canonical));
+            zip.closeEntry();
+            zip.putNextEntry(new ZipEntry(alternate));
+            zip.closeEntry();
+        }
+        byte[] bytes = Files.readAllBytes(result.toPath());
+        byte[] source = alternate.getBytes(StandardCharsets.UTF_8);
+        byte[] replacement = canonical.getBytes(StandardCharsets.UTF_8);
+        int replacements = 0;
+        for (int offset = 0; offset <= bytes.length - source.length; offset += 1) {
+            boolean matches = true;
+            for (int index = 0; index < source.length; index += 1) {
+                if (bytes[offset + index] != source[index]) {
+                    matches = false;
+                    break;
+                }
+            }
+            if (matches) {
+                System.arraycopy(replacement, 0, bytes, offset, replacement.length);
+                replacements += 1;
+                offset += source.length - 1;
+            }
+        }
+        equal(2, replacements, "duplicate native directory ZIP header replacements");
+        Files.write(result.toPath(), bytes);
+        return result;
+    }
+
+    private void requireDelegatedFailure(
+            ShellAppComponentFactory shell,
+            ClassLoader loader,
+            String component,
+            String mode,
+            Class<? extends Throwable> causeType) {
+        ProbeSignal.setComponentDelegationMode(component + ":" + mode);
+        try {
+            invokeDelegatedComponent(shell, loader, component);
+            throw new AssertionError(component + " " + mode + " delegation did not fail");
+        } catch (InstantiationException expected) {
+            requireCode(expected, "AAH-P003");
+            if (causeType == null) {
+                require(expected.getCause() == null, component + " null failure retained a cause");
+            } else {
+                require(causeType.isInstance(expected.getCause()), component + " " + mode + " cause was lost");
+                require(
+                        ("synthetic delegated " + component + " " + mode + " failure")
+                                .equals(expected.getCause().getMessage()),
+                        component + " " + mode + " cause message changed");
+            }
+        } catch (ClassNotFoundException | IllegalAccessException unexpected) {
+            throw new AssertionError(component + " " + mode + " changed checked type", unexpected);
+        } finally {
+            ProbeSignal.setComponentDelegationMode("normal");
+        }
+    }
+
+    private void invokeDelegatedComponent(
+            ShellAppComponentFactory shell,
+            ClassLoader loader,
+            String component)
+            throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+        switch (component) {
+            case "application":
+                shell.instantiateApplication(loader, PAYLOAD_APPLICATION);
+                return;
+            case "activity":
+                shell.instantiateActivity(loader, PAYLOAD_ACTIVITY, new Intent());
+                return;
+            case "service":
+                shell.instantiateService(loader, PAYLOAD_SERVICE, new Intent());
+                return;
+            case "receiver":
+                shell.instantiateReceiver(loader, PAYLOAD_RECEIVER, new Intent());
+                return;
+            case "provider":
+                shell.instantiateProvider(loader, PAYLOAD_PROVIDER);
+                return;
+            default:
+                throw new AssertionError("unknown component " + component);
+        }
     }
 
     private void requireNativeFailure(File apk) {

@@ -81,6 +81,7 @@ try {
     result: "PASS",
   };
   writeFileSync(path.join(evidenceRoot, "startup-negative-report.json"), `${JSON.stringify(report, null, 2)}\n`);
+  writeFileSync(path.join(evidenceRoot, "startup-negative-junit.xml"), startupNegativeJUnit(report));
   writeFileSync(path.join(evidenceRoot, "startup-negative-commands.json"), `${JSON.stringify(transcript, null, 2)}\n`);
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
 } catch (error) {
@@ -105,6 +106,26 @@ function currentFailureProcessLogs(output) {
     "u",
   );
   return output.split(/\r?\n/u).filter((line) => pidPattern.test(line)).join("\n");
+}
+
+function startupNegativeJUnit(report) {
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    `<testsuite name="M0-05 startup negatives" tests="${report.cases.length}" failures="0" errors="0">`,
+    `  <property name="package" value="${xml(report.package_name)}"/>`,
+    ...report.cases.map((testCase) =>
+      `  <testcase classname="M0-05.${xml(report.package_name)}" name="${xml(testCase.name)}"/>`),
+    "</testsuite>",
+    "",
+  ].join("\n");
+}
+
+function xml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }
 
 function escapeRegExp(value) {

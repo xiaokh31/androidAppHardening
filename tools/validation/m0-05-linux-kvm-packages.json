@@ -3,6 +3,13 @@
   "catalog_snapshot_date": "2026-08-01",
   "ci_install_root": ".toolchains/android-m0-05-ci/",
   "git_policy": "ignored",
+  "host_packages": [
+    {
+      "package": "libpulse0",
+      "version": "1:16.1+dfsg1-2ubuntu10.1",
+      "distribution": "Ubuntu 24.04"
+    }
+  ],
   "packages": [
     {
       "package_id": "emulator",

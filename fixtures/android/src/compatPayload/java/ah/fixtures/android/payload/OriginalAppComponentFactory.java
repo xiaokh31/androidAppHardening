@@ -41,6 +41,10 @@ public final class OriginalAppComponentFactory extends AppComponentFactory {
     public Application instantiateApplication(ClassLoader loader, String className)
             throws ClassNotFoundException, IllegalAccessException, InstantiationException {
         ProbeSignal.recordFactoryInvocation("application");
+        if (shouldReturnNull("application")) {
+            return null;
+        }
+        throwIfConfigured("application");
         return super.instantiateApplication(loader, className);
     }
 
@@ -51,6 +55,10 @@ public final class OriginalAppComponentFactory extends AppComponentFactory {
         if (ProbeSignal.shouldFailActivityDelegation()) {
             throw new InstantiationException("synthetic delegated activity failure");
         }
+        if (shouldReturnNull("activity")) {
+            return null;
+        }
+        throwIfConfigured("activity");
         return super.instantiateActivity(loader, className, intent);
     }
 
@@ -58,6 +66,10 @@ public final class OriginalAppComponentFactory extends AppComponentFactory {
     public Service instantiateService(ClassLoader loader, String className, Intent intent)
             throws ClassNotFoundException, IllegalAccessException, InstantiationException {
         ProbeSignal.recordFactoryInvocation("service");
+        if (shouldReturnNull("service")) {
+            return null;
+        }
+        throwIfConfigured("service");
         return super.instantiateService(loader, className, intent);
     }
 
@@ -68,6 +80,10 @@ public final class OriginalAppComponentFactory extends AppComponentFactory {
             Intent intent)
             throws ClassNotFoundException, IllegalAccessException, InstantiationException {
         ProbeSignal.recordFactoryInvocation("receiver");
+        if (shouldReturnNull("receiver")) {
+            return null;
+        }
+        throwIfConfigured("receiver");
         return super.instantiateReceiver(loader, className, intent);
     }
 
@@ -75,6 +91,24 @@ public final class OriginalAppComponentFactory extends AppComponentFactory {
     public ContentProvider instantiateProvider(ClassLoader loader, String className)
             throws ClassNotFoundException, IllegalAccessException, InstantiationException {
         ProbeSignal.recordFactoryInvocation("provider");
+        if (shouldReturnNull("provider")) {
+            return null;
+        }
+        throwIfConfigured("provider");
         return super.instantiateProvider(loader, className);
+    }
+
+    private static boolean shouldReturnNull(String component) {
+        return (component + ":null").equals(ProbeSignal.componentDelegationMode());
+    }
+
+    private static void throwIfConfigured(String component) {
+        String mode = ProbeSignal.componentDelegationMode();
+        if ((component + ":runtime").equals(mode)) {
+            throw new IllegalStateException("synthetic delegated " + component + " runtime failure");
+        }
+        if ((component + ":linkage").equals(mode)) {
+            throw new LinkageError("synthetic delegated " + component + " linkage failure");
+        }
     }
 }

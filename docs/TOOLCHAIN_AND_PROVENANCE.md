@@ -86,6 +86,8 @@ M0-05 的 GitHub Linux/KVM 验收复用上述 API 29 revision 8 与 API 36 revis
 
 机器可读锁位于 `tools/validation/m0-05-linux-kvm-packages.json`。GitHub Actions 将固定归档下载到仓库根的 `.toolchains/android-m0-05-ci/`，先核对长度和 SHA-256，再启动 KVM；不得使用 `sdkmanager` 的浮动 `emulator` 或 system-image 版本代替。
 
+Ubuntu 24.04 KVM runner 还固定安装 `libpulse0=1:16.1+dfsg1-2ubuntu10.1`，版本记录在同一机器可读锁的 `host_packages` 中。workflow 必须以精确版本安装并在启动 Emulator 前逐字比对 `dpkg-query` 结果，不得接受仓库候选版本漂移。
+
 ## 6. GitHub Actions
 
 - 第三方 Action 使用完整 commit SHA 固定，不使用浮动 tag。

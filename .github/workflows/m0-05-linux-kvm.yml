@@ -76,9 +76,13 @@ jobs:
           downloads="$sdk_root/downloads"
           mkdir -p "$downloads" "$sdk_root/system-images/android-$API/default" build/m0-05
 
+          pulse_package="$(jq -r '.host_packages[0].package' "$manifest")"
+          pulse_version="$(jq -r '.host_packages[0].version' "$manifest")"
+          test "$pulse_package" = "libpulse0"
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends libpulse0
-          dpkg-query -W -f='${Package}=${Version}\n' libpulse0 \
+          sudo apt-get install -y --no-install-recommends "$pulse_package=$pulse_version"
+          test "$(dpkg-query -W -f='${Version}' "$pulse_package")" = "$pulse_version"
+          dpkg-query -W -f='${Package}=${Version}\n' "$pulse_package" \
             | tee build/m0-05/ubuntu-runtime-packages.txt
 
           for directory in cmdline-tools licenses platform-tools; do
@@ -170,30 +174,11 @@ jobs:
             fixtures/android/build/outputs/apk/androidTest/compatExtracted/debug/android-compatExtracted-debug-androidTest.apk \
             fixtures/android/build/outputs/apk/androidTest/compatDirect/debug/android-compatDirect-debug-androidTest.apk \
             fixtures/android/build/outputs/mapping/compatExtractedRelease/mapping.txt \
+            fixtures/android/build/outputs/mapping/compatExtractedRelease/usage.txt \
             fixtures/android/build/outputs/mapping/compatDirectRelease/mapping.txt \
+            fixtures/android/build/outputs/mapping/compatDirectRelease/usage.txt \
             fixtures/android/build/outputs/apk/classloaderPoc/release/android-classloaderPoc-release.apk \
             "$signer_digest" | tee build/m0-05/static-report.json
-
-          unsigned_dir="build/m0-05/test-apks/unsigned"
-          signed_dir="build/m0-05/test-apks/signed"
-          mkdir -p "$unsigned_dir" "$signed_dir"
-          node tools/validation/create-m0-05-test-apks.mjs \
-            fixtures/android/build/outputs/apk/compatExtracted/release/android-compatExtracted-release.apk \
-            "$unsigned_dir" | tee build/m0-05/test-apks/creation-report.json
-          for unsigned_apk in "$unsigned_dir"/*.apk; do
-            case "$unsigned_apk" in
-              *config-duplicate*|*truncated-zip*) continue ;;
-            esac
-            output_name="$(basename "${unsigned_apk%-unsigned.apk}").apk"
-            "$ANDROID_HOME/build-tools/36.1.0/apksigner" sign \
-              --v4-signing-enabled false \
-              --ks "$M005_TEST_KEYSTORE" \
-              --ks-key-alias "$M005_TEST_KEY_ALIAS" \
-              --ks-pass env:M005_TEST_STORE_PASSWORD \
-              --key-pass env:M005_TEST_KEY_PASSWORD \
-              --out "$signed_dir/$output_name" \
-              "$unsigned_apk"
-          done
 
           export M005_ALT_KEYSTORE="$RUNNER_TEMP/m0-05-signing/alternate.p12"
           export M005_ALT_STORE_PASSWORD="$(openssl rand -hex 24)"
@@ -209,49 +194,78 @@ jobs:
             -alias "$M005_ALT_KEY_ALIAS" \
             -keyalg RSA -keysize 2048 -validity 2 \
             -dname "CN=M0-05 Alternate Fixture,O=androidAppHardening,C=US"
-          signer_input="$unsigned_dir/m0-05-config-major-unsigned.apk"
-          "$ANDROID_HOME/build-tools/36.1.0/apksigner" sign \
-            --v4-signing-enabled false \
-            --ks "$M005_ALT_KEYSTORE" \
-            --ks-key-alias "$M005_ALT_KEY_ALIAS" \
-            --ks-pass env:M005_ALT_STORE_PASSWORD \
-            --key-pass env:M005_ALT_KEY_PASSWORD \
-            --out "$signed_dir/m0-05-wrong-signer.apk" \
-            "$signer_input"
-          "$ANDROID_HOME/build-tools/36.1.0/apksigner" sign \
-            --v4-signing-enabled false \
-            --v3-signing-enabled false \
-            --ks "$M005_TEST_KEYSTORE" \
-            --ks-key-alias "$M005_TEST_KEY_ALIAS" \
-            --ks-pass env:M005_TEST_STORE_PASSWORD \
-            --key-pass env:M005_TEST_KEY_PASSWORD \
-            --next-signer \
-            --ks "$M005_ALT_KEYSTORE" \
-            --ks-key-alias "$M005_ALT_KEY_ALIAS" \
-            --ks-pass env:M005_ALT_STORE_PASSWORD \
-            --key-pass env:M005_ALT_KEY_PASSWORD \
-            --out "$signed_dir/m0-05-multi-signer.apk" \
-            "$signer_input"
 
-          jq -n '[
-            {name:"config-major", apk:"build/m0-05/test-apks/signed/m0-05-config-major.apk", expected_code:"AAH-P009"},
-            {name:"config-reserved", apk:"build/m0-05/test-apks/signed/m0-05-config-reserved.apk", expected_code:"AAH-P009"},
-            {name:"config-signer-mismatch", apk:"build/m0-05/test-apks/signed/m0-05-config-signer-mismatch.apk", expected_code:"AAH-P010"},
-            {name:"config-factory-flags", apk:"build/m0-05/test-apks/signed/m0-05-config-factory-flags.apk", expected_code:"AAH-P009"},
-            {name:"config-invalid-utf8", apk:"build/m0-05/test-apks/signed/m0-05-config-invalid-utf8.apk", expected_code:"AAH-P009"},
-            {name:"config-nul", apk:"build/m0-05/test-apks/signed/m0-05-config-nul.apk", expected_code:"AAH-P009"},
-            {name:"config-slot-tail", apk:"build/m0-05/test-apks/signed/m0-05-config-slot-tail.apk", expected_code:"AAH-P009"},
-            {name:"config-deflate", apk:"build/m0-05/test-apks/signed/m0-05-config-deflate.apk", expected_code:"AAH-P009", allow_install_rejection:true},
-            {name:"config-descriptor", apk:"build/m0-05/test-apks/signed/m0-05-config-descriptor.apk", expected_code:"AAH-P009", allow_install_rejection:true},
-            {name:"config-crc", apk:"build/m0-05/test-apks/signed/m0-05-config-crc.apk", expected_code:"AAH-P009", allow_install_rejection:true},
-            {name:"config-length", apk:"build/m0-05/test-apks/signed/m0-05-config-length.apk", expected_code:"AAH-P009", allow_install_rejection:true},
-            {name:"payload-corrupt", apk:"build/m0-05/test-apks/signed/m0-05-payload-corrupt.apk", expected_code:"AAH-P001"},
-            {name:"wrong-signer", apk:"build/m0-05/test-apks/signed/m0-05-wrong-signer.apk", expected_code:"AAH-P008"},
-            {name:"multi-signer", apk:"build/m0-05/test-apks/signed/m0-05-multi-signer.apk", expected_code:"AAH-P007"},
-            {name:"duplicate-config", apk:"build/m0-05/test-apks/unsigned/m0-05-config-duplicate-unsigned.apk", expected_code:"PLATFORM_ZIP_REJECTION", install_rejection:true},
-            {name:"truncated-zip", apk:"build/m0-05/test-apks/unsigned/m0-05-truncated-zip-unsigned.apk", expected_code:"PLATFORM_ZIP_REJECTION", install_rejection:true},
-            {name:"unsigned", apk:"build/m0-05/test-apks/unsigned/m0-05-no-factory-unsigned.apk", expected_code:"PLATFORM_SIGNATURE_REJECTION", install_rejection:true}
-          ]' > build/m0-05/test-apks/startup-negative-cases.json
+          for variant in extracted direct; do
+            root="build/m0-05/test-apks/$variant"
+            unsigned_dir="$root/unsigned"
+            signed_dir="$root/signed"
+            if [[ "$variant" = extracted ]]; then
+              input_apk="fixtures/android/build/outputs/apk/compatExtracted/release/android-compatExtracted-release.apk"
+            else
+              input_apk="fixtures/android/build/outputs/apk/compatDirect/release/android-compatDirect-release.apk"
+            fi
+            mkdir -p "$unsigned_dir" "$signed_dir"
+            node tools/validation/create-m0-05-test-apks.mjs \
+              "$input_apk" "$unsigned_dir" | tee "$root/creation-report.json"
+            for unsigned_apk in "$unsigned_dir"/*.apk; do
+              case "$unsigned_apk" in
+                *config-duplicate*|*truncated-zip*) continue ;;
+              esac
+              output_name="$(basename "${unsigned_apk%-unsigned.apk}").apk"
+              "$ANDROID_HOME/build-tools/36.1.0/apksigner" sign \
+                --v4-signing-enabled false \
+                --ks "$M005_TEST_KEYSTORE" \
+                --ks-key-alias "$M005_TEST_KEY_ALIAS" \
+                --ks-pass env:M005_TEST_STORE_PASSWORD \
+                --key-pass env:M005_TEST_KEY_PASSWORD \
+                --out "$signed_dir/$output_name" \
+                "$unsigned_apk"
+            done
+
+            signer_input="$unsigned_dir/m0-05-config-major-unsigned.apk"
+            "$ANDROID_HOME/build-tools/36.1.0/apksigner" sign \
+              --v4-signing-enabled false \
+              --ks "$M005_ALT_KEYSTORE" \
+              --ks-key-alias "$M005_ALT_KEY_ALIAS" \
+              --ks-pass env:M005_ALT_STORE_PASSWORD \
+              --key-pass env:M005_ALT_KEY_PASSWORD \
+              --out "$signed_dir/m0-05-wrong-signer.apk" \
+              "$signer_input"
+            "$ANDROID_HOME/build-tools/36.1.0/apksigner" sign \
+              --v4-signing-enabled false \
+              --v3-signing-enabled false \
+              --ks "$M005_TEST_KEYSTORE" \
+              --ks-key-alias "$M005_TEST_KEY_ALIAS" \
+              --ks-pass env:M005_TEST_STORE_PASSWORD \
+              --key-pass env:M005_TEST_KEY_PASSWORD \
+              --next-signer \
+              --ks "$M005_ALT_KEYSTORE" \
+              --ks-key-alias "$M005_ALT_KEY_ALIAS" \
+              --ks-pass env:M005_ALT_STORE_PASSWORD \
+              --key-pass env:M005_ALT_KEY_PASSWORD \
+              --out "$signed_dir/m0-05-multi-signer.apk" \
+              "$signer_input"
+
+            jq -n --arg root "$root" '[
+              {name:"config-major", apk:($root+"/signed/m0-05-config-major.apk"), expected_code:"AAH-P009"},
+              {name:"config-reserved", apk:($root+"/signed/m0-05-config-reserved.apk"), expected_code:"AAH-P009"},
+              {name:"config-signer-mismatch", apk:($root+"/signed/m0-05-config-signer-mismatch.apk"), expected_code:"AAH-P010"},
+              {name:"config-factory-flags", apk:($root+"/signed/m0-05-config-factory-flags.apk"), expected_code:"AAH-P009"},
+              {name:"config-invalid-utf8", apk:($root+"/signed/m0-05-config-invalid-utf8.apk"), expected_code:"AAH-P009"},
+              {name:"config-nul", apk:($root+"/signed/m0-05-config-nul.apk"), expected_code:"AAH-P009"},
+              {name:"config-slot-tail", apk:($root+"/signed/m0-05-config-slot-tail.apk"), expected_code:"AAH-P009"},
+              {name:"config-deflate", apk:($root+"/signed/m0-05-config-deflate.apk"), expected_code:"AAH-P009", allow_install_rejection:true},
+              {name:"config-descriptor", apk:($root+"/signed/m0-05-config-descriptor.apk"), expected_code:"AAH-P009", allow_install_rejection:true},
+              {name:"config-crc", apk:($root+"/signed/m0-05-config-crc.apk"), expected_code:"AAH-P009", allow_install_rejection:true},
+              {name:"config-length", apk:($root+"/signed/m0-05-config-length.apk"), expected_code:"AAH-P009", allow_install_rejection:true},
+              {name:"payload-corrupt", apk:($root+"/signed/m0-05-payload-corrupt.apk"), expected_code:"AAH-P001"},
+              {name:"wrong-signer", apk:($root+"/signed/m0-05-wrong-signer.apk"), expected_code:"AAH-P008"},
+              {name:"multi-signer", apk:($root+"/signed/m0-05-multi-signer.apk"), expected_code:"AAH-P007"},
+              {name:"duplicate-config", apk:($root+"/unsigned/m0-05-config-duplicate-unsigned.apk"), expected_code:"PLATFORM_ZIP_REJECTION", install_rejection:true},
+              {name:"truncated-zip", apk:($root+"/unsigned/m0-05-truncated-zip-unsigned.apk"), expected_code:"PLATFORM_ZIP_REJECTION", install_rejection:true},
+              {name:"unsigned", apk:($root+"/unsigned/m0-05-no-factory-unsigned.apk"), expected_code:"PLATFORM_SIGNATURE_REJECTION", install_rejection:true}
+            ]' > "$root/startup-negative-cases.json"
+          done
 
       - name: Run bounded device acceptance
         shell: bash
@@ -333,18 +347,29 @@ jobs:
             --platform "api${API}-x86_64-linux-kvm" \
             --cold-starts 20 \
             --command-timeout-ms 60000 \
-            --no-factory-apk build/m0-05/test-apks/signed/m0-05-no-factory.apk \
-            --negative-signed-dir build/m0-05/test-apks/signed \
-            --negative-unsigned-dir build/m0-05/test-apks/unsigned \
+            --no-factory-apk build/m0-05/test-apks/extracted/signed/m0-05-no-factory.apk \
+            --extracted-negative-signed-dir build/m0-05/test-apks/extracted/signed \
+            --extracted-negative-unsigned-dir build/m0-05/test-apks/extracted/unsigned \
+            --direct-negative-signed-dir build/m0-05/test-apks/direct/signed \
+            --direct-negative-unsigned-dir build/m0-05/test-apks/direct/unsigned \
             --evidence "build/m0-05/device-api${API}-x86_64"
           timeout 300s node tools/validation/run-m0-05-startup-negative.mjs \
             --adb "$ANDROID_HOME/platform-tools/adb" \
             --serial "$serial" \
-            --cases build/m0-05/test-apks/startup-negative-cases.json \
-            --evidence "build/m0-05/device-api${API}-x86_64" \
+            --package ah.fixtures.android.m005.extracted \
+            --cases build/m0-05/test-apks/extracted/startup-negative-cases.json \
+            --evidence "build/m0-05/device-api${API}-x86_64/startup-negative-extracted" \
+            --command-timeout-ms 60000
+          timeout 300s node tools/validation/run-m0-05-startup-negative.mjs \
+            --adb "$ANDROID_HOME/platform-tools/adb" \
+            --serial "$serial" \
+            --package ah.fixtures.android.m005.direct \
+            --cases build/m0-05/test-apks/direct/startup-negative-cases.json \
+            --evidence "build/m0-05/device-api${API}-x86_64/startup-negative-direct" \
             --command-timeout-ms 60000
           cat "build/m0-05/device-api${API}-x86_64/report.json"
-          cat "build/m0-05/device-api${API}-x86_64/startup-negative-report.json"
+          cat "build/m0-05/device-api${API}-x86_64/startup-negative-extracted/startup-negative-report.json"
+          cat "build/m0-05/device-api${API}-x86_64/startup-negative-direct/startup-negative-report.json"
 
       - name: Print cleanup diagnostics
         if: always()
@@ -365,7 +390,11 @@ jobs:
           path: |
             build/m0-05/*.json
             build/m0-05/*.txt
-            build/m0-05/test-apks/*report.json
-            build/m0-05/test-apks/*cases.json
-            build/m0-05/device-api${{ matrix.api }}-x86_64/*.json
-            build/m0-05/device-api${{ matrix.api }}-x86_64/*.txt
+            build/m0-05/test-apks/**/*.json
+            build/m0-05/device-api${{ matrix.api }}-x86_64/**/*.json
+            build/m0-05/device-api${{ matrix.api }}-x86_64/**/*.txt
+            build/m0-05/device-api${{ matrix.api }}-x86_64/**/*.xml
+            fixtures/android/build/outputs/mapping/compatExtractedRelease/mapping.txt
+            fixtures/android/build/outputs/mapping/compatExtractedRelease/usage.txt
+            fixtures/android/build/outputs/mapping/compatDirectRelease/mapping.txt
+            fixtures/android/build/outputs/mapping/compatDirectRelease/usage.txt

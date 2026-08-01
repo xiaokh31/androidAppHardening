@@ -74,7 +74,12 @@ jobs:
           manifest="tools/validation/m0-05-linux-kvm-packages.json"
           sdk_root="$GITHUB_WORKSPACE/.toolchains/android-m0-05-ci"
           downloads="$sdk_root/downloads"
-          mkdir -p "$downloads" "$sdk_root/system-images/android-$API/default"
+          mkdir -p "$downloads" "$sdk_root/system-images/android-$API/default" build/m0-05
+
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libpulse0
+          dpkg-query -W -f='${Package}=${Version}\n' libpulse0 \
+            | tee build/m0-05/ubuntu-runtime-packages.txt
 
           for directory in cmdline-tools licenses platform-tools; do
             test -e "$ANDROID_HOME/$directory"

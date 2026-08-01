@@ -66,7 +66,7 @@ Host 生成的 bootstrap、容器与元数据汇合。输出验证器必须独�
 
 ### TB-5 Android Runtime
 
-签名、Manifest 元数据、容器和环境信号进入 Runtime。业务代码只能在强完整性校验通过后加载。
+实测安装 signer、Framework `ApplicationInfo`、当前 APK 中的 ConfigV2/AHDC 固定条目和环境信号进入 Runtime。ConfigV2 在完整 digest 被已认证 AHDC header 绑定前仍不可信；业务代码和原 Factory 只能在强完整性校验通过后加载。
 
 ## 5. 威胁与控制
 
@@ -86,7 +86,8 @@ Host 生成的 bootstrap、容器与元数据汇合。输出验证器必须独�
 | T-12 | 临时文件或日志泄露 | 不落盘明文 DEX、最小日志、清理、报告字段白名单 | 崩溃转储或恶意 Host 进程 |
 | T-13 | 依赖或 CI Action 被替换 | 固定版本/commit、校验和、依赖验证、SBOM、许可证审查 | 上游已固定版本本身可能含漏洞 |
 | T-14 | 输入被处理器意外覆盖 | 双哈希、只读句柄、独立输出、原子发布 | Host 文件系统或用户并发替换 |
-| T-15 | Manifest 过度修改引入后门或兼容问题 | 二进制转换白名单、转换后语义 diff、fixture | 未覆盖的厂商扩展 |
+| T-15 | Manifest 过度修改引入后门或兼容问题 | 只替换 `appComponentFactory`、转换后语义 diff、fixture | 未覆盖的厂商扩展 |
+| T-16 | 未认证启动配置注入 Factory 或策略 | 固定 sourceDir 条目、ConfigV2 严格解析、CEK/manifest MAC/完整 config digest 绑定后才消费 | 攻击者 patch Runtime |
 
 ## 6. 滥用情形
 
@@ -119,7 +120,7 @@ Host 生成的 bootstrap、容器与元数据汇合。输出验证器必须独�
 
 - ZIP、AXML、container 和报告 parser 均执行覆盖引导模糊测试。
 - 每个边界字段具有截断、溢出、重复、乱序和未知版本用例。
-- 修改 signer digest、header、nonce、ciphertext、tag、DEX 次序和 Manifest 元数据时均应在业务代码前失败。
+- 修改 signer digest、header、nonce、ciphertext、tag、DEX 次序和 ConfigV2 任一字段时均应在业务代码前失败。
 - 日志和报告接受敏感词、DEX magic 与路径泄露扫描。
 - 处理成功、失败和强制终止后检查临时目录与明文残留。
 - 安全敏感变更由未参与实现的复核者给出书面结论。

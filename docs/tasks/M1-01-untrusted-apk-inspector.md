@@ -61,7 +61,7 @@ APK 是攻击者可控 ZIP。路径、计数、长度、压缩比、AXML、DEX h
 ## Public Interfaces
 
 - `ApkInspector.inspect(Path input): ApkInspection`。
-- `ApkInspection` 至少包含 `inputSha256`、`packageName`、`minSdk`、`targetSdk`、`applicationClass`、`appComponentFactoryClass`、`dexEntries`、`nativeAbis`、`findings`、`limitsApplied`。
+- `ApkInspection` 至少包含 `inputSha256`、`packageName`、`minSdk`、`targetSdk`、`applicationClass`、`appComponentFactoryClass`、`hasAppComponentFactory`、`dexEntries`、`nativeAbis`、`findings`、`limitsApplied`；规范化原 Factory 由 M1-04 写入 ConfigV2，不进入 Manifest metadata。
 - `ApkInspection.packageNameSha256` 是 `packageName` 精确 UTF-8 bytes 的 32-byte SHA-256 只读副本。
 - `InspectionException.code` 使用 `INPUT_IO`、`INPUT_ZIP_STRUCTURE`、`INPUT_LIMIT_EXCEEDED`、`INPUT_DUPLICATE_ENTRY`、`INPUT_PATH_UNSAFE`、`INPUT_MANIFEST_INVALID`、`INPUT_DEX_INVALID`、`COMPAT_MIN_SDK`、`COMPAT_SPLIT`、`COMPAT_FRAMEWORK`、`COMPAT_EXISTING_SHELL`、`COMPAT_RESERVED_NAMESPACE`。
 - 模型集合保持输入顺序且不可变；错误自动化只解析 code，不解析自然语言。
@@ -116,7 +116,7 @@ APK 是攻击者可控 ZIP。路径、计数、长度、压缩比、AXML、DEX h
 
 ## Dependencies and Blockers
 
-- M0-05 compatibility gate 必须通过并冻结保留命名空间。
+- M0-05 compatibility gate 必须通过并冻结 ConfigV2 与保留命名空间合同。
 - binary AXML 只读能力若无法在资源限制内提供所需字段，任务 blocked；不得调用 Apktool/JADX 绕过。
 - 新增第三方解析依赖前必须完成来源、许可证、漏洞和 verification metadata 审计。
 

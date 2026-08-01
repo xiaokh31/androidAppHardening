@@ -1,15 +1,15 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260801-142506
-updated_at: 2026-08-01T14:25:06+08:00
+handoff_id: HO-20260801-143937
+updated_at: 2026-08-01T14:39:37+08:00
 updated_by: /root
-state: active
-source_branch: docs/m0-06-early-startup-config-contract
+state: ready
+source_branch: main
 base_commit: 43e10c38569dfdd64bc41d688d23d23e005906fb
 working_tree: clean
 current_milestone: M0
-active_task: M0-06
+active_task: NONE
 next_owner: runtime-security-agent
 ---
 
@@ -28,14 +28,14 @@ next_owner: runtime-security-agent
 - 当前设计固定使用 768-byte ConfigV2：完整 config SHA-256 由已认证 AHDC HeaderV1 绑定，原 Factory/策略只能在 CEK envelope、manifest MAC、config digest、signer 和 build/key slot 全部验证后使用。
 - Manifest 变换缩减为只替换 `android:appComponentFactory`；原 `android:name` 和既有 metadata 保持，Runtime 不读取 `ApplicationInfo.metaData`。
 - 冻结提交 `8d1da620897ffc9f163d5d17dd9bd14213790ae5` 已通过第三次独立只读安全复核，P0/P1/P2 均为 `0`；前两轮的原 Factory 六入口、顶层旧 metadata 合同和 READY 前 session 所有权三项 P1 已全部关闭。
-- 用户已授权发布与 PR #31 CI 修复；提交 `ce35c7f114225e34c3bffa30cd0360c66993e8d0` 修正 `invalid-evidence-hash` 夹具并为全部负向变换增加 no-op 自检。草稿 PR [#31](https://github.com/xiaokh31/androidAppHardening/pull/31) 的 Ubuntu/Windows Governance 与 Build 四项检查均通过；未运行任何模拟器或真机命令。
+- 用户已授权把 PR #31 转为 ready 并合并。精确 head `697c317583219187c5375843a43557e85f3e3afa` 的 Ubuntu/Windows Governance 与 Build 四项检查均通过，GitHub 报告 mergeable/CLEAN；当前 HandOff 是合并前 `main` 目标快照，尚未把 PR 状态误写为已合并。
 
 ## Active Workstreams
 
 | Task | Owner | Branch | Status | Dependencies | Next checkpoint |
 |---|---|---|---|---|---|
 | M0-04 | `runtime-security-agent` | `spike/m0-04-classloader-poc` | done | M0-03 | PR #29 已合并，正式设备矩阵和独立复核通过 |
-| M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | review | M0-04 | 草稿 PR #31 独立复核与四项 CI 均通过；等待用户另行授权转 ready 与合并 |
+| M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | done | M0-04 | PR #31 已满足独立复核、双平台 Governance/Build 与用户合并授权；执行 ready/merge |
 | M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | blocked | M0-04, M0-06 | M0-06 合并后，从既有 blocked 提交恢复实现与双平台设备矩阵 |
 
 ## Decisions and Invariants
@@ -164,17 +164,28 @@ next_owner: runtime-security-agent
 - sha256: not_applicable
 - result: PASS; all 11 HandOff negative cases pass locally, mutation no-op is now a hard test failure, and PR #31 Governance/Build succeeded on both Ubuntu and Windows
 
+### M0-06 exact-head merger-ready gate
+
+- task_id: M0-06
+- git_commit: 697c317583219187c5375843a43557e85f3e3afa
+- command: `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict`; `node tools/governance/test-handoff-validator.mjs`; `gh pr view 31`; `gh pr checks 31`
+- exit_code: 0
+- environment: Windows 10 10.0.19045 x64; GitHub Actions Ubuntu 24.04 and Windows 2025
+- timestamp: 2026-08-01T14:28:05+08:00
+- artifact: `https://github.com/xiaokh31/androidAppHardening/actions/runs/30687737288`; `https://github.com/xiaokh31/androidAppHardening/actions/runs/30687737289`
+- sha256: not_applicable
+- result: PASS; exact PR head is clean and synchronized with origin, all four required checks succeeded, independent review remains PASS with P0/P1/P2 equal to zero, and the user authorized ready/merge
+
 ## Blockers and Required Approvals
 
-- M0-05 remains blocked on M0-06 merge and subsequent implementation adaptation; this is intentional dependency enforcement, not authorization to modify M0-05 code here.
-- M0-06 has no remaining technical P0/P1/P2 finding; its reviewed contract is published in draft PR #31.
-- PR #31 has no remaining known CI failure. It remains draft and requires explicit user authorization before conversion to ready or merge.
+None
 
 ## Ordered Next Actions
 
-1. Keep PR #31 draft until the user separately authorizes conversion to ready and merge.
-2. On authorization, recheck head SHA and required checks, convert PR #31 to ready, then merge under repository policy without force push.
-3. After M0-06 merges, run strict HandOff on `main`; only then resume M0-05 from `spike/m0-05-application-factory-provider-jni-poc@3d716dd` and keep M1/M2 blocked until M0-05 completes.
+1. Commit and push this merger-ready HandOff snapshot; wait for the exact new head to pass Ubuntu/Windows Governance and Build.
+2. Convert PR #31 to ready and merge under repository policy without force push.
+3. Switch to updated `main`, verify the GitHub merge commit and closed Issue #30, then run strict HandOff without `--allow-pending-branch` or `--allow-pending-clean`.
+4. Record the post-merge `main` state before any later authorization to resume M0-05; keep M1/M2 blocked until M0-05 completes.
 
 ## Relevant Files and Artifacts
 
@@ -201,10 +212,11 @@ next_owner: runtime-security-agent
 - [x] 冻结提交后由独立 reviewer 复核同一 SHA；结论 PASS，P0/P1/P2 均为 `0`。
 - [x] 经用户授权推送分支并创建草稿 PR #31；未转为 ready、未合并。
 - [x] 获得明确 CI 修复授权，PR #31 Ubuntu/Windows Governance 与 Build 全部通过。
-- [ ] 未经授权不转 ready、不合并；M0-06 合并前不恢复 M0-05，不启动 M1/M2。
+- [x] 获得明确 ready/merge 授权，精确 head 的四项检查均通过。
+- [ ] 合并后在真实 `main` 无豁免运行 strict HandOff；完成前不恢复 M0-05，不启动 M1/M2。
 
 ## Handoff Sign-off
 
 - Coordinator `/root` 已核验当前 Git 分支、main 基线、M0-05 blocked 提交/证据和 Issue #30。
-- M0-06 的 docs-only 合同已完成、通过第三次独立安全复核并发布为草稿 PR #31；CI 夹具回归已修复且四项双平台检查通过，仍未把 draft 状态冒充为已授权合并。
+- M0-06 的 docs-only 合同、第三次独立安全复核、CI 修复、精确 head 双平台检查和用户合并授权均已核验；本快照只声明 merger-ready，尚未声明远端合并或 main 后验完成。
 - 本任务未启动模拟器、未访问真机、未修改 M0-05 实现，也未下载任何工具链。

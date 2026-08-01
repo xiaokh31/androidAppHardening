@@ -1,16 +1,16 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260801-154701
-updated_at: 2026-08-01T22:49:00+08:00
+handoff_id: HO-20260801-234944
+updated_at: 2026-08-01T23:49:44+08:00
 updated_by: /root
 state: active
 source_branch: spike/m0-05-application-factory-provider-jni-poc
-base_commit: 0d8e6f8c13ac871c840fe134d83d1bfc0b69d3a9
+base_commit: f63a7192eb6e1055a7647d27850ece262c59210a
 working_tree: clean
 current_milestone: M0
 active_task: M0-05
-next_owner: runtime-security-agent
+next_owner: m0_05_security_review
 ---
 
 # Project HandOff
@@ -31,7 +31,9 @@ next_owner: runtime-security-agent
 - ConfigV2/sourceDir、原 Factory ClassLoader hook、READY 前 session 清理、无 Factory、双 DEX、JNI 和负向 APK 矩阵已完成本地实现；Gradle check、Release/R8、静态 APK、签名和治理校验通过。
 - API 29 arm64 非 root 真机已完成 extracted/direct Release/R8、instrumentation、生命周期、跨 DEX、JNI、signer/config/metadata、17 个负向用例、各 20 次冷启动、内存和无明文 DEX 的正式验收，结果 PASS。
 - M0-05 可执行实现已冻结为 `0d8e6f8c13ac871c840fe134d83d1bfc0b69d3a9`；后续仅允许为 KVM 失败修复重新冻结，或在不改变实现的前提下补充证据与 HandOff。
-- 用户已批准把冻结验证分支推送到 GitHub 以执行 API 29/36 Linux/KVM workflow，明确暂不创建 PR；独立复核 PASS 前仍禁止创建 PR。
+- 验证/workflow 已冻结为 `f63a7192eb6e1055a7647d27850ece262c59210a`；GitHub Actions run `30706455270` 的 API 29 job `91386314437` 与 API 36 job `91386314472` 均为 `success`。
+- API 29/36 x86_64 Linux/KVM 已完成 extracted/direct Release/R8、instrumentation、生命周期、跨 DEX、JNI、signer/config/metadata、17 个独立启动负例、各 20 次冷启动、内存、无明文 DEX 和强制清理的正式验收，结果 PASS。
+- 三套设备环境证据已冻结并归档；当前门禁只剩独立 `m0_05_security_review`。独立复核 PASS 前仍禁止创建 PR。
 
 ## Active Workstreams
 
@@ -39,7 +41,7 @@ next_owner: runtime-security-agent
 |---|---|---|---|---|---|
 | M0-04 | `runtime-security-agent` | `spike/m0-04-classloader-poc` | done | M0-03 | PR #29、正式设备矩阵和独立复核已通过 |
 | M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | done | M0-04 | PR #31、合并后 strict HandOff 和双平台 CI 已通过 |
-| M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | in_progress | M0-04, M0-06 | 冻结并推送验证提交，完成 API 29/36 Linux/KVM 矩阵 |
+| M0-05 | `m0_05_security_review` | `spike/m0-05-application-factory-provider-jni-poc` | in_progress | M0-04, M0-06 | 对冻结实现、验证 SHA 与三套设备证据执行独立只读复核 |
 
 ## Decisions and Invariants
 
@@ -64,6 +66,9 @@ next_owner: runtime-security-agent
 - Google 官方 Linux Emulator 归档只下载到项目 D 盘 ignored `build/`，SHA-256 固定为 `95771e0ae431897b2a4bd2d97fa095f29a8b0624a7b216baf529f9306161c266`；未向 C 盘下载大体积工具。
 - MIUI streamed install 的拒绝已通过标准 `adb install --no-streaming` 方式消除；正式 API 29 arm64 非 root 真机矩阵在 64.2 秒内 PASS，runner 完成 cleanup，未启动本机模拟器。
 - 用户已授予一次验证性推送权限；冻结分支可推送用于 KVM workflow，但独立复核 PASS 前不创建 PR。
+- GitHub Linux/KVM workflow 的 API 29 冷启动检查已改为在 2 秒有界窗口内核验目标进程与 resumed Activity，避免 Android 10 `am start -W` 偶发先报告 Launcher 的假阴性，真实未恢复仍失败并保留 logcat。
+- 独立启动负例检查已按当前 FATAL PID 隔离日志，避免 Android 10 logcat 中前一 instrumentation 进程的 marker 污染；当前失败 PID 必须包含预期错误码且不得包含 `LOADER_CREATED`。
+- `f63a7192eb6e1055a7647d27850ece262c59210a` 上的 run `30706455270` 双 job PASS；正式报告、命令日志、启动负例报告和静态报告哈希已归档到 `docs/evidence/M0-05/formal-compatibility.md`。
 
 ## Verification Evidence
 
@@ -139,17 +144,29 @@ next_owner: runtime-security-agent
 - sha256: 833ae034e7c99389a398bce2acdd24b17bb300f98374292c7da5988c9496731f
 - result: PASS; extracted/direct instrumentation, lifecycle/factory, cross-DEX, JNI, signer/config/metadata, 17 external startup negatives, no-factory semantics, 20 cold starts each, memory collection, zero plaintext DEX and cleanup all passed; redacted command log SHA-256 is `2c0ab50114aefc8ebe16f9eab6c5f81c530a22ae547ded5db41796d06d08166d`
 
+### M0-05 API 29/36 x86_64 Linux/KVM formal acceptance
+
+- task_id: M0-05
+- git_commit: f63a7192eb6e1055a7647d27850ece262c59210a
+- command: GitHub Actions workflow `.github/workflows/m0-05-linux-kvm.yml`; project-local pinned API 29 r8/API 36 r2 x86_64 images and Emulator 37.1.11; `run-m0-05-device-acceptance.mjs`; `run-m0-05-startup-negative.mjs`
+- exit_code: 0
+- environment: GitHub Linux/KVM; API 29 x86_64 and API 36 x86_64; 64-bit; adb shell non-root; local emulator use none
+- timestamp: 2026-08-01T23:48:49+08:00
+- artifact: `https://github.com/xiaokh31/androidAppHardening/actions/runs/30706455270`; committed summary `docs/evidence/M0-05/formal-compatibility.md`; raw artifacts downloaded under ignored `build/m0-05/github-run-30706455270/`
+- sha256: not_applicable
+- result: PASS; both jobs succeeded, both variants passed instrumentation/lifecycle/cross-DEX/JNI/signer/config/metadata, each variant completed 20 cold starts and memory collection, independent startup negatives were 17/17, plaintext DEX count was zero, no-factory semantics and cleanup passed; API 29 report SHA-256 is `ceb1a572b149260bbb7c7b3fac808f73bf3f6ffb96dc2448262c41e6dd6f4519`, API 36 report SHA-256 is `ce5ffc1815a671b21a8e11fe978cd84eb821a2edfa17813fe7fd1f01e3b65a6f`
+
 ## Blockers and Required Approvals
 
-- 无当前外部批准阻塞。验证性分支推送已获批准；仍须遵守“独立复核 PASS 前不创建 PR”。
-- 技术门禁仍待完成：API 29/36 Linux/KVM 两个 job、证据归档与独立只读安全复核。
+- 无当前外部批准阻塞。验证性分支推送和三套设备证据归档已完成；仍须遵守“独立复核 PASS 前不创建 PR”。
+- 技术门禁仅剩独立只读 `m0_05_security_review`；P0/P1/P2 必须全部为零。
 
 ## Ordered Next Actions
 
-1. `/root` creates the frozen validation commit and pushes only the fixed branch so the API 29/36 Linux/KVM workflow can run; no PR is created at this stage.
-2. `runtime-security-agent` downloads the KVM evidence artifacts, checks both jobs, updates the committed M0-05 evidence report, and freezes the evidence commit SHA.
-3. `/root` assigns independent `m0_05_security_review` read-only review of the frozen implementation and all three device environments; all P0/P1/P2 findings must close.
-4. Only after review PASS, create the sole Issue #5 PR, run required PR CI, merge, and run strict HandOff on `main`; keep M1/M2 blocked until then.
+1. `/root` commits and pushes the reconciled evidence without changing frozen implementation or validation SHA.
+2. `/root` assigns independent `m0_05_security_review` read-only review of the frozen implementation, validation/workflow SHA and all three device environments; all P0/P1/P2 findings must close.
+3. Only after review PASS, create the sole Issue #5 PR and run required PR CI; request explicit merge authorization before merging.
+4. Keep M1/M2 blocked until M0-05 is merged and strict HandOff passes on `main`.
 
 ## Relevant Files and Artifacts
 
@@ -178,14 +195,14 @@ next_owner: runtime-security-agent
 - [x] 建立 M0-05 十三项验收条件到实现、静态测试、设备 runner 与 GitHub KVM workflow 的映射。
 - [x] 完成 ConfigV2/sourceDir、Factory/session、JNI、签名后篡改、R8 和落盘扫描的本地实现与静态门禁。
 - [x] 解除 MIUI USB 安装限制并完成 arm64 20 次冷启动、内存和负向设备验收。
-- [ ] 已获得验证性推送授权；完成 API 29/36 Linux/KVM 两套 Release/R8 设备验收仍待执行。
+- [x] 已获得验证性推送授权；API 29/36 Linux/KVM 两套 Release/R8 设备验收与强制清理均已通过。
 - [ ] 冻结 SHA 并由独立 reviewer 对同一提交与设备证据复核，P0/P1/P2 全为零。
 - [ ] 复核通过后再完成分支发布、唯一 PR、CI 与 merger-ready HandOff。
 - [ ] M0-05 完成前不启动 M1/M2。
 
 ## Handoff Sign-off
 
-- Coordinator `/root` 已核验当前 Git 分支、M0-04/M0-06 合并状态、本地静态门禁和 API 29 arm64 正式设备证据。
-- 当前快照只声明 arm64 与本地门禁通过，不把它描述为三设备兼容性 PASS，也不把 PoC signer 覆盖描述为生产 ConfigV2 完整认证。
+- Coordinator `/root` 已核验当前 Git 分支、M0-04/M0-06 合并状态、本地静态门禁、API 29 arm64 正式设备证据和同一验证 SHA 上的 API 29/36 x86_64 KVM 正式设备证据。
+- 当前快照声明三套要求的设备环境验收 PASS，但在独立复核前不声明 M0-05 完成，也不把 PoC signer 覆盖描述为生产 ConfigV2 完整认证。
 - `/root` 已核验真机为 API 29 arm64 64-bit、user/release-keys、非 root 环境；本轮未启动任何本机模拟器。
-- GitHub KVM workflow 具有 35 分钟 job 上限、180 秒 boot 上限、900 秒 device-runner 上限和 EXIT/INT/TERM 强制清理；验证性推送已获批准，独立复核 PASS 前不创建 PR。
+- GitHub KVM workflow 具有 35 分钟 job 上限、180 秒 boot 上限、900 秒 device-runner 上限和 EXIT/INT/TERM 强制清理；run `30706455270` 双 job 成功，独立复核 PASS 前不创建 PR。

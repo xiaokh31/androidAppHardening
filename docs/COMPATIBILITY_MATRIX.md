@@ -44,7 +44,7 @@
 | 单 DEX | Supported | `classes.dex` |
 | 多 DEX | Supported | `classes.dex`、`classes2.dex` 依序处理 |
 | 自定义 `Application` | Supported | 保存类名并在保护 ClassLoader 下创建 |
-| 自定义 `AppComponentFactory` | Supported | Shell 在保护 ClassLoader 可用后委托 |
+| 自定义 `AppComponentFactory` | Supported | Shell 用 provisional loader 实例化，并委托其 ClassLoader hook 与五类组件入口 |
 | 自定义 Provider | Supported | eager/lazy fixture 验证启动顺序 |
 | `ApplicationInfo.metaData` 为空 | Supported | 启动配置来自 sourceDir 中已认证 ConfigV2，不读取该 Bundle |
 | 动态下载并执行代码 | Rejected | 不在离线完整性合同内 |

@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260801-133957
-updated_at: 2026-08-01T13:39:57+08:00
+handoff_id: HO-20260801-134846
+updated_at: 2026-08-01T13:48:46+08:00
 updated_by: /root
 state: active
 source_branch: docs/m0-06-early-startup-config-contract
@@ -27,6 +27,7 @@ next_owner: runtime-security-agent
 - ADR 0007 与 M0-06 任务卡已新增；ADR 0003/0006、架构、威胁模型、路线图和 M0-05/M1/M2 任务合同已同步并通过冻结前治理校验。
 - 当前设计固定使用 768-byte ConfigV2：完整 config SHA-256 由已认证 AHDC HeaderV1 绑定，原 Factory/策略只能在 CEK envelope、manifest MAC、config digest、signer 和 build/key slot 全部验证后使用。
 - Manifest 变换缩减为只替换 `android:appComponentFactory`；原 `android:name` 和既有 metadata 保持，Runtime 不读取 `ApplicationInfo.metaData`。
+- 冻结提交 `7e78c12871b0be33458d07f490d25fe8b1fea583` 的首次独立复核发现 2 个 P1：遗漏原 Factory ClassLoader hook 委托，以及顶层产品/测试规范仍保留旧 metadata 合同。两项均已在工作树修正，等待新冻结提交复核。
 - M0-05 继续 blocked，M1/M2 不得启动；本分支未推送、未创建 PR，也未运行任何模拟器或真机命令。
 
 ## Active Workstreams
@@ -58,6 +59,8 @@ next_owner: runtime-security-agent
 - 新增 M0-06 任务卡并把关键路径改为 `M0-04 -> M0-06 -> M0-05`。
 - 修订 M0-05 验收：`metaData == null` 为正向用例，新增 `EARLY_CONFIG_PARSED/AUTHENTICATED`、`AAH-P009/P010` 和 ConfigV2 tamper matrix。
 - 同步 M1-01/M1-03/M1-04/M1-05 与 M2-01/M2-02/M2-03 的配置所有权、API 和格式引用。
+- 根据首次独立复核修正原 Factory 六入口语义：认证后建立 provisional loader，实例化 Factory 并恰好一次委托其 `instantiateClassLoader`，非空返回值成为 final loader；null/异常不回退。
+- 同步 `PRODUCT_REQUIREMENTS.md` 与 `TEST_STRATEGY.md`：Manifest 仅替换单一属性，ConfigV2 进入 parser/fuzz 和安全负向矩阵。
 
 ## Verification Evidence
 
@@ -85,18 +88,30 @@ next_owner: runtime-security-agent
 - sha256: not_applicable
 - result: PASS; independent task identity, Issue and branch established from current main without modifying M0-05 branch
 
+### M0-06 first independent security review
+
+- task_id: M0-06
+- git_commit: 7e78c12871b0be33458d07f490d25fe8b1fea583
+- command: `independent read-only review of frozen ADR, task contracts, architecture, threat model and governance validation`
+- exit_code: 1
+- environment: independent `m0_06_security_review` Agent; exact frozen SHA; no file modifications, downloads or device access
+- timestamp: 2026-08-01T13:48:46+08:00
+- artifact: `Codex task m0_06_security_review final handoff`
+- sha256: not_applicable
+- result: FAIL; 2 P1 findings: original Factory instantiateClassLoader delegation missing, and PRODUCT_REQUIREMENTS/TEST_STRATEGY retained the old metadata contract; both are corrected in the pending follow-up diff
+
 ## Blockers and Required Approvals
 
 - M0-05 remains blocked on M0-06 merge and subsequent implementation adaptation; this is intentional dependency enforcement, not authorization to modify M0-05 code here.
-- M0-06 completion is pending governance validation, a frozen commit and independent read-only security review.
+- M0-06 completion is pending a new frozen commit and independent read-only re-review confirming both P1 findings are closed.
 - Branch push and PR creation require separate user authorization; current user approval covers starting the local independent ADR/task revision only.
 
 ## Ordered Next Actions
 
 1. Finish cross-document contract synchronization and remove stale production references to ConfigV1, seven metadata keys and caller-supplied asset names.
 2. Run governance validator, strict HandOff validator, link/search checks and `git diff --check`; fix all failures.
-3. Commit a frozen docs-only SHA and start independent `m0_06_security_review` against exactly that SHA.
-4. Resolve every P0/P1/P2 finding, rerun validation and update this HandOff with final evidence.
+3. Commit the P1 corrections as a new frozen docs-only SHA and start independent `m0_06_security_review` re-review against exactly that SHA.
+4. Confirm both P1 findings are closed and no new P0/P1/P2 exists, then rerun validation and update this HandOff with final evidence.
 5. Stop before push/PR unless the user explicitly authorizes publication; do not resume M0-05 before M0-06 is merged.
 
 ## Relevant Files and Artifacts

@@ -20,10 +20,10 @@ Shell Factory：
 2. 签名结构验证成功后，从同一 `sourceDir` 定位唯一、未压缩且无 data descriptor 的固定 ZIP 条目 `assets/ah/runtime/config.bin` 与 `assets/ah/runtime/payload.ahdc`，对 ConfigV2、容器固定边界和 `SPV1` 预读视图做有界解析，不假设该回调存在 `AssetManager`。
 3. 唯一 `RuntimeStartupGuard` 比较实测 signer 与有界预读摘要，再把实测摘要交给 Native Loader；Native 按 ADR 0007 的顺序恢复 CEK、验证覆盖 `SPV1` 的 manifest MAC 和完整 config digest，并将已认证 signer 再次与实测 signer 比较。ConfigV2 的 Factory 和策略字段在此之前不得使用。
 4. 通过 Native Loader 将认证通过的 DEX 解密并有界解压到匿名内存。
-5. 按原 `classes.dex`、`classes2.dex` 顺序，使用 API 29 的 `InMemoryDexClassLoader(ByteBuffer[], String, ClassLoader)` 构造 payload loader。Native 搜索路径只由 Framework `ApplicationInfo.nativeLibraryDir`/`sourceDir`、公开进程 bitness/ABI 列表与当前 APK 有界 ZIP 清单派生，按“可读 extracted 目录（若有）+ `sourceDir!/lib/<selectedAbi>`”固定顺序传入；不得假设 parent 自动继承业务 SO 路径。
-6. 返回能够解析原业务类的 ClassLoader。
-7. 在该 ClassLoader 可用后实例化输入声明的原 `AppComponentFactory`。
-8. 对 Application、Activity、Service、Receiver 和 Provider 的创建委托给原 Factory；未声明原 Factory 时使用平台默认语义。
+5. 按原 `classes.dex`、`classes2.dex` 顺序，使用 API 29 的 `InMemoryDexClassLoader(ByteBuffer[], String, ClassLoader)` 构造 provisional payload loader。Native 搜索路径只由 Framework `ApplicationInfo.nativeLibraryDir`/`sourceDir`、公开进程 bitness/ABI 列表与当前 APK 有界 ZIP 清单派生，按“可读 extracted 目录（若有）+ `sourceDir!/lib/<selectedAbi>`”固定顺序传入；不得假设 parent 自动继承业务 SO 路径。
+6. 原 Factory 存在时，用 provisional loader 实例化一次，再恰好一次调用其 `instantiateClassLoader(provisionalLoader, applicationInfo)`；委托异常或返回 `null` 均失败关闭，返回值作为 final payload loader。原 Factory 不存在时 provisional loader 直接成为 final loader。
+7. 返回 final loader，并在进程生命周期内同时保留 Guard session、provisional loader、原 Factory 与 final loader 的强引用。
+8. 对 Application、Activity、Service、Receiver 和 Provider 的创建委托给同一原 Factory；未声明原 Factory 时使用平台默认语义。
 
 Host 只在 Manifest 中把 `android:appComponentFactory` 替换为 Shell Factory，并把规范化原 Factory 写入 ADR 0006 ConfigV2；原 `android:name` 保持不变。Shell 不读取 `ApplicationInfo.metaData`，其为 `null` 也是合法启动条件。原 Application 继续使用 Framework 传给 `instantiateApplication` 的 `className`。启动路径只依赖公开 `ApplicationInfo`/文件 API、固定来源的 `apksig` 库和 ADR 0007 的固定资产，不反射获取 `Context`，不读写 Framework 私有 ClassLoader 字段，也不将明文 DEX 写入磁盘。`PackageManager` 可在 Context 可用后的诊断测试中做一致性复核，但不是启动安全门禁或配置回退路径。
 
@@ -34,6 +34,7 @@ Host 只在 Manifest 中把 `android:appComponentFactory` 替换为 Shell Factor
 - 接入点具有 Android 公共 API 合同；
 - 在 Application 和 Provider 创建前建立业务 ClassLoader；
 - 可以通过委托保持自定义 Factory 语义；
+- 原 Factory 的 ClassLoader override 与五类组件创建入口均得到恰好一次委托；
 - 不依赖厂商 Framework 内部布局；
 - 明文 DEX 可直接从内存加载。
 
@@ -67,7 +68,7 @@ Host 只在 Manifest 中把 `android:appComponentFactory` 替换为 Shell Factor
 ## Verification
 
 - M0-04 在 API 29 证明 hook 发生在 Application/Provider 业务类解析前。
-- M0-05 覆盖默认与自定义 Application、Factory、eager Provider、所有组件类型和 JNI。
+- M0-05 覆盖默认与自定义 Application、Factory、eager Provider、原 Factory 的 `instantiateClassLoader` 与所有五类组件入口和 JNI。
 - M0-05 对 `extractNativeLibs=true/false` 分别证明三参数 `InMemoryDexClassLoader` 能从公开派生的搜索路径加载业务 JNI；无匹配 ABI、重复 ABI 或不规范 SO 路径必须失败关闭。
 - M0-05 在 `instantiateClassLoader` 的实际回调中证明 `ApplicationInfo.sourceDir` 可只读访问，固定 `apksig` 能在 API 29/36 的 ARM/x86 环境返回与安装时相同的唯一 signer；异 signer、多个 signer、损坏 APK 必须在 payload 打开前失败。
 - M0-05 证明同一回调可从 `sourceDir` 定位唯一 `STORED` ConfigV2 与 payload entry，并完成 PoC 级 `EARLY_CONFIG_APK_AUTHENTICATED < LOADER_CREATED`；重复名称、压缩条目、data descriptor、CRC/长度错误和截断 ZIP 均在 payload 分配前失败。完整生产 ConfigV2 认证仍由 M1-04/M2-02/M2-03 实现和验证。
@@ -76,3 +77,4 @@ Host 只在 Manifest 中把 `android:appComponentFactory` 替换为 Shell Factor
 - 静态扫描和运行时 strict mode 证明没有 hidden API 使用。
 - 文件系统监控证明无明文 DEX 写入。
 - 原 Factory 指向 Shell、缺失类或抛出异常时得到稳定失败，而非递归或回退。
+- 自定义原 Factory 的时序固定为 `PROVISIONAL_LOADER_CREATED < ORIGINAL_FACTORY_CREATED < ORIGINAL_FACTORY_CLASSLOADER_DELEGATED < LOADER_CREATED`；无原 Factory 时 provisional 与 final loader 相同。

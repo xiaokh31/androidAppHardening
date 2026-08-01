@@ -94,9 +94,9 @@ Bootstrap Runtime -> verified in-memory business DEX -> original app components
 1. 把 Framework 传入的 `ApplicationInfo` 和 shell loader 交给唯一 `RuntimeStartupGuard`；不读取 `ApplicationInfo.metaData`。
 2. Guard 使用 `ApplicationInfo.sourceDir` 与固定 `apksig` 验证当前已安装 APK并取得唯一 signer，再定位固定 ConfigV2/AHDC 资产并做有界预读；该回调没有 `Context`，不调用 `PackageManager`。
 3. Guard 调用 Native Loader 按 ADR 0007 认证 signer policy、完整 ConfigV2 和容器；只有认证后才暴露原 Factory 与策略配置。
-4. Guard 建立业务 DEX ClassLoader，并返回拥有内存生命周期和已认证启动配置的 `VerifiedPayloadSession`。
-5. Shell 强引用 session 并返回能够解析原应用类的 ClassLoader。
-6. 在保护 ClassLoader 可用后按已认证 ConfigV2 实例化原 `AppComponentFactory`，并对 Application、Activity、Service、Receiver 和 Provider 创建进行委托；原 Application 使用 Framework 传入的 `className`。
+4. Guard 建立 provisional payload ClassLoader，并返回拥有其内存生命周期和已认证启动配置的 `VerifiedPayloadSession`。
+5. 原 Factory 存在时，Shell 用 provisional loader 实例化一次，再恰好一次委托其 `instantiateClassLoader`；非空返回值成为 final loader。无原 Factory 时 provisional loader 直接成为 final loader。
+6. Shell 强引用 session、provisional/final loader 和原 Factory，返回 final loader；随后把 Application、Activity、Service、Receiver 和 Provider 创建委托给同一 Factory。原 Application 使用 Framework 传入的 `className`。
 
 没有原 Factory 时使用平台默认实例化语义。`:runtime:bootstrap` 只编译依赖 `:runtime:policy` 的 guard API；`:runtime:native` 是 policy 的非传递 implementation dependency，bootstrap 不得导入低层 loader。不得通过隐藏 API 获取 Context 或修改系统 ClassLoader 内部字段。
 
@@ -224,8 +224,10 @@ Android process creation
 -> verify each record GCM tag
 -> bounded zlib inflate of authenticated compressed bytes
 -> verify original DEX length and SHA-256
--> build InMemoryDexClassLoader chain
+-> build provisional InMemoryDexClassLoader chain
 -> instantiate original AppComponentFactory when declared
+-> delegate original Factory instantiateClassLoader exactly once
+-> select and return final payload ClassLoader
 -> create original Application and providers through delegated semantics
 -> run original application
 ```

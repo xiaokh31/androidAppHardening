@@ -68,7 +68,7 @@ payload 不得以明文文件落盘。离线应用内密钥只能增加提取成
 ## Public Interfaces
 
 - 低层 facade 固定为 `public final class ah.runtime.loader.PayloadRuntime`，提供 `public static UntrustedPayloadBinding inspectBinding(ApplicationInfo applicationInfo)` 与 `public static LoadedPayload openVerified(ClassLoader shellLoader, ApplicationInfo applicationInfo, byte[] installedSignerSha256)`；facade 拒绝空/非绝对 `sourceDir` 或空 `packageName`，并只把 Framework 的 source/package 字段传入 Native。名称和文档必须明确前者未认证、后者仍要求调用者先完成安装 APK signer 验证。
-- 所有权对象固定为 `public final class ah.runtime.loader.LoadedPayload implements AutoCloseable`；只公开 `public ClassLoader classLoader()` 与幂等 `public void close()`，内部强拥有 Native 句柄、direct buffers 和 payload loader。M2-03 的 `VerifiedPayloadSession` 必须保留该对象，不得只保存裸 `ClassLoader`。
+- 所有权对象固定为 `public final class ah.runtime.loader.LoadedPayload implements AutoCloseable`；只公开 `public ClassLoader classLoader()` 与幂等 `public void close()`，这里的 loader 是供 M2-01 原 Factory ClassLoader hook 消费的 provisional loader。对象内部强拥有 Native 句柄、direct buffers 和该 loader；M2-03 的 `VerifiedPayloadSession` 必须保留该对象，不得只保存裸 `ClassLoader`。
 - `public final class ah.runtime.loader.UntrustedPayloadBinding` 只公开复制后的预读字段，类型名和访问器文档不得将其描述为已认证。
 - `NativePayloadBridge`、`PayloadMemoryHandle` 与 `PayloadClassLoaders` 均位于 `ah.runtime.loader` 且为 package-private；它们只分别承担 JNI、Native 句柄所有权和 loader 构造，不构成跨模块 API。
 - `:runtime:policy` 以 Gradle `implementation(project(":runtime:native"))` 消费本 facade，不能把它传递到 `:runtime:bootstrap` compile classpath；唯一生产调用者由 M2-03 的架构测试锁定为 `RuntimeStartupGuard`。

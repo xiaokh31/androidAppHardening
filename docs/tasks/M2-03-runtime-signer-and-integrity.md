@@ -64,7 +64,7 @@ security_sensitive: true
 ## Public Interfaces
 
 - 唯一生产入口为 `public final class ah.runtime.guard.RuntimeStartupGuard`，通过 `public static VerifiedPayloadSession openVerifiedPayload(ApplicationInfo applicationInfo, ClassLoader shellLoader)` 完成全序列并禁止实例化；ConfigV2/AHDC asset 名均为实现常量，接口不接受覆盖。
-- `public final class ah.runtime.guard.VerifiedPayloadSession implements AutoCloseable`，只公开 `ClassLoader classLoader()`、只读 `VerifiedSignerIdentity signer()`、只读 `VerifiedStartupConfiguration startupConfiguration()` 和幂等 `close()`，内部拥有 M2-02 `LoadedPayload`。
+- `public final class ah.runtime.guard.VerifiedPayloadSession implements AutoCloseable`，只公开 `ClassLoader provisionalClassLoader()`、只读 `VerifiedSignerIdentity signer()`、只读 `VerifiedStartupConfiguration startupConfiguration()` 和幂等 `close()`，内部拥有 M2-02 `LoadedPayload`。final loader 由 M2-01 委托原 Factory 后决定，不回写 Guard session。
 - `public final class VerifiedSignerIdentity`，保存唯一当前证书摘要及复制后的不可变有序 lineage 列表。
 - `public final class VerifiedStartupConfiguration` 只在完整认证后构造，公开可选原 Factory 全限定名、container/signer/risk policy version 和 build/key slot 的不可变诊断副本；不暴露 share、nonce、wrapped CEK 或原始 config bytes。
 - `public final class IntegrityResult`，通过 `Status.VERIFIED`、`Status.REJECTED` 和稳定错误码表达结果。

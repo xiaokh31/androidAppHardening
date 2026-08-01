@@ -42,7 +42,7 @@ M0-04 只证明最小 ClassLoader 接入。M0-05 的首次 API 29 arm64 真机�
 - 仅从同一 `sourceDir` 定位唯一 `assets/ah/runtime/config.bin` 与 `assets/ah/runtime/payload.ahdc`；二者只接受 `STORED`、无 encryption、无 data descriptor 且 CRC/长度一致的规范条目。
 - 在任何 payload byte 被解密前，只凭 Framework `ApplicationInfo.sourceDir`/`packageName` 和公开进程 ABI 信息验证当前 APK；对 `Context`、`PackageManager`、`ActivityThread`、`LoadedApk` 或反射的依赖均判定 PoC 失败。
 - 严格解析 ConfigV2 的 768-byte 结构、Factory flag/length/UTF-8/zero-fill、版本和 reserved 字段；在固定的非生产测试 signer 摘要验证通过后，把同一已签名 APK 内的 config bytes 标记为 PoC 级 `EARLY_CONFIG_APK_AUTHENTICATED`。
-- 原始 factory 存在时只在 `EARLY_CONFIG_APK_AUTHENTICATED` 后由 payload loader 实例化一次，并委托 Application、Activity、Service、Receiver 与 Provider 创建；不存在时保持平台默认语义。
+- `EARLY_CONFIG_APK_AUTHENTICATED` 后先创建 provisional payload loader。原始 factory 存在时用该 loader 实例化一次，恰好一次委托其 `instantiateClassLoader`，把非空返回值作为 final loader，再委托 Application、Activity、Service、Receiver 与 Provider 创建；不存在时 provisional loader 直接成为 final loader并保持平台默认组件语义。
 - 验证 Provider 早于 `Application.onCreate`、但晚于 loader 创建；验证原始 Application 只创建一次。
 - 从 payload DEX 调用 APK 原有 `lib/<abi>/libfixture_jni.so`，覆盖 installer 解压 SO 和从 APK 直接加载 SO 两种模式。
 
@@ -60,7 +60,7 @@ M0-04 只证明最小 ClassLoader 接入。M0-05 的首次 API 29 arm64 真机�
 - fixture 使用被忽略的一次性非生产证书，并把期望摘要生成为仅供 M0-05 compat bootstrap source set 编译的常量；该值不从 ConfigV2、Manifest 或调用方取得。`apksig` 验证当前 APK且实测 signer 与该期望值一致后，APK Signature Scheme 对同一 APK 内 ConfigV2 bytes 的覆盖构成 PoC 级认证；该固定摘要和签名能力不得进入产品 Runtime 发布物或公共接口。
 - 原 Application 不写入 ConfigV2；Shell factory 使用 Framework 传入的 `className` 并在 payload loader 下委托。
 - `ApplicationInfo.metaData` 不参与启动，`null` 是必须通过的正向用例；不得通过早期 `Context`/`PackageManager` 补读。
-- 原始 factory 的五类组件方法都被委托，委托抛出的异常保持类型与 cause，不回退到 `super`。
+- 原始 factory 的 `instantiateClassLoader` 和五类组件方法都被恰好一次委托。ClassLoader 委托返回 `null` 或任一委托抛出异常时保持稳定错误/cause并失败，不回退到 provisional loader 或 `super`。
 - `InMemoryDexClassLoader` 使用 API 29 三参数数组构造器显式传入 Native 搜索路径。`NativeLibrarySearchPathResolver` 只使用 `ApplicationInfo.nativeLibraryDir`、`sourceDir`、`flags & FLAG_EXTRACT_NATIVE_LIBS`、公开 `Process.is64Bit()` 和对应 ABI 列表；拒绝无匹配 ABI、重复 ABI 目录或非规范 SO 路径。
 - 壳 DEX 使用 M0-03 固定、校验来源的 Android `apksig`，要求 APK 验证成功且当前 signer 数严格为 `1`。release/R8 设备测试必须证明类链接、JCA provider 和 verifier 裁剪有效，且无签名执行类或私钥入口。
 - Context 可用后只做测试断言：`SigningInfo` 当前证书摘要必须与早期 `apksig` 结果一致；该后置断言不解锁 payload。
@@ -70,16 +70,16 @@ M0-04 只证明最小 ClassLoader 接入。M0-05 的首次 API 29 arm64 真机�
 
 - 固定资产：`assets/ah/runtime/config.bin`、`assets/ah/runtime/payload.ahdc`。
 - Shell factory：`ah.runtime.bootstrap.ShellAppComponentFactory`。
-- 稳定事件：`EARLY_SIGNER_VERIFIED`、`EARLY_CONFIG_PARSED`、`EARLY_CONFIG_APK_AUTHENTICATED`、`LOADER_CREATED`、`ORIGINAL_FACTORY_CREATED`、`PROVIDER_CREATED`、`APPLICATION_ON_CREATE`、`JNI_LOADED`。`EARLY_CONFIG_APK_AUTHENTICATED` 只表示 M0-05 的测试 signer/APK 签名覆盖，不等于 M2-03 的完整生产认证。
+- 稳定事件：`EARLY_SIGNER_VERIFIED`、`EARLY_CONFIG_PARSED`、`EARLY_CONFIG_APK_AUTHENTICATED`、`PROVISIONAL_LOADER_CREATED`、`ORIGINAL_FACTORY_CREATED`、`ORIGINAL_FACTORY_CLASSLOADER_DELEGATED`、`LOADER_CREATED`、`PROVIDER_CREATED`、`APPLICATION_ON_CREATE`、`JNI_LOADED`。`LOADER_CREATED` 专指将返回 Framework 的 final loader；`EARLY_CONFIG_APK_AUTHENTICATED` 只表示 M0-05 的测试 signer/APK 签名覆盖，不等于 M2-03 的完整生产认证。
 - `EarlySignerProbe.verify(ApplicationInfo): EarlySignerResult`：只接受 Framework 参数，不接受调用方路径或 `Context`。
 - `EarlyConfigProbe.open(ApplicationInfo, EarlySignerResult): EarlyConfigResult`：只定位固定资产；返回值在 authenticated 前不暴露 Factory/策略字段。
 - `NativeLibrarySearchPathResolver.resolve(ApplicationInfo): NativeLibrarySearchPath`：只暴露选中 ABI、路径类型和供三参数构造器消费的路径。
-- 失败码：factory 加载 `AAH-P002`，委托异常 `AAH-P003`，JNI `AAH-P004`，早期 signer 不可读/无效/非唯一/不一致为 `AAH-P005` 至 `AAH-P008`，配置定位/结构为 `AAH-P009`，配置未被期望测试 signer 的有效 APK 签名覆盖为 `AAH-P010`。
+- 失败码：factory 加载/构造 `AAH-P002`，ClassLoader 或组件委托异常/非法 null 返回 `AAH-P003`，JNI `AAH-P004`，早期 signer 不可读/无效/非唯一/不一致为 `AAH-P005` 至 `AAH-P008`，配置定位/结构为 `AAH-P009`，配置未被期望测试 signer 的有效 APK 签名覆盖为 `AAH-P010`。
 
 ## Security Constraints
 
 - 本 PoC 的 Factory 类名只能来自已通过期望测试 signer/APK 签名覆盖的 ConfigV2，并通过严格 UTF-8、Java 全限定类名、ClassLoader 归属和禁止 Shell 递归校验；生产实现仍必须等待 ADR 0007 的完整认证步骤。
-- 不捕获后静默忽略原始 factory 异常，不加载网络或可写目录代码。
+- 不捕获后静默忽略原始 factory 异常，不接受其 ClassLoader 委托的 `null` 返回，不加载网络或可写目录代码。
 - 认证完成前不得创建 payload loader、加载业务 JNI 或触发业务探针。
 - JNI fixture 只返回固定测试值，不读取设备身份、凭据或外部文件。
 - 文件系统扫描必须证明没有 payload DEX 明文落盘。
@@ -95,8 +95,8 @@ M0-04 只证明最小 ClassLoader 接入。M0-05 的首次 API 29 arm64 真机�
 ## Acceptance Criteria
 
 1. API 29/36 x86_64 与 API 29+ arm64 的两种 Release/R8 变体执行组合 fixture instrumentation 均退出 `0`。
-2. 事件顺序满足 `EARLY_SIGNER_VERIFIED < EARLY_CONFIG_PARSED < EARLY_CONFIG_APK_AUTHENTICATED < LOADER_CREATED < ORIGINAL_FACTORY_CREATED < PROVIDER_CREATED < APPLICATION_ON_CREATE`，各关键事件只出现一次；报告不得把 PoC 的 APK 签名覆盖表述为完整生产 config 认证。
-3. 原始 factory 对 Application、Activity、Service、Receiver、Provider 的计数均为 `1`，实际组件类由 payload loader 加载；无原 factory 时保持平台默认语义。
+2. 自定义 factory 的事件顺序满足 `EARLY_SIGNER_VERIFIED < EARLY_CONFIG_PARSED < EARLY_CONFIG_APK_AUTHENTICATED < PROVISIONAL_LOADER_CREATED < ORIGINAL_FACTORY_CREATED < ORIGINAL_FACTORY_CLASSLOADER_DELEGATED < LOADER_CREATED < PROVIDER_CREATED < APPLICATION_ON_CREATE`，各关键事件只出现一次；报告不得把 PoC 的 APK 签名覆盖表述为完整生产 config 认证。无原 factory 时不存在两个 `ORIGINAL_FACTORY_*` 事件，provisional 与 final loader identity 相同。
+3. 原始 factory 对 `instantiateClassLoader`、Application、Activity、Service、Receiver、Provider 的计数均为 `1`；其 ClassLoader 返回值与 `LOADER_CREATED`/Framework 实际使用的 final loader identity 相同，组件类可由该 final loader 解析。返回 null 或抛错产生 `AAH-P003` 且不回退；无原 factory 时保持平台默认语义。
 4. `classes2.dex` 独有类可从 Provider 与 Activity 调用，返回固定断言值。
 5. `extractNativeLibs=true/false` 的 `System.loadLibrary("fixture_jni")` 在 x86_64/arm64 均成功；删除选中 ABI、伪造重复 ABI 或非规范 ZIP native 路径时在业务 JNI 前失败。
 6. `ApplicationInfo.metaData == null` 与含任意无关 metadata 均通过相同正向矩阵；代码和日志证明未读取七个废弃 `ah.runtime.*` 键。
@@ -110,10 +110,10 @@ M0-04 只证明最小 ClassLoader 接入。M0-05 的首次 API 29 arm64 真机�
 ## Required Tests
 
 - 有/无自定义 factory、Framework `metaData` null/非空的参数化 instrumentation。
-- 五类组件委托、Provider/Application 顺序、多 DEX 跨类调用。
+- 原 Factory ClassLoader hook 与五类组件委托、provisional/final loader identity、Provider/Application 顺序、多 DEX 跨类调用。
 - x86_64/arm64、extracted/direct-from-APK JNI 正负向矩阵。
 - ConfigV2 ZIP 结构、结构字段、Factory 编码、签名后 byte tamper 和异 signer matrix。
-- factory 不存在、构造失败、委托抛错的错误码与 cause 保留。
+- factory 不存在、构造失败、ClassLoader 委托 null/抛错、组件委托抛错的错误码与 cause 保留。
 - API 29/36 各变体 20 次有整体超时与强制清理的冷启动测试及明文落盘扫描。
 - 早期 signer 同/异/多当前 signer、损坏签名块、不可读 sourceDir 与后置 `SigningInfo` 交叉验证。
 - release/R8 on-device linkage、裁剪、JCA provider、体积、冷启动和峰值内存。

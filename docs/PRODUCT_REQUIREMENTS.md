@@ -100,7 +100,7 @@ v0.1 接受标准 Java/Kotlin 应用的单 DEX 或多 DEX 结构，并允许自�
 
 ### FR-003 Manifest 转换
 
-直接处理二进制 AXML，保留未知属性、命名空间、资源 ID 和元素顺序。将 `android:appComponentFactory` 替换为项目 Shell Factory，并将原 Factory、原 Application 和必要启动信息写入项目保留元数据。除已批准字段外不得语义重写 Manifest。
+直接处理二进制 AXML，保留原 `android:name`、全部既有 metadata、未知属性、命名空间、资源 ID 和元素顺序。唯一允许的语义变化是把 `android:appComponentFactory` 替换为项目 Shell Factory；规范化原 Factory 与启动策略写入 ADR 0006 的 ConfigV2，原 Application 继续由 Framework `className` 提供。不得新增 `ah.runtime.*` Manifest metadata 或改写其他字段。
 
 ### FR-004 DEX 认证加密
 
@@ -112,7 +112,7 @@ v0.1 接受标准 Java/Kotlin 应用的单 DEX 或多 DEX 结构，并允许自�
 
 ### FR-006 原组件兼容
 
-保护 ClassLoader 生效后恢复原 `Application`、原 `AppComponentFactory` 的组件实例化语义，以及 Provider 和 JNI 的正常初始化顺序。原 Factory 不存在时使用平台默认语义。
+认证完成并建立 provisional payload ClassLoader 后恢复原 `Application` 和原 `AppComponentFactory` 语义。原 Factory 存在时恰好一次委托其 `instantiateClassLoader`，以非空返回值作为 final loader，再把五类组件创建委托给同一实例；Provider 和 JNI 保持正常初始化顺序。原 Factory 不存在时使用 provisional loader 与平台默认组件实例化语义。
 
 ### FR-007 Runtime 完整性
 

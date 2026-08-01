@@ -83,9 +83,10 @@ API 29 arm64 非 root 设备的真实 `instantiateClassLoader` 回调中，`Appl
 3. M0-05 的依赖、事件、失败码和设备验收不再要求 `ApplicationInfo.metaData`，并把空 Bundle 作为正向用例。
 4. M1-03 只允许替换 `android:appComponentFactory`；M1-01/M1-04 负责把规范化原 Factory 写入 ConfigV2。
 5. M2-01/M2-02/M2-03 只消费已认证启动配置，公开入口不接受调用方 asset 名或 Factory 名。
-6. 任务索引与路线图的关键路径固定为 `M0-04 -> M0-06 -> M0-05`，M1/M2 仍在 M0-05 完成前 blocked。
-7. `node tools/governance/validate-project-package.mjs` 和严格 HandOff 校验退出 `0`。
-8. 独立安全复核对冻结提交给出 PASS，且没有未关闭 P0/P1/P2。
+6. 原 Factory 的 `instantiateClassLoader` 与五类组件入口均有唯一委托合同；provisional/final loader 顺序、identity、null/异常失败语义在 M0-05/M2-01 一致。
+7. 任务索引与路线图的关键路径固定为 `M0-04 -> M0-06 -> M0-05`，M1/M2 仍在 M0-05 完成前 blocked。
+8. `node tools/governance/validate-project-package.mjs` 和严格 HandOff 校验退出 `0`。
+9. 独立安全复核对冻结提交给出 PASS，且没有未关闭 P0/P1/P2。
 
 ## Required Tests
 
@@ -111,6 +112,8 @@ API 29 arm64 非 root 设备的真实 `instantiateClassLoader` 回调中，`Appl
 - `docs/tasks/M1-*.md`
 - `docs/tasks/M2-*.md`
 - `docs/ARCHITECTURE.md`
+- `docs/PRODUCT_REQUIREMENTS.md`
+- `docs/TEST_STRATEGY.md`
 - `docs/THREAT_MODEL.md`
 - `docs/ROADMAP.md`
 - `docs/PROJECT_PLAN.md`

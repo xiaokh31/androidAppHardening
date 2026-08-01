@@ -2,12 +2,12 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260801-154701
-updated_at: 2026-08-01T22:44:17+08:00
+updated_at: 2026-08-01T22:49:00+08:00
 updated_by: /root
 state: active
 source_branch: spike/m0-05-application-factory-provider-jni-poc
-base_commit: 71d3f9519b5e304346814f33b58b5bf97adeb440
-working_tree: dirty
+base_commit: 0d8e6f8c13ac871c840fe134d83d1bfc0b69d3a9
+working_tree: clean
 current_milestone: M0
 active_task: M0-05
 next_owner: runtime-security-agent
@@ -30,6 +30,7 @@ next_owner: runtime-security-agent
 - 最新 `main` 已通过 merge commit `71d3f9519b5e304346814f33b58b5bf97adeb440` 合入既有 M0-05 分支，合并后 strict HandOff 无豁免通过。
 - ConfigV2/sourceDir、原 Factory ClassLoader hook、READY 前 session 清理、无 Factory、双 DEX、JNI 和负向 APK 矩阵已完成本地实现；Gradle check、Release/R8、静态 APK、签名和治理校验通过。
 - API 29 arm64 非 root 真机已完成 extracted/direct Release/R8、instrumentation、生命周期、跨 DEX、JNI、signer/config/metadata、17 个负向用例、各 20 次冷启动、内存和无明文 DEX 的正式验收，结果 PASS。
+- M0-05 可执行实现已冻结为 `0d8e6f8c13ac871c840fe134d83d1bfc0b69d3a9`；后续仅允许为 KVM 失败修复重新冻结，或在不改变实现的前提下补充证据与 HandOff。
 - 用户已批准把冻结验证分支推送到 GitHub 以执行 API 29/36 Linux/KVM workflow，明确暂不创建 PR；独立复核 PASS 前仍禁止创建 PR。
 
 ## Active Workstreams
@@ -129,7 +130,7 @@ next_owner: runtime-security-agent
 ### M0-05 API 29 arm64 formal acceptance
 
 - task_id: M0-05
-- git_commit: 71d3f9519b5e304346814f33b58b5bf97adeb440
+- git_commit: 0d8e6f8c13ac871c840fe134d83d1bfc0b69d3a9
 - command: `node tools/validation/run-m0-05-device-acceptance.mjs --serial <redacted> --platform arm64-api29-physical --cold-starts 20 --negative-signed-dir <ignored> --negative-unsigned-dir <ignored> ...`
 - exit_code: 0
 - environment: Android API 29; arm64-v8a; user/release-keys; `ro.secure=1`; `ro.debuggable=0`; adb shell uid 2000; serial omitted

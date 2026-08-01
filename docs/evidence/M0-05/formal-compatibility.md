@@ -6,6 +6,7 @@
 - Validation mode: `pre-cli`
 - Branch: `spike/m0-05-application-factory-provider-jni-poc`
 - Issue: `#5`
+- Frozen implementation commit: `0d8e6f8c13ac871c840fe134d83d1bfc0b69d3a9`
 - Status at this snapshot: API 29 arm64 physical-device acceptance PASS; API 29/36 x86_64 GitHub Linux/KVM acceptance pending the authorized verification-only branch push.
 - Local emulator use: none. The x86_64 workflow owns its emulator lifecycle, has a 35-minute job limit, a 180-second boot limit, a 900-second acceptance-runner limit, and EXIT/INT/TERM cleanup.
 - Security boundary: the signer/config binding is a synthetic-fixture PoC check. It is not the production ConfigV2 authentication planned for M1/M2.

@@ -25,8 +25,8 @@ v0.1 仅接收 `minSdk >= 29` 的独立 APK。启动链不得依赖隐藏 API、
 ## Inputs
 
 - M0-05 固化的自定义 `Application`、原始 `AppComponentFactory`、早期 `ContentProvider` 与 JNI 加载顺序。
-- M1-03 写入的 Manifest 元数据键和值。
-- M1-04 固化的容器定位信息，但本任务不负责解密容器。
+- M1-03 只替换 Shell Factory 后的 Manifest。
+- M1-04 固化的 ConfigV2 与容器定位信息，但本任务不负责解密容器。
 - `docs/ARCHITECTURE.md`、`docs/THREAT_MODEL.md` 与 ADR 0003。
 
 ## Expected Outputs
@@ -55,24 +55,27 @@ v0.1 仅接收 `minSdk >= 29` 的独立 APK。启动链不得依赖隐藏 API、
 - 固定 Java package 为 `ah.runtime.bootstrap`，入口类为 `ShellAppComponentFactory`。
 - 模块路径固定为 `runtime/bootstrap`，Android Runtime 源码位于 `src/main/java` 并使用 Java 17；不得应用 Kotlin Android plugin。
 - `instantiateClassLoader` 只调用一次 `HardeningBootstrap.install(...)`；生产绑定只能调用已完成的 M2-03 `RuntimeStartupGuard.openVerifiedPayload(...)` 并保存返回的 `VerifiedPayloadSession`，不得直接调用 M2-02 的低层 `PayloadRuntime`；状态机固定为 `NEW`、`INSTALLING`、`READY`、`FAILED`。
-- Manifest 元数据键与 M0-05/M1-03 完全一致，固定为 `ah.runtime.original_application`、`ah.runtime.original_app_component_factory`、`ah.runtime.has_original_app_component_factory`、`ah.runtime.container_asset`、`ah.runtime.container_major`、`ah.runtime.signer_policy_version`、`ah.runtime.risk_policy_version`。
-- 七个键只从 Framework 传入并缓存的 `ApplicationInfo.metaData` 读取，类型逐项固定为 M1-03 合同；缺失、空 Bundle 或错型立即进入 `FAILED`。生产代码不得在无 Context 回调中尝试 `PackageManager`，也不得另行解析未验证的调用方 metadata。
-- 原始工厂为空时使用平台 `AppComponentFactory` 行为；存在时，在 payload `ClassLoader` 可用后实例化并代理所有组件创建方法。
-- 检测到递归指向壳工厂、未知元数据版本、初始化重入或部分初始化时必须转为 `FAILED`，后续调用返回同一稳定错误，不尝试降级加载原始 DEX。
+- Shell 不读取 `ApplicationInfo.metaData`；它为 `null` 或含任意既有应用 metadata 都不得改变启动结果。生产代码不得在无 Context 回调中尝试 `PackageManager`，也不得解析调用方配置。
+- 原始 Factory 与策略只从 M2-03 返回的 `VerifiedPayloadSession.startupConfiguration()` 读取。配置必须已完成 ADR 0007 全序列认证；bootstrap 不接触未认证 ConfigV2 bytes。
+- Guard session 提供 provisional payload loader。原始工厂为空时该 loader 直接成为 final loader并使用平台组件创建行为；存在时，用 provisional loader 实例化 Factory，恰好一次调用 `originalFactory.instantiateClassLoader(provisionalLoader, applicationInfo)`，以非空返回值作为 final loader，再代理五类组件创建方法。原 Application 使用 Framework 传入的 `className`，不从 config 或 package name 重建。
+- ClassLoader 委托异常或返回 `null` 均进入 `FAILED` 并缓存稳定错误；不得回退到 provisional loader。成功后进程生命周期内强引用 session、provisional/final loader 和原 Factory。
+- `HardeningBootstrap.install` 在 `READY` 所有权转移前以局部 `try/finally` 独占 `VerifiedPayloadSession`。Factory 构造/hook、递归、重入、null 或 final loader 验证失败时必须恰好一次 `session.close()`，清空 provisional/final/factory 部分引用，只缓存非敏感错误码/消息；close 异常不得覆盖原错误或导致回退。
+- 检测到递归指向壳工厂、未知已认证配置版本、初始化重入或部分初始化时必须转为 `FAILED`，后续调用返回同一稳定错误，不尝试降级加载原始 DEX。
 - 仅使用 Android SDK 公共 API；不得修改 `LoadedApk`、`ActivityThread` 或私有 `ClassLoader` 字段。
 
 ## Public Interfaces
 
 - `public final class ShellAppComponentFactory extends AppComponentFactory`
 - `final class HardeningBootstrap`，通过静态方法 `static BootstrapResult install(ClassLoader shellLoader, ApplicationInfo applicationInfo)` 提供内部入口。
-- `final class BootstrapResult`，通过 `Status.READY`、`Status.FAILURE`、M2-03 的 `ah.runtime.guard.VerifiedPayloadSession` 和稳定错误码表达结果；成功结果必须在进程生命周期内强引用该 session。
+- `final class BootstrapResult`，通过 `Status.READY`、`Status.FAILURE`、`ClassLoader finalClassLoader()`、M2-03 的 `ah.runtime.guard.VerifiedPayloadSession` 和稳定错误码表达结果；成功结果必须在进程生命周期内强引用 session 与 provisional/final loader。
 - `:runtime:bootstrap` 的生产 compile classpath 只依赖 `:runtime:policy` 的 guard API，不包含 `:runtime:native` 的低层 API；架构测试禁止任何 `ah.runtime.loader` import、反射类名或直接调用。
 - 稳定错误码前缀 `AAH-RUNTIME-BOOT-`，错误消息不得包含密钥、DEX 内容或设备敏感路径。
 
 ## Security Constraints
 
-- 所有元数据在使用前校验类型、长度、版本和允许字符；异常输入必须 fail closed。
+- 所有已认证 ConfigV2 字段在使用前校验类型、长度、版本和允许字符；异常输入必须 fail closed。
 - 引导失败不得回退到未保护 payload、磁盘明文 DEX 或原始未校验类加载器。
+- `FAILED` 状态不得强引用 session、provisional/final loader、原 Factory 或原始 throwable；`READY` 前失败必须完成 session close，允许只记录独立清理错误码但不得覆盖主错误。
 - 日志只记录稳定错误码和阶段，不记录容器密钥、证书原文、DEX 字节或完整文件系统路径。
 - 本任务提供成本提升与完整性入口，不声称阻止具有进程控制能力的攻击者。
 
@@ -89,16 +92,19 @@ v0.1 仅接收 `minSdk >= 29` 的独立 APK。启动链不得依赖隐藏 API、
 - `./gradlew :runtime:bootstrap:test :runtime:bootstrap:lint` 退出码为 `0`。
 - `./gradlew :runtime:bootstrap:connectedCheck` 在 API 29 和项目最高受支持 API 的测试设备上退出码为 `0`。
 - 对标准应用、自定义 `Application`、自定义工厂、启动期 `ContentProvider` 和独立进程五类 fixture，组件类均由 payload `ClassLoader` 创建且各进程只安装一次。
-- 注入未知元数据版本、递归工厂名和初始化重入后，启动均以对应 `AAH-RUNTIME-BOOT-` 错误 fail closed。
-- API 29 和最高支持 API 的真实回调中七个 typed metadata 全部可读；空 Bundle、缺键和错型在 signer 验证后、payload loader 返回前稳定失败。
+- 自定义 Factory 的 `instantiateClassLoader` 恰好调用一次，其非空返回值等于 Shell 返回 Framework 的 final loader；null、抛错或无法解析业务组件均稳定失败且不回退。
+- Factory 构造/hook、递归、重入、null 和 final loader 验证各失败点的 session close 计数为 `1`，Native handle 关闭、可清零 buffer 已清理、部分引用为空；close 抛错不改变主错误码。
+- 注入未知 ConfigV2 版本、递归工厂名和初始化重入后，启动均以对应 `AAH-RUNTIME-BOOT-` 错误 fail closed。
+- API 29 和最高支持 API 的真实回调在 `ApplicationInfo.metaData == null` 时仍通过；任意无关 metadata 不改变认证结果，静态扫描确认无七个废弃键。
 - 静态扫描不存在对隐藏 API、`ActivityThread`、`LoadedApk` 私有字段或磁盘 DEX 输出的调用。
 
 ## Required Tests
 
 - 状态机并发、重入、失败缓存和代理选择的 JVM 单元测试。
-- 六个 `AppComponentFactory` 实例化入口的 instrumentation 测试。
-- 自定义工厂调用顺序、原始 `Application` 恢复、早期 Provider 和多进程回归测试。
-- 元数据缺失、类型错误、超长值、未知版本和递归配置的负向测试。
+- 六个 `AppComponentFactory` 实例化入口的 instrumentation 测试，包含 provisional/final loader identity、ClassLoader null/异常和恰好一次计数。
+- `READY` 所有权转移前的 session close-count、Native handle、direct buffer、部分引用和 cleanup-error precedence 单元/instrumentation 测试。
+- 自定义工厂完整调用顺序、原始 `Application` 恢复、早期 Provider 和多进程回归测试。
+- 已认证 Factory 缺失/超长/非法、未知 ConfigV2 版本和递归配置的负向测试，以及 `metaData` null/非空等价测试。
 
 ## Required Evidence
 

@@ -25,7 +25,7 @@ security_sensitive: true
 ## Inputs
 
 - M1-01 `ApkInspection`、M1-02 `SignerPolicyV1`、M1-03 transformed Manifest、M1-04 encrypted container。
-- 版本匹配的 `RuntimeBundle`：bootstrap `classes.dex`、四 ABI 各含唯一 `.ah_share_v1` placeholder 的 `libah_runtime.so` template，以及 M1-04 一次性 `KeyPackagingPlanV1`。
+- 版本匹配的 `RuntimeBundle`：bootstrap `classes.dex`、四 ABI 各含唯一 `.ah_share_v1` placeholder 的 `libah_runtime.so` template，以及 M1-04 一次性 `KeyPackagingPlanV2`。
 - 不存在且与 input 不同文件身份的目标 output path。
 
 ## Expected Outputs
@@ -54,7 +54,7 @@ security_sensitive: true
 
 - 输出布局固定为 transformed `AndroidManifest.xml`、单个 bootstrap `classes.dex`、`assets/ah/runtime/payload.ahdc`、`assets/ah/runtime/config.bin` 和选定 ABI 的 `lib/<abi>/libah_runtime.so`；不得存在 `classes2.dex` 或原业务 DEX。
 - `payload.ahdc` 与 `config.bin` 必须各只有一个规范名称，使用 ZIP method `STORED`、预先计算 CRC/size、不使用 data descriptor，并按 4 KiB 对齐其数据起点，使无 `Context` 的 Runtime 可从 `ApplicationInfo.sourceDir` 有界定位；重复、压缩或未对齐均由输出 verifier 拒绝。
-- `config.bin` 必须是 `KeyPackagingPlanV1` 提供的精确 176-byte `ConfigV1`。对每个选中 ABI，materializer 按 ADR 0006 验证 template SHA-256、ELF machine、唯一 104-byte `.ah_share_v1` placeholder 和 ABI ID，再写入 `NativeShareSlotV1`；bootstrap DEX 不做每 APK patch。
+- `config.bin` 必须是 `KeyPackagingPlanV2` 提供的精确 768-byte `ConfigV2`。对每个选中 ABI，materializer 按 ADR 0006 验证 template SHA-256、ELF machine、唯一 104-byte `.ah_share_v1` placeholder 和 ABI ID，再写入 `NativeShareSlotV1`；bootstrap DEX 不做每 APK patch。
 - 删除项仅为原 `classes*.dex`、`META-INF/MANIFEST.MF`、`META-INF/*.SF`、`META-INF/*.RSA`、`META-INF/*.DSA`、`META-INF/*.EC`、`META-INF/SIG-*` 及重建时自然消失的 APK Signing Block；其他 `META-INF` entry 保留。
 - 输入没有 native library 时注入四 ABI Runtime；输入存在 native library 时只为输入实际 ABI 集合注入对应 Runtime，遇到四 ABI 之外的 native ABI 返回 `COMPAT_ABI_UNSUPPORTED`。该策略不补造客户 ABI。
 - Runtime SO 与 AHDC/config 使用 STORED；SO data offset 对齐 `16384` bytes，其他 STORED entry 对齐 `4` bytes。bootstrap DEX 使用 DEFLATED level `9`。
@@ -66,7 +66,7 @@ security_sensitive: true
 ## Public Interfaces
 
 - `ApkRepacker.repack(RepackRequest request): OutputVerification`。
-- `RepackRequest` 包含已验证输入、目标、Manifest、container、signer policy、RuntimeBundle 和一次性 `KeyPackagingPlanV1`，不含签名 secret。
+- `RepackRequest` 包含已验证输入、目标、Manifest、container、signer policy、RuntimeBundle 和一次性 `KeyPackagingPlanV2`，不含签名 secret。
 - `OutputVerifier.verify(Path candidate, ExpectedOutput expected): OutputVerification`。
 - 错误码：`PACKAGE_ENTRY_CONFLICT`、`PACKAGE_ABI_MISMATCH`、`PACKAGE_ALIGNMENT`、`PACKAGE_WRITE_FAILED`、`OUTPUT_PATH_ALIAS`、`OUTPUT_ALREADY_EXISTS`、`OUTPUT_VERIFICATION_FAILED`、`OUTPUT_ATOMIC_MOVE_UNSUPPORTED`、`OUTPUT_INPUT_CHANGED`。
 
@@ -74,7 +74,7 @@ security_sensitive: true
 
 - 输入始终以只读 channel 使用，不按 entry name 在磁盘创建中间文件。
 - 不信任上游 bytes；writer 前再次校验长度，verifier 使用独立 parser 重读。
-- 任何失败关闭所有句柄、删除本任务临时输出、清零 `KeyPackagingPlanV1` 及 Runtime materializer 的敏感 buffer，并保持 input/output 目标不变。
+- 任何失败关闭所有句柄、删除本任务临时输出、清零 `KeyPackagingPlanV2` 及 Runtime materializer 的敏感 buffer，并保持 input/output 目标不变。
 - 日志不含绝对路径、DEX 内容、key material 或证书本体。
 - 未签名状态是强制验收，不得以测试便利加入生产签名分支。
 - 本任务须由独立 ZIP/APK 安全 reviewer 复核。
@@ -93,7 +93,7 @@ security_sensitive: true
 3. 除批准替换/删除/新增项外，每个输入 entry 的 uncompressed SHA-256、compression method、CRC 和内容保持；客户 SO bytes 完全相同。
 4. `zipalign -c -P 16 -v 4 output-unsigned.apk` 退出码为 `0`，SO offset 为 16384 对齐，其他 STORED entry 为 4 对齐。
 5. `apksigner verify output-unsigned.apk` 以“未签名”失败，内部 verifier 明确 `signingPerformed=false`；生产流程没有调用签名工具。
-6. 每个输出 SO 的唯一 share slot magic/version/ABI/build/key slot/digest 与 `ConfigV1` 一致；未选中 ABI 不在输出，bootstrap DEX 与 RuntimeBundle 模板 SHA-256 匹配且未被个性化 patch。
+6. 每个输出 SO 的唯一 share slot magic/version/ABI/build/key slot/digest 与 `ConfigV2` 一致；未选中 ABI 不在输出，bootstrap DEX 与 RuntimeBundle 模板 SHA-256 匹配且未被个性化 patch。
 7. input/output 同路径、symlink/hardlink alias、output 预存在、写入异常、磁盘空间耗尽、验证篡改和 atomic move 不支持均非零失败，输入 SHA-256 不变且无成功 output。
 8. Java-only、ARM-only、x86-only 与混合 ABI fixtures 产生规定 Runtime ABI 集；ARM-only 不出现 x86 Runtime entry。
 9. Windows/Ubuntu 的规范化 entry manifest、保留 hashes、错误码和 alignment 结果相同。

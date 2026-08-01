@@ -1,122 +1,180 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260801-003228
-updated_at: 2026-08-01T00:32:28+08:00
+handoff_id: HO-20260801-143937
+updated_at: 2026-08-01T14:39:37+08:00
 updated_by: /root
 state: ready
 source_branch: main
-base_commit: 09c654b36a3ec19225926521dca5127ffef7a556
+base_commit: 43e10c38569dfdd64bc41d688d23d23e005906fb
 working_tree: clean
 current_milestone: M0
 active_task: NONE
-next_owner: unassigned
+next_owner: runtime-security-agent
 ---
 
 # Project HandOff
 
 ## Objective
 
-在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内推进离线 APK 加固工具。M0-04 已用公开 `AppComponentFactory` 与 `InMemoryDexClassLoader` 证明 API 29+ 内存 DEX 接入可行性；下一任务 M0-05 只能在独立领取后验证原始 Factory、Provider、JNI 和兼容性路径。
+在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内完成独立 M0-06 ADR/任务合同修订。把启动配置从已被真实设备证伪的 `ApplicationInfo.metaData` 迁移到 `ApplicationInfo.sourceDir` 中固定且受认证的 ConfigV2；本任务只改治理与设计文档，不修改 M0-05 Runtime/fixture 实现。
 
 ## Current State
 
-- M0-04 的唯一 [PR #29](https://github.com/xiaokh31/androidAppHardening/pull/29) 已于 `2026-08-01T00:30:34+08:00` 以普通 merge commit `09c654b36a3ec19225926521dca5127ffef7a556` 合并到 `main`。
-- PR head `12ce7c11a7b4cf8286a86cd2ce150a33a98cfe3e` 的 Build #9 与 Governance #18 在 Ubuntu 24.04 和 Windows 2025 四项门禁全部通过。
-- 合并后的 `main@fdf43361ff42680bb69daa24783ef528dba1411c` 已无任何 pending 豁免通过 strict HandOff、项目治理、固定工具链、官方包哈希和 diff 校验。
-- API 29 rev8 与 API 36 rev2 两套非 root x86_64 验收均通过：instrumentation 1/1、冷启动 20/20、三种真实变异 APK 3/3 failure-closed、零禁止日志/文件/payload 哈希落盘命中。
-- 独立安全复核结果为 `PASS`，没有剩余 P0/P1/P2 发现。
-- Emulator 37.1.11、API 29 rev8 和 API 36 rev2 官方大体积包只位于项目根下被忽略的 `.toolchains/`；未提交到 Git，验收后没有遗留项目 Emulator 或 watchdog。
-- M0-04 仅证明公开 ClassLoader PoC，不表示 M0-05 或生产 signer、加密容器、多 DEX 与完整 Runtime 能力已实现。
-- 当前没有活动开发任务；M0-05 尚未领取或启动。
+- M0-04 的 PR #29 已合并并通过正式 API 29/36 x86_64 验收、独立安全复核与合并后 strict HandOff。
+- M0-05 的本地 blocked 分支固定在 `3d716ddc4be513a07be0b5cf2d986529d9e0dc06`；API 29 arm64 非 root 真机的早期 signer 通过，但 Framework callback `metaData` 为 null，触发 `AAH-P009` 且未创建 payload loader。
+- 用户已批准启动独立 ADR/任务合同修订；GitHub Issue [#30](https://github.com/xiaokh31/androidAppHardening/issues/30) 已创建，分支为 `docs/m0-06-early-startup-config-contract`，基线为 `main@43e10c38569dfdd64bc41d688d23d23e005906fb`。
+- ADR 0007 与 M0-06 任务卡已新增；ADR 0003/0006、架构、威胁模型、路线图和 M0-05/M1/M2 任务合同已同步并通过冻结前治理校验。
+- 当前设计固定使用 768-byte ConfigV2：完整 config SHA-256 由已认证 AHDC HeaderV1 绑定，原 Factory/策略只能在 CEK envelope、manifest MAC、config digest、signer 和 build/key slot 全部验证后使用。
+- Manifest 变换缩减为只替换 `android:appComponentFactory`；原 `android:name` 和既有 metadata 保持，Runtime 不读取 `ApplicationInfo.metaData`。
+- 冻结提交 `8d1da620897ffc9f163d5d17dd9bd14213790ae5` 已通过第三次独立只读安全复核，P0/P1/P2 均为 `0`；前两轮的原 Factory 六入口、顶层旧 metadata 合同和 READY 前 session 所有权三项 P1 已全部关闭。
+- 用户已授权把 PR #31 转为 ready 并合并。精确 head `697c317583219187c5375843a43557e85f3e3afa` 的 Ubuntu/Windows Governance 与 Build 四项检查均通过，GitHub 报告 mergeable/CLEAN；当前 HandOff 是合并前 `main` 目标快照，尚未把 PR 状态误写为已合并。
 
 ## Active Workstreams
 
 | Task | Owner | Branch | Status | Dependencies | Next checkpoint |
 |---|---|---|---|---|---|
-| M0-04 | `runtime-security-agent` | `spike/m0-04-classloader-poc` | done | M0-03 | PR #29、正式设备矩阵、独立安全复核及四项 PR CI 均通过 |
-| M0-05 | `unassigned` | `spike/m0-05-application-factory-provider-jni-poc` | planned | M0-04 | 从最新 `main` 领取任务，先规划兼容性 PoC 与独立复核所有权 |
+| M0-04 | `runtime-security-agent` | `spike/m0-04-classloader-poc` | done | M0-03 | PR #29 已合并，正式设备矩阵和独立复核通过 |
+| M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | done | M0-04 | PR #31 已满足独立复核、双平台 Governance/Build 与用户合并授权；执行 ready/merge |
+| M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | blocked | M0-04, M0-06 | M0-06 合并后，从既有 blocked 提交恢复实现与双平台设备矩阵 |
 
 ## Decisions and Invariants
 
-- 继续遵守 [ADR-0001](docs/adr/0001-apk-postprocessing-only.md) 至 [ADR-0006](docs/adr/0006-offline-key-protection-boundary.md)。
-- 输入 APK 始终只读；产品输出始终为新的未签名 APK；生产模块不得读取、传递或使用签名凭据。
-- API 29+ 只使用公开 `AppComponentFactory.instantiateClassLoader()` 接入，不使用 hidden API、反射修改 `pathList` 或明文 DEX 落盘回退。
-- M0-04 测试签名能力只存在于被忽略的集成测试产物中，不进入产品模块、分发包或版本库。
-- APK/ZIP/AXML/DEX/证书和所有长度字段均视为不可信输入；日志和异常不得泄露 payload、用户路径或异常 cause。
-- API 镜像与 Emulator 大文件只允许位于项目根 `.toolchains/` 且必须被 Git 忽略。
-- 模拟器验收必须限时执行并在 `finally` 中清理；结束后核对 `adb devices` 与 Emulator/watchdog 进程。
-- 反 dump、反调试、环境检测、签名校验和离线密钥隐藏只能描述为成本防御，不作绝对安全承诺。
+- 继续遵守 ADR 0001 至 ADR 0007；ADR 0007 明确 sourceDir 固定配置通道，ADR 0006 固定 ConfigV2 wire layout。
+- 输入 APK 只读；产品输出为新的未签名 APK；生产模块不得读取、传递或使用签名凭据。
+- API 29+ 只使用公开 `AppComponentFactory.instantiateClassLoader()`、Framework `ApplicationInfo` 和只读文件 API；不用 Context、PackageManager、Framework 私有对象、反射或 hidden API 回退。
+- 启动固定读取 `assets/ah/runtime/config.bin` 与 `assets/ah/runtime/payload.ahdc`，生产接口不接受调用方路径或 asset 名。
+- ConfigV2 在完整 digest 被已认证 AHDC header 绑定前是不可信输入；原 Factory、risk policy 和版本不得提前暴露。
+- Manifest 只替换 `android:appComponentFactory`，不新增七个废弃 `ah.runtime.*` metadata；原 Application 由 Framework `className` 提供。
+- ConfigV1 在产品实现/发布前被替代；v0.1 只接受 Config major 2，不提供兼容回退。
+- 本任务是 docs-only；M0-05 实现、设备矩阵、PR、M1/M2 均不在本分支范围。
+- 安全敏感文档提交必须由未参与修订的 `m0_06_security_review` 对冻结 SHA 做只读复核，P0/P1/P2 全部关闭后才可完成。
 
 ## Changes Since Previous Handoff
 
-- 将 PR #29 从 draft 转为 ready，并在所有门禁保持全绿、head SHA 未变化的前提下以普通 merge commit 合并。
-- 将 M0-04 工作流状态从 `review` 更新为 `done`，清除活动任务与 owner。
-- 将恢复点从 `spike/m0-04-classloader-poc` 更新为合并后的 `main`。
-- 在合并后的 `main` 提交 HandOff 快照并完成无豁免 strict 验证。
-- 保留 M0-05 为未分配的 `planned` 状态，不提前实现相邻任务。
+- 根据 M0-05 blocked 证据建立独立 Issue #30 和 M0-06 文档分支，未复用 M0-05 的 Issue/分支。
+- 新增 ADR 0007，记录真实 callback 冲突、sourceDir 配置决策、固定认证顺序、拒绝替代方案和兼容性影响。
+- 将 ADR 0006 从预发布 176-byte ConfigV1 修订为 768-byte ConfigV2，并定义 Factory flag/length/UTF-8 slot、132-byte AAD、完整 digest 绑定和 KeyPackagingPlanV2。
+- 修订 ADR 0003 与架构：Runtime 不读取 metadata；Manifest 只替换 Shell Factory；原 Application 不重复存储。
+- 新增 M0-06 任务卡并把关键路径改为 `M0-04 -> M0-06 -> M0-05`。
+- 修订 M0-05 验收：`metaData == null` 为正向用例，新增 `EARLY_CONFIG_PARSED/AUTHENTICATED`、`AAH-P009/P010` 和 ConfigV2 tamper matrix。
+- 同步 M1-01/M1-03/M1-04/M1-05 与 M2-01/M2-02/M2-03 的配置所有权、API 和格式引用。
+- 根据首次独立复核修正原 Factory 六入口语义：认证后建立 provisional loader，实例化 Factory 并恰好一次委托其 `instantiateClassLoader`，非空返回值成为 final loader；null/异常不回退。
+- 同步 `PRODUCT_REQUIREMENTS.md` 与 `TEST_STRATEGY.md`：Manifest 仅替换单一属性，ConfigV2 进入 parser/fuzz 和安全负向矩阵。
+- 根据第二次独立复核固定 READY 前所有权：M0-05 PoC 与 M2-01 均以局部 `try/finally` 独占 session，任何 Factory 构造/hook、递归、重入、null 或 final loader 验证失败均恰好一次 close；M2-02/03 明确幂等关闭、Native handle/buffer/强引用清理和关闭后访问拒绝。
+- 为 M0-05、M2-01、M2-02、M2-03 与顶层测试策略补充 close-count、buffer 清零、部分引用释放及 cleanup-error precedence 验收矩阵。
+- 按用户授权把当前分支推送到 `origin`，并创建以 `main` 为 base、关联 Issue #30 的草稿 PR #31。
+- 按用户授权修复 HandOff 负向测试：无效哈希变换同时支持普通/反引号证据值，且任一负向变换未改变输入时测试自身立即失败；未修改认证启动合同。
 
 ## Verification Evidence
 
-### M0-04 formal API 29/36 acceptance
+### M0-04 completed dependency
 
 - task_id: M0-04
 - git_commit: e9f89734aa3d4148ec6ebe9a6b970a9276128d00
-- command: `.\gradlew.bat --offline --no-daemon :fixtures:android:connectedClassloaderPocDebugAndroidTest`; `node tools/validation/run-m0-04-cold-start.mjs`; `node tools/validation/run-m0-04-tamper-start.mjs`
+- command: `gradlew.bat --offline --no-daemon :fixtures:android:connectedClassloaderPocDebugAndroidTest`; `node tools/validation/run-m0-04-cold-start.mjs`; `node tools/validation/run-m0-04-tamper-start.mjs`; independent read-only review
 - exit_code: 0
-- environment: Windows 10 10.0.19045 x64; Temurin 17.0.19+10; Gradle 9.5.0; Node.js 24.12.0; Emulator 37.1.11; API 29 rev8 and API 36 rev2 x86_64 non-root AVDs
-- timestamp: 2026-07-31T15:06:44+08:00
-- artifact: `docs/evidence/M0-04/formal-api29-api36.md`; ignored raw evidence under `build/m0-04/evidence/`
-- sha256: `57ed7fda2539a8053ea7e361b1db51950dc0096305ae2c514780cc9ec6edef0b`
-- result: PASS; both devices passed 1/1 instrumentation, 20/20 cold starts, complete snapshots, zero forbidden log/file/hash hits, and 3/3 real failure-close variants
-
-### M0-04 pinned Android packages
-
-- task_id: M0-04
-- git_commit: e9f89734aa3d4148ec6ebe9a6b970a9276128d00
-- command: `node tools/validation/verify-m0-04-android-packages.mjs`
-- exit_code: 0
-- environment: Windows 10 10.0.19045 x64; Node.js 24.12.0; project-local `.toolchains/android-m0-04`
-- timestamp: 2026-07-31T15:06:44+08:00
-- artifact: `tools/validation/m0-04-android-packages.json`
-- sha256: `cbc44d8325f44f3bef1f1529c0bbf77d42c8fd13e494aba4e10e27ba6813b6c2`
-- result: PASS; all three official archive SHA-1 and project SHA-256 values match the fixed manifest
-
-### M0-04 independent security review
-
-- task_id: M0-04
-- git_commit: e9f89734aa3d4148ec6ebe9a6b970a9276128d00
-- command: `independent read-only review of implementation diff, validators, raw API 29/36 evidence, and scope boundaries`
-- exit_code: 0
-- environment: independent `m0_04_security_review` Agent; reviewed commit and ignored evidence hashes independently
+- environment: Windows 10 10.0.19045 x64; Emulator 37.1.11; API 29 rev8 and API 36 rev2 x86_64 non-root AVDs; independent `m0_04_security_review`
 - timestamp: 2026-07-31T15:06:44+08:00
 - artifact: `docs/evidence/M0-04/formal-api29-api36.md`
-- sha256: `57ed7fda2539a8053ea7e361b1db51950dc0096305ae2c514780cc9ec6edef0b`
-- result: PASS; no remaining P0/P1/P2 findings, with later production protections explicitly outside M0-04 scope
+- sha256: 57ed7fda2539a8053ea7e361b1db51950dc0096305ae2c514780cc9ec6edef0b
+- result: PASS; both devices passed instrumentation, cold starts and tamper matrices, with no remaining P0/P1/P2 review finding
 
-### M0-04 PR CI and merge
+### M0-06 issue and branch initialization
 
-- task_id: M0-04
-- git_commit: 09c654b36a3ec19225926521dca5127ffef7a556
-- command: `GitHub Actions Build run 30612038332; Governance run 30612038433; merge PR #29 with expected head 12ce7c11a7b4cf8286a86cd2ce150a33a98cfe3e`
+- task_id: M0-06
+- git_commit: 43e10c38569dfdd64bc41d688d23d23e005906fb
+- command: `create GitHub Issue #30 through authenticated in-app browser`; `git switch -c docs/m0-06-early-startup-config-contract main`
 - exit_code: 0
-- environment: GitHub-hosted ubuntu-24.04 and windows-2025; protected main; normal merge commit
-- timestamp: 2026-08-01T00:30:34+08:00
-- artifact: `https://github.com/xiaokh31/androidAppHardening/pull/29`
+- environment: GitHub authenticated session; Windows 10 10.0.19045 x64; Git 2.52.0
+- timestamp: 2026-08-01T13:34:16+08:00
+- artifact: `https://github.com/xiaokh31/androidAppHardening/issues/30`
 - sha256: not_applicable
-- result: PASS; four required PR checks succeeded and GitHub reports PR #29 merged into main
+- result: PASS; independent task identity, Issue and branch established from current main without modifying M0-05 branch
 
-### M0-04 merged-main strict validation
+### M0-06 first independent security review
 
-- task_id: M0-04
-- git_commit: fdf43361ff42680bb69daa24783ef528dba1411c
-- command: `validate-handoff.mjs HandOff.md --strict; validate-project-package.mjs; verify-m0-toolchain.mjs; verify-m0-04-android-packages.mjs; git diff --check HEAD^ HEAD`
+- task_id: M0-06
+- git_commit: 7e78c12871b0be33458d07f490d25fe8b1fea583
+- command: `independent read-only review of frozen ADR, task contracts, architecture, threat model and governance validation`
+- exit_code: 1
+- environment: independent `m0_06_security_review` Agent; exact frozen SHA; no file modifications, downloads or device access
+- timestamp: 2026-08-01T13:48:46+08:00
+- artifact: `Codex task m0_06_security_review final handoff`
+- sha256: not_applicable
+- result: FAIL; 2 P1 findings: original Factory instantiateClassLoader delegation missing, and PRODUCT_REQUIREMENTS/TEST_STRATEGY retained the old metadata contract; both are corrected in the pending follow-up diff
+
+### M0-06 second independent security review
+
+- task_id: M0-06
+- git_commit: d03ed4bc1f638120b43b2488c135020a0f651e57
+- command: `independent read-only re-review of the exact frozen follow-up SHA and the two prior P1 closures`
+- exit_code: 1
+- environment: independent `m0_06_security_review` Agent; exact frozen SHA; no file modifications, downloads or device access
+- timestamp: 2026-08-01T13:52:00+08:00
+- artifact: `Codex task m0_06_security_review follow-up result`
+- sha256: not_applicable
+- result: FAIL; both prior P1 findings closed, but a new P1 found that failures after `openVerifiedPayload()` and before READY could retain an unclosed session, Native handle, direct buffers and partial loader/factory references; corrected in the pending follow-up diff
+
+### M0-06 third independent security review
+
+- task_id: M0-06
+- git_commit: 8d1da620897ffc9f163d5d17dd9bd14213790ae5
+- command: `independent read-only review of the exact frozen contract SHA`; `node tools/governance/validate-project-package.mjs`; `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict`; `node tools/validation/verify-m0-toolchain.mjs`; `git diff --check 8d1da620^ 8d1da620`; independent ConfigV2 arithmetic and stale-contract searches
 - exit_code: 0
-- environment: Windows 10 10.0.19045 x64; Git 2.52.0; Node.js 24.12.0; main branch with clean working tree
-- timestamp: 2026-08-01T00:32:28+08:00
-- artifact: `HandOff.md`
-- sha256: `b085cb274afdbaa24f7b545d7676d459a24d9fbb6a0d7cd992d09edc6a262118`
-- result: PASS; strict HandOff ran on merged main without pending-branch or pending-clean exemptions, and all companion validations succeeded
+- environment: independent `m0_06_security_review` Agent; exact frozen SHA; no file modifications, network, downloads, emulator or physical-device access
+- timestamp: 2026-08-01T13:57:30+08:00
+- artifact: `Codex task m0_06_security_review third review result`
+- sha256: not_applicable
+- result: PASS; P0=0, P1=0, P2=0; all three earlier P1 findings closed, docs-only scope preserved, ConfigV2 contiguous 768-byte layout and AAD `[0,132)` independently confirmed
+
+### M0-06 branch publication and draft PR
+
+- task_id: M0-06
+- git_commit: fed4514a048293a66fee4a61455854cabecebdd1
+- command: `git push -u origin docs/m0-06-early-startup-config-contract`; `gh pr create --base main --head docs/m0-06-early-startup-config-contract --draft`
+- exit_code: 0
+- environment: Windows 10 10.0.19045 x64; Git 2.52.0; GitHub CLI 2.96.0; authenticated account `xiaokh31`
+- timestamp: 2026-08-01T14:03:35+08:00
+- artifact: `https://github.com/xiaokh31/androidAppHardening/pull/31`
+- sha256: not_applicable
+- result: PASS; remote tracking branch created and draft PR #31 opened against main with Issue #30 linkage
+
+### M0-06 initial PR governance result
+
+- task_id: M0-06
+- git_commit: fed4514a048293a66fee4a61455854cabecebdd1
+- command: `gh pr view 31 --json statusCheckRollup`; `gh run view 30687016615 --job 91334752915 --log-failed`
+- exit_code: 1
+- environment: GitHub Actions `ubuntu-24.04`; Governance workflow run `30687016615`
+- timestamp: 2026-08-01T14:04:03+08:00
+- artifact: `https://github.com/xiaokh31/androidAppHardening/actions/runs/30687016615/job/91334752915`
+- sha256: not_applicable
+- result: FAIL; `invalid-evidence-hash` negative fixture expected one validation error but mutated no line because its regex requires backticks while current HandOff evidence hashes are unquoted; focused test-fixture correction requires explicit CI-fix approval
+
+### M0-06 PR CI remediation
+
+- task_id: M0-06
+- git_commit: ce35c7f114225e34c3bffa30cd0360c66993e8d0
+- command: `node tools/governance/test-handoff-validator.mjs`; `node tools/governance/validate-project-package.mjs`; `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict --allow-pending-clean`; `node tools/validation/verify-m0-toolchain.mjs`; `node --check tools/governance/test-handoff-validator.mjs`; `git diff --check`; `gh pr checks 31`
+- exit_code: 0
+- environment: Windows 10 10.0.19045 x64; Node v24.12.0; Git 2.52.0; GitHub Actions Ubuntu 24.04 and Windows 2025
+- timestamp: 2026-08-01T14:23:41+08:00
+- artifact: `https://github.com/xiaokh31/androidAppHardening/actions/runs/30687589630`; `https://github.com/xiaokh31/androidAppHardening/actions/runs/30687589620`
+- sha256: not_applicable
+- result: PASS; all 11 HandOff negative cases pass locally, mutation no-op is now a hard test failure, and PR #31 Governance/Build succeeded on both Ubuntu and Windows
+
+### M0-06 exact-head merger-ready gate
+
+- task_id: M0-06
+- git_commit: 697c317583219187c5375843a43557e85f3e3afa
+- command: `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict`; `node tools/governance/test-handoff-validator.mjs`; `gh pr view 31`; `gh pr checks 31`
+- exit_code: 0
+- environment: Windows 10 10.0.19045 x64; GitHub Actions Ubuntu 24.04 and Windows 2025
+- timestamp: 2026-08-01T14:28:05+08:00
+- artifact: `https://github.com/xiaokh31/androidAppHardening/actions/runs/30687737288`; `https://github.com/xiaokh31/androidAppHardening/actions/runs/30687737289`
+- sha256: not_applicable
+- result: PASS; exact PR head is clean and synchronized with origin, all four required checks succeeded, independent review remains PASS with P0/P1/P2 equal to zero, and the user authorized ready/merge
 
 ## Blockers and Required Approvals
 
@@ -124,34 +182,41 @@ None
 
 ## Ordered Next Actions
 
-1. 推送最终 HandOff 证据快照，并检查 `main` Build/Governance push CI。
-2. 由用户或项目协调者明确授权并分配 M0-05；在授权前保持无活动任务。
-3. M0-05 必须从最新 `main` 创建规定分支，只处理其任务卡范围并预先指定独立安全复核者。
+1. Commit and push this merger-ready HandOff snapshot; wait for the exact new head to pass Ubuntu/Windows Governance and Build.
+2. Convert PR #31 to ready and merge under repository policy without force push.
+3. Switch to updated `main`, verify the GitHub merge commit and closed Issue #30, then run strict HandOff without `--allow-pending-branch` or `--allow-pending-clean`.
+4. Record the post-merge `main` state before any later authorization to resume M0-05; keep M1/M2 blocked until M0-05 completes.
 
 ## Relevant Files and Artifacts
 
 - `HandOff.md`
-- `docs/tasks/M0-04-api29-classloader-poc.md`
+- `docs/adr/0003-api29-public-classloader-hook.md`
+- `docs/adr/0006-offline-key-protection-boundary.md`
+- `docs/adr/0007-source-dir-startup-configuration.md`
+- `docs/tasks/M0-06-early-startup-config-contract.md`
 - `docs/tasks/M0-05-application-factory-provider-jni-poc.md`
-- `docs/evidence/M0-04/formal-api29-api36.md`
-- `docs/TOOLCHAIN_AND_PROVENANCE.md`
-- `tools/validation/m0-04-android-packages.json`
-- `tools/validation/verify-m0-04-android-packages.mjs`
-- `tools/validation/verify-m0-04-apk.mjs`
-- `tools/validation/run-m0-04-cold-start.mjs`
-- `tools/validation/run-m0-04-tamper-start.mjs`
+- `docs/tasks/INDEX.md`
+- `docs/ARCHITECTURE.md`
+- `docs/THREAT_MODEL.md`
+- `docs/ROADMAP.md`
+- `docs/PROJECT_PLAN.md`
+- `https://github.com/xiaokh31/androidAppHardening/issues/30`
 
 ## Resume Checklist
 
-- [ ] 确认当前分支为 `main`、工作树干净且 HEAD 包含本 HandOff。
-- [ ] 运行 `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict`，不使用任何 pending 豁免。
-- [ ] 运行 `node tools/governance/validate-project-package.mjs`、`node tools/validation/verify-m0-toolchain.mjs` 和 `git diff --check`。
-- [ ] 检查 merge commit 的 Build/Governance push CI。
-- [ ] 不使用用户的 `20a24423 unauthorized` 物理设备，不遗留项目 Emulator/watchdog。
-- [ ] 未获 M0-05 明确授权前，不创建分支或实现相邻任务。
+- [x] 确认当前分支为 `docs/m0-06-early-startup-config-contract`，基线为 `main@43e10c38569dfdd64bc41d688d23d23e005906fb`。
+- [x] 只修改 M0-06 文档范围，保留 `spike/m0-05-application-factory-provider-jni-poc@3d716dd`。
+- [x] 运行 `node tools/governance/validate-project-package.mjs`。
+- [x] 运行 `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict`。
+- [x] 运行全仓废弃合同搜索、链接检查和 `git diff --check`。
+- [x] 冻结提交后由独立 reviewer 复核同一 SHA；结论 PASS，P0/P1/P2 均为 `0`。
+- [x] 经用户授权推送分支并创建草稿 PR #31；未转为 ready、未合并。
+- [x] 获得明确 CI 修复授权，PR #31 Ubuntu/Windows Governance 与 Build 全部通过。
+- [x] 获得明确 ready/merge 授权，精确 head 的四项检查均通过。
+- [ ] 合并后在真实 `main` 无豁免运行 strict HandOff；完成前不恢复 M0-05，不启动 M1/M2。
 
 ## Handoff Sign-off
 
-- Coordinator `/root` 已核验 PR #29 head、四项 PR CI、普通 merge commit、正式设备证据、独立安全复核及本地 Git 状态。
-- 合并后 `main@fdf43361ff42680bb69daa24783ef528dba1411c` 已无豁免通过 strict HandOff；最终证据提交后必须再次复验。
-- M0-04 完成不扩大 M0-05 或生产 Runtime 的能力声明。
+- Coordinator `/root` 已核验当前 Git 分支、main 基线、M0-05 blocked 提交/证据和 Issue #30。
+- M0-06 的 docs-only 合同、第三次独立安全复核、CI 修复、精确 head 双平台检查和用户合并授权均已核验；本快照只声明 merger-ready，尚未声明远端合并或 main 后验完成。
+- 本任务未启动模拟器、未访问真机、未修改 M0-05 实现，也未下载任何工具链。

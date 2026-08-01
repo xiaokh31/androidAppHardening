@@ -30,7 +30,7 @@ security_sensitive: true
 ## Expected Outputs
 
 - `host/container` 模块及 `docs/specs/AHDC_V1.md`。
-- `assets/ah/runtime/payload.ahdc` 对应的 AHDC v1 builder、176-byte `ConfigV1` builder、只读 verifier、不可变描述模型和一次性 `KeyPackagingPlanV1`。
+- `assets/ah/runtime/payload.ahdc` 对应的 AHDC v1 builder、768-byte `ConfigV2` builder、只读 verifier、不可变描述模型和一次性 `KeyPackagingPlanV2`。
 - JVM golden vectors、跨语言消费向量和 tamper corpus。
 - 明确记录离线密钥边界且不含生产可复用明文密钥的证据。
 
@@ -52,7 +52,7 @@ security_sensitive: true
 ## Implementation Decisions
 
 - 文件以 ASCII `AHDC` 开始；major `1`、minor `0`，所有整数为 unsigned little-endian fixed width，flags v1 固定为 `0`，未知 major/flags 拒绝。
-- header 与 record 必须逐字节采用 ADR 0004 的 `HeaderV1` 128-byte/`RecordV1` 104-byte offset 表；header 同时写入最终 176-byte `config.bin` 的 SHA-256。实现不得改变整数宽度、字段顺序、offset 基准、reserved 零值、名称编码或自行增加 padding。
+- header 与 record 必须逐字节采用 ADR 0004 的 `HeaderV1` 128-byte/`RecordV1` 104-byte offset 表；header 同时写入最终 768-byte `config.bin` 的 SHA-256。实现不得改变整数宽度、字段顺序、offset 基准、reserved 零值、名称编码或自行增加 padding。
 - signer policy block 紧随 header，并严格按 ADR 0004 的 `SPV1` layout 写入：magic、schema/flags、`1..16` lineage count、reserved、32-byte 当前摘要和旧到新 lineage 原始摘要；末项必须等于当前摘要。manifest MAC 覆盖 header（MAC 字段置零）、完整 `SPV1` block 和 record table。
 - 每条 record 按零基 ordinal 写入规范 ASCII DEX name、原始明文大小、ciphertext 大小、相对 Payload offset、12-byte nonce 和 32-byte plaintext SHA-256；每段 payload 为 ciphertext 紧跟 16-byte GCM tag，offset 必须等于前序段累计长度、无重叠/空洞并恰好消费 `payload_size`。
 - 每个 DEX 使用 zlib-wrapped DEFLATE level `9`、无 dictionary；第一遍只计算原文摘要和压缩大小，第二遍重新压缩后直接进入 cipher，两个遍次的大小/摘要不一致即 `CONTAINER_INPUT_CHANGED`。
@@ -61,15 +61,15 @@ security_sensitive: true
 - 每 DEX 使用独立随机 12-byte nonce 和 AES-256-GCM 128-bit tag；builder 检测本容器 nonce 重复并重新生成，连续三次冲突则失败。
 - `packageNameSha256` 只能取 M1-01 对精确 package name UTF-8 bytes 计算的 32-byte 值。每条 GCM AAD 严格采用 ADR 0004 的字节拼接：`ASCII("AHDC-GCM-V1") || header[4,8) || build_id || key_slot_id || current_signer_sha256 || package_name_sha256 || RecordV1`；parser 完整消费文件并拒绝任何尾随 byte。
 - 按 ADR-0006 为每次运行随机生成 32-byte `R` 与 `R_java`，计算 `R_native=R XOR R_java`；`KEK=HKDF-SHA-256(R, buildId, "AHDC offline KEK v1" || signerSha256 || packageNameSha256)`。
-- CEK 使用独立随机 12-byte nonce 和 AES-256-GCM 包装；`ConfigV1` 必须逐字节采用 ADR 0006 的 176-byte layout，AAD 精确为 config `[0,128)`。构建器先完成 config 并计算其 SHA-256，再写入 AHDC `HeaderV1.config_sha256`。
-- `KeyPackagingPlanV1` 固定持有完整 `ConfigV1`、单个 `R_native`、build/key slot 与目标 ABI 集；只在内存中交给 M1-05。它不自行 patch Runtime template，不可序列化或持久化，任何单一输出位置不得含完整 `R`。
+- CEK 使用独立随机 12-byte nonce 和 AES-256-GCM 包装；`ConfigV2` 必须逐字节采用 ADR 0006 的 768-byte layout，AAD 精确为 config `[0,132)`。构建器从 M1-01 `ApkInspection` 取得规范化原 Factory 与存在标志，严格写入 flag/length/512-byte UTF-8 slot；原 Application 不写入 config。构建器先完成 config 并计算其 SHA-256，再写入 AHDC `HeaderV1.config_sha256`。
+- `KeyPackagingPlanV2` 固定持有完整 `ConfigV2`、单个 `R_native`、build/key slot 与目标 ABI 集；只在内存中交给 M1-05。它不自行 patch Runtime template，不可序列化或持久化，任何单一输出位置不得含完整 `R`。
 - 分支名固定为 `feat/m1-04-encrypted-dex-container`，Issue 标题固定为 `[M1-04] Encrypted DEX container`，仅允许一个关联 PR。
 
 ## Public Interfaces
 
 - `DexContainerBuilder.build(ApkInspection inspection, SignerPolicyV1 signer, Path encryptedTemp): ContainerBuildResult`。
 - `DexContainerVerifier.verify(Path container, ExpectedBinding expected): DexContainerDescriptor`。
-- `ContainerBuildResult` 包含 `descriptor` 与 `KeyPackagingPlanV1`；后者仅能被 Runtime materializer 消费一次并在使用后销毁。
+- `ContainerBuildResult` 包含 `descriptor` 与 `KeyPackagingPlanV2`；后者仅能被 Runtime materializer 消费一次并在使用后销毁。
 - `DexContainerDescriptor` 包含版本、package、规范化 `SignerPolicyV1`、DEX 顺序/大小/摘要、container SHA-256，不暴露 key、nonce 之外的恢复材料或明文。
 - 错误码：`CONTAINER_FORMAT`、`CONTAINER_VERSION`、`CONTAINER_LIMIT_EXCEEDED`、`CONTAINER_INPUT_CHANGED`、`CONTAINER_CRYPTO`、`CONTAINER_AUTH_FAILED`、`CONTAINER_KEY_MATERIAL`、`CONTAINER_RANDOM_FAILED`。
 
@@ -95,7 +95,7 @@ security_sensitive: true
 2. 对每个正常 fixture，独立 verifier 解密/解压后的 DEX SHA-256、大小和顺序与 M1-01 模型完全相同。
 3. 同一输入连续两次使用生产 RNG 的 container SHA-256 不同，CEK、build ID、key slot ID、`R`、shares 和 nonce 均不同，但 descriptor 语义与恢复的 DEX 相同。
 4. 固定 test RNG 的 Windows/Ubuntu golden container SHA-256 相同，Runtime 消费向量字段与 `AHDC_V1.md` 一致。
-5. 对 magic、version、flag、count、length、offset、build ID、key slot ID、config digest、`SPV1` 的每类字段、manifest MAC、package public binding、`ConfigV1`/wrapped CEK/AAD、nonce、tag 和 ciphertext 的单 bit 篡改均返回规定错误且不输出任何 DEX。
+5. 对 magic、version、flag、count、length、offset、build ID、key slot ID、config digest、`SPV1` 的每类字段、manifest MAC、package public binding、`ConfigV2`/Factory slot/wrapped CEK/AAD、nonce、tag 和 ciphertext 的单 bit 篡改均返回规定错误且不输出任何 DEX。
 6. 成功、认证失败、I/O 失败和取消路径均执行敏感 buffer 清零；工作目录没有 DEX 或压缩明文文件。
 7. 源码/报告扫描不存在私钥、keystore、用户密钥参数、固定 content key 或安全能力夸大表述。
 
@@ -103,7 +103,7 @@ security_sensitive: true
 
 - 密码算法标准向量、KDF domain separation 和 nonce uniqueness tests。
 - 单/多 DEX round-trip、两遍输入变化和流式内存预算测试。
-- header/record/ciphertext、176-byte `ConfigV1` 全字段 tamper matrix。
+- header/record/ciphertext、768-byte `ConfigV2` 全字段与 Factory UTF-8/zero-fill tamper matrix。
 - truncation、overflow、overlap、unknown version/flag 和 malformed UTF-8 parser tests。
 - Windows/Ubuntu deterministic vector 及 Native consumer contract test。
 - buffer zeroization、异常清理和无明文落盘测试。

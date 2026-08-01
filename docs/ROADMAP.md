@@ -22,7 +22,8 @@
 | M0-02 | 治理文档、Skills、HandOff | M0-01 |
 | M0-03 | Gradle、Android、Native、CI 工具链 | M0-02 |
 | M0-04 | API 29 ClassLoader PoC | M0-03 |
-| M0-05 | Application/Factory/Provider/JNI PoC | M0-04 |
+| M0-06 | sourceDir 启动配置与认证合同 | M0-04 |
+| M0-05 | Application/Factory/Provider/JNI PoC | M0-04, M0-06 |
 
 ### 退出门禁
 
@@ -31,11 +32,11 @@
 - API 29 公开 `instantiateClassLoader` 路径可以加载内存 DEX。
 - 默认/自定义 Application、Factory、Provider、JNI 的时序有设备证据。
 - 不使用 hidden API 或磁盘明文 DEX。
-- 容器、Manifest 元数据、Runtime ABI 和错误合同冻结。
+- 容器、ConfigV2、单一 Manifest 属性变换、Runtime ABI 和错误合同冻结。
 
 ### 决策点
 
-若 M0-04 或 M0-05 无法在公开 API 下满足支持范围，停止 M1/M2，实现团队向 `/root` 提交证据，由架构决策决定缩小兼容性或终止 v0.1 路线；不得私自切换 hidden API。
+若 M0-04、M0-06 或 M0-05 无法在公开 API 下满足支持范围，停止 M1/M2，实现团队向 `/root` 提交证据，由架构决策决定缩小兼容性或终止 v0.1 路线；不得私自切换 hidden API、Context 或 PackageManager 回退。
 
 ## M1 Host Processor
 

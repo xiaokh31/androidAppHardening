@@ -2,7 +2,7 @@
 
 ## 1. 架构原则
 
-1. Host 与 Runtime 通过版本化、可验证的容器和 Manifest 元数据通信。
+1. Host 与 Runtime 通过版本化、可验证的 AHDC 容器和 ConfigV2 通信；Manifest 只接入固定 Shell Factory。
 2. 输入 APK 只读，所有变更在独立工作目录和新输出文件上完成。
 3. 输出始终未签名，签名身份验证不等于签名操作。
 4. Runtime 只使用 API 29 起可用的公开 Android API。
@@ -59,14 +59,13 @@ Bootstrap Runtime -> verified in-memory business DEX -> original app components
 
 只修改已批准字段：
 
-- 将 `android:appComponentFactory` 指向 Shell Factory；
-- 在项目保留命名空间记录原 Factory、原 Application、容器版本和 Runtime 配置。
+- 将 `android:appComponentFactory` 指向 Shell Factory。
 
-转换器保留未知 chunk、string pool 语义、资源 ID、命名空间和未批准属性。转换后重新解析并与变更白名单做语义差异比较。
+转换器保留原 `android:name`、所有 `<meta-data>`、未知 chunk、string pool 语义、资源 ID、命名空间和未批准属性。转换后重新解析并与单一属性变更白名单做语义差异比较。原 Factory 由 M1-01 的分析模型传给 ConfigV2 builder，不再写入 Manifest metadata。
 
 ### 3.5 DEX Container Builder
 
-按原 DEX 序号稳定排序，为每个 DEX 派生独立子密钥并生成唯一 nonce，使用 AES-256-GCM 加密，将 128-byte header、`SPV1`、104-byte records 和 payload 写入 `assets/ah/runtime/payload.ahdc`；同时生成 ADR 0006 的 176-byte `config.bin`，其 SHA-256 受容器 manifest MAC 绑定。M1-01 对输入 package name 的精确 UTF-8 bytes 计算 SHA-256，该摘要参与 KEK 与每条 DEX 的 GCM AAD；Runtime 只从 Framework `ApplicationInfo.packageName` 重算。容器格式见 [ADR-0004](adr/0004-versioned-encrypted-dex-container.md)。
+按原 DEX 序号稳定排序，为每个 DEX 派生独立子密钥并生成唯一 nonce，使用 AES-256-GCM 加密，将 128-byte header、`SPV1`、104-byte records 和 payload 写入 `assets/ah/runtime/payload.ahdc`；同时生成 ADR 0006 的 768-byte ConfigV2 `config.bin`，其 SHA-256 受容器 manifest MAC 绑定。M1-01 对输入 package name 的精确 UTF-8 bytes 计算 SHA-256，并把规范化原 Factory 交给 ConfigV2 builder；package 摘要参与 KEK 与每条 DEX 的 GCM AAD，Runtime 只从 Framework `ApplicationInfo.packageName` 重算。容器格式见 [ADR-0004](adr/0004-versioned-encrypted-dex-container.md)。
 
 ### 3.6 Runtime Assembler
 
@@ -92,12 +91,12 @@ Bootstrap Runtime -> verified in-memory business DEX -> original app components
 
 系统在组件创建前实例化 Shell Factory。Shell 在 `instantiateClassLoader` 中：
 
-1. 读取受限 Manifest 元数据。
-2. 把 Framework 传入的 `ApplicationInfo`、shell loader 和容器 asset 交给唯一 `RuntimeStartupGuard`。
-3. Guard 先使用 `ApplicationInfo.sourceDir` 与固定 `apksig` 验证当前已安装 APK并取得唯一 signer，再有界预读容器 binding；该回调没有 `Context`，不调用 `PackageManager`。
-4. Guard 调用 Native Loader 认证 signer policy、建立业务 DEX ClassLoader，并返回拥有内存生命周期的 `VerifiedPayloadSession`。
-5. Shell 强引用 session 并返回能够解析原应用类的 ClassLoader。
-6. 在保护 ClassLoader 可用后实例化原 `AppComponentFactory`，并对 Application、Activity、Service、Receiver 和 Provider 创建进行委托。
+1. 把 Framework 传入的 `ApplicationInfo` 和 shell loader 交给唯一 `RuntimeStartupGuard`；不读取 `ApplicationInfo.metaData`。
+2. Guard 使用 `ApplicationInfo.sourceDir` 与固定 `apksig` 验证当前已安装 APK并取得唯一 signer，再定位固定 ConfigV2/AHDC 资产并做有界预读；该回调没有 `Context`，不调用 `PackageManager`。
+3. Guard 调用 Native Loader 按 ADR 0007 认证 signer policy、完整 ConfigV2 和容器；只有认证后才暴露原 Factory 与策略配置。
+4. Guard 建立 provisional payload ClassLoader，并返回拥有其内存生命周期和已认证启动配置的 `VerifiedPayloadSession`。
+5. 原 Factory 存在时，Shell 用 provisional loader 实例化一次，再恰好一次委托其 `instantiateClassLoader`；非空返回值成为 final loader。无原 Factory 时 provisional loader 直接成为 final loader。
+6. `READY` 前 session 由当前引导调用独占；任何 Factory 构造/hook、递归、重入或 final loader 验证失败都在 `finally` 恰好一次 close session 并清除部分引用。成功时才把 session、provisional/final loader 和原 Factory 转移为进程级强引用并返回 final loader；随后把 Application、Activity、Service、Receiver 和 Provider 创建委托给同一 Factory。原 Application 使用 Framework 传入的 `className`。
 
 没有原 Factory 时使用平台默认实例化语义。`:runtime:bootstrap` 只编译依赖 `:runtime:policy` 的 guard API；`:runtime:native` 是 policy 的非传递 implementation dependency，bootstrap 不得导入低层 loader。不得通过隐藏 API 获取 Context 或修改系统 ClassLoader 内部字段。
 
@@ -173,23 +172,18 @@ lib/x86_64/libah_runtime.so
 
 容器以 ASCII magic `AHDC` 开始，使用 little-endian 固定宽度整数，当前格式版本为 `1`。逐字节 layout 以 ADR 0004 为唯一来源：128-byte `HeaderV1`、可变长 `SPV1`、`dex_count * 104` record table 和无空洞 Payload。header 后、record table 前固定放置 `SPV1` signer policy block；manifest MAC 覆盖 header、完整 `SPV1` 与 record table。记录按原 DEX 序号递增。未知 major/version/flags、非法 signer policy、重复 lineage 或末项不等于当前摘要必须拒绝。
 
-离线恢复材料以 ADR 0006 为唯一来源：`config.bin` 固定 176 bytes，四 ABI template 各有一个 104-byte `.ah_share_v1` slot。M1-05 只 materialize 选中 ABI 的 slot，不 patch bootstrap DEX；Runtime 必须把 config SHA-256、build ID、key slot、signer、Framework package name、ABI ID、CEK envelope 与 AHDC manifest 串成同一失败关闭链。
+离线恢复材料以 ADR 0006 为唯一来源：`config.bin` 固定 768 bytes，四 ABI template 各有一个 104-byte `.ah_share_v1` slot。M1-05 只 materialize 选中 ABI 的 slot，不 patch bootstrap DEX；Runtime 必须把 config SHA-256、build ID、key slot、signer、Framework package name、ABI ID、CEK envelope 与 AHDC manifest 串成同一失败关闭链。
 
-### 6.2 Manifest Metadata Contract
+### 6.2 Startup Configuration Contract
 
-项目元数据键固定为：
+启动只从同一 `ApplicationInfo.sourceDir` 读取两个固定 ZIP 条目：
 
-- `ah.runtime.original_application`：原始 Application 完全限定类名；
-- `ah.runtime.original_app_component_factory`：原始 `AppComponentFactory` 完全限定类名，仅在原值存在时写入；
-- `ah.runtime.has_original_app_component_factory`：原工厂是否存在；
-- `ah.runtime.container_asset`：容器 asset 路径；
-- `ah.runtime.container_major`：容器 major version；
-- `ah.runtime.signer_policy_version`：signer policy version；
-- `ah.runtime.risk_policy_version`：risk policy version。
+- `assets/ah/runtime/config.bin`：ADR 0006 的 768-byte ConfigV2；
+- `assets/ah/runtime/payload.ahdc`：ADR 0004 的 AHDC v1。
 
-Manifest 的壳入口类固定为 `ah.runtime.bootstrap.ShellAppComponentFactory`。
+二者必须是唯一规范 `STORED` 条目，且无 encryption/data descriptor、CRC/长度一致。路径和名称是编译期常量，生产接口不接受调用方覆盖。ConfigV2 的 Factory/策略字段只有在 ADR 0007 的完整认证顺序结束后才可使用。
 
-类名在 Host 侧解析为完全限定名称，Runtime 不再根据 package name 猜测。
+Manifest 的壳入口固定为 `ah.runtime.bootstrap.ShellAppComponentFactory`；原 `android:name` 与既有 metadata 均保留。`ApplicationInfo.metaData` 可为 `null` 且不参与启动。原 Factory 在 Host 侧规范化后进入 ConfigV2；原 Application 由 Framework `className` 提供，Runtime 不根据 package name 猜测。
 
 ### 6.3 Error Contract
 
@@ -220,16 +214,20 @@ Android process creation
 -> instantiate Shell AppComponentFactory
 -> Shell.instantiateClassLoader
 -> verify ApplicationInfo.sourceDir with pinned apksig, no Context
--> RuntimeStartupGuard bounded pre-read of signer binding
+-> locate and bounded-parse fixed ConfigV2 and AHDC entries
 -> compare exactly one installed signer with pre-read binding
 -> recover protected content key
 -> verify manifest MAC over SPV1 and record table
+-> compare full ConfigV2 digest from authenticated header
 -> compare authenticated SPV1 signer with measured installed signer
+-> expose authenticated Factory and policy configuration
 -> verify each record GCM tag
 -> bounded zlib inflate of authenticated compressed bytes
 -> verify original DEX length and SHA-256
--> build InMemoryDexClassLoader chain
+-> build provisional InMemoryDexClassLoader chain
 -> instantiate original AppComponentFactory when declared
+-> delegate original Factory instantiateClassLoader exactly once
+-> select and return final payload ClassLoader
 -> create original Application and providers through delegated semantics
 -> run original application
 ```
@@ -247,7 +245,7 @@ Host 任一阶段失败时：
 - 不发布目标 APK；
 - 尽最大可能写出失败 JSON 报告。
 
-Runtime 任一强校验失败时，不尝试回退到磁盘解密、不加载原业务 DEX、不忽略认证错误。启发式环境风险仅按版本化策略处理。
+Runtime 任一强校验失败时，不尝试回退到磁盘解密、不加载原业务 DEX、不忽略认证错误。Guard 已返回 session 但引导尚未进入 `READY` 时，Factory 构造/hook、递归、重入、null 或 final loader 验证失败必须恰好一次关闭 session，释放 Native handle、清零仍可安全清理的密钥/直接缓冲，清除 provisional/final/factory 强引用，并只缓存非敏感稳定错误；close 异常不得覆盖原失败。启发式环境风险仅按版本化策略处理。
 
 ## 9. 架构约束验证
 

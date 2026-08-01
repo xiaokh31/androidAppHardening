@@ -33,6 +33,7 @@
 - ZIP 路径、大小、压缩比和重复条目；
 - AXML chunk、string pool、resource map 和白名单 diff；
 - signer 模型和证书 digest；
+- ConfigV2 固定 offset、flag/length、严格 UTF-8、zero-fill、reserved 和版本；
 - container 序列化、解析、密钥派生、nonce 和 tag；
 - ABI 集合兼容性；
 - CLI 参数、错误码和报告 schema；
@@ -40,7 +41,7 @@
 
 ### 2.3 属性与模糊测试
 
-目标 parser 为 ZIP metadata、二进制 AXML、AHDC container 和 JSON report reader。必须具备：
+目标 parser 为 ZIP metadata、二进制 AXML、ConfigV2、AHDC container 和 JSON report reader。必须具备：
 
 - 任意输入不崩溃、不越界、不无限循环；
 - 解析成功后重新序列化保持规范语义；
@@ -71,6 +72,8 @@
 - 单/多 DEX 类均可解析；
 - 默认及自定义 `Application`；
 - 无 Factory 及自定义 `AppComponentFactory`；
+- 自定义 Factory 的 `instantiateClassLoader` 恰好调用一次，返回 loader 成为组件使用的 final loader；
+- Factory 构造/hook/null/重入失败在 `READY` 前恰好一次关闭 payload session，清理 Native handle/direct buffer/部分引用，cleanup 异常不覆盖主错误；
 - eager/lazy Provider；
 - Java/Kotlin JNI 调用；
 - 进程重启、冷启动、后台恢复和组件直接启动；
@@ -136,7 +139,8 @@ x86_64
 - header 长度、记录数、偏移和大小；
 - DEX 序号与名称；
 - nonce、ciphertext、GCM tag；
-- Manifest 中容器路径、原 Factory 和 policy version；
+- ConfigV2 中原 Factory、policy version、build/key slot、signer binding、wrapped CEK 和 reserved 字段；
+- Manifest 的 `android:appComponentFactory` 以外任一语义变化，以及原 `android:name`/既有 metadata 变化；
 - bootstrap 与 Native Runtime 版本组合；
 - ABI 库缺失或替换。
 

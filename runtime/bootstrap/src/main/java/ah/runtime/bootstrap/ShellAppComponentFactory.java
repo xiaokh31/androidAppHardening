@@ -14,9 +14,17 @@ import java.nio.ByteBuffer;
 
 /** M0-05 public-API compatibility proof; not the production runtime bootstrap. */
 public final class ShellAppComponentFactory extends AppComponentFactory {
-    private StartupMetadata startupMetadata;
+    private EarlyConfigResult startupConfig;
     private AppComponentFactory originalFactory;
+    private ClassLoader provisionalClassLoader;
     private ClassLoader payloadClassLoader;
+    private PocPayloadSession retainedSession;
+    private boolean startupInProgress;
+    private String cachedFailureCode;
+    private String cachedFailureDetail;
+    private int lastFailedSessionCloseCount;
+    private boolean lastFailedBuffersCleared;
+    private boolean lastFailureReferencesCleared = true;
 
     @Override
     public synchronized ClassLoader instantiateClassLoader(
@@ -26,63 +34,99 @@ public final class ShellAppComponentFactory extends AppComponentFactory {
         if (payloadClassLoader != null) {
             return payloadClassLoader;
         }
+        if (cachedFailureCode != null) {
+            throw PocFailure.create(cachedFailureCode, cachedFailureDetail);
+        }
+        if (startupInProgress) {
+            throw PocFailure.create(
+                    PocFailure.DELEGATE_CODE,
+                    "recursive or reentrant Shell Factory startup was rejected");
+        }
 
-        EarlySignerResult signer = EarlySignerProbe.verify(applicationInfo);
-        ClassLoaderProbe.recordEarlySigner(signer);
-
-        StartupMetadata metadata = StartupMetadata.read(applicationInfo);
-        ClassLoaderProbe.record(ClassLoaderProbe.EARLY_METADATA_VERIFIED, null, null);
-
-        NativeLibrarySearchPath nativeSearchPath =
-                NativeLibrarySearchPathResolver.resolve(applicationInfo);
-        ClassLoaderProbe.recordNativeLibrarySearchPath(nativeSearchPath);
-
-        final ClassLoader newPayloadLoader;
+        startupInProgress = true;
+        PocPayloadSession session = null;
+        boolean ready = false;
         try {
+            EarlySignerResult signer = EarlySignerProbe.verify(applicationInfo);
+            ClassLoaderProbe.recordEarlySigner(signer);
+
+            EarlyConfigResult config = EarlyConfigProbe.open(applicationInfo, signer);
+            NativeLibrarySearchPath nativeSearchPath =
+                    NativeLibrarySearchPathResolver.resolve(applicationInfo);
+            ClassLoaderProbe.recordNativeLibrarySearchPath(nativeSearchPath);
+
             ByteBuffer[] payload = StoredDexReader.readContainer(applicationInfo.sourceDir);
-            newPayloadLoader =
+            ClassLoader provisional =
                     new InMemoryDexClassLoader(
                             payload,
                             nativeSearchPath.classLoaderSearchPath(),
                             classLoader);
-        } catch (RuntimeException exception) {
-            if (isStablePocFailure(exception)) {
-                throw exception;
-            }
-            throw PocFailure.create("ClassLoader creation failed");
-        }
+            ClassLoaderProbe.record(
+                    ClassLoaderProbe.PROVISIONAL_LOADER_CREATED,
+                    null,
+                    provisional);
+            session = new PocPayloadSession(payload, provisional);
 
-        ClassLoaderProbe.record(ClassLoaderProbe.LOADER_CREATED, null, newPayloadLoader);
-        AppComponentFactory newOriginalFactory =
-                metadata.hasOriginalFactory
-                        ? instantiateOriginalFactory(newPayloadLoader, metadata.originalFactory)
-                        : null;
-        startupMetadata = metadata;
-        originalFactory = newOriginalFactory;
-        payloadClassLoader = newPayloadLoader;
-        return newPayloadLoader;
+            AppComponentFactory factory = null;
+            ClassLoader finalLoader = provisional;
+            if (config.hasOriginalFactory()) {
+                factory = instantiateOriginalFactory(provisional, config.originalFactory());
+                session.setOriginalFactory(factory);
+                finalLoader =
+                        delegateOriginalFactoryClassLoader(
+                                factory,
+                                provisional,
+                                applicationInfo);
+                session.setFinalLoader(finalLoader);
+                validateFinalLoader(finalLoader, factory, config.originalFactory());
+            }
+
+            ClassLoaderProbe.record(ClassLoaderProbe.LOADER_CREATED, null, finalLoader);
+            session.transferReady();
+            startupConfig = config;
+            originalFactory = factory;
+            provisionalClassLoader = provisional;
+            payloadClassLoader = finalLoader;
+            retainedSession = session;
+            ready = true;
+            return finalLoader;
+        } catch (RuntimeException | LinkageError failure) {
+            IllegalStateException stable = normalizeStartupFailure(failure);
+            cacheFailure(stable);
+            throw stable;
+        } finally {
+            ClassLoaderProbe.clearOriginalFactoryHookForTesting();
+            if (!ready && session != null) {
+                try {
+                    session.close();
+                } catch (RuntimeException ignored) {
+                    // Cleanup failure must never replace the primary startup failure.
+                }
+                lastFailedSessionCloseCount = session.closeCount();
+                lastFailedBuffersCleared = session.buffersCleared();
+                lastFailureReferencesCleared = !session.hasPartialReferences();
+            }
+            startupInProgress = false;
+        }
     }
 
     @Override
     public Application instantiateApplication(ClassLoader classLoader, String className)
             throws ClassNotFoundException, IllegalAccessException, InstantiationException {
-        StartupMetadata metadata = requireInstalled(classLoader);
+        requireInstalled(classLoader);
         Application application;
         if (originalFactory == null) {
-            application = super.instantiateApplication(classLoader, metadata.originalApplication);
+            application = super.instantiateApplication(classLoader, className);
         } else {
             try {
-                application =
-                        originalFactory.instantiateApplication(
-                                classLoader,
-                                metadata.originalApplication);
+                application = originalFactory.instantiateApplication(classLoader, className);
             } catch (ClassNotFoundException | IllegalAccessException | InstantiationException failure) {
                 throw markDelegated(failure);
             }
         }
         ClassLoaderProbe.record(
                 ClassLoaderProbe.APPLICATION_CREATED,
-                metadata.originalApplication,
+                className,
                 application.getClass().getClassLoader());
         return application;
     }
@@ -177,6 +221,26 @@ public final class ShellAppComponentFactory extends AppComponentFactory {
         return provider;
     }
 
+    /** Synthetic fixture diagnostic; never used to make a production startup decision. */
+    public synchronized int testOnlyLastFailedSessionCloseCount() {
+        return lastFailedSessionCloseCount;
+    }
+
+    /** Synthetic fixture diagnostic; never used to make a production startup decision. */
+    public synchronized boolean testOnlyLastFailedBuffersCleared() {
+        return lastFailedBuffersCleared;
+    }
+
+    /** Synthetic fixture diagnostic; reports only reference ownership, never objects. */
+    public synchronized boolean testOnlyFailureReferencesCleared() {
+        return lastFailureReferencesCleared
+                && startupConfig == null
+                && originalFactory == null
+                && provisionalClassLoader == null
+                && payloadClassLoader == null
+                && retainedSession == null;
+    }
+
     private AppComponentFactory instantiateOriginalFactory(
             ClassLoader classLoader,
             String className) {
@@ -185,7 +249,7 @@ public final class ShellAppComponentFactory extends AppComponentFactory {
             if (!AppComponentFactory.class.isAssignableFrom(factoryClass)) {
                 throw PocFailure.create(
                         PocFailure.FACTORY_CODE,
-                        "configured original factory has the wrong base type");
+                        "configured original Factory has the wrong base type");
             }
             AppComponentFactory factory =
                     (AppComponentFactory) factoryClass.getDeclaredConstructor().newInstance();
@@ -202,36 +266,104 @@ public final class ShellAppComponentFactory extends AppComponentFactory {
                 | LinkageError exception) {
             throw PocFailure.create(
                     PocFailure.FACTORY_CODE,
-                    "configured original factory cannot be created");
+                    "configured original Factory cannot be created");
         }
     }
 
-    private StartupMetadata requireInstalled(ClassLoader classLoader) {
-        if (startupMetadata == null
+    private ClassLoader delegateOriginalFactoryClassLoader(
+            AppComponentFactory factory,
+            ClassLoader provisional,
+            ApplicationInfo applicationInfo) {
+        final ClassLoader delegated;
+        ClassLoaderProbe.setOriginalFactoryHookForTesting(this, provisional, applicationInfo);
+        try {
+            delegated = factory.instantiateClassLoader(provisional, applicationInfo);
+        } catch (RuntimeException | LinkageError failure) {
+            throw PocFailure.create(
+                    PocFailure.DELEGATE_CODE,
+                    "original Factory ClassLoader hook failed",
+                    failure);
+        } finally {
+            ClassLoaderProbe.clearOriginalFactoryHookForTesting();
+        }
+        if (delegated == null) {
+            throw PocFailure.create(
+                    PocFailure.DELEGATE_CODE,
+                    "original Factory ClassLoader hook returned null");
+        }
+        ClassLoaderProbe.record(
+                ClassLoaderProbe.ORIGINAL_FACTORY_CLASSLOADER_DELEGATED,
+                factory.getClass().getName(),
+                delegated);
+        return delegated;
+    }
+
+    private static void validateFinalLoader(
+            ClassLoader finalLoader,
+            AppComponentFactory factory,
+            String factoryName) {
+        try {
+            if (finalLoader.loadClass(factoryName) != factory.getClass()) {
+                throw PocFailure.create(
+                        PocFailure.DELEGATE_CODE,
+                        "final loader resolves a different original Factory class");
+            }
+        } catch (ClassNotFoundException | LinkageError failure) {
+            throw PocFailure.create(
+                    PocFailure.DELEGATE_CODE,
+                    "final loader cannot resolve the original Factory",
+                    failure);
+        }
+    }
+
+    private void requireInstalled(ClassLoader classLoader) {
+        if (startupConfig == null
                 || payloadClassLoader == null
+                || retainedSession == null
+                || !retainedSession.isReady()
                 || classLoader != payloadClassLoader) {
             throw PocFailure.create(
                     PocFailure.FACTORY_CODE,
-                    "component creation occurred before a verified loader was installed");
+                    "component creation occurred before a verified final loader was installed");
         }
-        return startupMetadata;
+    }
+
+    private void cacheFailure(IllegalStateException failure) {
+        String message = failure.getMessage();
+        int separator = message == null ? -1 : message.indexOf(": ");
+        if (separator <= 0) {
+            cachedFailureCode = PocFailure.PAYLOAD_CODE;
+            cachedFailureDetail = "startup failed";
+        } else {
+            cachedFailureCode = message.substring(0, separator);
+            cachedFailureDetail = message.substring(separator + 2);
+        }
+    }
+
+    private static IllegalStateException normalizeStartupFailure(Throwable failure) {
+        if (failure instanceof IllegalStateException && isStablePocFailure(failure)) {
+            return (IllegalStateException) failure;
+        }
+        return PocFailure.create(PocFailure.PAYLOAD_CODE, "startup failed");
     }
 
     private static InstantiationException markDelegated(Exception failure) {
         InstantiationException marked =
-                new InstantiationException(PocFailure.DELEGATE_CODE + ": original factory failed");
+                new InstantiationException(PocFailure.DELEGATE_CODE + ": original Factory failed");
         marked.initCause(failure);
         return marked;
     }
 
-    private static boolean isStablePocFailure(RuntimeException exception) {
-        return PocFailure.isPocFailure(exception)
-                || PocFailure.hasCode(exception, PocFailure.FACTORY_CODE)
-                || PocFailure.hasCode(exception, PocFailure.JNI_CODE)
-                || PocFailure.hasCode(exception, PocFailure.SIGNER_UNREADABLE_CODE)
-                || PocFailure.hasCode(exception, PocFailure.SIGNER_INVALID_CODE)
-                || PocFailure.hasCode(exception, PocFailure.SIGNER_NON_UNIQUE_CODE)
-                || PocFailure.hasCode(exception, PocFailure.SIGNER_MISMATCH_CODE)
-                || PocFailure.hasCode(exception, PocFailure.METADATA_CODE);
+    private static boolean isStablePocFailure(Throwable failure) {
+        return PocFailure.hasCode(failure, PocFailure.PAYLOAD_CODE)
+                || PocFailure.hasCode(failure, PocFailure.FACTORY_CODE)
+                || PocFailure.hasCode(failure, PocFailure.DELEGATE_CODE)
+                || PocFailure.hasCode(failure, PocFailure.JNI_CODE)
+                || PocFailure.hasCode(failure, PocFailure.SIGNER_UNREADABLE_CODE)
+                || PocFailure.hasCode(failure, PocFailure.SIGNER_INVALID_CODE)
+                || PocFailure.hasCode(failure, PocFailure.SIGNER_NON_UNIQUE_CODE)
+                || PocFailure.hasCode(failure, PocFailure.SIGNER_MISMATCH_CODE)
+                || PocFailure.hasCode(failure, PocFailure.CONFIG_CODE)
+                || PocFailure.hasCode(failure, PocFailure.CONFIG_AUTH_CODE);
     }
 }

@@ -9,7 +9,8 @@ final class PocFailure {
     static final String SIGNER_INVALID_CODE = "AAH-P006";
     static final String SIGNER_NON_UNIQUE_CODE = "AAH-P007";
     static final String SIGNER_MISMATCH_CODE = "AAH-P008";
-    static final String METADATA_CODE = "AAH-P009";
+    static final String CONFIG_CODE = "AAH-P009";
+    static final String CONFIG_AUTH_CODE = "AAH-P010";
 
     private PocFailure() {}
 
@@ -19,6 +20,10 @@ final class PocFailure {
 
     static IllegalStateException create(String code, String detail) {
         return new IllegalStateException(code + ": " + detail);
+    }
+
+    static IllegalStateException create(String code, String detail, Throwable cause) {
+        return new IllegalStateException(code + ": " + detail, cause);
     }
 
     static boolean isPocFailure(Throwable failure) {

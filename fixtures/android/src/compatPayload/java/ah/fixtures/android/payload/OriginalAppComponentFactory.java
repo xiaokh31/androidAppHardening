@@ -10,6 +10,33 @@ import android.content.ContentProvider;
 import android.content.Intent;
 
 public final class OriginalAppComponentFactory extends AppComponentFactory {
+    public OriginalAppComponentFactory() {
+        if (ProbeSignal.shouldFailFactoryConstruction()) {
+            throw new IllegalStateException("synthetic original Factory construction failure");
+        }
+    }
+
+    @Override
+    public ClassLoader instantiateClassLoader(
+            ClassLoader loader,
+            android.content.pm.ApplicationInfo applicationInfo) {
+        ProbeSignal.recordFactoryInvocation("classloader");
+        String mode = ProbeSignal.classLoaderHookMode();
+        if ("null".equals(mode)) {
+            return null;
+        }
+        if ("exception".equals(mode)) {
+            throw new IllegalStateException("synthetic original Factory ClassLoader failure");
+        }
+        if ("reentry".equals(mode)) {
+            return ah.runtime.bootstrap.ClassLoaderProbe.reenterOriginalFactoryHookForTesting();
+        }
+        if ("invalid-final".equals(mode)) {
+            return loader.getParent();
+        }
+        return loader;
+    }
+
     @Override
     public Application instantiateApplication(ClassLoader loader, String className)
             throws ClassNotFoundException, IllegalAccessException, InstantiationException {

@@ -11,8 +11,11 @@ import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Process;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -34,10 +37,19 @@ public final class CompatibilityPocRunner extends Instrumentation {
             "ah.fixtures.android.payload.PayloadReceiver";
     private static final String SECONDARY_API =
             "ah.fixtures.android.payload.SecondaryApi";
+    private boolean expectedOriginalFactory = true;
+    private File externalNegativeDirectory;
 
     @Override
     public void onCreate(Bundle arguments) {
         super.onCreate(arguments);
+        if (arguments != null && arguments.containsKey("expected_factory")) {
+            expectedOriginalFactory =
+                    Boolean.parseBoolean(arguments.getString("expected_factory", "true"));
+        }
+        if (arguments != null && arguments.containsKey("negative_dir")) {
+            externalNegativeDirectory = new File(arguments.getString("negative_dir"));
+        }
         start();
     }
 
@@ -65,10 +77,15 @@ public final class CompatibilityPocRunner extends Instrumentation {
             waitForFactoryCounts();
             verifyLifecycleAndDelegation(activity);
             verifySignerCrossCheck();
-            verifyMetadataAndFactoryFailures();
-            verifyDelegatedFailurePreservesCause();
+            verifyMetadataIndependence();
+            if (expectedOriginalFactory) {
+                verifyStartupFailureCleanup();
+                verifyDelegatedFailurePreservesCause();
+            }
             verifySignerFailures();
-            verifyNativePathDecision();
+            verifyExternalStartupFailures();
+            verifyNativePathDecisionAndFailures();
+            verifyNoPlaintextDexFiles();
             return diagnostic();
         } finally {
             activity.finish();
@@ -97,11 +114,21 @@ public final class CompatibilityPocRunner extends Instrumentation {
     private void waitForFactoryCounts() throws Exception {
         long deadline = System.nanoTime() + 5_000_000_000L;
         while (System.nanoTime() < deadline) {
-            if (ProbeSignal.factoryCount("application") == 1
-                    && ProbeSignal.factoryCount("activity") == 1
-                    && ProbeSignal.factoryCount("service") == 1
-                    && ProbeSignal.factoryCount("receiver") == 1
-                    && ProbeSignal.factoryCount("provider") == 1) {
+            boolean componentEvents =
+                    countEvents(ClassLoaderProbe.APPLICATION_CREATED) == 1
+                            && countEvents(ClassLoaderProbe.ACTIVITY_CREATED) == 1
+                            && countEvents(ClassLoaderProbe.SERVICE_CREATED) == 1
+                            && countEvents(ClassLoaderProbe.RECEIVER_CREATED) == 1
+                            && countEvents(ClassLoaderProbe.PROVIDER_CREATED) == 1;
+            int expectedCount = expectedOriginalFactory ? 1 : 0;
+            boolean factoryCounts =
+                    ProbeSignal.factoryCount("classloader") == expectedCount
+                            && ProbeSignal.factoryCount("application") == expectedCount
+                            && ProbeSignal.factoryCount("activity") == expectedCount
+                            && ProbeSignal.factoryCount("service") == expectedCount
+                            && ProbeSignal.factoryCount("receiver") == expectedCount
+                            && ProbeSignal.factoryCount("provider") == expectedCount;
+            if (componentEvents && factoryCounts) {
                 return;
             }
             Thread.sleep(25L);
@@ -111,9 +138,11 @@ public final class CompatibilityPocRunner extends Instrumentation {
 
     private void verifyLifecycleAndDelegation(Activity activity) throws Exception {
         ProbeEvent signer = onlyEvent(ClassLoaderProbe.EARLY_SIGNER_VERIFIED);
-        ProbeEvent metadata = onlyEvent(ClassLoaderProbe.EARLY_METADATA_VERIFIED);
+        ProbeEvent parsed = onlyEvent(ClassLoaderProbe.EARLY_CONFIG_PARSED);
+        ProbeEvent authenticated =
+                onlyEvent(ClassLoaderProbe.EARLY_CONFIG_APK_AUTHENTICATED);
+        ProbeEvent provisional = onlyEvent(ClassLoaderProbe.PROVISIONAL_LOADER_CREATED);
         ProbeEvent loader = onlyEvent(ClassLoaderProbe.LOADER_CREATED);
-        ProbeEvent factory = onlyEvent(ClassLoaderProbe.ORIGINAL_FACTORY_CREATED);
         ProbeEvent provider = onlyEvent(ClassLoaderProbe.PROVIDER_CREATED);
         ProbeEvent applicationOnCreate = onlyEvent(ClassLoaderProbe.APPLICATION_ON_CREATE);
         onlyEvent(ClassLoaderProbe.JNI_LOADED);
@@ -122,10 +151,33 @@ public final class CompatibilityPocRunner extends Instrumentation {
         onlyEvent(ClassLoaderProbe.SERVICE_CREATED);
         onlyEvent(ClassLoaderProbe.RECEIVER_CREATED);
 
-        require(signer.sequence() < metadata.sequence(), "signer must precede metadata");
-        require(metadata.sequence() < loader.sequence(), "metadata must precede loader");
-        require(loader.sequence() < factory.sequence(), "loader must precede original factory");
-        require(factory.sequence() < provider.sequence(), "factory must precede provider");
+        require(signer.sequence() < parsed.sequence(), "signer must precede ConfigV2 parse");
+        require(parsed.sequence() < authenticated.sequence(), "ConfigV2 parse must precede auth");
+        require(
+                authenticated.sequence() < provisional.sequence(),
+                "ConfigV2 auth must precede provisional loader");
+        if (expectedOriginalFactory) {
+            ProbeEvent factory = onlyEvent(ClassLoaderProbe.ORIGINAL_FACTORY_CREATED);
+            ProbeEvent hook =
+                    onlyEvent(ClassLoaderProbe.ORIGINAL_FACTORY_CLASSLOADER_DELEGATED);
+            require(
+                    provisional.sequence() < factory.sequence(),
+                    "provisional loader must precede original Factory");
+            require(factory.sequence() < hook.sequence(), "Factory creation must precede hook");
+            require(hook.sequence() < loader.sequence(), "Factory hook must precede final loader");
+            require(
+                    hook.classLoader() == loader.classLoader(),
+                    "delegated and final loader identity differs");
+        } else {
+            require(
+                    countEvents(ClassLoaderProbe.ORIGINAL_FACTORY_CREATED) == 0
+                            && countEvents(
+                                            ClassLoaderProbe
+                                                    .ORIGINAL_FACTORY_CLASSLOADER_DELEGATED)
+                                    == 0,
+                    "no-Factory ConfigV2 emitted original Factory events");
+        }
+        require(loader.sequence() < provider.sequence(), "final loader must precede provider");
         require(
                 provider.sequence() < applicationOnCreate.sequence(),
                 "provider must precede Application.onCreate");
@@ -135,10 +187,18 @@ public final class CompatibilityPocRunner extends Instrumentation {
         require(
                 activity.getClass().getClassLoader() == loader.classLoader(),
                 "activity did not use the payload loader");
+        require(
+                provisional.classLoader() == loader.classLoader(),
+                "provisional and final loader identity differs");
 
         for (String component :
-                new String[] {"application", "activity", "service", "receiver", "provider"}) {
-            equal(1, ProbeSignal.factoryCount(component), component + " delegation count");
+                new String[] {
+                    "classloader", "application", "activity", "service", "receiver", "provider"
+                }) {
+            equal(
+                    expectedOriginalFactory ? 1 : 0,
+                    ProbeSignal.factoryCount(component),
+                    component + " delegation count");
         }
         equal("M0-05-CLASSES2:provider", ProbeSignal.providerMarker(), "provider classes2 marker");
         equal("M0-05-CLASSES2:activity", ProbeSignal.activityMarker(), "activity classes2 marker");
@@ -178,45 +238,32 @@ public final class CompatibilityPocRunner extends Instrumentation {
         }
     }
 
-    private void verifyMetadataAndFactoryFailures() {
+    private void verifyMetadataIndependence() {
         ApplicationInfo actual = getTargetContext().getApplicationInfo();
-        int loaderEventsBefore = countEvents(ClassLoaderProbe.LOADER_CREATED);
+        ApplicationInfo noMetadata = new ApplicationInfo(actual);
+        noMetadata.metaData = null;
+        ClassLoader noMetadataLoader =
+                new ShellAppComponentFactory()
+                        .instantiateClassLoader(getClass().getClassLoader(), noMetadata);
 
-        ApplicationInfo missing = new ApplicationInfo(actual);
-        missing.metaData = new Bundle(actual.metaData);
-        missing.metaData.remove("ah.runtime.container_major");
-        requireFactoryFailure(missing, "AAH-P009");
+        ApplicationInfo arbitraryMetadata = new ApplicationInfo(actual);
+        arbitraryMetadata.metaData = new Bundle();
+        arbitraryMetadata.metaData.putString("fixture.unrelated", "ignored");
+        ClassLoader arbitraryMetadataLoader =
+                new ShellAppComponentFactory()
+                        .instantiateClassLoader(getClass().getClassLoader(), arbitraryMetadata);
+        require(noMetadataLoader != null, "null metadata changed the positive path");
+        require(arbitraryMetadataLoader != null, "unrelated metadata changed the positive path");
+    }
 
-        ApplicationInfo wrongType = new ApplicationInfo(actual);
-        wrongType.metaData = new Bundle(actual.metaData);
-        wrongType.metaData.putString("ah.runtime.risk_policy_version", "1");
-        requireFactoryFailure(wrongType, "AAH-P009");
-
-        ApplicationInfo empty = new ApplicationInfo(actual);
-        empty.metaData = null;
-        requireFactoryFailure(empty, "AAH-P009");
-        equal(loaderEventsBefore, countEvents(ClassLoaderProbe.LOADER_CREATED), "metadata failure loader count");
-
-        ApplicationInfo badFactory = new ApplicationInfo(actual);
-        badFactory.metaData = new Bundle(actual.metaData);
-        badFactory.metaData.putString(
-                "ah.runtime.original_app_component_factory",
-                "ah.fixtures.android.payload.DoesNotExistFactory");
-        requireFactoryFailure(badFactory, "AAH-P002");
-
-        ApplicationInfo noFactory = new ApplicationInfo(actual);
-        noFactory.metaData = new Bundle(actual.metaData);
-        noFactory.metaData.putBoolean("ah.runtime.has_original_app_component_factory", false);
-        noFactory.metaData.remove("ah.runtime.original_app_component_factory");
-        ShellAppComponentFactory shell = new ShellAppComponentFactory();
-        ClassLoader loader = shell.instantiateClassLoader(getClass().getClassLoader(), noFactory);
-        try {
-            require(
-                    shell.instantiateActivity(loader, PAYLOAD_ACTIVITY, new Intent()) != null,
-                    "platform-default factory path returned null");
-        } catch (ReflectiveOperationException failure) {
-            throw new AssertionError("platform-default factory path failed", failure);
-        }
+    private void verifyStartupFailureCleanup() {
+        ApplicationInfo actual = getTargetContext().getApplicationInfo();
+        assertStartupFailure(actual, true, "normal", false, "AAH-P002");
+        assertStartupFailure(actual, false, "null", false, "AAH-P003");
+        assertStartupFailure(actual, false, "exception", false, "AAH-P003");
+        assertStartupFailure(actual, false, "reentry", false, "AAH-P003");
+        assertStartupFailure(actual, false, "invalid-final", false, "AAH-P003");
+        assertStartupFailure(actual, false, "exception", true, "AAH-P003");
     }
 
     private void verifySignerFailures() throws Exception {
@@ -241,6 +288,51 @@ public final class CompatibilityPocRunner extends Instrumentation {
         }
     }
 
+    private void verifyExternalStartupFailures() {
+        if (externalNegativeDirectory == null) {
+            return;
+        }
+        String[][] cases =
+                new String[][] {
+                    {"m0-05-config-major.apk", "AAH-P009"},
+                    {"m0-05-config-reserved.apk", "AAH-P009"},
+                    {"m0-05-config-signer-mismatch.apk", "AAH-P010"},
+                    {"m0-05-config-factory-flags.apk", "AAH-P009"},
+                    {"m0-05-config-invalid-utf8.apk", "AAH-P009"},
+                    {"m0-05-config-nul.apk", "AAH-P009"},
+                    {"m0-05-config-slot-tail.apk", "AAH-P009"},
+                    {"m0-05-config-deflate.apk", "AAH-P009"},
+                    {"m0-05-config-descriptor.apk", "AAH-P009"},
+                    {"m0-05-config-crc.apk", "AAH-P009"},
+                    {"m0-05-config-length.apk", "AAH-P009"},
+                    {"m0-05-payload-corrupt.apk", "AAH-P001"},
+                    {"m0-05-wrong-signer.apk", "AAH-P008"},
+                    {"m0-05-multi-signer.apk", "AAH-P007"},
+                    {"m0-05-config-duplicate-unsigned.apk", "AAH-P006"},
+                    {"m0-05-truncated-zip-unsigned.apk", "AAH-P006"},
+                    {"m0-05-no-factory-unsigned.apk", "AAH-P006"}
+                };
+        ApplicationInfo actual = getTargetContext().getApplicationInfo();
+        for (String[] testCase : cases) {
+            File apk = new File(externalNegativeDirectory, testCase[0]);
+            require(apk.isFile() && apk.canRead(), "external negative APK is unavailable: " + testCase[0]);
+            ApplicationInfo mutated = new ApplicationInfo(actual);
+            mutated.sourceDir = apk.getAbsolutePath();
+            int loadersBefore = countEvents(ClassLoaderProbe.LOADER_CREATED);
+            try {
+                new ShellAppComponentFactory()
+                        .instantiateClassLoader(getClass().getClassLoader(), mutated);
+                throw new AssertionError(testCase[0] + " did not fail");
+            } catch (IllegalStateException expected) {
+                requireCode(expected, testCase[1]);
+            }
+            equal(
+                    loadersBefore,
+                    countEvents(ClassLoaderProbe.LOADER_CREATED),
+                    testCase[0] + " loader count");
+        }
+    }
+
     private void verifyDelegatedFailurePreservesCause() {
         ApplicationInfo actual = getTargetContext().getApplicationInfo();
         ShellAppComponentFactory shell = new ShellAppComponentFactory();
@@ -262,7 +354,7 @@ public final class CompatibilityPocRunner extends Instrumentation {
         }
     }
 
-    private void verifyNativePathDecision() {
+    private void verifyNativePathDecisionAndFailures() throws Exception {
         NativeLibrarySearchPath path = ClassLoaderProbe.nativeLibrarySearchPath();
         require(path != null, "native search path decision is absent");
         require(path.apkDirectoryIncluded(), "APK native directory was not included");
@@ -274,13 +366,51 @@ public final class CompatibilityPocRunner extends Instrumentation {
         require(
                 path.classLoaderSearchPath().contains("!/lib/" + path.selectedAbi()),
                 "APK native path has the wrong ABI");
+
+        String[] processAbis =
+                Process.is64Bit() ? Build.SUPPORTED_64_BIT_ABIS : Build.SUPPORTED_32_BIT_ABIS;
+        require(processAbis != null && processAbis.length > 0, "process ABI list is empty");
+        File missing = createNativeProbeApk("lib/not-a-process-abi/libfixture_jni.so");
+        File nonCanonical =
+                createNativeProbeApk("lib/" + processAbis[0] + "/../libfixture_jni.so");
+        try {
+            requireNativeFailure(missing);
+            requireNativeFailure(nonCanonical);
+        } finally {
+            missing.delete();
+            nonCanonical.delete();
+        }
+    }
+
+    private void verifyNoPlaintextDexFiles() throws Exception {
+        File[] roots =
+                new File[] {
+                    getTargetContext().getFilesDir(),
+                    getTargetContext().getCacheDir(),
+                    getTargetContext().getCodeCacheDir(),
+                    getTargetContext().getNoBackupFilesDir(),
+                    getTargetContext().getExternalFilesDir(null),
+                    getTargetContext().getExternalCacheDir()
+                };
+        int scanned = 0;
+        for (File root : roots) {
+            scanned += scanForDexMagic(root, 0);
+        }
+        require(scanned >= 0, "filesystem scan did not complete");
     }
 
     private String diagnostic() {
         NativeLibrarySearchPath path = ClassLoaderProbe.nativeLibrarySearchPath();
-        return "EARLY_SIGNER_VERIFIED<EARLY_METADATA_VERIFIED<LOADER_CREATED"
-                + "<ORIGINAL_FACTORY_CREATED<PROVIDER_CREATED<APPLICATION_ON_CREATE"
-                + "; component_counts=1,1,1,1,1"
+        return "EARLY_SIGNER_VERIFIED<EARLY_CONFIG_PARSED"
+                + "<EARLY_CONFIG_APK_AUTHENTICATED<PROVISIONAL_LOADER_CREATED"
+                + (expectedOriginalFactory
+                        ? "<ORIGINAL_FACTORY_CREATED<ORIGINAL_FACTORY_CLASSLOADER_DELEGATED"
+                        : "")
+                + "<LOADER_CREATED<PROVIDER_CREATED<APPLICATION_ON_CREATE"
+                + "; original_factory="
+                + expectedOriginalFactory
+                + "; component_counts="
+                + (expectedOriginalFactory ? "1,1,1,1,1,1" : "0,0,0,0,0,0")
                 + "; classes2=provider+activity"
                 + "; jni=M0-05-JNI-FIXED"
                 + "; abi="
@@ -288,18 +418,103 @@ public final class CompatibilityPocRunner extends Instrumentation {
                 + "; extracted="
                 + path.extractedDirectoryIncluded()
                 + "; signer_digest_match=true"
-                + "; metadata_negative=3"
-                + "; signer_negative=2";
+                + "; metadata_independence=2"
+                + "; startup_cleanup_negative="
+                + (expectedOriginalFactory ? 6 : 0)
+                + "; signer_negative=2"
+                + "; external_startup_negative="
+                + (externalNegativeDirectory == null ? 0 : 17)
+                + "; native_negative=2"
+                + "; plaintext_dex_files=0";
     }
 
-    private void requireFactoryFailure(ApplicationInfo applicationInfo, String code) {
+    private void assertStartupFailure(
+            ApplicationInfo applicationInfo,
+            boolean failConstruction,
+            String hookMode,
+            boolean failClose,
+            String code) {
+        int finalLoadersBefore = countEvents(ClassLoaderProbe.LOADER_CREATED);
+        ShellAppComponentFactory shell = new ShellAppComponentFactory();
+        ProbeSignal.setFailFactoryConstruction(failConstruction);
+        ProbeSignal.setClassLoaderHookMode(hookMode);
+        ClassLoaderProbe.setFailSessionCloseForTesting(failClose);
         try {
-            new ShellAppComponentFactory()
-                    .instantiateClassLoader(getClass().getClassLoader(), applicationInfo);
-            throw new AssertionError(code + " failure did not occur");
-        } catch (IllegalStateException expected) {
-            requireCode(expected, code);
+            try {
+                shell.instantiateClassLoader(getClass().getClassLoader(), applicationInfo);
+                throw new AssertionError(code + " startup failure did not occur");
+            } catch (IllegalStateException expected) {
+                requireCode(expected, code);
+            }
+        } finally {
+            ProbeSignal.resetFailureInjection();
         }
+        equal(1, shell.testOnlyLastFailedSessionCloseCount(), "failed session close count");
+        require(shell.testOnlyLastFailedBuffersCleared(), "failed session buffers were not cleared");
+        require(shell.testOnlyFailureReferencesCleared(), "failed startup retained partial references");
+        equal(finalLoadersBefore, countEvents(ClassLoaderProbe.LOADER_CREATED), "failed final loader count");
+        try {
+            shell.instantiateClassLoader(getClass().getClassLoader(), applicationInfo);
+            throw new AssertionError("cached startup failure did not recur");
+        } catch (IllegalStateException repeated) {
+            requireCode(repeated, code);
+            require(repeated.getCause() == null, "cached failure retained a Throwable cause");
+        }
+        equal(1, shell.testOnlyLastFailedSessionCloseCount(), "cached failure closed twice");
+    }
+
+    private File createNativeProbeApk(String entryName) throws Exception {
+        File result = File.createTempFile("m0-05-native-", ".apk", getTargetContext().getCacheDir());
+        try (ZipOutputStream zip = new ZipOutputStream(new FileOutputStream(result))) {
+            zip.putNextEntry(new ZipEntry(entryName));
+            zip.write(new byte[] {1});
+            zip.closeEntry();
+        }
+        return result;
+    }
+
+    private void requireNativeFailure(File apk) {
+        ApplicationInfo info = new ApplicationInfo(getTargetContext().getApplicationInfo());
+        info.sourceDir = apk.getAbsolutePath();
+        info.nativeLibraryDir = null;
+        try {
+            ah.runtime.bootstrap.NativeLibrarySearchPathResolver.resolve(info);
+            throw new AssertionError("AAH-P004 native path failure did not occur");
+        } catch (IllegalStateException expected) {
+            requireCode(expected, "AAH-P004");
+        }
+    }
+
+    private int scanForDexMagic(File file, int depth) throws Exception {
+        if (file == null || !file.exists() || depth > 16) {
+            return 0;
+        }
+        if (file.isDirectory()) {
+            File[] children = file.listFiles();
+            if (children == null) {
+                return 0;
+            }
+            int count = 0;
+            for (File child : children) {
+                count += scanForDexMagic(child, depth + 1);
+                if (count > 4096) {
+                    throw new AssertionError("filesystem scan exceeded the fixture bound");
+                }
+            }
+            return count;
+        }
+        byte[] prefix = new byte[4];
+        try (FileInputStream input = new FileInputStream(file)) {
+            int read = input.read(prefix);
+            if (read == 4
+                    && prefix[0] == 'd'
+                    && prefix[1] == 'e'
+                    && prefix[2] == 'x'
+                    && prefix[3] == '\n') {
+                throw new AssertionError("plaintext DEX file was written by the fixture runtime");
+            }
+        }
+        return 1;
     }
 
     private void requireSignerFailure(ApplicationInfo applicationInfo, String code) {

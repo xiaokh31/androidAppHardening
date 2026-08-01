@@ -1,6 +1,7 @@
 package ah.runtime.bootstrap;
 
 import android.util.Log;
+import android.content.pm.ApplicationInfo;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -14,8 +15,13 @@ public final class ClassLoaderProbe {
     public static final String APPLICATION_CREATED = "APPLICATION_CREATED";
     public static final String ACTIVITY_CREATED = "ACTIVITY_CREATED";
     public static final String EARLY_SIGNER_VERIFIED = "EARLY_SIGNER_VERIFIED";
-    public static final String EARLY_METADATA_VERIFIED = "EARLY_METADATA_VERIFIED";
+    public static final String EARLY_CONFIG_PARSED = "EARLY_CONFIG_PARSED";
+    public static final String EARLY_CONFIG_APK_AUTHENTICATED =
+            "EARLY_CONFIG_APK_AUTHENTICATED";
+    public static final String PROVISIONAL_LOADER_CREATED = "PROVISIONAL_LOADER_CREATED";
     public static final String ORIGINAL_FACTORY_CREATED = "ORIGINAL_FACTORY_CREATED";
+    public static final String ORIGINAL_FACTORY_CLASSLOADER_DELEGATED =
+            "ORIGINAL_FACTORY_CLASSLOADER_DELEGATED";
     public static final String PROVIDER_CREATED = "PROVIDER_CREATED";
     public static final String SERVICE_CREATED = "SERVICE_CREATED";
     public static final String RECEIVER_CREATED = "RECEIVER_CREATED";
@@ -30,6 +36,10 @@ public final class ClassLoaderProbe {
     private static int writeIndex;
     private static byte[] earlySignerSha256;
     private static NativeLibrarySearchPath nativeLibrarySearchPath;
+    private static ShellAppComponentFactory reentrantShell;
+    private static ClassLoader reentrantParent;
+    private static ApplicationInfo reentrantApplicationInfo;
+    private static boolean failSessionCloseForTesting;
 
     private ClassLoaderProbe() {}
 
@@ -71,6 +81,46 @@ public final class ClassLoaderProbe {
 
     public static synchronized NativeLibrarySearchPath nativeLibrarySearchPath() {
         return nativeLibrarySearchPath;
+    }
+
+    static synchronized void setOriginalFactoryHookForTesting(
+            ShellAppComponentFactory shell,
+            ClassLoader parent,
+            ApplicationInfo applicationInfo) {
+        reentrantShell = shell;
+        reentrantParent = parent;
+        reentrantApplicationInfo = applicationInfo;
+    }
+
+    static synchronized void clearOriginalFactoryHookForTesting() {
+        reentrantShell = null;
+        reentrantParent = null;
+        reentrantApplicationInfo = null;
+    }
+
+    /** Synthetic fixture hook used only to prove recursive startup fails closed. */
+    public static ClassLoader reenterOriginalFactoryHookForTesting() {
+        final ShellAppComponentFactory shell;
+        final ClassLoader parent;
+        final ApplicationInfo applicationInfo;
+        synchronized (ClassLoaderProbe.class) {
+            shell = reentrantShell;
+            parent = reentrantParent;
+            applicationInfo = reentrantApplicationInfo;
+        }
+        if (shell == null || parent == null || applicationInfo == null) {
+            throw new IllegalStateException("M0-05 reentry test hook is not active");
+        }
+        return shell.instantiateClassLoader(parent, applicationInfo);
+    }
+
+    /** Synthetic fixture control; reset after each injected cleanup test. */
+    public static synchronized void setFailSessionCloseForTesting(boolean fail) {
+        failSessionCloseForTesting = fail;
+    }
+
+    static synchronized boolean shouldFailSessionCloseForTesting() {
+        return failSessionCloseForTesting;
     }
 
     /** Called by the synthetic payload fixture after the real Application callback starts. */

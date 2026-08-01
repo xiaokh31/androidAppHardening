@@ -4,8 +4,10 @@ import { createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import { crc32 } from "./create-m0-04-tampered-apks.mjs";
 
 const PAYLOAD_ENTRY = "assets/ah/runtime/payload.ahdc";
+const CONFIG_ENTRY = "assets/ah/runtime/config.bin";
 const EOCD = 0x06054b50;
 const CENTRAL = 0x02014b50;
 const LOCAL = 0x04034b50;
@@ -88,6 +90,7 @@ function storedEntryBytes(apk, entry) {
   }
   const flags = apk.readUInt16LE(offset + 6);
   const method = apk.readUInt16LE(offset + 8);
+  const localCrc32 = apk.readUInt32LE(offset + 14);
   const compressedSize = apk.readUInt32LE(offset + 18);
   const uncompressedSize = apk.readUInt32LE(offset + 22);
   const nameLength = apk.readUInt16LE(offset + 26);
@@ -96,6 +99,7 @@ function storedEntryBytes(apk, entry) {
   if (
     flags !== entry.flags ||
     method !== entry.method ||
+    localCrc32 !== entry.crc32 ||
     compressedSize !== entry.compressedSize ||
     uncompressedSize !== entry.uncompressedSize ||
     name !== entry.name
@@ -110,7 +114,11 @@ function storedEntryBytes(apk, entry) {
   if (dataEnd > apk.length) {
     fail(`entry data exceeds APK bounds for ${entry.name}`);
   }
-  return apk.subarray(dataOffset, dataEnd);
+  const bytes = apk.subarray(dataOffset, dataEnd);
+  if (crc32(bytes) !== entry.crc32) {
+    fail(`CRC-32 differs for ${entry.name}`);
+  }
+  return bytes;
 }
 
 function parseContainer(bytes) {
@@ -213,6 +221,7 @@ async function verifySourcePolicy(repositoryRoot) {
     /\bDexClassLoader\b/u,
     /\bpathList\b/u,
     /setAccessible\s*\(/u,
+    /\.metaData\b/u,
   ];
   for (const file of await sourceFiles(runtimeRoot)) {
     const text = await readFile(file, "utf8");
@@ -228,11 +237,56 @@ async function verifySourcePolicy(repositoryRoot) {
     "utf8",
   );
   const signer = shell.indexOf("EarlySignerProbe.verify(applicationInfo)");
-  const metadata = shell.indexOf("StartupMetadata.read(applicationInfo)");
+  const config = shell.indexOf("EarlyConfigProbe.open(applicationInfo, signer)");
   const payload = shell.indexOf("StoredDexReader.readContainer(applicationInfo.sourceDir)");
-  if (!(signer >= 0 && signer < metadata && metadata < payload)) {
-    fail("source ordering does not prove signer then metadata then payload");
+  if (!(signer >= 0 && signer < config && config < payload)) {
+    fail("source ordering does not prove signer then ConfigV2 then payload");
   }
+}
+
+function parseConfigV2(bytes, expectedSignerHex) {
+  if (bytes.length !== 768 || bytes.subarray(0, 4).toString("ascii") !== "AHKC") {
+    fail("ConfigV2 size or magic is invalid");
+  }
+  const fields = {
+    major: bytes.readUInt16LE(4),
+    minor: bytes.readUInt16LE(6),
+    flags: bytes.readUInt16LE(8),
+    reserved: bytes.readUInt16LE(10),
+    totalSize: bytes.readUInt32LE(12),
+    containerMajor: bytes.readUInt16LE(16),
+    signerPolicy: bytes.readUInt16LE(18),
+    riskPolicy: bytes.readUInt16LE(20),
+    factoryLength: bytes.readUInt16LE(22),
+  };
+  if (
+    fields.major !== 2 ||
+    fields.minor !== 0 ||
+    fields.flags !== 1 ||
+    fields.reserved !== 0 ||
+    fields.totalSize !== 768 ||
+    fields.containerMajor !== 1 ||
+    fields.signerPolicy !== 1 ||
+    fields.riskPolicy !== 1 ||
+    fields.factoryLength < 1 ||
+    fields.factoryLength > 512
+  ) {
+    fail(`ConfigV2 fields are invalid: ${JSON.stringify(fields)}`);
+  }
+  const factorySlot = bytes.subarray(180, 692);
+  const factory = factorySlot.subarray(0, fields.factoryLength).toString("utf8");
+  if (
+    factory !== "ah.fixtures.android.payload.OriginalAppComponentFactory" ||
+    factorySlot.subarray(fields.factoryLength).some((value) => value !== 0) ||
+    bytes.subarray(692).some((value) => value !== 0)
+  ) {
+    fail("ConfigV2 Factory or zero-fill contract is invalid");
+  }
+  const signerHex = bytes.subarray(56, 88).toString("hex");
+  if (signerHex !== expectedSignerHex.toLowerCase()) {
+    fail(`ConfigV2 signer binding differs from expected signer ${signerHex}`);
+  }
+  return { bytes: bytes.length, sha256: sha256(bytes), signer_sha256: signerHex, factory };
 }
 
 function verifyR8Mapping(mapping) {
@@ -250,13 +304,45 @@ function verifyR8Mapping(mapping) {
   }
 }
 
-async function inspectVariant(apkPath, testApkPath, mappingPath, expectExtracted) {
+async function inspectVariant(
+  apkPath,
+  testApkPath,
+  mappingPath,
+  expectExtracted,
+  expectedSignerHex,
+) {
   const [apk, testApk, mapping] = await Promise.all([
     readFile(apkPath),
     readFile(testApkPath),
     readFile(mappingPath, "utf8"),
   ]);
   const entries = readEntries(apk);
+  for (const key of [
+    "ah.runtime.original_application",
+    "ah.runtime.original_app_component_factory",
+    "ah.runtime.has_original_app_component_factory",
+    "ah.runtime.container_asset",
+    "ah.runtime.container_major",
+    "ah.runtime.signer_policy_version",
+    "ah.runtime.risk_policy_version",
+  ]) {
+    if (apk.includes(Buffer.from(key, "utf8"))) {
+      fail(`deprecated Manifest metadata key remains in ${apkPath}: ${key}`);
+    }
+  }
+  const configEntries = entries.filter((entry) => entry.name === CONFIG_ENTRY);
+  if (configEntries.length !== 1) {
+    fail(`expected one ${CONFIG_ENTRY}, found ${configEntries.length}`);
+  }
+  const configEntry = configEntries[0];
+  if (
+    configEntry.method !== 0 ||
+    (configEntry.flags & (ENCRYPTED | DATA_DESCRIPTOR)) !== 0 ||
+    configEntry.compressedSize !== configEntry.uncompressedSize
+  ) {
+    fail("ConfigV2 entry violates the STORED/no-descriptor contract");
+  }
+  const config = parseConfigV2(storedEntryBytes(apk, configEntry), expectedSignerHex);
   const payloadEntries = entries.filter((entry) => entry.name === PAYLOAD_ENTRY);
   if (payloadEntries.length !== 1) {
     fail(`expected one ${PAYLOAD_ENTRY}, found ${payloadEntries.length}`);
@@ -324,10 +410,21 @@ async function inspectVariant(apkPath, testApkPath, mappingPath, expectExtracted
       sha256: sha256(container),
       dex: dexFiles.map((dex) => ({ bytes: dex.length, sha256: sha256(dex) })),
     },
+    config,
     native_abis: nativeAbis,
     extract_native_libs: expectExtracted,
     root_dex_count: rootDexEntries.length,
+    root_dex_bytes: rootDexEntries.reduce((total, entry) => total + entry.uncompressedSize, 0),
   };
+}
+
+async function baselineRootDexBytes(apkPath) {
+  const apk = await readFile(apkPath);
+  const entries = readEntries(apk).filter((entry) => /^classes\d*\.dex$/u.test(entry.name));
+  if (entries.length === 0) {
+    fail("baseline bootstrap APK has no root DEX");
+  }
+  return entries.reduce((total, entry) => total + entry.uncompressedSize, 0);
 }
 
 async function main() {
@@ -338,17 +435,23 @@ async function main() {
     directTestApk,
     extractedMapping,
     directMapping,
+    baselineApk,
+    expectedSignerHex,
   ] = process.argv.slice(2);
-  if (!directMapping) {
+  if (!expectedSignerHex || !/^[0-9a-fA-F]{64}$/u.test(expectedSignerHex)) {
     fail(
-      "usage: verify-m0-05-apks.mjs <extracted.apk> <direct.apk> <extracted-test.apk> <direct-test.apk> <extracted-mapping.txt> <direct-mapping.txt>",
+      "usage: verify-m0-05-apks.mjs <extracted.apk> <direct.apk> <extracted-test.apk> <direct-test.apk> <extracted-mapping.txt> <direct-mapping.txt> <baseline.apk> <signer-sha256>",
     );
   }
   await verifySourcePolicy(process.cwd());
-  const [extracted, direct] = await Promise.all([
-    inspectVariant(extractedApk, extractedTestApk, extractedMapping, true),
-    inspectVariant(directApk, directTestApk, directMapping, false),
+  const [extracted, direct, baselineBytes] = await Promise.all([
+    inspectVariant(extractedApk, extractedTestApk, extractedMapping, true, expectedSignerHex),
+    inspectVariant(directApk, directTestApk, directMapping, false, expectedSignerHex),
+    baselineRootDexBytes(baselineApk),
   ]);
+  if (extracted.config.sha256 !== direct.config.sha256) {
+    fail("extracted/direct ConfigV2 bytes differ");
+  }
   process.stdout.write(
     `${JSON.stringify(
       {
@@ -357,6 +460,13 @@ async function main() {
         variants: { extracted, direct },
         source_policy: "PASS",
         r8_signing_execution_classes: "REMOVED",
+        verifier_root_dex_delta: {
+          baseline_bytes: baselineBytes,
+          extracted_bytes: extracted.root_dex_bytes,
+          direct_bytes: direct.root_dex_bytes,
+          extracted_delta: extracted.root_dex_bytes - baselineBytes,
+          direct_delta: direct.root_dex_bytes - baselineBytes,
+        },
         result: "PASS",
       },
       null,

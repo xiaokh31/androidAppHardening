@@ -13,6 +13,7 @@ import java.util.zip.CRC32;
 
 final class StoredDexReader {
     static final String ENTRY_NAME = "assets/ah/poc/classes.dex";
+    static final String CONFIG_ENTRY_NAME = "assets/ah/runtime/config.bin";
     static final String CONTAINER_ENTRY_NAME = "assets/ah/runtime/payload.ahdc";
 
     private static final int EOCD_SIGNATURE = 0x06054b50;
@@ -37,13 +38,28 @@ final class StoredDexReader {
     private StoredDexReader() {}
 
     static ByteBuffer read(String sourceDir) {
-        ByteBuffer payload = readEntry(sourceDir, ENTRY_NAME, MAX_DEX_SIZE);
+        ByteBuffer payload = readEntry(sourceDir, ENTRY_NAME, MAX_DEX_SIZE, PocFailure.PAYLOAD_CODE, "payload");
         validateDex(payload, zipCrc32(payload));
         return payload;
     }
 
+    static ByteBuffer readConfig(String sourceDir) {
+        return readEntry(
+                sourceDir,
+                CONFIG_ENTRY_NAME,
+                ConfigV2Parser.SIZE,
+                PocFailure.CONFIG_CODE,
+                "ConfigV2");
+    }
+
     static ByteBuffer[] readContainer(String sourceDir) {
-        ByteBuffer container = readEntry(sourceDir, CONTAINER_ENTRY_NAME, MAX_CONTAINER_SIZE);
+        ByteBuffer container =
+                readEntry(
+                        sourceDir,
+                        CONTAINER_ENTRY_NAME,
+                        MAX_CONTAINER_SIZE,
+                        PocFailure.PAYLOAD_CODE,
+                        "payload");
         ByteBuffer header = container.duplicate().order(ByteOrder.LITTLE_ENDIAN);
         if (header.remaining() < 8
                 || header.get(0) != 'A'
@@ -78,7 +94,7 @@ final class StoredDexReader {
             source.limit(cursor + length);
             dex.put(source).flip();
             validateDex(dex, zipCrc32(dex));
-            dexFiles[index] = dex.asReadOnlyBuffer();
+            dexFiles[index] = dex;
             cursor += length;
         }
         if (cursor != container.limit()) {
@@ -87,9 +103,14 @@ final class StoredDexReader {
         return dexFiles;
     }
 
-    private static ByteBuffer readEntry(String sourceDir, String entryName, int maxEntrySize) {
+    private static ByteBuffer readEntry(
+            String sourceDir,
+            String entryName,
+            int maxEntrySize,
+            String errorCode,
+            String label) {
         if (sourceDir == null || sourceDir.isEmpty()) {
-            throw PocFailure.create("missing Framework sourceDir");
+            throw PocFailure.create(errorCode, "missing Framework sourceDir for " + label);
         }
 
         try (FileInputStream input = new FileInputStream(sourceDir);
@@ -107,12 +128,12 @@ final class StoredDexReader {
             }
             return payload.asReadOnlyBuffer();
         } catch (IOException exception) {
-            throw PocFailure.create("cannot read packaged payload");
+            throw PocFailure.create(errorCode, "cannot read packaged " + label);
         } catch (RuntimeException exception) {
-            if (PocFailure.isPocFailure(exception)) {
+            if (PocFailure.hasCode(exception, errorCode)) {
                 throw exception;
             }
-            throw PocFailure.create("cannot read packaged payload");
+            throw PocFailure.create(errorCode, "cannot read packaged " + label);
         }
     }
 

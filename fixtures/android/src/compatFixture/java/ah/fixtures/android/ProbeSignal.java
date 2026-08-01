@@ -11,6 +11,8 @@ public final class ProbeSignal {
     private static String activityMarker;
     private static String jniMarker;
     private static boolean failActivityDelegation;
+    private static boolean failFactoryConstruction;
+    private static String classLoaderHookMode = "normal";
 
     private ProbeSignal() {}
 
@@ -58,5 +60,28 @@ public final class ProbeSignal {
 
     public static synchronized boolean shouldFailActivityDelegation() {
         return failActivityDelegation;
+    }
+
+    public static synchronized void setFailFactoryConstruction(boolean fail) {
+        failFactoryConstruction = fail;
+    }
+
+    public static synchronized boolean shouldFailFactoryConstruction() {
+        return failFactoryConstruction;
+    }
+
+    public static synchronized void setClassLoaderHookMode(String mode) {
+        classLoaderHookMode = mode;
+    }
+
+    public static synchronized String classLoaderHookMode() {
+        return classLoaderHookMode;
+    }
+
+    public static synchronized void resetFailureInjection() {
+        failActivityDelegation = false;
+        failFactoryConstruction = false;
+        classLoaderHookMode = "normal";
+        ClassLoaderProbe.setFailSessionCloseForTesting(false);
     }
 }

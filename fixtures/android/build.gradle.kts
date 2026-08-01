@@ -1,5 +1,8 @@
 import java.io.File
 import java.io.FileOutputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.nio.charset.StandardCharsets
 import javax.inject.Inject
 import javax.tools.ToolProvider
 import org.gradle.api.DefaultTask
@@ -148,6 +151,9 @@ constructor(private val execOperations: ExecOperations) : DefaultTask() {
     @get:Input
     abstract val jdkRuntimeVersion: Property<String>
 
+    @get:Input
+    abstract val expectedSignerSha256Hex: Property<String>
+
     @get:OutputDirectory
     abstract val outputDirectory: DirectoryProperty
 
@@ -248,6 +254,52 @@ constructor(private val execOperations: ExecOperations) : DefaultTask() {
             primaryDex.inputStream().use { it.copyTo(output) }
             secondaryDex.inputStream().use { it.copyTo(output) }
         }
+
+        writeConfigV2(assetRoot)
+    }
+
+    private fun writeConfigV2(assetRoot: File) {
+        val signerHex = expectedSignerSha256Hex.get().lowercase()
+        if (!signerHex.matches(Regex("[0-9a-f]{64}"))) {
+            throw GradleException(
+                "M0-05 expected signer digest must be exactly 64 hexadecimal characters",
+            )
+        }
+        val signer =
+            ByteArray(32) { index ->
+                signerHex.substring(index * 2, index * 2 + 2).toInt(16).toByte()
+            }
+        val factoryName =
+            "ah.fixtures.android.payload.OriginalAppComponentFactory"
+                .toByteArray(StandardCharsets.UTF_8)
+        if (factoryName.isEmpty() || factoryName.size > 512) {
+            throw GradleException("M0-05 original factory name exceeds ConfigV2 bounds")
+        }
+
+        val config = ByteBuffer.allocate(768).order(ByteOrder.LITTLE_ENDIAN)
+        config.put("AHKC".toByteArray(StandardCharsets.US_ASCII))
+        config.putShort(2.toShort())
+        config.putShort(0.toShort())
+        config.putShort(1.toShort()) // HAS_ORIGINAL_FACTORY
+        config.putShort(0.toShort())
+        config.putInt(768)
+        config.putShort(1.toShort()) // AHDC major
+        config.putShort(1.toShort()) // signer policy
+        config.putShort(1.toShort()) // risk policy
+        config.putShort(factoryName.size.toShort())
+        repeat(16) { config.put((0x10 + it).toByte()) } // PoC build ID
+        repeat(16) { config.put((0x30 + it).toByte()) } // PoC key slot ID
+        config.put(signer)
+        repeat(32) { config.put((0x50 + it).toByte()) } // Format-only PoC R_java
+        repeat(12) { config.put((0x70 + it).toByte()) } // Format-only PoC nonce
+        repeat(32) { config.put((0x80 + it).toByte()) } // Format-only wrapped bytes
+        repeat(16) { config.put((0xa0 + it).toByte()) } // Format-only tag
+        config.put(factoryName)
+        config.position(768)
+
+        val configAsset = assetRoot.resolve("ah/runtime/config.bin")
+        configAsset.parentFile.mkdirs()
+        configAsset.writeBytes(config.array())
     }
 
     private fun runD8(classFiles: List<File>, output: File, classpath: File?) {
@@ -305,6 +357,29 @@ android {
         }
     }
 
+    val m005TestKeystore = providers.environmentVariable("M005_TEST_KEYSTORE").orNull
+    val m005TestStorePassword = providers.environmentVariable("M005_TEST_STORE_PASSWORD").orNull
+    val m005TestKeyAlias = providers.environmentVariable("M005_TEST_KEY_ALIAS").orNull
+    val m005TestKeyPassword = providers.environmentVariable("M005_TEST_KEY_PASSWORD").orNull
+    val m005SigningValues =
+        listOf(
+            m005TestKeystore,
+            m005TestStorePassword,
+            m005TestKeyAlias,
+            m005TestKeyPassword,
+        )
+    if (m005SigningValues.any { it != null } && m005SigningValues.any { it == null }) {
+        throw GradleException("all M005_TEST_* signing environment variables must be set together")
+    }
+    if (m005TestKeystore != null) {
+        signingConfigs.getByName("debug") {
+            storeFile = file(m005TestKeystore)
+            storePassword = m005TestStorePassword
+            keyAlias = m005TestKeyAlias
+            keyPassword = m005TestKeyPassword
+        }
+    }
+
     flavorDimensions += "poc"
     productFlavors {
         create("classloaderPoc") {
@@ -324,7 +399,7 @@ android {
     }
 
     androidResources {
-        noCompress += setOf("dex", "ahdc")
+        noCompress += setOf("dex", "ahdc", "bin")
     }
 
     externalNativeBuild {
@@ -443,6 +518,9 @@ fun registerCompatibilityPayload(variant: com.android.build.api.variant.Applicat
                 rootProject.layout.projectDirectory.file(
                     "runtime/bootstrap/build/intermediates/compile_library_classes_jar/debug/bundleLibCompileToJarDebug/classes.jar",
                 ),
+            )
+            expectedSignerSha256Hex.set(
+                providers.gradleProperty("m005ExpectedSignerSha256").orElse("0".repeat(64)),
             )
             dependsOn(":runtime:bootstrap:bundleLibCompileToJarDebug")
             jdkRuntimeVersion.set(providers.systemProperty("java.runtime.version"))

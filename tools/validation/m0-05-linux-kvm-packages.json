@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "catalog_snapshot_date": "2026-08-01",
+  "ci_install_root": ".toolchains/android-m0-05-ci/",
+  "git_policy": "ignored",
+  "packages": [
+    {
+      "package_id": "emulator",
+      "revision": "37.1.11",
+      "build_id": "15917651",
+      "archive": "emulator-linux_x64-15917651.zip",
+      "official_catalog": "https://dl.google.com/android/repository/repository2-2.xml",
+      "archive_url": "https://dl.google.com/android/repository/emulator-linux_x64-15917651.zip",
+      "bytes": 334378080,
+      "sha1": "1b1f78891abf8ec268264356e1365c25519e8379",
+      "sha256": "95771e0ae431897b2a4bd2d97fa095f29a8b0624a7b216baf529f9306161c266"
+    },
+    {
+      "package_id": "system-images;android-29;default;x86_64",
+      "revision": "8",
+      "archive": "x86_64-29_r08-linux.zip",
+      "official_catalog": "https://dl.google.com/android/repository/sys-img/android/sys-img2-4.xml",
+      "archive_url": "https://dl.google.com/android/repository/sys-img/android/x86_64-29_r08-linux.zip",
+      "bytes": 689676765,
+      "sha1": "e4b798d6fcddff90d528d74ef22ce3dd4a2ca798",
+      "sha256": "b5c3fda1f4b4931c30518d342e4ad5f7464945e0cdced3538d4ff2e12f7bf201"
+    },
+    {
+      "package_id": "system-images;android-36;default;x86_64",
+      "revision": "2",
+      "archive": "x86_64-36_r02.zip",
+      "official_catalog": "https://dl.google.com/android/repository/sys-img/android/sys-img2-4.xml",
+      "archive_url": "https://dl.google.com/android/repository/sys-img/android/x86_64-36_r02.zip",
+      "bytes": 844217077,
+      "sha1": "829c076e8ff448a336097ae25a355b495ba36e2c",
+      "sha256": "e1b9d9fb665001ef27b16e57d8762a2d54aec6bff617e17506edb8676667b9da"
+    }
+  ]
+}

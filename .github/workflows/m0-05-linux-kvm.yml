@@ -105,11 +105,32 @@ jobs:
           unzip -q "$downloads/$emulator_name" -d "$sdk_root"
           unzip -q "$downloads/$image_name" -d "$sdk_root/system-images/android-$API/default"
           test -x "$sdk_root/emulator/emulator"
-          test -f "$sdk_root/system-images/android-$API/default/x86_64/package.xml"
+          image_dir="$sdk_root/system-images/android-$API/default/x86_64"
+          source_properties="$image_dir/source.properties"
+          test -f "$source_properties"
+          grep -Fx "Pkg.Revision=${{ matrix.revision }}" "$source_properties"
+          grep -Fx "AndroidVersion.ApiLevel=$API" "$source_properties"
+          grep -Fx "SystemImage.Abi=x86_64" "$source_properties"
+
+          # Official system-image archives contain source.properties but not the
+          # local SDK registry file that avdmanager requires. Generate only that
+          # registry metadata after the archive hash and properties are verified.
+          printf '%s\n' \
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' \
+            '<ns2:repository xmlns:ns2="http://schemas.android.com/repository/android/common/02" xmlns:ns12="http://schemas.android.com/sdk/android/repo/sys-img2/04">' \
+            "<localPackage path=\"system-images;android-$API;default;x86_64\" obsolete=\"false\">" \
+            '<type-details xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="ns12:sysImgDetailsType">' \
+            "<api-level>$API</api-level><base-extension>true</base-extension>" \
+            '<tag><id>default</id><display>Default Android System Image</display></tag><abi>x86_64</abi><abis>x86_64</abis>' \
+            '</type-details>' \
+            "<revision><major>${{ matrix.revision }}</major></revision>" \
+            '<display-name>Intel x86 Atom_64 System Image</display-name>' \
+            '</localPackage></ns2:repository>' \
+            > "$image_dir/package.xml"
           "$sdk_root/emulator/emulator" -version | tee "$GITHUB_WORKSPACE/build-emulator-version.txt"
           grep -F "Android emulator version 37.1.11" "$GITHUB_WORKSPACE/build-emulator-version.txt"
-          grep -F "<api-level>$API</api-level>" "$sdk_root/system-images/android-$API/default/x86_64/package.xml"
-          grep -F "<major>${{ matrix.revision }}</major>" "$sdk_root/system-images/android-$API/default/x86_64/package.xml"
+          grep -F "<api-level>$API</api-level>" "$image_dir/package.xml"
+          grep -F "<major>${{ matrix.revision }}</major>" "$image_dir/package.xml"
 
           echo "ANDROID_HOME=$sdk_root" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$sdk_root" >> "$GITHUB_ENV"

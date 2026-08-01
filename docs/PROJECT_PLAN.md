@@ -35,6 +35,7 @@ v0.1 的成功标准不是“不可破解”，而是在不破坏已声明兼容
 - M0-02：治理、Skills 与交接规范。
 - M0-03：Gradle、Android、Native 和 CI 工具链。
 - M0-04：验证 API 29 公开 `AppComponentFactory.instantiateClassLoader` 路径。
+- M0-06：把启动配置迁移到 `sourceDir` 中受认证的固定 ConfigV2，并修订 Host/Runtime 合同。
 - M0-05：验证自定义 `Application`、自定义 Factory、Provider 和 JNI 的启动顺序。
 
 退出门禁：Windows 与 Ubuntu 构建可复现；API 29 至目标 API 的 PoC 通过；失败场景和不支持组合被固化为机器可读诊断；容器与 Runtime 接口可以冻结。
@@ -92,11 +93,11 @@ v0.1 的成功标准不是“不可破解”，而是在不破坏已声明兼容
 关键路径为：
 
 ```text
-M0-03 -> M0-04 -> M0-05 -> interface freeze
+M0-03 -> M0-04 -> M0-06 -> M0-05 -> interface freeze
 interface freeze -> M1-04 -> M2-02 -> M3-04 -> M4
 ```
 
-M0-03 完成后，M0-04 可与治理校验并行。M0-04 通过后执行 M0-05。接口冻结后，M1 Host 与 M2 Runtime 可以按已冻结容器、Manifest 元数据和错误语义并行开发。M3 fixture 可在接口冻结后提前建设，但矩阵结论必须基于已合并的 M1 和 M2。
+M0-03 完成后，M0-04 可与治理校验并行。M0-04 通过后先完成 M0-06，再恢复 M0-05。接口冻结后，M1 Host 与 M2 Runtime 可以按已冻结容器、ConfigV2、单一 Manifest 属性变换和错误语义并行开发。M3 fixture 可在接口冻结后提前建设，但矩阵结论必须基于已合并的 M1 和 M2。
 
 任务依赖的唯一规范来源是 [任务索引](tasks/INDEX.md) 及各任务卡的 `depends_on` 字段。任何新增依赖必须通过任务卡和路线图变更审查，不得只存在于 Issue 评论中。
 
@@ -137,7 +138,7 @@ v0.1 发布至少满足：
 
 | 风险 | 控制 |
 | --- | --- |
-| ClassLoader 接入时机破坏组件创建 | M0-04、M0-05 先行 PoC，使用 API 29 公开接口 |
+| ClassLoader 接入时机或早期配置可见性破坏组件创建 | M0-04/M0-06/M0-05 先行，使用 API 29 公开 `sourceDir` 合同 |
 | 自定义 Factory 或 Provider 启动顺序不兼容 | 保存原始声明并在保护 ClassLoader 生效后委托；纳入 fixture |
 | Native ABI 缺失导致安装后崩溃 | 四 ABI Runtime 与原 APK 原生库 ABI 预检 |
 | 本地密钥可被逆向恢复 | 认证加密、每包随机密钥、分片与签名绑定，并明确残余风险 |

@@ -165,7 +165,7 @@ next_owner: unassigned
 
 1. 分配并完成 M0-03 工具链与 CI。
 2. 并行启动 M0-04 ClassLoader PoC。
-3. M0-04 通过后启动 M0-05 兼容性 PoC。
+3. M0-04 通过后完成 M0-06 sourceDir 启动配置合同，再恢复 M0-05 兼容性 PoC。
 4. M0 门禁通过后冻结容器接口，再并行启动 M1 与 M2。
 
 ## 7. Worker 交接包

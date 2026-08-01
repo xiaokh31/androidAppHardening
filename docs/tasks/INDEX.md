@@ -21,7 +21,8 @@
 | M0-02 | [#2](https://github.com/xiaokh31/androidAppHardening/issues/2) | [Governance, Skills, and HandOff](M0-02-governance-skills-handoff.md) | `qa-governance-agent` | M0-01 |
 | M0-03 | [#3](https://github.com/xiaokh31/androidAppHardening/issues/3) | [Toolchain, Gradle, and CI](M0-03-toolchain-gradle-ci.md) | `qa-governance-agent` | M0-02 |
 | M0-04 | [#4](https://github.com/xiaokh31/androidAppHardening/issues/4) | [API 29 ClassLoader PoC](M0-04-api29-classloader-poc.md) | `runtime-security-agent` | M0-03 |
-| M0-05 | [#5](https://github.com/xiaokh31/androidAppHardening/issues/5) | [Application, factory, Provider, and JNI PoC](M0-05-application-factory-provider-jni-poc.md) | `runtime-security-agent` | M0-04 |
+| M0-06 | [#30](https://github.com/xiaokh31/androidAppHardening/issues/30) | [Early startup configuration contract](M0-06-early-startup-config-contract.md) | `runtime-security-agent` | M0-04 |
+| M0-05 | [#5](https://github.com/xiaokh31/androidAppHardening/issues/5) | [Application, factory, Provider, and JNI PoC](M0-05-application-factory-provider-jni-poc.md) | `runtime-security-agent` | M0-04, M0-06 |
 
 M0 门禁：API 29 公共加载链、原 Application/factory 代理、Provider、multidex 和客户 JNI fixture 全部通过后，才能冻结 Host/Runtime 共享合同。
 
@@ -70,7 +71,7 @@ M1 与 M2 只有在 M1-04 容器格式和黄金向量冻结后才能并行。共
 ## Critical path
 
 ```text
-M0-01 → M0-02 → M0-03 → M0-04 → M0-05
+M0-01 → M0-02 → M0-03 → M0-04 → M0-06 → M0-05
 M0-05 → M1-01 → M1-02 → M1-04
 M1-01 → M1-03
 M1-04 → M2-02 → M2-03

@@ -41,6 +41,7 @@ const expectedTasks = [
   "M4-01-security-and-supply-chain-review.md",
   "M4-02-cross-platform-release-packaging.md",
   "M4-03-release-evidence-and-documentation.md",
+  "M0-06-early-startup-config-contract.md",
 ];
 
 const taskHeadings = [
@@ -173,7 +174,9 @@ if (!fs.existsSync(indexFile)) {
     const issueMatch = issueCell.match(
       /^\[#(\d+)]\(https:\/\/github\.com\/xiaokh31\/androidAppHardening\/issues\/(\d+)\)$/,
     );
-    const expectedIssue = String(expectedTasks.indexOf(expectedFile) + 1);
+    const expectedIssue = id === "M0-06"
+      ? "30"
+      : String(expectedTasks.indexOf(expectedFile) + 1);
     if (!issueMatch || issueMatch[1] !== issueMatch[2] || issueMatch[1] !== expectedIssue) {
       errors.push(`docs/tasks/INDEX.md: ${id} must link its GitHub Issue`);
     }
@@ -382,6 +385,7 @@ const expectedAdrs = [
   "docs/adr/0004-versioned-encrypted-dex-container.md",
   "docs/adr/0005-runtime-abi-policy.md",
   "docs/adr/0006-offline-key-protection-boundary.md",
+  "docs/adr/0007-source-dir-startup-configuration.md",
 ];
 const adrHeadings = [
   "## Status",

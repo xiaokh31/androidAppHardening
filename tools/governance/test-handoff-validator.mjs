@@ -91,8 +91,8 @@ const cases = [
   {
     name: "invalid-evidence-hash",
     mutate: (text) => text.replace(
-      /- sha256: `[0-9a-f]{64}`/,
-      "- sha256: `invalid`",
+      /^- sha256: `?[0-9a-f]{64}`?$/m,
+      "- sha256: invalid",
     ),
     expected: "Verification evidence has invalid sha256",
     expectedErrorCount: 1,
@@ -196,6 +196,22 @@ try {
     fs.mkdirSync(directory, { recursive: true });
     const fixture = path.join(directory, "HandOff.md");
     const fixtureText = testCase.mutate(source);
+    if (fixtureText === source) {
+      console.log(`FAIL: ${testCase.name}`);
+      console.error(`Mutation did not change HandOff.md for ${testCase.name}`);
+      failures += 1;
+      evidenceRows.push({
+        fixture: testCase.name,
+        sha256: sha256(fixtureText),
+        expected_error: testCase.expected,
+        expected_exit_code: 1,
+        expected_error_count: testCase.expectedErrorCount,
+        actual_exit_code: 0,
+        actual_error_count: 0,
+        result: "FAIL",
+      });
+      continue;
+    }
     fs.writeFileSync(fixture, fixtureText, "utf8");
 
     const validatorArgs = [validator, fixture];

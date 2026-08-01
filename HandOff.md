@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260802-003600
-updated_at: 2026-08-02T00:36:00+08:00
+handoff_id: HO-20260802-004900
+updated_at: 2026-08-02T00:49:00+08:00
 updated_by: /root
 state: active
 source_branch: spike/m0-05-application-factory-provider-jni-poc
@@ -35,7 +35,7 @@ next_owner: /root
 - API 29/36 x86_64 Linux/KVM 已完成 extracted/direct Release/R8、instrumentation、生命周期、跨 DEX、JNI、signer/config/metadata、17 个独立启动负例、各 20 次冷启动、内存、无明文 DEX 和强制清理的正式验收，结果 PASS。
 - 首轮独立只读 `m0_05_security_review` 在 `859fe25d15cc7e8670ac621d25d2e0101cf93c9a` 上结论为 FAIL：P0 `0`、P1 `3`、P2 `3`；原三套设备证据因此被复核否决，不再作为最终验收。
 - 六项发现的修复候选已提交为 `789d37e9fa321b54ee19bf4af1382e589f2942d4`：五类组件委托失败归一、双变体 17 例矩阵、重复 ABI 条目、目标恢复计时、Linux 包精确固定，以及 JUnit/SO/R8/验证器内存证据。
-- 本地静态门禁、双变体 Release/R8 和静态 APK 验证已 PASS；API 29 arm64 真机与 API 29/36 x86_64 KVM 必须在该候选上全部重跑，之后才能重新冻结并启动第二次独立复核。复核 PASS 前仍禁止创建 PR。
+- 本地静态门禁、双变体 Release/R8 和静态 APK 验证已 PASS；GitHub Actions run `30708544925` 的 API 29/36 x86_64 repaired KVM 双 job 已 PASS。API 29 arm64 真机仍须在该候选上重跑，之后才能重新冻结并启动第二次独立复核。复核 PASS 前仍禁止创建 PR。
 
 ## Active Workstreams
 
@@ -43,7 +43,7 @@ next_owner: /root
 |---|---|---|---|---|---|
 | M0-04 | `runtime-security-agent` | `spike/m0-04-classloader-poc` | done | M0-03 | PR #29、正式设备矩阵和独立复核已通过 |
 | M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | done | M0-04 | PR #31、合并后 strict HandOff 和双平台 CI 已通过 |
-| M0-05 | `/root` | `spike/m0-05-application-factory-provider-jni-poc` | in_progress | M0-04, M0-06 | 在 `789d37e` 上重跑 arm64 API 29 与 API 29/36 KVM 矩阵 |
+| M0-05 | `/root` | `spike/m0-05-application-factory-provider-jni-poc` | in_progress | M0-04, M0-06 | repaired KVM 已 PASS；解锁真机后重跑 arm64 API 29 矩阵 |
 
 ## Decisions and Invariants
 
@@ -73,6 +73,7 @@ next_owner: /root
 - `f63a7192eb6e1055a7647d27850ece262c59210a` 上的 run `30706455270` 双 job PASS；正式报告、命令日志、启动负例报告和静态报告哈希已归档到 `docs/evidence/M0-05/formal-compatibility.md`。
 - 首轮独立只读复核否决上述证据作为最终验收，发现 3 个 P1 和 3 个 P2；完整记录见 `docs/evidence/M0-05/security-review-1.md`。
 - `789d37e9fa321b54ee19bf4af1382e589f2942d4` 已关闭六项代码、工作流与证据缺口并通过本地 Gradle/check/governance 和双变体静态验证；三套设备环境正在重跑，尚未重新声明 M0-05 PASS。
+- run `30708544925` 在 `587e7f2c7ab9ba44296891fb3d2668e4bd54998c` 上完成 repaired API 29/36 x86_64 KVM：双变体各自 17/17 负例、各 20 次冷启动、JUnit、R8/SO/验证器内存证据和 cleanup 全部 PASS；原始证据位于 ignored `build/m0-05/github-run-30708544925/`。
 
 ## Verification Evidence
 

@@ -6,9 +6,9 @@
 - Validation mode: `pre-cli`
 - Branch: `spike/m0-05-application-factory-provider-jni-poc`
 - Issue: `#5`
-- Frozen implementation commit: `0d8e6f8c13ac871c840fe134d83d1bfc0b69d3a9`
-- Frozen validation/workflow commit: `f63a7192eb6e1055a7647d27850ece262c59210a`
-- Status at this snapshot: API 29 arm64 physical-device acceptance and API 29/36 x86_64 GitHub Linux/KVM acceptance PASS; independent read-only security review pending.
+- Review-remediation implementation commit: `789d37e9fa321b54ee19bf4af1382e589f2942d4`
+- KVM validation commit: `587e7f2c7ab9ba44296891fb3d2668e4bd54998c`
+- Status at this snapshot: repaired API 29/36 x86_64 GitHub Linux/KVM acceptance PASS; repaired API 29 arm64 physical-device acceptance pending manual device unlock; second independent read-only security review pending.
 - Local emulator use: none. The x86_64 workflow owns its emulator lifecycle, has a 35-minute job limit, a 180-second boot limit, a 900-second acceptance-runner limit, and EXIT/INT/TERM cleanup.
 - Security boundary: the signer/config binding is a synthetic-fixture PoC check. It is not the production ConfigV2 authentication planned for M1/M2.
 
@@ -26,6 +26,8 @@ zipalign -c -P 16 4 <seven generated M0-05 APKs>
 All commands exited `0`. The Gradle gate reported `BUILD SUCCESSFUL`, the ConfigV2 test reported the golden case plus 20 tamper/no-factory cases, governance reported 26 task cards, 11 core documents and 7 ADRs, the APK verifier reported `PASS`, and all seven signed APKs passed signature and alignment verification. The R8 scan reported that signing execution classes were removed; adding the verifier increased the root DEX by 1,440 bytes in each compatibility variant.
 
 ## API 29 arm64 physical device
+
+> Historical evidence only: the first independent review rejected this run as final acceptance because the direct variant did not execute its own 17-case mutation matrix and the evidence classes were incomplete. The repaired commit must be rerun after the physical device is manually unlocked.
 
 - Timestamp: `2026-08-01T22:44:17+08:00`
 - Result: `PASS`
@@ -69,21 +71,21 @@ The committed workflow pins these official archives through `tools/validation/m0
 | API 29 x86_64 | system image revision 8; Emulator 37.1.11 | PASS |
 | API 36 x86_64 | system image revision 2; Emulator 37.1.11 | PASS |
 
-Both jobs built extracted/direct Release/R8 fixtures, executed the same functional and negative gates, ran 20 cold starts per variant, collected memory and no-plaintext-DEX evidence, and forcibly cleaned their AVD/emulator state.
+Both repaired jobs built extracted/direct Release/R8 fixtures, executed independent 17-case startup-negative matrices for both variants, ran 20 cold starts per variant, generated JUnit XML, collected memory and no-plaintext-DEX evidence, and forcibly cleaned their AVD/emulator state.
 
-- GitHub Actions run: [#30706455270](https://github.com/xiaokh31/androidAppHardening/actions/runs/30706455270)
-- Validated commit: `f63a7192eb6e1055a7647d27850ece262c59210a`
-- API 29 job: `91386314437`, `success`
-- API 36 job: `91386314472`, `success`
+- GitHub Actions run: [#30708544925](https://github.com/xiaokh31/androidAppHardening/actions/runs/30708544925)
+- Validated commit: `587e7f2c7ab9ba44296891fb3d2668e4bd54998c`
+- API 29 job: `91391784532`, `success`
+- API 36 job: `91391784498`, `success`
 - Run conclusion: `success`
 - Local emulator use: none
 
 | Environment / variant | Instrumentation and functional matrix | Independent startup negatives | Plaintext DEX | Cold starts | p50 | p95 | Peak PSS |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| API 29 x86_64 extracted | PASS | 17/17 PASS | 0 | 20/20 | 810 ms | 1,017 ms | 60,030 KB |
-| API 29 x86_64 direct | PASS | covered by the same 17-case matrix | 0 | 20/20 | 796 ms | 1,012 ms | 69,401 KB |
-| API 36 x86_64 extracted | PASS | 17/17 PASS | 0 | 20/20 | 1,353 ms | 1,840 ms | 14,633 KB |
-| API 36 x86_64 direct | PASS | covered by the same 17-case matrix | 0 | 20/20 | 1,215 ms | 1,593 ms | 14,703 KB |
+| API 29 x86_64 extracted | PASS | 17/17 PASS | 0 | 20/20 | 803 ms | 1,043 ms | 61,246 KB |
+| API 29 x86_64 direct | PASS | 17/17 PASS | 0 | 20/20 | 812 ms | 981 ms | 104,191 KB |
+| API 36 x86_64 extracted | PASS | 17/17 PASS | 0 | 20/20 | 1,381 ms | 1,763 ms | 14,964 KB |
+| API 36 x86_64 direct | PASS | 17/17 PASS | 0 | 20/20 | 1,387 ms | 1,568 ms | 14,748 KB |
 
 The API 29 environment reported Android 10/API 29, `x86_64,x86`, a 64-bit process, non-root adb shell, `ro.secure=1`, and a userdebug/test-keys system image. The API 36 environment reported Android 16/API 36, `x86_64`, a 64-bit process, non-root adb shell, `ro.secure=1`, and a userdebug/test-keys system image. Both no-original-factory cases passed, both device runners reported cleanup PASS, and the workflow's EXIT/INT/TERM trap completed.
 
@@ -91,22 +93,26 @@ The API 29 environment reported Android 10/API 29, `x86_64,x86`, a 64-bit proces
 
 | Evidence | API 29 SHA-256 | API 36 SHA-256 |
 |---|---|---|
-| Device report | `ceb1a572b149260bbb7c7b3fac808f73bf3f6ffb96dc2448262c41e6dd6f4519` | `ce5ffc1815a671b21a8e11fe978cd84eb821a2edfa17813fe7fd1f01e3b65a6f` |
-| Redacted command log | `b1a1c437bda799e36cf56adf79c4a7b47abaad53bcdbe46767ba22b72f2d50b0` | `a43154b988d5c6c29ad0049ab26694934197ff103a871ef48e49c9051949a582` |
-| Startup-negative report | `2db4b2b41c7858e3861c27c02ccbe06576664bb49733a1e21bb0b3da551c07c5` | `e71cf28d94e72d39c0f4a1d705c6040d5291cb0f8d42e70cb44289c5f915e9d3` |
-| Startup-negative command log | `803a7139e3d5977d7f01cca1df8da71ad9de8429e0ade499bec913390ba546e1` | `4c926441414ddb0d78fe219c47f8ffe1ed6f9f0fcaf29c8134feb0eb38a7818c` |
-| Static report | `cabc9f1e8fa6c4f4f76d4f4b5c3d3af815147eb561caf3dfd73934bcc50ffa60` | `d22ed75861debca69bf75c844ce8c6e802880e3ffa0a2fd208b154ad630718c9` |
+| Device report | `a2333cc0539330331a1db287aa4c4279209ee0b01aa07c78cac6633e90428c50` | `da70a5f80d10e8d295b8e1795803adb64803ce0244fb8f967764f43578481983` |
+| Redacted command log | `1e31cd18ce1336f8515577137e6891d965260c5eeb10e3e1f213e3332a590068` | `beeb4120c98652b3dddbb3a1033269a02f479bf6b1e00a2830409eac298e37eb` |
+| Device JUnit XML | `57a59f6f1d52d1cd2137183280a5f9863ba24224c0a816a0e83a5093ecc393ff` | `68e4189677f58cb48a48f022feeb29bbd0841f7c9ef0c648165b3cf8dcbe59bf` |
+| Extracted startup-negative report | `396c8ea3be4b3ed6f82574dbcc67279213260673996b6777ea75a9b060336077` | `67df4119f25d9af2a75a1a812ec985c9cf5f329bd56dc1775066ffc642b7b49d` |
+| Direct startup-negative report | `1397ca7033184a593933de1e5026191a60f9d394d972a2e1fab9dd55c3ac0d59` | `761e5bcaa9f6544f1bcba59eb40070f6ef4d5242043f71c03766e103303f9dd0` |
+| Static report | `62eaaaa1e312eafd3bb0b6adc116f3c84662a5ce249e1049a9d8b6eb4b0520d3` | `696cf57cfbd4c3ba6ea29d5a9d40b743f64b0f36757c8b4748251910e27e25e2` |
 
 | Generated artifact | API 29 SHA-256 | API 36 SHA-256 |
 |---|---|---|
-| extracted Release/R8 APK | `d6ddb1e424e055ceb8cfcc84667f2c33661dc2e8cc076d547a0d3c388fa8af29` | `89c880b6291aef5fd0c5411e723fd84220a82daa7671af8fde57ad77fb213a02` |
-| direct Release/R8 APK | `6b0ccf2070e85a199b4c50bddea05e9b0cc098e1dcfc820789b9848fcf2c2b3d` | `f74d98addd73d91b1c7d7d9ae639c694eab9850bef7686341da45017d2ee5db0` |
-| extracted instrumentation APK | `7ad7e5d213eec21bd5e1189e982ef0fc69db47ac57eec4840c40a1e8c06a09d9` | `c6b32e1215ec077a0197f97e620766805b17e07aa6f6fe19986c1dfa2377b086` |
-| direct instrumentation APK | `55b8c37caaae406d9c86bde8de4033909dddad814ebd7229edf93eee62d8360d` | `65d9128b43134971c8a7fac9d10b0f5ba1dbcb5f704c05a28fa1060e115761f1` |
-| no-original-factory APK | `b9cb97e2f38223e28563829d0c9b37fb87bd5da9b7c58eec92619b985ea7c883` | `1ef0acfd57273be3ae0bdab480727652ceeaae50ea3260b2ba952c21d929d142` |
+| extracted Release/R8 APK | `04e221d7a6d3117e5cf124f0fdf464493a73b69012cbdce9bdb2122dab6787df` | `0aa8d7a4ed42a50760c06f80cf68655597172b36ee9a710f39ec5645fea5ecde` |
+| direct Release/R8 APK | `e9827ae8e9c49356ca79e57d87dd5164b311a3d38fec0ca67597949858bbbb6a` | `f9a77961f3a9bf0126d8ef2ecd22b3846a7264a224b721110a318b75c46a2df8` |
+| extracted instrumentation APK | `665e2b3633c8720f887ba1f8de9e9debb81f15a93df77ed19a5a75321b888bb2` | `02d83f9c2c9c886d7c1169a3983091e7376398778f63242fa461970661b6052e` |
+| direct instrumentation APK | `d5c7eacee84ce6c7e09b565a96014cc586380c1f15459ec74aa21f104820fa9b` | `03e80b23df3c6e3f667e6477b942e508b5329195cabfd95951a0cfafe574a356` |
+| R8 mapping | `154e41c163b364270cd5ad25a3f76536e291292823e2fff13b1c3719a757d1cb` | `154e41c163b364270cd5ad25a3f76536e291292823e2fff13b1c3719a757d1cb` |
+| R8 usage | `f2953518d3553090c98971614a5ddedab2c9648ade9305b688fb9951383176f2` | `f2953518d3553090c98971614a5ddedab2c9648ade9305b688fb9951383176f2` |
+| `libfixture_jni.so` arm64-v8a | `9e6d57ef9b23c55a897939852463a2a6c26c84da6277e75aca2954ee5ab64c06` | `9e6d57ef9b23c55a897939852463a2a6c26c84da6277e75aca2954ee5ab64c06` |
+| `libfixture_jni.so` x86_64 | `9ab8c614757cc94c115e13b93a87afd8a02141e6237f9c3e4bc65321c4b020b6` | `9ab8c614757cc94c115e13b93a87afd8a02141e6237f9c3e4bc65321c4b020b6` |
 
 The generated APKs are ignored, run-scoped integration artifacts signed only with a one-time non-production fixture identity. They are not product outputs and are not committed.
 
 ## Completion gate
 
-M0-05 is not complete at this snapshot. The three required device environments have passed and the frozen evidence is reconciled here. Completion still requires an independent read-only `m0_05_security_review` to report zero open P0/P1/P2 findings. No PR is created before that review passes, and M1/M2 remain blocked.
+M0-05 is not complete at this snapshot. The repaired API 29/36 x86_64 environments passed, including exact `libpulse0=1:16.1+dfsg1-2ubuntu10.1`, JUnit XML, per-ABI SO hashes, R8 mapping/usage hashes, and verifier peak memory of 67,488/73,268 KB. Completion still requires the repaired API 29 arm64 physical run and a second independent read-only security review with zero open P0/P1/P2 findings. No PR is created before that review passes, and M1/M2 remain blocked.

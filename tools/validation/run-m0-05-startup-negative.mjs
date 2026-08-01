@@ -56,10 +56,11 @@ try {
     runAdb(["shell", "sleep", "1"]);
     const logs = runAdb(["logcat", "-d", "-v", "threadtime"]);
     writeFileSync(path.join(evidenceRoot, `${testCase.name}.logcat.txt`), logs.stdout);
-    if (!logs.stdout.includes(`${testCase.expected_code}:`)) {
+    const failureLogs = currentFailureProcessLogs(logs.stdout);
+    if (!failureLogs.includes(`${testCase.expected_code}:`)) {
       fail(`${testCase.name} did not emit ${testCase.expected_code}`);
     }
-    if (/AAH-M0-04:\s+LOADER_CREATED/u.test(logs.stdout)) {
+    if (/AAH-M0-04:\s+LOADER_CREATED/u.test(failureLogs)) {
       fail(`${testCase.name} created a loader after the expected startup failure`);
     }
     results.push({
@@ -87,6 +88,27 @@ try {
   writeFileSync(path.join(evidenceRoot, "startup-negative-commands.json"), `${JSON.stringify(transcript, null, 2)}\n`);
   process.stderr.write(`${error.stack ?? error}\n`);
   process.exitCode = 1;
+}
+
+function currentFailureProcessLogs(output) {
+  const processPattern = new RegExp(
+    `AndroidRuntime:\\s+Process: ${escapeRegExp(packageName)}, PID:\\s+(\\d+)`,
+    "gu",
+  );
+  const crashes = [...output.matchAll(processPattern)];
+  const pid = crashes.at(-1)?.[1];
+  if (!pid) {
+    fail(`startup failure did not expose a FATAL process for ${packageName}`);
+  }
+  const pidPattern = new RegExp(
+    `^\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2}\\.\\d+\\s+${escapeRegExp(pid)}\\s+`,
+    "u",
+  );
+  return output.split(/\r?\n/u).filter((line) => pidPattern.test(line)).join("\n");
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
 }
 
 function cleanup() {

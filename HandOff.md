@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260802-153213
-updated_at: 2026-08-02T22:44:56+08:00
+updated_at: 2026-08-02T23:07:29+08:00
 updated_by: /root
 state: active
 source_branch: feat/m1-02-signer-policy
@@ -64,6 +64,8 @@ next_owner: /root
 - 最终 Windows clean signer matrix 与 256-task 根 `clean check verifyGovernance` 已 PASS；规范 policy 和错误矩阵 SHA-256 分别为 `b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2` 与 `c33d342077c371878399c80e76ae025cd0efc56bfcca6d5bf80ffde4d75677c6`。Ubuntu 字节一致性仍须在第三次独立复核 PASS、用户授权发布后由 GitHub CI 验证。
 - 第三次独立只读复核对冻结证据 HEAD `902c20977d787ea9646078bbbe4c3c46bf0041cc` 给出 PASS：P0 `0`、P1 `0`、P2 `0`。两轮历史发现全部关闭；边界探针、十三行错误矩阵、二十六项 manifest、官方 signer 摘要、异常脱敏和无签名能力边界均通过。结论归档于 `docs/evidence/M1-02/security-review-3.md`。
 - 用户已明确授权推送 `feat/m1-02-signer-policy`、创建关联 Issue #7 的唯一草稿 PR，并运行 Ubuntu/Windows CI；该授权不包含 ready 或 merge。
+- 固定分支已推送，关联 Issue #7 的唯一草稿 PR 为 [#34](https://github.com/xiaokh31/androidAppHardening/pull/34)。首轮 Governance run `30752847768` 的 Ubuntu/Windows job 均 PASS；Build run `30752847752` 的双平台 job 在测试前因 `host:cli` 缺失 apksig 9.3.0 传递依赖锁而 FAIL。
+- 用户已明确授权修复该 CI 锁问题。自动生成的最小 diff 只为 `host/cli/gradle.lockfile` 增加 apksig 9.3.0 的 `runtimeClasspath,testRuntimeClasspath` 条目；本地 Windows 256-task 根回归随后 PASS，产品代码、版本和冻结报告哈希均未改变。
 
 ## Active Workstreams
 
@@ -73,7 +75,7 @@ next_owner: /root
 | M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | done | M0-04 | PR #31、合并后 strict HandOff 和双平台 CI 已通过 |
 | M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | done | M0-04, M0-06 | PR #32、三环境矩阵、独立安全复核和最终 PR CI 已通过 |
 | M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | done | M0-05 | PR #33、Issue #6、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
-| M1-02 | `/root` | `feat/m1-02-signer-policy` | in_progress | M1-01 | 发布授权已获得；推送唯一草稿 PR 并运行双平台 CI |
+| M1-02 | `/root` | `feat/m1-02-signer-policy` | in_progress | M1-01 | 依赖锁修复本地 PASS；推送后重跑 PR #34 双平台 Build/Governance |
 
 ## Decisions and Invariants
 
@@ -119,6 +121,7 @@ next_owner: /root
 - 修复候选的 clean signer task 在 102 秒内 PASS；根 `clean check verifyGovernance` 在 2 分 43 秒内 PASS，共 256 actionable tasks。新 error matrix SHA-256 为 `dce3c1a17647a96e93da291033e28c169ad0f5daee5d7544c6555392d66fc7eb`，official cross-check 为 `c63d706f08763819e30c1e682fff87448a999a3ce53a27c7253e35ef9f82e2ba`，artifact manifest 为 `fddc19d2a1ed3068c8ac5cdf8bc44299df0279a927a62da0af33be7cc1a0eab8`。
 - 第二次独立复核确认首轮 P1/P2 全部关闭，但以 P2 否决高位 size 语义；`61908507c741865c50aac07763d42c890bf25d4b` 修复并新增两个高位负例。最终 clean signer 与 256-task 根回归再次 PASS；error matrix SHA-256 更新为 `c33d342077c371878399c80e76ae025cd0efc56bfcca6d5bf80ffde4d75677c6`，artifact manifest 为 `d74287aec49cfd3cb18af55c6119b3ea90689d2f03bc15df8e5e8d04f43eb201`。
 - 第三次独立只读复核冻结 `902c20977d787ea9646078bbbe4c3c46bf0041cc`，专项 clean signer 103.9 秒、根 256-task check 163.6 秒均退出 `0`；P0/P1/P2 全为零。该复核未修改 tracked 文件、未联网、未启动设备或模拟器，完整结论已归档。
+- PR #34 首轮 Build run `30752847752` 在 Ubuntu/Windows 同因依赖锁缺口失败：`:host:cli:testRuntimeClasspath` 解析到固定 `apksig:9.3.0`，但 downstream lock state 未收录。用户授权后通过 Gradle `--write-locks` 仅增加该版本的两个 runtime 配置；本地 256-task 根回归退出 `0`，规范 policy/error hashes 不变。
 
 - PR #31 已合并，旧 metadata blocker 的架构依赖已解除，M0-05 从 `blocked` 恢复为 `in_progress`。
 - 既有 M0-05 分支保留四个本地历史提交和 Issue #5，不创建第二分支或第二任务。
@@ -235,6 +238,18 @@ next_owner: /root
 - artifact: `docs/evidence/M1-02/security-review-3.md`; canonical policy SHA-256 `b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2`; error matrix SHA-256 `c33d342077c371878399c80e76ae025cd0efc56bfcca6d5bf80ffde4d75677c6`; official cross-check SHA-256 `c63d706f08763819e30c1e682fff87448a999a3ce53a27c7253e35ef9f82e2ba`; artifact manifest SHA-256 `d74287aec49cfd3cb18af55c6119b3ea90689d2f03bc15df8e5e8d04f43eb201`; capability scan SHA-256 `97c89653b10a7e7b2fd97b53e7ae2ccc53994d623de2fc7c56852d982adbfcfa`
 - sha256: not_applicable
 - result: PASS; P0 `0`, P1 `0`, P2 `0`; both historical review rounds are closed, the frozen implementation and local independent-review gate are complete, and publication/Ubuntu-Windows CI remain pending explicit user authorization
+
+### M1-02 PR #34 dependency-lock remediation
+
+- task_id: M1-02
+- git_commit: a32f2803ac794bcdd06a5845eb478337990e4df8
+- command: GitHub Actions Build run `30752847752` and Governance run `30752847768`; project-local offline Gradle `--write-locks :host:cli:dependencies`; project-local offline Gradle `clean check verifyGovernance`
+- exit_code: 0
+- environment: GitHub Actions Ubuntu 24.04 and Windows 2025 for initial CI; local Windows 10 amd64, Temurin 17.0.19+10, Gradle 9.5.0, Android SDK 36.1.0; no device or emulator
+- timestamp: 2026-08-02T23:07:29+08:00
+- artifact: draft PR `https://github.com/xiaokh31/androidAppHardening/pull/34`; `host/cli/gradle.lockfile` SHA-256 `26d344690f11ad00b114bc559337c78b493cce94938ea7ec4f38e20f272de57c`; canonical policy SHA-256 `b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2`; error matrix SHA-256 `c33d342077c371878399c80e76ae025cd0efc56bfcca6d5bf80ffde4d75677c6`
+- sha256: 26d344690f11ad00b114bc559337c78b493cce94938ea7ec4f38e20f272de57c
+- result: PASS_LOCAL_LOCK_REMEDIATION; initial Governance passed on both platforms, initial Build failed before tests on the missing downstream lock state, the approved one-line generated lock fix passed the 256-task Windows root regression, and replacement PR CI remains pending
 
 ### M1-01 third-review remediation candidate
 
@@ -502,12 +517,12 @@ next_owner: /root
 
 ## Blockers and Required Approvals
 
-None. The third independent M1-02 review passed with P0/P1/P2 all zero, and the user authorized the branch push, sole Issue #7 draft PR and Ubuntu/Windows CI. Ready/merge remains outside the current authorization.
+None. The third independent M1-02 review passed with P0/P1/P2 all zero, PR #34 exists as the sole draft, and the user authorized the one-line downstream dependency-lock repair and replacement Ubuntu/Windows CI. Ready/merge remains outside the current authorization.
 
 ## Ordered Next Actions
 
-1. Push `feat/m1-02-signer-policy` and create the sole Issue #7 draft PR against `main`.
-2. Require Ubuntu/Windows Build, Governance and M1-02 byte-equivalence gates.
+1. Commit and push the approved `host:cli` dependency-lock remediation to PR #34.
+2. Require replacement Ubuntu/Windows Build, Governance and M1-02 byte-equivalence gates.
 3. Archive the final PR CI evidence and request separate ready/merge authorization; do not merge implicitly.
 4. Do not start M1-03, M1-04, M2-03 or any adjacent task implicitly.
 
@@ -575,7 +590,9 @@ None. The third independent M1-02 review passed with P0/P1/P2 all zero, and the 
 - [x] 第二次独立复核 FAIL 已归档；唯一高位 size P2 修复候选 `6190850` 已通过 clean signer 与 256-task 根回归。
 - [x] 冻结高位边界修复后的正式证据提交并完成第三次独立复核；`902c209` 复核为 P0/P1/P2 全零 PASS。
 - [x] 获得用户对固定分支、唯一 Issue #7 草稿 PR 和 Ubuntu/Windows CI 的明确发布授权。
-- [ ] 推送并完成唯一 Issue #7 PR 的 Ubuntu/Windows 字节一致性与治理 CI。
+- [x] 推送固定分支并创建关联 Issue #7 的唯一草稿 PR #34；首轮 Governance 双平台 PASS，Build 双平台因 downstream lock 缺口 FAIL。
+- [x] 获得用户锁修复授权并完成一行自动生成的 `host:cli` 锁变更与 Windows 256-task 根回归。
+- [ ] 推送锁修复并完成 PR #34 的替换 Ubuntu/Windows 字节一致性与治理 CI。
 
 ## Handoff Sign-off
 
@@ -587,3 +604,4 @@ None. The third independent M1-02 review passed with P0/P1/P2 all zero, and the 
 - `/root` 已核验 PR #33 使用普通 merge commit `74c5f6252ea9b89154c285764d5f9601a0347358` 合并、Issue #6 关闭，并在本地 `main` 无豁免通过 strict HandOff；M1-01 标记 done，当前活动任务已转为 M1-02。
 - `/root` 已领取 M1-02 并核验其唯一 Issue、分支、依赖、固定官方 `apksig` 与既有 ADR；当前活动范围仅为 Host signer policy，M1-03/M1-04/M2-03 未启动。
 - `/root` 已核验首个证据 HEAD 与第二个修复证据 HEAD 的独立复核均 FAIL 并废止；第三次独立只读复核已对冻结证据 `902c20977d787ea9646078bbbe4c3c46bf0041cc` 给出 P0/P1/P2 全零 PASS。clean signer、256-task 根回归、Governance、官方六 fixture/十三行错误矩阵、二十六项 artifact manifest、block 资源上界/高位边界、异常脱敏、SPV1 和无签名能力扫描均已闭环；用户已授权发布固定分支、创建唯一草稿 PR 和运行双平台 CI，但未授权 ready 或 merge。
+- `/root` 已核验 PR #34 首轮双平台 Build 的共同根因为 `host:cli` 传递依赖锁缺口；用户授权的修复仅增加现有 apksig 9.3.0 的 runtime/testRuntime 锁条目。本地 256-task 根回归和冻结报告 hashes 均 PASS；下一步只推送该最小修复并等待替换 CI，仍未授权 ready 或 merge。

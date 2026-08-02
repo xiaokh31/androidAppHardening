@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260802-153213
-updated_at: 2026-08-02T17:04:24+08:00
+updated_at: 2026-08-02T17:17:49+08:00
 updated_by: /root
 state: active
 source_branch: feat/m1-02-signer-policy
@@ -62,6 +62,7 @@ next_owner: /root
 - 第二次独立复核对 `8718975255cfbdab4fc2ce29eae67c18f21b62ed` 给出 FAIL：P0 `0`、P1 `0`、P2 `1`。首轮四项均确认关闭，但高位无符号 size 被 `Long` 解码为负数后误归 unsigned；结论归档于 `docs/evidence/M1-02/security-review-2.md`。
 - 最终修复候选 `61908507c741865c50aac07763d42c890bf25d4b` 将负 size 明确归为 malformed，增加 `Long.MIN_VALUE`/`-1L` 回归，并把 `input_changed` 官方状态绑定变更后 artifact。
 - 最终 Windows clean signer matrix 与 256-task 根 `clean check verifyGovernance` 已 PASS；规范 policy 和错误矩阵 SHA-256 分别为 `b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2` 与 `c33d342077c371878399c80e76ae025cd0efc56bfcca6d5bf80ffde4d75677c6`。Ubuntu 字节一致性仍须在第三次独立复核 PASS、用户授权发布后由 GitHub CI 验证。
+- 第三次独立只读复核对冻结证据 HEAD `902c20977d787ea9646078bbbe4c3c46bf0041cc` 给出 PASS：P0 `0`、P1 `0`、P2 `0`。两轮历史发现全部关闭；边界探针、十三行错误矩阵、二十六项 manifest、官方 signer 摘要、异常脱敏和无签名能力边界均通过。结论归档于 `docs/evidence/M1-02/security-review-3.md`。
 
 ## Active Workstreams
 
@@ -71,7 +72,7 @@ next_owner: /root
 | M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | done | M0-04 | PR #31、合并后 strict HandOff 和双平台 CI 已通过 |
 | M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | done | M0-04, M0-06 | PR #32、三环境矩阵、独立安全复核和最终 PR CI 已通过 |
 | M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | done | M0-05 | PR #33、Issue #6、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
-| M1-02 | `/root` | `feat/m1-02-signer-policy` | in_progress | M1-01 | 冻结高位边界修复证据并启动第三次独立复核；PASS 前不发布 |
+| M1-02 | `/root` | `feat/m1-02-signer-policy` | in_progress | M1-01 | 本地实现与独立复核门禁已通过；等待用户授权发布并运行双平台 CI |
 
 ## Decisions and Invariants
 
@@ -116,6 +117,7 @@ next_owner: /root
 - `5016cd39426b2d50d1fbedfafee2f24c567e0546` 对 Signing Block envelope 和 materialization 设置 32 MiB 上限，断开公开异常 cause，修正 magic-only unsigned，并补齐六个正向/十一行错误矩阵的官方验证和全部 artifact 哈希。
 - 修复候选的 clean signer task 在 102 秒内 PASS；根 `clean check verifyGovernance` 在 2 分 43 秒内 PASS，共 256 actionable tasks。新 error matrix SHA-256 为 `dce3c1a17647a96e93da291033e28c169ad0f5daee5d7544c6555392d66fc7eb`，official cross-check 为 `c63d706f08763819e30c1e682fff87448a999a3ce53a27c7253e35ef9f82e2ba`，artifact manifest 为 `fddc19d2a1ed3068c8ac5cdf8bc44299df0279a927a62da0af33be7cc1a0eab8`。
 - 第二次独立复核确认首轮 P1/P2 全部关闭，但以 P2 否决高位 size 语义；`61908507c741865c50aac07763d42c890bf25d4b` 修复并新增两个高位负例。最终 clean signer 与 256-task 根回归再次 PASS；error matrix SHA-256 更新为 `c33d342077c371878399c80e76ae025cd0efc56bfcca6d5bf80ffde4d75677c6`，artifact manifest 为 `d74287aec49cfd3cb18af55c6119b3ea90689d2f03bc15df8e5e8d04f43eb201`。
+- 第三次独立只读复核冻结 `902c20977d787ea9646078bbbe4c3c46bf0041cc`，专项 clean signer 103.9 秒、根 256-task check 163.6 秒均退出 `0`；P0/P1/P2 全为零。该复核未修改 tracked 文件、未联网、未启动设备或模拟器，完整结论已归档。
 
 - PR #31 已合并，旧 metadata blocker 的架构依赖已解除，M0-05 从 `blocked` 恢复为 `in_progress`。
 - 既有 M0-05 分支保留四个本地历史提交和 Issue #5，不创建第二分支或第二任务。
@@ -220,6 +222,18 @@ next_owner: /root
 - artifact: `docs/evidence/M1-02/formal-host-validation.md`; ignored `host/apk-inspector/build/reports/m1-02/`; canonical policy SHA-256 `b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2`; error matrix SHA-256 `c33d342077c371878399c80e76ae025cd0efc56bfcca6d5bf80ffde4d75677c6`; official cross-check SHA-256 `c63d706f08763819e30c1e682fff87448a999a3ce53a27c7253e35ef9f82e2ba`; artifact manifest SHA-256 `d74287aec49cfd3cb18af55c6119b3ea90689d2f03bc15df8e5e8d04f43eb201`
 - sha256: not_applicable
 - result: PASS_WINDOWS_THIRD_REVIEW_CANDIDATE; negative decoded sizes are malformed, high-bit fixtures and actual-artifact official status are frozen, and 256-task root regression passes; a third independent review remains mandatory
+
+### M1-02 third independent security review
+
+- task_id: M1-02
+- git_commit: 902c20977d787ea9646078bbbe4c3c46bf0041cc
+- command: independent project-local offline Gradle `:host:apk-inspector:clean :host:apk-inspector:signerPolicyTest`; independent project-local offline Gradle `clean check verifyGovernance`; `-Xmx256m` ignored Signing Block boundary probes; official `apksigner` cross-check; Governance, strict HandOff, diff and UTF-8 scans
+- exit_code: 0
+- environment: Windows 10 amd64; Temurin 17.0.19+10; Gradle 9.5.0; Kotlin plugin 2.4.10; apksig 9.3.0; apksigner 0.9; Node 24.12.0; offline; no device or emulator
+- timestamp: 2026-08-02T17:17:49+08:00
+- artifact: `docs/evidence/M1-02/security-review-3.md`; canonical policy SHA-256 `b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2`; error matrix SHA-256 `c33d342077c371878399c80e76ae025cd0efc56bfcca6d5bf80ffde4d75677c6`; official cross-check SHA-256 `c63d706f08763819e30c1e682fff87448a999a3ce53a27c7253e35ef9f82e2ba`; artifact manifest SHA-256 `d74287aec49cfd3cb18af55c6119b3ea90689d2f03bc15df8e5e8d04f43eb201`; capability scan SHA-256 `97c89653b10a7e7b2fd97b53e7ae2ccc53994d623de2fc7c56852d982adbfcfa`
+- sha256: not_applicable
+- result: PASS; P0 `0`, P1 `0`, P2 `0`; both historical review rounds are closed, the frozen implementation and local independent-review gate are complete, and publication/Ubuntu-Windows CI remain pending explicit user authorization
 
 ### M1-01 third-review remediation candidate
 
@@ -487,16 +501,14 @@ next_owner: /root
 
 ## Blockers and Required Approvals
 
-No technical blocker. A third independent M1-02 review of the high-bit remediation evidence is mandatory before publication; pushing the branch and creating any PR require explicit user authorization after review PASS.
+No technical blocker. The third independent M1-02 review passed with P0/P1/P2 all zero. Pushing the branch and creating the sole Issue #7 PR require explicit user authorization; Ubuntu/Windows CI cannot run until publication.
 
 ## Ordered Next Actions
 
-1. Commit the updated formal evidence and coordinating HandOff on top of remediation `61908507c741865c50aac07763d42c890bf25d4b`, then freeze that exact third-review target.
-2. Start a new independent M1-02 security review against the frozen target and require P0/P1/P2 all closed.
-3. If the third review fails, remediate only its M1-02 findings, rerun the formal Windows gates, refreeze and request another independent review.
-4. If review passes, request explicit user authorization before pushing the fixed branch or creating the sole Issue #7 PR.
-5. After authorized publication, require Ubuntu/Windows Build, Governance and M1-02 byte-equivalence gates before any ready/merge request.
-6. Do not start M1-03, M1-04, M2-03 or any adjacent task implicitly.
+1. Request explicit user authorization before pushing `feat/m1-02-signer-policy` or creating the sole Issue #7 draft PR.
+2. After authorized publication, require Ubuntu/Windows Build, Governance and M1-02 byte-equivalence gates.
+3. Archive the final PR CI evidence and request separate ready/merge authorization; do not merge implicitly.
+4. Do not start M1-03, M1-04, M2-03 or any adjacent task implicitly.
 
 ## Relevant Files and Artifacts
 
@@ -519,6 +531,7 @@ No technical blocker. A third independent M1-02 review of the high-bit remediati
 - `docs/evidence/M1-02/formal-host-validation.md`
 - `docs/evidence/M1-02/security-review-1.md`
 - `docs/evidence/M1-02/security-review-2.md`
+- `docs/evidence/M1-02/security-review-3.md`
 - `runtime/bootstrap/src/main/java/ah/runtime/bootstrap/ShellAppComponentFactory.java`
 - `fixtures/android/src/androidTestCompatFixture/java/ah/fixtures/android/CompatibilityPocRunner.java`
 - `tools/validation/verify-m0-05-apks.mjs`
@@ -559,7 +572,7 @@ No technical blocker. A third independent M1-02 review of the high-bit remediati
 - [x] 完成 M1-02 实现、完整负向矩阵、官方工具交叉验证、Windows 根回归和正式证据候选。
 - [x] 首次独立 `m1_02_security_review` FAIL 已归档，P1/P2 四项修复候选 `5016cd3` 已通过 clean signer 与 256-task 根回归。
 - [x] 第二次独立复核 FAIL 已归档；唯一高位 size P2 修复候选 `6190850` 已通过 clean signer 与 256-task 根回归。
-- [ ] 冻结高位边界修复后的正式证据提交并完成第三次独立复核；PASS 前不发布。
+- [x] 冻结高位边界修复后的正式证据提交并完成第三次独立复核；`902c209` 复核为 P0/P1/P2 全零 PASS。
 - [ ] 获得用户发布授权后完成唯一 Issue #7 PR 的 Ubuntu/Windows 字节一致性与治理 CI。
 
 ## Handoff Sign-off
@@ -571,4 +584,4 @@ No technical blocker. A third independent M1-02 review of the high-bit remediati
 - `/root` 已核验 PR #33 的首轮、证据 HEAD 与 merger-ready HEAD 的 Build/Governance 四个 job 和两个字节一致性步骤均 PASS；独立复核 P0/P1/P2 全为零。
 - `/root` 已核验 PR #33 使用普通 merge commit `74c5f6252ea9b89154c285764d5f9601a0347358` 合并、Issue #6 关闭，并在本地 `main` 无豁免通过 strict HandOff；M1-01 标记 done，当前活动任务已转为 M1-02。
 - `/root` 已领取 M1-02 并核验其唯一 Issue、分支、依赖、固定官方 `apksig` 与既有 ADR；当前活动范围仅为 Host signer policy，M1-03/M1-04/M2-03 未启动。
-- `/root` 已核验首个证据 HEAD 与第二个修复证据 HEAD 的独立复核均 FAIL 并废止；最终候选 `61908507c741865c50aac07763d42c890bf25d4b` 的 clean signer、256-task 根回归、Governance、官方六 fixture/十三行错误矩阵、block 资源上界/高位边界、异常脱敏、SPV1 和无签名能力扫描均 PASS。当前只待新证据提交与第三次独立复核，分支仍未发布。
+- `/root` 已核验首个证据 HEAD 与第二个修复证据 HEAD 的独立复核均 FAIL 并废止；第三次独立只读复核已对冻结证据 `902c20977d787ea9646078bbbe4c3c46bf0041cc` 给出 P0/P1/P2 全零 PASS。clean signer、256-task 根回归、Governance、官方六 fixture/十三行错误矩阵、二十六项 artifact manifest、block 资源上界/高位边界、异常脱敏、SPV1 和无签名能力扫描均已闭环；分支仍未发布，下一步只等待用户发布授权。

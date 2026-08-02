@@ -30,8 +30,7 @@ enum class SignerErrorCode {
 class SignerPolicyException(
     val code: SignerErrorCode,
     val safeFileName: String,
-    cause: Throwable? = null,
-) : Exception("${code.name} file=$safeFileName", cause)
+) : Exception("${code.name} file=$safeFileName")
 
 enum class VerifiedScheme {
     V1,
@@ -121,12 +120,12 @@ class SignerPolicyVerifier internal constructor(
                 val finalDigest = try {
                     source.currentDigest()
                 } catch (exception: InputChangedFailure) {
-                    throw SignerPolicyException(SignerErrorCode.SIGNER_INPUT_CHANGED, safeFileName, exception)
+                    throw SignerPolicyException(SignerErrorCode.SIGNER_INPUT_CHANGED, safeFileName)
                 }
                 val finalIdentity = try {
                     pathIdentity(input)
                 } catch (exception: IOException) {
-                    throw SignerPolicyException(SignerErrorCode.SIGNER_INPUT_CHANGED, safeFileName, exception)
+                    throw SignerPolicyException(SignerErrorCode.SIGNER_INPUT_CHANGED, safeFileName)
                 }
                 if (!MessageDigest.isEqual(initialDigest, finalDigest) || initialIdentity != finalIdentity) {
                     throw SignerPolicyException(SignerErrorCode.SIGNER_INPUT_CHANGED, safeFileName)
@@ -136,37 +135,43 @@ class SignerPolicyVerifier internal constructor(
         } catch (exception: SignerPolicyException) {
             throw exception
         } catch (exception: InputChangedFailure) {
-            throw SignerPolicyException(SignerErrorCode.SIGNER_INPUT_CHANGED, safeFileName, exception)
+            throw SignerPolicyException(SignerErrorCode.SIGNER_INPUT_CHANGED, safeFileName)
         } catch (exception: IOException) {
             if (containsInputChanged(exception)) {
-                throw SignerPolicyException(SignerErrorCode.SIGNER_INPUT_CHANGED, safeFileName, exception)
+                throw SignerPolicyException(SignerErrorCode.SIGNER_INPUT_CHANGED, safeFileName)
             }
-            throw SignerPolicyException(SignerErrorCode.SIGNER_INTERNAL, safeFileName, exception)
+            throw SignerPolicyException(SignerErrorCode.SIGNER_INTERNAL, safeFileName)
         } catch (exception: SecurityException) {
-            throw SignerPolicyException(SignerErrorCode.SIGNER_INTERNAL, safeFileName, exception)
+            throw SignerPolicyException(SignerErrorCode.SIGNER_INTERNAL, safeFileName)
         } catch (exception: RuntimeException) {
             if (containsInputChanged(exception)) {
-                throw SignerPolicyException(SignerErrorCode.SIGNER_INPUT_CHANGED, safeFileName, exception)
+                throw SignerPolicyException(SignerErrorCode.SIGNER_INPUT_CHANGED, safeFileName)
             }
-            throw SignerPolicyException(SignerErrorCode.SIGNER_INTERNAL, safeFileName, exception)
+            throw SignerPolicyException(SignerErrorCode.SIGNER_INTERNAL, safeFileName)
         }
     }
 
     private fun verifyWithOfficialLibrary(source: FileSource, safeFileName: String): OfficialResult = try {
+        val signingBlockState = inspectApkSigningBlock(source)
+        if (signingBlockState == SigningBlockState.MALFORMED ||
+            signingBlockState == SigningBlockState.OVERSIZED
+        ) {
+            throw SignerPolicyException(SignerErrorCode.SIGNER_INVALID, safeFileName)
+        }
         val dataSource = VerifiedFileDataSource(source)
         OfficialResult(
             result = ApkVerifier.Builder(dataSource)
                 .setMinCheckedPlatformVersion(MIN_CHECKED_PLATFORM)
                 .build()
                 .verify(),
-            hasApkSigningBlockMarker = hasApkSigningBlockMarker(source),
+            hasApkSigningBlockMarker = signingBlockState == SigningBlockState.VALID,
             lineageParseState = parseLineageState(dataSource),
         )
     } catch (exception: IOException) {
         if (containsInputChanged(exception)) {
-            throw SignerPolicyException(SignerErrorCode.SIGNER_INPUT_CHANGED, safeFileName, exception)
+            throw SignerPolicyException(SignerErrorCode.SIGNER_INPUT_CHANGED, safeFileName)
         }
-        throw SignerPolicyException(SignerErrorCode.SIGNER_INVALID, safeFileName, exception)
+        throw SignerPolicyException(SignerErrorCode.SIGNER_INVALID, safeFileName)
     }
 
     private fun parseLineageState(source: DataSource): LineageParseState = try {
@@ -229,18 +234,18 @@ class SignerPolicyVerifier internal constructor(
         return try {
             SignerPolicyV1(current, lineage, schemes)
         } catch (exception: IllegalArgumentException) {
-            throw SignerPolicyException(SignerErrorCode.SIGNER_LINEAGE_INVALID, safeFileName, exception)
+            throw SignerPolicyException(SignerErrorCode.SIGNER_LINEAGE_INVALID, safeFileName)
         }
     }
 
     private fun certificateDigest(certificate: X509Certificate, safeFileName: String): ByteArray = try {
         MessageDigest.getInstance("SHA-256").digest(certificate.encoded)
     } catch (exception: CertificateEncodingException) {
-        throw SignerPolicyException(SignerErrorCode.SIGNER_INVALID, safeFileName, exception)
+        throw SignerPolicyException(SignerErrorCode.SIGNER_INVALID, safeFileName)
     }
 
-    private fun hasApkSigningBlockMarker(source: FileSource): Boolean {
-        if (source.size < EOCD_MIN_BYTES + APK_SIGNING_BLOCK_MAGIC.size) return false
+    private fun inspectApkSigningBlock(source: FileSource): SigningBlockState {
+        if (source.size < EOCD_MIN_BYTES + APK_SIGNING_BLOCK_FOOTER_BYTES) return SigningBlockState.ABSENT
         val tailSize = minOf(source.size, EOCD_MAX_SEARCH_BYTES.toLong()).toInt()
         val tailOffset = source.size - tailSize
         val tail = source.readFully(tailOffset, tailSize)
@@ -250,18 +255,32 @@ class SignerPolicyVerifier internal constructor(
                 val commentLength = leU2(tail, eocd + 20)
                 if (eocd + EOCD_MIN_BYTES + commentLength == tail.size) {
                     val centralOffset = leU4(tail, eocd + 16)
-                    if (centralOffset >= APK_SIGNING_BLOCK_MAGIC.size && centralOffset <= source.size) {
-                        return source.readFully(
-                            centralOffset - APK_SIGNING_BLOCK_MAGIC.size,
-                            APK_SIGNING_BLOCK_MAGIC.size,
-                        ).contentEquals(APK_SIGNING_BLOCK_MAGIC)
+                    if (centralOffset < APK_SIGNING_BLOCK_FOOTER_BYTES || centralOffset > source.size) {
+                        return SigningBlockState.ABSENT
                     }
-                    return false
+                    val footer = source.readFully(
+                        centralOffset - APK_SIGNING_BLOCK_FOOTER_BYTES,
+                        APK_SIGNING_BLOCK_FOOTER_BYTES,
+                    )
+                    if (!footer.copyOfRange(Long.SIZE_BYTES, footer.size).contentEquals(APK_SIGNING_BLOCK_MAGIC)) {
+                        return SigningBlockState.ABSENT
+                    }
+                    val declaredSize = leI8(footer, 0)
+                    if (declaredSize < APK_SIGNING_BLOCK_MIN_SIZE_FIELD) return SigningBlockState.ABSENT
+                    val totalSize = declaredSize + Long.SIZE_BYTES
+                    if (totalSize <= 0 || totalSize > centralOffset) return SigningBlockState.MALFORMED
+                    val leadingSize = leI8(source.readFully(centralOffset - totalSize, Long.SIZE_BYTES), 0)
+                    if (leadingSize != declaredSize) return SigningBlockState.MALFORMED
+                    return if (totalSize > MAX_APKSIG_SIGNING_BLOCK_BYTES) {
+                        SigningBlockState.OVERSIZED
+                    } else {
+                        SigningBlockState.VALID
+                    }
                 }
             }
             eocd--
         }
-        return false
+        return SigningBlockState.ABSENT
     }
 
     private fun pathIdentity(input: Path): PathIdentity {
@@ -297,6 +316,7 @@ class SignerPolicyVerifier internal constructor(
     )
 
     private enum class LineageParseState { ABSENT, VALID, INVALID, INDETERMINATE }
+    private enum class SigningBlockState { ABSENT, VALID, MALFORMED, OVERSIZED }
 
     companion object {
         private const val MIN_CHECKED_PLATFORM = 29
@@ -304,6 +324,9 @@ class SignerPolicyVerifier internal constructor(
         private const val EOCD_MIN_BYTES = 22
         private const val EOCD_MAX_SEARCH_BYTES = EOCD_MIN_BYTES + 0xffff
         private const val EOCD_SIGNATURE = 0x06054b50L
+        private const val APK_SIGNING_BLOCK_FOOTER_BYTES = Long.SIZE_BYTES + 16
+        private const val APK_SIGNING_BLOCK_MIN_SIZE_FIELD = 24L
+        internal const val MAX_APKSIG_SIGNING_BLOCK_BYTES = 32L * 1024 * 1024
         private val APK_SIGNING_BLOCK_MAGIC = "APK Sig Block 42".toByteArray(Charsets.US_ASCII)
         private val UNSIGNED_ISSUES = setOf(
             "JAR_SIG_NO_SIGNATURES",
@@ -356,11 +379,13 @@ private class VerifiedFileDataSource(
 
     override fun getByteBuffer(offset: Long, size: Int): ByteBuffer {
         requireRange(offset, size.toLong())
+        requireMaterializationLimit(size)
         return ByteBuffer.wrap(source.readFully(baseOffset + offset, size)).asReadOnlyBuffer()
     }
 
     override fun copyTo(offset: Long, size: Int, destination: ByteBuffer) {
         requireRange(offset, size.toLong())
+        requireMaterializationLimit(size)
         if (destination.remaining() < size) throw IOException("destination buffer too small")
         destination.put(source.readFully(baseOffset + offset, size))
     }
@@ -374,9 +399,24 @@ private class VerifiedFileDataSource(
         if (offset < 0 || size < 0 || offset > length - size) throw IndexOutOfBoundsException("data source range")
     }
 
+    private fun requireMaterializationLimit(size: Int) {
+        if (size > SignerPolicyVerifier.MAX_APKSIG_SIGNING_BLOCK_BYTES) {
+            throw IOException("apksig contiguous read exceeds limit")
+        }
+    }
+
     companion object {
         private const val FEED_BLOCK_BYTES = 64 * 1024
     }
+}
+
+private fun leI8(bytes: ByteArray, offset: Int): Long {
+    if (offset < 0 || offset > bytes.size - Long.SIZE_BYTES) throw IndexOutOfBoundsException("little-endian u8")
+    var value = 0L
+    for (index in Long.SIZE_BYTES - 1 downTo 0) {
+        value = (value shl Byte.SIZE_BITS) or (bytes[offset + index].toLong() and 0xff)
+    }
+    return value
 }
 
 private fun ByteArray.toLowerHex(): String = joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }

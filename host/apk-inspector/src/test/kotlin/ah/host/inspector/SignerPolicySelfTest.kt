@@ -2,6 +2,8 @@ package ah.host.inspector
 
 import com.android.apksig.SigningCertificateLineage
 import java.io.ByteArrayOutputStream
+import java.io.PrintWriter
+import java.io.StringWriter
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
@@ -87,9 +89,24 @@ object SignerPolicySelfTest {
         check(rotatedPolicy.lineageCertificateSha256Hex.last() == rotatedPolicy.currentCertificateSha256Hex)
         check(rotatedPolicy.currentCertificateSha256Hex == sha256(currentIdentity.certificate.readBytes()).toLowerHex())
 
-        val officialDigest = tools.printCurrentCertificateSha256(combined)
-        check(officialDigest == policies.getValue("combined").currentCertificateSha256Hex)
-        check(officialDigest == sha256(currentIdentity.certificate.readBytes()).toLowerHex())
+        val expectedCurrentDigest = sha256(currentIdentity.certificate.readBytes()).toLowerHex()
+        val expectedOldDigest = sha256(oldIdentity.certificate.readBytes()).toLowerHex()
+        val officialPositiveDigests = linkedMapOf(
+            "v1.apk" to tools.printCertificateSha256(v1),
+            "v2.apk" to tools.printCertificateSha256(v2),
+            "v3.apk" to tools.printCertificateSha256(v3),
+            "combined.apk" to tools.printCertificateSha256(combined),
+            "v4.apk" to tools.printCertificateSha256(v4),
+            "rotated.apk" to tools.printCertificateSha256(rotated),
+        )
+        officialPositiveDigests.filterKeys { it != "rotated.apk" }.values.forEach { digests ->
+            check(digests == listOf(expectedCurrentDigest))
+        }
+        check(officialPositiveDigests.getValue("rotated.apk") == listOf(expectedCurrentDigest, expectedOldDigest))
+        policies.filterKeys { it != "rotated" }.values.forEach { policy ->
+            check(policy.currentCertificateSha256Hex == expectedCurrentDigest)
+        }
+        check(rotatedPolicy.currentCertificateSha256Hex == expectedCurrentDigest)
         exerciseDefensiveCopies(rotatedPolicy)
         exerciseSpv1ModelValidation()
 
@@ -99,29 +116,85 @@ object SignerPolicySelfTest {
         tamperedBlock.writeBytes(corruptSignedContent(v2.readBytes()))
         val invalidLineage = fixtureDir.resolve("invalid-lineage.apk")
         invalidLineage.writeBytes(corruptLineage(rotated.readBytes(), lineageFile))
+        val magicOnlyUnsigned = fixtureDir.resolve("magic-only-unsigned.apk")
+        magicOnlyUnsigned.writeBytes(insertBeforeCentralDirectory(unsigned.readBytes(), magicOnlyPadding()))
+        val oversizedSigningBlock = fixtureDir.resolve("oversized-signing-block.apk")
+        oversizedSigningBlock.writeBytes(
+            insertBeforeCentralDirectory(
+                unsigned.readBytes(),
+                syntheticSigningBlock((SignerPolicyVerifier.MAX_APKSIG_SIGNING_BLOCK_BYTES + 1).toInt()),
+            ),
+        )
+        val truncatedHugeSigningBlock = fixtureDir.resolve("truncated-huge-signing-block.apk")
+        truncatedHugeSigningBlock.writeBytes(
+            insertBeforeCentralDirectory(
+                unsigned.readBytes(),
+                signingBlockFooter(SignerPolicyVerifier.MAX_APKSIG_SIGNING_BLOCK_BYTES + 1),
+            ),
+        )
+        val missing = fixtureDir.resolve("reviewer-secret-parent/secret.apk")
 
         val errorMatrix = linkedMapOf(
-            "unsigned" to expectError(unsigned, SignerErrorCode.SIGNER_UNSIGNED),
-            "tampered" to expectError(tamperedBlock, SignerErrorCode.SIGNER_INVALID),
-            "malformed_block" to expectError(malformedBlock, SignerErrorCode.SIGNER_INVALID),
-            "multiple_current" to expectError(multiple, SignerErrorCode.SIGNER_MULTIPLE_CURRENT),
-            "invalid_lineage" to expectError(invalidLineage, SignerErrorCode.SIGNER_LINEAGE_INVALID),
-            "inspection_mismatch" to expectInspectionMismatch(v2, policies.getValue("combined")),
-            "input_changed" to expectConcurrentInputChange(v2, fixtureDir.resolve("changed-during-verification.apk")),
+            "unsigned" to ErrorResult(expectError(unsigned, SignerErrorCode.SIGNER_UNSIGNED), tools.isVerified(unsigned)),
+            "magic_only_unsigned" to ErrorResult(
+                expectError(magicOnlyUnsigned, SignerErrorCode.SIGNER_UNSIGNED),
+                tools.isVerified(magicOnlyUnsigned),
+            ),
+            "tampered" to ErrorResult(expectError(tamperedBlock, SignerErrorCode.SIGNER_INVALID), tools.isVerified(tamperedBlock)),
+            "malformed_block" to ErrorResult(
+                expectError(malformedBlock, SignerErrorCode.SIGNER_INVALID),
+                tools.isVerified(malformedBlock),
+            ),
+            "oversized_signing_block" to ErrorResult(
+                expectError(oversizedSigningBlock, SignerErrorCode.SIGNER_INVALID),
+                tools.isVerified(oversizedSigningBlock),
+            ),
+            "truncated_huge_signing_block" to ErrorResult(
+                expectError(truncatedHugeSigningBlock, SignerErrorCode.SIGNER_INVALID),
+                tools.isVerified(truncatedHugeSigningBlock),
+            ),
+            "multiple_current" to ErrorResult(
+                expectError(multiple, SignerErrorCode.SIGNER_MULTIPLE_CURRENT),
+                tools.isVerified(multiple),
+            ),
+            "invalid_lineage" to ErrorResult(
+                expectError(invalidLineage, SignerErrorCode.SIGNER_LINEAGE_INVALID),
+                tools.isVerified(invalidLineage),
+            ),
+            "inspection_mismatch" to ErrorResult(
+                expectInspectionMismatch(v2, policies.getValue("combined")),
+                tools.isVerified(v2),
+            ),
+            "input_changed" to ErrorResult(
+                expectConcurrentInputChange(v2, fixtureDir.resolve("changed-during-verification.apk")),
+                tools.isVerified(v2),
+            ),
+            "internal_failure" to ErrorResult(
+                expectSanitizedInternalFailure(missing, v2),
+                tools.isVerified(missing),
+            ),
         )
-        check(errorMatrix.values.toSet() == setOf(
+        check(errorMatrix.values.map(ErrorResult::code).toSet() == setOf(
             SignerErrorCode.SIGNER_UNSIGNED,
             SignerErrorCode.SIGNER_INVALID,
             SignerErrorCode.SIGNER_MULTIPLE_CURRENT,
             SignerErrorCode.SIGNER_LINEAGE_INVALID,
             SignerErrorCode.SIGNER_INPUT_CHANGED,
+            SignerErrorCode.SIGNER_INTERNAL,
+        ))
+        check(errorMatrix.filterValues(ErrorResult::officialVerified).keys == setOf(
+            "multiple_current",
+            "inspection_mismatch",
+            "input_changed",
         ))
         scanProductionCapabilities(reportDir)
 
         val policyJson = canonicalPolicyJson(rotatedPolicy)
         val errorJson = canonicalErrorJson(errorMatrix)
+        val officialJson = canonicalOfficialJson(officialPositiveDigests)
         reportDir.resolve("canonical-policy.json").writeText(policyJson, StandardCharsets.UTF_8)
         reportDir.resolve("error-matrix.json").writeText(errorJson, StandardCharsets.UTF_8)
+        reportDir.resolve("official-cross-check.json").writeText(officialJson, StandardCharsets.UTF_8)
         reportDir.resolve("artifact-manifest.json").writeText(
             artifactManifest(
                 listOf(
@@ -131,14 +204,24 @@ object SignerPolicySelfTest {
                     v3,
                     combined,
                     v4,
+                    v4.resolveSibling("${v4.name}.idsig"),
                     rotated,
                     multiple,
+                    malformedBlock,
+                    tamperedBlock,
+                    invalidLineage,
+                    magicOnlyUnsigned,
+                    oversizedSigningBlock,
+                    truncatedHugeSigningBlock,
+                    fixtureDir.resolve("changed-during-verification.apk"),
                     oldIdentity.certificate,
                     currentIdentity.certificate,
                     otherIdentity.certificate,
                     lineageFile,
                     reportDir.resolve("canonical-policy.json"),
                     reportDir.resolve("error-matrix.json"),
+                    reportDir.resolve("official-cross-check.json"),
+                    reportDir.resolve("capability-scan.txt"),
                 ),
             ),
             StandardCharsets.UTF_8,
@@ -146,7 +229,7 @@ object SignerPolicySelfTest {
         println("M1-02 signer policy matrix PASS")
         println("canonical_policy_sha256=${sha256(policyJson.toByteArray(StandardCharsets.UTF_8)).toLowerHex()}")
         println("error_matrix_sha256=${sha256(errorJson.toByteArray(StandardCharsets.UTF_8)).toLowerHex()}")
-        println("current_certificate_sha256=$officialDigest")
+        println("current_certificate_sha256=$expectedCurrentDigest")
     }
 
     private fun verify(apk: Path): SignerPolicyV1 {
@@ -192,6 +275,19 @@ object SignerPolicySelfTest {
         })
         val exception = runCatching { verifier.verify(target, inspection) }.exceptionOrNull()
         check(exception is SignerPolicyException && exception.code == SignerErrorCode.SIGNER_INPUT_CHANGED)
+        return exception.code
+    }
+
+    private fun expectSanitizedInternalFailure(missing: Path, validFixture: Path): SignerErrorCode {
+        val inspection = ApkInspector().inspect(validFixture)
+        val exception = runCatching { SignerPolicyVerifier().verify(missing, inspection) }.exceptionOrNull()
+        check(exception is SignerPolicyException && exception.code == SignerErrorCode.SIGNER_INTERNAL)
+        check(exception.cause == null)
+        val rendered = StringWriter().also { writer ->
+            PrintWriter(writer).use { printer -> exception.printStackTrace(printer) }
+        }.toString()
+        check(!rendered.contains(missing.parent.toAbsolutePath().normalize().toString()))
+        check(!rendered.contains("NoSuchFileException"))
         return exception.code
     }
 
@@ -382,6 +478,57 @@ object SignerPolicySelfTest {
         return result
     }
 
+    private fun magicOnlyPadding(): ByteArray = ByteArray(Long.SIZE_BYTES + APK_SIGNING_BLOCK_MAGIC.size).also {
+        APK_SIGNING_BLOCK_MAGIC.copyInto(it, Long.SIZE_BYTES)
+    }
+
+    private fun signingBlockFooter(declaredSize: Long): ByteArray = magicOnlyPadding().also {
+        putLeI8(it, 0, declaredSize)
+    }
+
+    private fun syntheticSigningBlock(totalSize: Int): ByteArray {
+        check(totalSize >= Long.SIZE_BYTES * 2 + APK_SIGNING_BLOCK_MAGIC.size)
+        val result = ByteArray(totalSize)
+        val declaredSize = totalSize.toLong() - Long.SIZE_BYTES
+        putLeI8(result, 0, declaredSize)
+        putLeI8(result, totalSize - Long.SIZE_BYTES - APK_SIGNING_BLOCK_MAGIC.size, declaredSize)
+        APK_SIGNING_BLOCK_MAGIC.copyInto(result, totalSize - APK_SIGNING_BLOCK_MAGIC.size)
+        return result
+    }
+
+    private fun insertBeforeCentralDirectory(apk: ByteArray, insertion: ByteArray): ByteArray {
+        val eocd = findLastBytes(apk, EOCD_SIGNATURE)
+        val centralOffset = readLeU4(apk, eocd + 16).toInt()
+        check(centralOffset in 0..eocd)
+        val result = ByteArray(apk.size + insertion.size)
+        apk.copyInto(result, 0, 0, centralOffset)
+        insertion.copyInto(result, centralOffset)
+        apk.copyInto(result, centralOffset + insertion.size, centralOffset, apk.size)
+        putLeU4(result, eocd + insertion.size + 16, centralOffset.toLong() + insertion.size)
+        return result
+    }
+
+    private fun findLastBytes(haystack: ByteArray, needle: ByteArray): Int {
+        for (offset in haystack.size - needle.size downTo 0) {
+            if (needle.indices.all { index -> haystack[offset + index] == needle[index] }) return offset
+        }
+        error("byte sequence not found")
+    }
+
+    private fun readLeU4(bytes: ByteArray, offset: Int): Long =
+        (bytes[offset].toLong() and 0xff) or
+            ((bytes[offset + 1].toLong() and 0xff) shl 8) or
+            ((bytes[offset + 2].toLong() and 0xff) shl 16) or
+            ((bytes[offset + 3].toLong() and 0xff) shl 24)
+
+    private fun putLeU4(bytes: ByteArray, offset: Int, value: Long) {
+        repeat(Int.SIZE_BYTES) { index -> bytes[offset + index] = (value ushr (index * Byte.SIZE_BITS)).toByte() }
+    }
+
+    private fun putLeI8(bytes: ByteArray, offset: Int, value: Long) {
+        repeat(Long.SIZE_BYTES) { index -> bytes[offset + index] = (value ushr (index * Byte.SIZE_BITS)).toByte() }
+    }
+
     private fun canonicalPolicyJson(policy: SignerPolicyV1): String = buildString {
         append("{\n")
         append("  \"policy_version\": 1,\n")
@@ -397,10 +544,24 @@ object SignerPolicySelfTest {
         append("}\n")
     }
 
-    private fun canonicalErrorJson(values: Map<String, SignerErrorCode>): String = buildString {
+    private fun canonicalErrorJson(values: Map<String, ErrorResult>): String = buildString {
         append("{\n")
         values.entries.forEachIndexed { index, entry ->
-            append("  \"").append(entry.key).append("\": \"").append(entry.value.name).append('"')
+            append("  \"").append(entry.key).append("\": {")
+            append("\"product_error\":\"").append(entry.value.code.name).append("\",")
+            append("\"official_verified\":").append(entry.value.officialVerified).append('}')
+            if (index != values.size - 1) append(',')
+            append('\n')
+        }
+        append("}\n")
+    }
+
+    private fun canonicalOfficialJson(values: Map<String, List<String>>): String = buildString {
+        append("{\n")
+        values.entries.forEachIndexed { index, entry ->
+            append("  \"").append(entry.key).append("\": [")
+            append(entry.value.joinToString(",") { "\"$it\"" })
+            append(']')
             if (index != values.size - 1) append(',')
             append('\n')
         }
@@ -441,6 +602,8 @@ object SignerPolicySelfTest {
     private fun sha256(bytes: ByteArray): ByteArray = MessageDigest.getInstance("SHA-256").digest(bytes)
 
     private fun ByteArray.toLowerHex(): String = joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
+
+    private data class ErrorResult(val code: SignerErrorCode, val officialVerified: Boolean)
 
     private data class TestIdentity(val privateKey: Path, val certificate: Path) {
         companion object {
@@ -527,6 +690,25 @@ object SignerPolicySelfTest {
 
     private class AndroidSigningTools private constructor(private val executable: Path) {
         fun run(vararg arguments: String): String {
+            val result = execute(*arguments)
+            check(result.exitCode == 0) { "${executable.fileName} failed with exit code ${result.exitCode}" }
+            return result.output
+        }
+
+        fun isVerified(apk: Path): Boolean =
+            execute("verify", "--min-sdk-version", "29", apk.toString()).exitCode == 0
+
+        fun printCertificateSha256(apk: Path): List<String> {
+            val output = run("verify", "--min-sdk-version", "29", "--print-certs", apk.toString())
+            val matches = Regex("certificate SHA-256 digest: ([0-9A-Fa-f]{64})", RegexOption.IGNORE_CASE)
+                .findAll(output)
+                .map { it.groupValues[1].lowercase(Locale.ROOT) }
+                .toList()
+            check(matches.isNotEmpty()) { "official certificate digest missing" }
+            return matches
+        }
+
+        private fun execute(vararg arguments: String): ToolResult {
             val command = if (isWindows()) {
                 listOf("cmd.exe", "/d", "/c", executable.toString()) + arguments
             } else {
@@ -537,16 +719,10 @@ object SignerPolicySelfTest {
                 .start()
             val output = process.inputStream.bufferedReader(StandardCharsets.UTF_8).use { it.readText() }
             val exitCode = process.waitFor()
-            check(exitCode == 0) { "${executable.fileName} failed with exit code $exitCode" }
-            return output
+            return ToolResult(exitCode, output)
         }
 
-        fun printCurrentCertificateSha256(apk: Path): String {
-            val output = run("verify", "--min-sdk-version", "29", "--print-certs", apk.toString())
-            val match = Regex("SHA-256 digest: ([0-9A-Fa-f]{64})", RegexOption.IGNORE_CASE).find(output)
-                ?: error("official certificate digest missing")
-            return match.groupValues[1].lowercase(Locale.ROOT)
-        }
+        private data class ToolResult(val exitCode: Int, val output: String)
 
         companion object {
             fun locate(): AndroidSigningTools {
@@ -562,6 +738,9 @@ object SignerPolicySelfTest {
             }
         }
     }
+
+    private val EOCD_SIGNATURE = byteArrayOf(0x50, 0x4b, 0x05, 0x06)
+    private val APK_SIGNING_BLOCK_MAGIC = "APK Sig Block 42".toByteArray(StandardCharsets.US_ASCII)
 
     private fun isWindows(): Boolean = System.getProperty("os.name").lowercase(Locale.ROOT).contains("windows")
 }

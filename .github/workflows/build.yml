@@ -79,6 +79,15 @@ jobs:
           test "$(sha256sum "$errors" | awk '{print $1}')" = "b396616ff369fa2d4db56c92f6908253339867d71554f96debee4d7ed06a02fc"
           sha256sum "$canonical" "$errors"
 
+      - name: Verify M1-02 byte-identical signer reports
+        shell: bash
+        run: |
+          policy="host/apk-inspector/build/reports/m1-02/canonical-policy.json"
+          errors="host/apk-inspector/build/reports/m1-02/error-matrix.json"
+          test "$(sha256sum "$policy" | awk '{print $1}')" = "b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2"
+          test "$(sha256sum "$errors" | awk '{print $1}')" = "ecd2193e7ec38418715cc7ee57023d0aa9ba9923d4001fa8d6d1da71cbea3762"
+          sha256sum "$policy" "$errors"
+
       - name: Test dependency verification failure
         shell: bash
         run: node tools/validation/test-dependency-verification.mjs
@@ -157,4 +166,16 @@ jobs:
           if ($canonicalHash -ne "c15561ee6d6e879ad9db058be2762282538a77d4204279d6b5d6d57b1f1d52bf") { exit 1 }
           if ($errorHash -ne "b396616ff369fa2d4db56c92f6908253339867d71554f96debee4d7ed06a02fc") { exit 1 }
           Write-Output "$canonicalHash  $canonical"
+          Write-Output "$errorHash  $errors"
+
+      - name: Verify M1-02 byte-identical signer reports
+        shell: pwsh
+        run: |
+          $policy = "host/apk-inspector/build/reports/m1-02/canonical-policy.json"
+          $errors = "host/apk-inspector/build/reports/m1-02/error-matrix.json"
+          $policyHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $policy).Hash.ToLowerInvariant()
+          $errorHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $errors).Hash.ToLowerInvariant()
+          if ($policyHash -ne "b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2") { exit 1 }
+          if ($errorHash -ne "ecd2193e7ec38418715cc7ee57023d0aa9ba9923d4001fa8d6d1da71cbea3762") { exit 1 }
+          Write-Output "$policyHash  $policy"
           Write-Output "$errorHash  $errors"

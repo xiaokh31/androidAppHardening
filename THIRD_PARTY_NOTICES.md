@@ -10,6 +10,7 @@
 | Gradle | `9.5.0` | `services.gradle.org/distributions/gradle-9.5.0-bin.zip` | Apache-2.0 | Wrapper 构建入口；仓库只提交 Wrapper JAR/脚本 |
 | Kotlin Gradle Plugin | `2.4.10` | Maven Central，`org.jetbrains.kotlin:kotlin-gradle-plugin` | Apache-2.0 | 仅五个 Host 空模块；后续分发边界由实现任务决定 |
 | Android Gradle Plugin | `9.3.0` | Google Maven，`com.android.tools.build:gradle` | Apache-2.0 | Android/Native 空模块构建；不随产品分发 |
+| Android apksig | `9.3.0` | Google Maven，`com.android.tools.build:apksig` | Apache-2.0 | M1-02 Host 输入签名验证；随 Host 产品分发但产品不调用其签名 API |
 | Android SDK Platform | `platforms;android-36` | Android SDK Manager | Android SDK License | 编译 API；不随产品分发 |
 | Android SDK Build Tools | `build-tools;36.1.0` | Android SDK Manager | Android SDK License | Android 构建和后续对齐验证；不随产品分发 |
 | Android NDK | `ndk;29.0.14206865` | Android SDK Manager | Apache-2.0 and bundled third-party notices | 四 ABI 空库构建；M0-03 产物不发布 |

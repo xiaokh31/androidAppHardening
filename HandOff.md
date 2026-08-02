@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260802-153213
-updated_at: 2026-08-02T15:32:13+08:00
+updated_at: 2026-08-02T16:11:36+08:00
 updated_by: /root
 state: active
 source_branch: feat/m1-02-signer-policy
@@ -57,6 +57,8 @@ next_owner: /root
 - M1-01 的 post-merge `main@aebbc441da34d2fba78648415c1d80ea844d774d` 已在 Ubuntu/Windows Build 与 Governance 全部 PASS；两平台字节一致性步骤和 `main` strict HandOff 均通过。
 - 用户已明确启动 M1-02。固定 Issue 为 #7，固定分支为 `feat/m1-02-signer-policy`，base 为 `aebbc441da34d2fba78648415c1d80ea844d774d`；远端不存在同名分支或既有 M1-02 PR。
 - `apksig 9.3.0` 已由 version catalog 和 dependency verification 固定；ADR 0002 与 ADR 0004 已覆盖 signer/未签名输出和 `SPV1` 模型合同，无需新增 ADR。独立复核者预定为 `m1_02_security_review`，只在实现与证据提交冻结后启动。
+- M1-02 实现已冻结为 `146aac3795a1f92adefbab376939129e55975c65`：固定 API 29 官方验证、唯一当前 signer、DER SHA-256、官方 proof-of-rotation、稳定错误码、同句柄输入绑定、不可变模型和无签名能力扫描均已实现。
+- Windows clean signer matrix 与 256-task 根 `check verifyGovernance` 已 PASS；规范 policy 和错误矩阵 SHA-256 分别为 `b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2` 与 `ecd2193e7ec38418715cc7ee57023d0aa9ba9923d4001fa8d6d1da71cbea3762`。Ubuntu 字节一致性必须在独立复核 PASS、用户授权发布后由 GitHub CI 验证。
 
 ## Active Workstreams
 
@@ -66,7 +68,7 @@ next_owner: /root
 | M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | done | M0-04 | PR #31、合并后 strict HandOff 和双平台 CI 已通过 |
 | M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | done | M0-04, M0-06 | PR #32、三环境矩阵、独立安全复核和最终 PR CI 已通过 |
 | M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | done | M0-05 | PR #33、Issue #6、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
-| M1-02 | `/root` | `feat/m1-02-signer-policy` | in_progress | M1-01 | 先冻结测试与模型合同，再实现、验证并启动独立签名语义复核 |
+| M1-02 | `/root` | `feat/m1-02-signer-policy` | in_progress | M1-01 | 提交正式证据并启动独立 `m1_02_security_review`；PASS 前不发布 |
 
 ## Decisions and Invariants
 
@@ -104,6 +106,9 @@ next_owner: /root
 - PR #33 已转为 ready 并以普通 merge commit `74c5f6252ea9b89154c285764d5f9601a0347358` 合并，Issue #6 已关闭；本地 `main` 随后无豁免通过 strict HandOff、Governance 和 diff check。
 - 用户明确启动 M1-02；协调者核验 Issue #7 为唯一 tracking Issue，远端无同名分支或 M1-02 PR，并从已验证 `main@aebbc441da34d2fba78648415c1d80ea844d774d` 创建固定分支 `feat/m1-02-signer-policy`。
 - `docs/evidence/M1-02/implementation-plan.md` 固定输入、输出、公开接口、稳定错误语义、`SPV1` 模型边界、跨平台报告和独立复核顺序；不扩大到 M1-04/M2-03。
+- `146aac3795a1f92adefbab376939129e55975c65` 新增 `SignerPolicyVerifier`、不可变 `SignerPolicyV1`、官方 lineage 解析、同句柄输入变更检测、v1/v2/v3/v4/rotation/multi-signer 合成矩阵、官方 `apksigner` digest 交叉验证和生产能力扫描。
+- Windows clean M1-02 矩阵与根 `clean check verifyGovernance` 均退出 `0`；根回归共 256 actionable tasks，M1-01 10,000 样本保持 PASS。本轮未启动模拟器或真机。
+- `.github/workflows/build.yml` 已增加 Ubuntu/Windows 规范 policy 与错误矩阵固定哈希门禁；分支尚未发布，故 Ubuntu 等价性未声明。
 
 - PR #31 已合并，旧 metadata blocker 的架构依赖已解除，M0-05 从 `blocked` 恢复为 `in_progress`。
 - 既有 M0-05 分支保留四个本地历史提交和 Issue #5，不创建第二分支或第二任务。
@@ -133,7 +138,7 @@ next_owner: /root
 - User authorized ready/merge; PR #32 was merged as `1fe9ea9ca7ac989e2e071ccb00ae2a0c0010c463` and Issue #5 closed.
 - Post-merge Governance run `30732622423` reproduced one HandOff-only source-branch mismatch on Ubuntu and Windows; coordinator commit `d682c85125e11084cf023b5f523d715e28c74e75` changed the resume point to `main` and marked M0-05 done. The later `main@e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030` is the verified M1-01 base.
 - On `d682c85125e11084cf023b5f523d715e28c74e75`, Governance run `30732725929` and Build run `30732725931` passed on Ubuntu 24.04 and Windows 2025, including strict HandOff on `main` with no exemption.
-- Exact next action: push this post-merge coordinator HandOff and require its Ubuntu/Windows Build and Governance PASS. Then wait for an explicit user instruction before starting any new task; do not start M1-02, M1-03 or M2 implicitly.
+- 该 M1-01 post-merge 动作已完成；当前恢复点为下述 M1-02 冻结实现与本地验收。
 
 ## Verification Evidence
 
@@ -148,6 +153,18 @@ next_owner: /root
 - artifact: Issue `https://github.com/xiaokh31/androidAppHardening/issues/7`; `docs/evidence/M1-02/implementation-plan.md`; pinned `com.android.tools.build:apksig:9.3.0` JAR SHA-256 `562cd0a88890960d2ece48e116c61f12872222f1dcc306890799382bc019b201`
 - sha256: not_applicable
 - result: PASS; M1-01 dependency and post-merge main gates are closed, Issue #7 is open with no PR, the fixed branch was absent before creation, signer/container decisions are already accepted, and M1-02 may proceed without adjacent work
+
+### M1-02 frozen implementation and Windows validation
+
+- task_id: M1-02
+- git_commit: 146aac3795a1f92adefbab376939129e55975c65
+- command: project-local offline Gradle `:host:apk-inspector:clean :host:apk-inspector:signerPolicyTest`; project-local offline Gradle `clean check verifyGovernance`; governance validator; strict HandOff; diff and strict UTF-8 scans
+- exit_code: 0
+- environment: Windows 10 x64 10.0.19045; Temurin 17.0.19+10; Gradle 9.5.0; Kotlin plugin 2.4.10; apksig 9.3.0; Build Tools 36.1.0; no device or emulator
+- timestamp: 2026-08-02T16:08:29+08:00
+- artifact: `docs/evidence/M1-02/formal-host-validation.md`; ignored `host/apk-inspector/build/reports/m1-02/`; canonical policy SHA-256 `b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2`; error matrix SHA-256 `ecd2193e7ec38418715cc7ee57023d0aa9ba9923d4001fa8d6d1da71cbea3762`; artifact manifest SHA-256 `187c200809051300e028bfc5270f43fc264c1e62baa414890fa501893d0b4488`; capability scan SHA-256 `97c89653b10a7e7b2fd97b53e7ae2ccc53994d623de2fc7c56852d982adbfcfa`
+- sha256: not_applicable
+- result: PASS_WINDOWS_REVIEW_CANDIDATE; official signer digest, valid schemes and rotation, unsigned/tampered/malformed/multi-signer/invalid-lineage/input-change failures, SPV1 model constraints, production capability scan, full root regression and governance passed; independent review and published Ubuntu/Windows equivalence remain pending
 
 ### M1-01 third-review remediation candidate
 
@@ -415,15 +432,15 @@ next_owner: /root
 
 ## Blockers and Required Approvals
 
-None
+No technical blocker. Independent M1-02 review is mandatory before publication; pushing the branch and creating any PR require explicit user authorization after review PASS.
 
 ## Ordered Next Actions
 
-1. Commit the M1-02 start HandOff and implementation/test contract on the fixed local branch.
-2. Implement `SignerPolicyVerifier`, immutable `SignerPolicyV1`, stable `SIGNER_*` failures and model-level `SPV1` validation without signing capability.
-3. Generate only disposable ignored signing fixtures and cover valid schemes/rotation, unsigned/tampered/malformed/multi-signer/lineage/input-change paths plus official `apksigner` digest cross-checks.
-4. Run module, root, governance, strict HandOff, capability scan and cross-platform canonical report gates; freeze implementation and evidence commits.
-5. Start independent `m1_02_security_review` only after the frozen commit exists; do not publish or create a PR until review PASS and explicit user authorization.
+1. Commit this formal M1-02 evidence and coordinating HandOff, then freeze that exact review target.
+2. Start independent `m1_02_security_review` against the frozen target and require P0/P1/P2 all closed.
+3. If review fails, remediate only M1-02 findings, rerun the formal Windows gates, refreeze and request a new independent review.
+4. If review passes, request explicit user authorization before pushing the fixed branch or creating the sole Issue #7 PR.
+5. After authorized publication, require Ubuntu/Windows Build, Governance and M1-02 byte-equivalence gates before any ready/merge request.
 6. Do not start M1-03, M1-04, M2-03 or any adjacent task implicitly.
 
 ## Relevant Files and Artifacts
@@ -444,6 +461,7 @@ None
 - `docs/evidence/M1-01/security-review-3.md`
 - `docs/evidence/M1-01/security-review-4.md`
 - `docs/evidence/M1-02/implementation-plan.md`
+- `docs/evidence/M1-02/formal-host-validation.md`
 - `runtime/bootstrap/src/main/java/ah/runtime/bootstrap/ShellAppComponentFactory.java`
 - `fixtures/android/src/androidTestCompatFixture/java/ah/fixtures/android/CompatibilityPocRunner.java`
 - `tools/validation/verify-m0-05-apks.mjs`
@@ -481,7 +499,9 @@ None
 - [x] M1-01 post-merge `main@aebbc44` 的 Ubuntu/Windows Build、Governance、字节一致性和 strict HandOff 全部 PASS。
 - [x] 用户明确启动 M1-02；Issue #7、固定分支、base、既有 PR/远端分支缺失状态和 `apksig 9.3.0` 来源锁均已核验。
 - [x] ADR 0002/0004 与实现计划已固定 signer policy、无签名能力和 `SPV1` 模型边界；独立复核者预定为 `m1_02_security_review`。
-- [ ] 完成 M1-02 实现、完整负向矩阵、官方工具交叉验证、冻结证据与独立复核。
+- [x] 完成 M1-02 实现、完整负向矩阵、官方工具交叉验证、Windows 根回归和正式证据候选。
+- [ ] 冻结正式证据提交并完成独立 `m1_02_security_review`；PASS 前不发布。
+- [ ] 获得用户发布授权后完成唯一 Issue #7 PR 的 Ubuntu/Windows 字节一致性与治理 CI。
 
 ## Handoff Sign-off
 
@@ -492,3 +512,4 @@ None
 - `/root` 已核验 PR #33 的首轮、证据 HEAD 与 merger-ready HEAD 的 Build/Governance 四个 job 和两个字节一致性步骤均 PASS；独立复核 P0/P1/P2 全为零。
 - `/root` 已核验 PR #33 使用普通 merge commit `74c5f6252ea9b89154c285764d5f9601a0347358` 合并、Issue #6 关闭，并在本地 `main` 无豁免通过 strict HandOff；M1-01 标记 done，当前无活动任务。
 - `/root` 已领取 M1-02 并核验其唯一 Issue、分支、依赖、固定官方 `apksig` 与既有 ADR；当前活动范围仅为 Host signer policy，M1-03/M1-04/M2-03 未启动。
+- `/root` 已核验冻结实现 `146aac3795a1f92adefbab376939129e55975c65` 的 clean signer matrix、256-task 根回归、Governance、官方 digest、lineage/error/SPV1 矩阵和无签名能力扫描均 PASS；当前只待证据提交与独立复核，分支仍未发布。

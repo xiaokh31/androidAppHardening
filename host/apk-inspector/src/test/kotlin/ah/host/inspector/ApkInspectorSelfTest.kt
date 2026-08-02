@@ -164,6 +164,17 @@ object ApkInspectorSelfTest {
             )
             expectCode(
                 corpusDir,
+                "manifest-resource-map-overflow.apk",
+                SyntheticApkFixtures.apk(
+                    SyntheticApkFixtures.baselineEntries(
+                        manifest = SyntheticApkFixtures.manifestWithOversizedResourceMap(),
+                    ),
+                ),
+                InspectionErrorCode.INPUT_MANIFEST_INVALID,
+                errorResults,
+            )
+            expectCode(
+                corpusDir,
                 "manifest-illegal-package.apk",
                 SyntheticApkFixtures.apk(
                     SyntheticApkFixtures.baselineEntries(
@@ -180,6 +191,38 @@ object ApkInspectorSelfTest {
                     SyntheticApkFixtures.baselineEntries(dexDescriptors = emptyList())
                         .toMutableList()
                         .apply { add(1, SyntheticZipEntry("classes.dex", invalidDex)) },
+                ),
+                InspectionErrorCode.INPUT_DEX_INVALID,
+                errorResults,
+            )
+            expectCode(
+                corpusDir,
+                "dex-huge-declared-string.apk",
+                SyntheticApkFixtures.apk(
+                    SyntheticApkFixtures.baselineEntries(dexDescriptors = emptyList())
+                        .toMutableList()
+                        .apply {
+                            add(
+                                1,
+                                SyntheticZipEntry(
+                                    "classes.dex",
+                                    SyntheticApkFixtures.dexWithDeclaredUtf16Length(Int.MAX_VALUE),
+                                ),
+                            )
+                        },
+                ),
+                InspectionErrorCode.INPUT_DEX_INVALID,
+                errorResults,
+            )
+            expectCode(
+                corpusDir,
+                "dex-noncanonical-asset.apk",
+                SyntheticApkFixtures.apk(
+                    SyntheticApkFixtures.baselineEntries(
+                        additional = listOf(
+                            SyntheticZipEntry("assets/payload.dex", SyntheticApkFixtures.dex("Lfixture/Payload;")),
+                        ),
+                    ),
                 ),
                 InspectionErrorCode.INPUT_DEX_INVALID,
                 errorResults,
@@ -493,6 +536,7 @@ object ApkInspectorSelfTest {
         val before = sha256(bytes)
         val exception = expectFailure { ApkInspector().inspect(path) }
         check(exception.code == expectedCode) { "$name expected $expectedCode, got ${exception.code}" }
+        check(exception.message?.contains(directory.toString()) != true) { "$name leaked an absolute path" }
         check(exception.markerIds == expectedMarkers) { "$name markers ${exception.markerIds}" }
         check(expectedLimit == null || exception.limitName == expectedLimit)
         check(MessageDigest.isEqual(before, sha256(Files.readAllBytes(path))))

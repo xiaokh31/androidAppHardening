@@ -105,14 +105,14 @@ internal object CompatibilityRules {
         val descriptorMatch: (String) -> Boolean = { false },
     )
 
-    fun descriptorMarkerIds(descriptor: String): List<String> {
+    fun descriptorMarkerIds(descriptorPrefix: String): List<String> {
         val result = ArrayList<String>()
-        if (descriptor.startsWith("Lah/runtime/")) result += "AH_RUNTIME_CLASS_NAMESPACE"
+        if (descriptorPrefix.startsWith("Lah/runtime/")) result += "AH_RUNTIME_CLASS_NAMESPACE"
         for (rule in SHELL_MARKERS) {
-            if (rule.descriptorMatch(descriptor)) result += rule.id
+            if (rule.descriptorMatch(descriptorPrefix)) result += rule.id
         }
         for (rule in FRAMEWORK_MARKERS) {
-            if (rule.descriptorMatch(descriptor)) result += rule.id
+            if (rule.descriptorMatch(descriptorPrefix)) result += rule.id
         }
         return result
     }

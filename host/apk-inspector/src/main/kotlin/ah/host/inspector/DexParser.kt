@@ -36,19 +36,24 @@ internal class DexParser(
         val stringOffset = tableOffset(STRING_IDS_OFFSET_OFFSET, stringCount, 4)
         val typeCount = tableCount(TYPE_IDS_SIZE_OFFSET)
         val typeOffset = tableOffset(TYPE_IDS_OFFSET_OFFSET, typeCount, 4)
+        var previousDescriptorIndex = -1
+        repeat(typeCount) { index ->
+            val descriptorIndex = toInt(data.u4(typeOffset + index * 4))
+            if (descriptorIndex >= stringCount || descriptorIndex <= previousDescriptorIndex) throw DexFailure()
+            previousDescriptorIndex = descriptorIndex
+        }
         val classCount = tableCount(CLASS_DEFS_SIZE_OFFSET)
         val classOffset = tableOffset(CLASS_DEFS_OFFSET_OFFSET, classCount, CLASS_DEF_SIZE)
         val descriptorMarkers = LinkedHashSet<String>()
-        val seen = LinkedHashSet<String>()
+        var previousClassIndex = -1
         repeat(classCount) { index ->
             val classIndex = toInt(data.u4(classOffset + index * CLASS_DEF_SIZE))
-            if (classIndex >= typeCount) throw DexFailure()
+            if (classIndex >= typeCount || classIndex <= previousClassIndex) throw DexFailure()
+            previousClassIndex = classIndex
             val descriptorIndex = toInt(data.u4(typeOffset + classIndex * 4))
             if (descriptorIndex >= stringCount) throw DexFailure()
             val stringDataOffset = toInt(data.u4(stringOffset + descriptorIndex * 4))
-            val descriptor = readMutf8(stringDataOffset)
-            if (!validClassDescriptor(descriptor) || !seen.add(descriptor)) throw DexFailure()
-            descriptorMarkers += CompatibilityRules.descriptorMarkerIds(descriptor)
+            descriptorMarkers += readDescriptorMarkerIds(stringDataOffset)
         }
         return ParsedDex(
             summary = DexSummary(
@@ -91,24 +96,46 @@ internal class DexParser(
         return offset
     }
 
-    private fun readMutf8(offset: Int): String {
+    private fun readDescriptorMarkerIds(offset: Int): List<String> {
         if (offset < HEADER_SIZE || offset >= data.size) throw DexFailure()
         val length = readUleb128(offset)
         var cursor = length.next
-        val result = StringBuilder(length.value)
+        var decodedLength = 0
+        var previous = '\u0000'
+        var semicolonSeen = false
+        val markerPrefix = StringBuilder(minOf(length.value, MARKER_PREFIX_CHARS))
+
+        fun accept(value: Char) {
+            decodedLength++
+            if (decodedLength > length.value) throw DexFailure()
+            if (markerPrefix.length < MARKER_PREFIX_CHARS) markerPrefix.append(value)
+            when {
+                decodedLength == 1 -> if (value != 'L') throw DexFailure()
+                semicolonSeen -> throw DexFailure()
+                value == ';' -> {
+                    if (decodedLength < 3 || previous == '/') throw DexFailure()
+                    semicolonSeen = true
+                }
+                value == '.' || value == '[' || value == '\u0000' -> throw DexFailure()
+                decodedLength == 2 && value == '/' -> throw DexFailure()
+                value == '/' && previous == '/' -> throw DexFailure()
+            }
+            previous = value
+        }
+
         while (true) {
             if (cursor >= data.size) throw DexFailure()
             val first = data.u1(cursor++)
             if (first == 0) break
             when {
-                first and 0x80 == 0 -> result.append(first.toChar())
+                first and 0x80 == 0 -> accept(first.toChar())
                 first and 0xe0 == 0xc0 -> {
                     if (cursor >= data.size) throw DexFailure()
                     val second = data.u1(cursor++)
                     if (second and 0xc0 != 0x80) throw DexFailure()
                     val value = ((first and 0x1f) shl 6) or (second and 0x3f)
                     if (value != 0 && value < 0x80) throw DexFailure()
-                    result.append(value.toChar())
+                    accept(value.toChar())
                 }
                 first and 0xf0 == 0xe0 -> {
                     if (cursor > data.size - 2) throw DexFailure()
@@ -117,14 +144,13 @@ internal class DexParser(
                     if (second and 0xc0 != 0x80 || third and 0xc0 != 0x80) throw DexFailure()
                     val value = ((first and 0x0f) shl 12) or ((second and 0x3f) shl 6) or (third and 0x3f)
                     if (value < 0x800) throw DexFailure()
-                    result.append(value.toChar())
+                    accept(value.toChar())
                 }
                 else -> throw DexFailure()
             }
-            if (result.length > length.value) throw DexFailure()
         }
-        if (result.length != length.value) throw DexFailure()
-        return result.toString()
+        if (decodedLength != length.value || !semicolonSeen || previous != ';') throw DexFailure()
+        return CompatibilityRules.descriptorMarkerIds(markerPrefix.toString())
     }
 
     private fun readUleb128(offset: Int): Uleb {
@@ -142,13 +168,6 @@ internal class DexParser(
             shift += 7
         }
         throw DexFailure()
-    }
-
-    private fun validClassDescriptor(value: String): Boolean {
-        if (value.length < 3 || value.first() != 'L' || value.last() != ';') return false
-        val body = value.substring(1, value.length - 1)
-        if (body.startsWith('/') || body.endsWith('/') || "//" in body) return false
-        return body.none { it == '.' || it == '[' || it == ';' || it == '\u0000' }
     }
 
     private fun toInt(value: Long): Int {
@@ -178,5 +197,6 @@ internal class DexParser(
         private const val MIN_VERSION = 35
         private const val MAX_VERSION = 41
         private const val MAX_TABLE_ITEMS = 16_777_216
+        private const val MARKER_PREFIX_CHARS = 128
     }
 }

@@ -85,6 +85,27 @@ internal object SyntheticApkFixtures {
         return bytes
     }
 
+    fun manifestWithOversizedResourceMap(): ByteArray {
+        val base = manifest()
+        val poolStart = 8
+        val poolSize = readU4(base, poolStart + 4).toInt()
+        val poolEnd = poolStart + poolSize
+        val stringCount = readU4(base, poolStart + 8).toInt()
+        val resourceMap = ByteWriter().apply {
+            u2(0x0180)
+            u2(8)
+            u4(8 + (stringCount + 1) * 4)
+            repeat(stringCount + 1) { u4(0) }
+        }.toByteArray()
+        val result = ByteWriter().apply {
+            bytes(base.copyOfRange(0, poolEnd))
+            bytes(resourceMap)
+            bytes(base.copyOfRange(poolEnd, base.size))
+        }.toByteArray()
+        putU4(result, 4, result.size)
+        return result
+    }
+
     fun dex(vararg descriptors: String): ByteArray {
         require(descriptors.isNotEmpty())
         val encodedStrings = descriptors.map { descriptor ->
@@ -123,10 +144,17 @@ internal object SyntheticApkFixtures {
             putU4(bytes, classDefsOffset + index * CLASS_DEF_SIZE, index)
             encodedStrings[index].copyInto(bytes, stringOffsets[index])
         }
-        val signature = MessageDigest.getInstance("SHA-1").digest(bytes.copyOfRange(32, bytes.size))
-        signature.copyInto(bytes, 12)
-        val adler = Adler32().apply { update(bytes, 12, bytes.size - 12) }.value
-        putU4(bytes, 8, adler)
+        sealDex(bytes)
+        return bytes
+    }
+
+    fun dexWithDeclaredUtf16Length(length: Int): ByteArray {
+        val bytes = dex("Lfixture/Main;")
+        val stringIdsOffset = readU4(bytes, 60).toInt()
+        val stringDataOffset = readU4(bytes, stringIdsOffset).toInt()
+        val encodedLength = ByteWriter().apply { uleb128(length) }.toByteArray()
+        encodedLength.copyInto(bytes, stringDataOffset)
+        sealDex(bytes)
         return bytes
     }
 
@@ -277,6 +305,13 @@ internal object SyntheticApkFixtures {
         } finally {
             deflater.end()
         }
+    }
+
+    private fun sealDex(bytes: ByteArray) {
+        val signature = MessageDigest.getInstance("SHA-1").digest(bytes.copyOfRange(32, bytes.size))
+        signature.copyInto(bytes, 12)
+        val adler = Adler32().apply { update(bytes, 12, bytes.size - 12) }.value
+        putU4(bytes, 8, adler)
     }
 
     private fun findSignature(bytes: ByteArray, signature: Long): Int {

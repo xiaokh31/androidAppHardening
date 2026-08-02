@@ -7,6 +7,7 @@ import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.security.MessageDigest
+import java.util.Locale
 
 class ApkInspector internal constructor(
     private val afterInitialHash: ((Path) -> Unit)? = null,
@@ -88,7 +89,7 @@ class ApkInspector internal constructor(
         val manifestPayload = parser.materialize(manifestEntry)
         val manifest = BinaryManifestParser(manifestPayload).parse()
 
-        val dexCandidates = zip.entries.filter { isRootDexCandidate(it.record.name) }
+        val dexCandidates = zip.entries.filter { it.record.name.lowercase(Locale.ROOT).endsWith(".dex") }
         if (dexCandidates.isEmpty() || dexCandidates.size > InspectionLimits.MAX_DEX_ENTRIES) {
             if (dexCandidates.size > InspectionLimits.MAX_DEX_ENTRIES) throw LimitFailure("dexEntries")
             throw DexFailure()
@@ -154,9 +155,6 @@ class ApkInspector internal constructor(
             throw InspectionException(InspectionErrorCode.INPUT_IO, safeFileName, cause = exception)
         }
     }
-
-    private fun isRootDexCandidate(name: String): Boolean =
-        name.startsWith("classes") && name.endsWith(".dex") && '/' !in name
 
     private fun safeFileName(input: Path): String {
         val original = input.fileName?.toString() ?: "input.apk"

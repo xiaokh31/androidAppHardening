@@ -28,6 +28,7 @@ internal class BinaryManifestParser(private val data: SegmentedBytes) {
         var pool: StringPool? = null
         var resourceMapSeen = false
         val elementStack = ArrayDeque<String>()
+        val namespaceStack = ArrayDeque<Namespace>()
         var rootSeen = false
         var rootClosed = false
         var packageName: String? = null
@@ -48,12 +49,19 @@ internal class BinaryManifestParser(private val data: SegmentedBytes) {
                     pool = parseStringPool(chunk)
                 }
                 TYPE_RESOURCE_MAP -> {
-                    if (pool == null || resourceMapSeen || rootSeen) throw ManifestFailure()
-                    if ((chunk.size - chunk.headerSize) % 4 != 0) throw ManifestFailure()
+                    val strings = pool ?: throw ManifestFailure()
+                    if (resourceMapSeen || rootSeen) throw ManifestFailure()
+                    validateResourceMap(chunk, strings)
                     resourceMapSeen = true
                 }
-                TYPE_START_NAMESPACE, TYPE_END_NAMESPACE -> {
-                    if (pool == null) throw ManifestFailure()
+                TYPE_START_NAMESPACE -> {
+                    val strings = pool ?: throw ManifestFailure()
+                    namespaceStack.addLast(parseNamespace(chunk, strings))
+                }
+                TYPE_END_NAMESPACE -> {
+                    val strings = pool ?: throw ManifestFailure()
+                    val namespace = parseNamespace(chunk, strings)
+                    if (namespaceStack.isEmpty() || namespaceStack.removeLast() != namespace) throw ManifestFailure()
                 }
                 TYPE_START_ELEMENT -> {
                     val strings = pool ?: throw ManifestFailure()
@@ -89,13 +97,17 @@ internal class BinaryManifestParser(private val data: SegmentedBytes) {
                     if (elementStack.isEmpty()) rootClosed = true
                 }
                 TYPE_CDATA -> {
-                    if (pool == null || elementStack.isEmpty()) throw ManifestFailure()
+                    val strings = pool ?: throw ManifestFailure()
+                    if (elementStack.isEmpty()) throw ManifestFailure()
+                    validateCdata(chunk, strings)
                 }
                 else -> throw ManifestFailure()
             }
             cursor = chunk.end
         }
-        if (cursor != data.size || !rootSeen || !rootClosed || elementStack.isNotEmpty() || !applicationSeen) {
+        if (cursor != data.size || !rootSeen || !rootClosed || elementStack.isNotEmpty() ||
+            namespaceStack.isNotEmpty() || !applicationSeen
+        ) {
             throw ManifestFailure()
         }
         val exactPackage = packageName ?: throw ManifestFailure()
@@ -117,9 +129,12 @@ internal class BinaryManifestParser(private val data: SegmentedBytes) {
         if (chunk.headerSize < STRING_POOL_HEADER_SIZE) throw ManifestFailure()
         val stringCount = toInt(data.u4(chunk.start + 8))
         val styleCount = toInt(data.u4(chunk.start + 12))
+        if (styleCount != 0) throw ManifestFailure()
         val flags = data.u4(chunk.start + 16)
+        if (flags and STRING_POOL_ALLOWED_FLAGS.inv() != 0L) throw ManifestFailure()
         val stringsStart = toInt(data.u4(chunk.start + 20))
         val stylesStart = toInt(data.u4(chunk.start + 24))
+        if (stylesStart != 0) throw ManifestFailure()
         val offsetsBytes = checkedTableBytes(checkedAddInt(stringCount, styleCount), 4)
         val offsetsStart = checkedAddInt(chunk.start, chunk.headerSize)
         val offsetsEnd = checkedAddInt(offsetsStart, offsetsBytes)
@@ -198,6 +213,37 @@ internal class BinaryManifestParser(private val data: SegmentedBytes) {
     private fun parseEndElement(chunk: Chunk, strings: StringPool): String {
         if (chunk.headerSize < XML_NODE_HEADER_SIZE || chunk.size < END_ELEMENT_SIZE) throw ManifestFailure()
         return strings.get(data.u4(chunk.start + XML_NODE_HEADER_SIZE + 4))
+    }
+
+    private fun validateResourceMap(chunk: Chunk, strings: StringPool) {
+        if (chunk.headerSize != CHUNK_HEADER_SIZE || (chunk.size - chunk.headerSize) % 4 != 0) {
+            throw ManifestFailure()
+        }
+        val count = (chunk.size - chunk.headerSize) / 4
+        if (count > strings.size) throw ManifestFailure()
+        repeat(count) { index -> data.u4(chunk.start + chunk.headerSize + index * 4) }
+    }
+
+    private fun parseNamespace(chunk: Chunk, strings: StringPool): Namespace {
+        if (chunk.headerSize != XML_NODE_HEADER_SIZE || chunk.size != NAMESPACE_CHUNK_SIZE) throw ManifestFailure()
+        val prefix = data.u4(chunk.start + XML_NODE_HEADER_SIZE)
+        val uri = data.u4(chunk.start + XML_NODE_HEADER_SIZE + 4)
+        if (prefix != NO_INDEX) strings.get(prefix)
+        if (uri == NO_INDEX) throw ManifestFailure()
+        strings.get(uri)
+        return Namespace(prefix, uri)
+    }
+
+    private fun validateCdata(chunk: Chunk, strings: StringPool) {
+        if (chunk.headerSize != XML_NODE_HEADER_SIZE || chunk.size != CDATA_CHUNK_SIZE) throw ManifestFailure()
+        strings.get(data.u4(chunk.start + XML_NODE_HEADER_SIZE))
+        if (data.u2(chunk.start + XML_NODE_HEADER_SIZE + 4) != TYPED_VALUE_SIZE ||
+            data.u1(chunk.start + XML_NODE_HEADER_SIZE + 6) != 0
+        ) {
+            throw ManifestFailure()
+        }
+        data.u1(chunk.start + XML_NODE_HEADER_SIZE + 7)
+        data.u4(chunk.start + XML_NODE_HEADER_SIZE + 8)
     }
 
     private fun requiredUniqueStringAttribute(element: Element, namespace: String?, name: String): String =
@@ -280,6 +326,7 @@ internal class BinaryManifestParser(private val data: SegmentedBytes) {
     private data class Chunk(val type: Int, val headerSize: Int, val size: Int, val start: Int, val end: Int)
     private data class Length(val value: Int, val next: Int)
     private data class Element(val name: String, val attributes: List<Attribute>)
+    private data class Namespace(val prefix: Long, val uri: Long)
 
     private class Attribute(
         val namespace: String?,
@@ -300,6 +347,7 @@ internal class BinaryManifestParser(private val data: SegmentedBytes) {
 
     private class StringPool(values: List<String>) {
         private val values = immutableList(values)
+        val size: Int get() = values.size
 
         fun get(index: Long): String {
             if (index < 0L || index >= values.size) throw ManifestFailure()
@@ -320,6 +368,7 @@ internal class BinaryManifestParser(private val data: SegmentedBytes) {
         private const val TYPE_INT_DEC = 0x10
         private const val TYPE_INT_HEX = 0x11
         private const val UTF8_FLAG = 0x100L
+        private const val STRING_POOL_ALLOWED_FLAGS = 0x101L
         private const val NO_INDEX = 0xffff_ffffL
         private const val CHUNK_HEADER_SIZE = 8
         private const val XML_HEADER_SIZE = 8
@@ -330,6 +379,8 @@ internal class BinaryManifestParser(private val data: SegmentedBytes) {
         private const val TYPED_VALUE_SIZE = 8
         private const val START_ELEMENT_MIN_SIZE = 36
         private const val END_ELEMENT_SIZE = 24
+        private const val NAMESPACE_CHUNK_SIZE = 24
+        private const val CDATA_CHUNK_SIZE = 28
         private const val MAX_TABLE_ITEMS = 1_000_000
         private const val ANDROID_NS = "http://schemas.android.com/apk/res/android"
         private val APPLICATION_ID = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+")

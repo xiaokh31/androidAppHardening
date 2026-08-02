@@ -7,71 +7,80 @@ import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.security.MessageDigest
+import java.nio.file.attribute.BasicFileAttributes
 import java.util.Locale
 
 class ApkInspector internal constructor(
+    private val beforeFinalHash: ((Path) -> Unit)? = null,
     private val afterInitialHash: ((Path) -> Unit)? = null,
 ) {
-    constructor() : this(null)
+    constructor() : this(null, null)
 
     fun inspect(input: Path): ApkInspection {
         val safeFileName = safeFileName(input)
-        val initialHash = hashInput(input, safeFileName)
-        afterInitialHash?.invoke(input)
-        var result: ApkInspection? = null
-        var failure: InspectionException? = null
         try {
-            result = inspectOpen(input, safeFileName, initialHash)
-        } catch (exception: InspectionException) {
-            failure = exception
-        } catch (exception: IOException) {
-            failure = InspectionException(InspectionErrorCode.INPUT_IO, safeFileName, cause = exception)
-        } catch (exception: SecurityException) {
-            failure = InspectionException(InspectionErrorCode.INPUT_IO, safeFileName, cause = exception)
-        } catch (exception: LimitFailure) {
-            failure = InspectionException(
-                InspectionErrorCode.INPUT_LIMIT_EXCEEDED,
-                safeFileName,
-                limitName = exception.limit,
-                cause = exception,
-            )
-        } catch (exception: DuplicateFailure) {
-            failure = InspectionException(InspectionErrorCode.INPUT_DUPLICATE_ENTRY, safeFileName, cause = exception)
-        } catch (exception: PathFailure) {
-            failure = InspectionException(InspectionErrorCode.INPUT_PATH_UNSAFE, safeFileName, cause = exception)
-        } catch (exception: ManifestFailure) {
-            failure = InspectionException(InspectionErrorCode.INPUT_MANIFEST_INVALID, safeFileName, cause = exception)
-        } catch (exception: DexFailure) {
-            failure = InspectionException(InspectionErrorCode.INPUT_DEX_INVALID, safeFileName, cause = exception)
-        } catch (exception: InterruptedFailure) {
-            failure = InspectionException(InspectionErrorCode.INPUT_IO, safeFileName, cause = exception)
-        } catch (exception: ParserFailure) {
-            failure = InspectionException(InspectionErrorCode.INPUT_ZIP_STRUCTURE, safeFileName, cause = exception)
-        }
-
-        val finalHash = try {
-            hashInput(input, safeFileName)
+            val initialIdentity = pathIdentity(input)
+            FileChannel.open(input, StandardOpenOption.READ).use { channel ->
+                val source = FileSource(channel)
+                if (source.size > InspectionLimits.MAX_APK_BYTES) throw LimitFailure("apkBytes")
+                val initialHash = source.captureSnapshot()
+                afterInitialHash?.invoke(input)
+                var result: ApkInspection? = null
+                var failure: InspectionException? = null
+                try {
+                    val parser = ZipParser(source)
+                    val zip = parser.parse()
+                    result = buildInspection(zip, parser, safeFileName, initialHash)
+                } catch (exception: InspectionException) {
+                    failure = exception
+                } catch (exception: ParserFailure) {
+                    failure = mapParserFailure(exception, safeFileName)
+                }
+                beforeFinalHash?.invoke(input)
+                val interrupted = Thread.interrupted()
+                val finalHash = try {
+                    source.currentDigest()
+                } catch (exception: ParserFailure) {
+                    throw InspectionException(InspectionErrorCode.INPUT_CHANGED, safeFileName, cause = exception)
+                } finally {
+                    if (interrupted) Thread.currentThread().interrupt()
+                }
+                val finalIdentity = try {
+                    pathIdentity(input)
+                } catch (exception: IOException) {
+                    throw InspectionException(InspectionErrorCode.INPUT_CHANGED, safeFileName, cause = exception)
+                }
+                if (!MessageDigest.isEqual(initialHash, finalHash) || initialIdentity != finalIdentity) {
+                    throw InspectionException(InspectionErrorCode.INPUT_CHANGED, safeFileName)
+                }
+                failure?.let { throw it }
+                return result ?: throw InspectionException(InspectionErrorCode.INPUT_IO, safeFileName)
+            }
         } catch (exception: InspectionException) {
             throw exception
+        } catch (exception: IOException) {
+            throw InspectionException(InspectionErrorCode.INPUT_IO, safeFileName, cause = exception)
+        } catch (exception: SecurityException) {
+            throw InspectionException(InspectionErrorCode.INPUT_IO, safeFileName, cause = exception)
+        } catch (exception: ParserFailure) {
+            throw mapParserFailure(exception, safeFileName)
         }
-        if (!MessageDigest.isEqual(initialHash, finalHash)) {
-            throw InspectionException(InspectionErrorCode.INPUT_CHANGED, safeFileName)
-        }
-        failure?.let { throw it }
-        return result ?: throw InspectionException(InspectionErrorCode.INPUT_IO, safeFileName)
     }
 
-    private fun inspectOpen(input: Path, safeFileName: String, inputHash: ByteArray): ApkInspection {
-        if (!Files.isRegularFile(input, LinkOption.NOFOLLOW_LINKS)) {
-            throw InspectionException(InspectionErrorCode.INPUT_IO, safeFileName)
-        }
-        FileChannel.open(input, StandardOpenOption.READ).use { channel ->
-            val source = FileSource(channel)
-            if (source.size > InspectionLimits.MAX_APK_BYTES) throw LimitFailure("apkBytes")
-            val parser = ZipParser(source)
-            val zip = parser.parse()
-            return buildInspection(zip, parser, safeFileName, inputHash)
-        }
+    private fun mapParserFailure(exception: ParserFailure, safeFileName: String): InspectionException = when (exception) {
+        is InputChangedFailure -> InspectionException(InspectionErrorCode.INPUT_CHANGED, safeFileName, cause = exception)
+        is LimitFailure -> InspectionException(
+            InspectionErrorCode.INPUT_LIMIT_EXCEEDED,
+            safeFileName,
+            limitName = exception.limit,
+            cause = exception,
+        )
+        is DuplicateFailure -> InspectionException(InspectionErrorCode.INPUT_DUPLICATE_ENTRY, safeFileName, cause = exception)
+        is PathFailure -> InspectionException(InspectionErrorCode.INPUT_PATH_UNSAFE, safeFileName, cause = exception)
+        is ManifestFailure -> InspectionException(InspectionErrorCode.INPUT_MANIFEST_INVALID, safeFileName, cause = exception)
+        is DexFailure -> InspectionException(InspectionErrorCode.INPUT_DEX_INVALID, safeFileName, cause = exception)
+        is InterruptedFailure -> InspectionException(InspectionErrorCode.INPUT_IO, safeFileName, cause = exception)
+        else -> InspectionException(InspectionErrorCode.INPUT_ZIP_STRUCTURE, safeFileName, cause = exception)
     }
 
     private fun buildInspection(
@@ -134,37 +143,10 @@ class ApkInspector internal constructor(
         )
     }
 
-    private fun hashInput(input: Path, safeFileName: String): ByteArray {
-        try {
-            if (!Files.isRegularFile(input, LinkOption.NOFOLLOW_LINKS)) {
-                throw InspectionException(InspectionErrorCode.INPUT_IO, safeFileName)
-            }
-            val size = Files.size(input)
-            if (size > InspectionLimits.MAX_APK_BYTES) {
-                throw InspectionException(
-                    InspectionErrorCode.INPUT_LIMIT_EXCEEDED,
-                    safeFileName,
-                    limitName = "apkBytes",
-                )
-            }
-            val digest = MessageDigest.getInstance("SHA-256")
-            Files.newInputStream(input, StandardOpenOption.READ).use { stream ->
-                val buffer = ByteArray(HASH_BUFFER_SIZE)
-                while (true) {
-                    val count = stream.read(buffer)
-                    if (count < 0) break
-                    if (count == 0) continue
-                    digest.update(buffer, 0, count)
-                }
-            }
-            return digest.digest()
-        } catch (exception: InspectionException) {
-            throw exception
-        } catch (exception: IOException) {
-            throw InspectionException(InspectionErrorCode.INPUT_IO, safeFileName, cause = exception)
-        } catch (exception: SecurityException) {
-            throw InspectionException(InspectionErrorCode.INPUT_IO, safeFileName, cause = exception)
-        }
+    private fun pathIdentity(input: Path): PathIdentity {
+        val attributes = Files.readAttributes(input, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+        if (!attributes.isRegularFile) throw IOException("input is not a regular file")
+        return PathIdentity(attributes.fileKey()?.toString(), attributes.size(), attributes.lastModifiedTime().toMillis())
     }
 
     private fun safeFileName(input: Path): String {
@@ -178,10 +160,11 @@ class ApkInspector internal constructor(
     }
 
     companion object {
-        private const val HASH_BUFFER_SIZE = 64 * 1024
         private const val MAX_SAFE_FILE_NAME = 128
         private const val MANIFEST_NAME = "AndroidManifest.xml"
-        private const val ELF_HEADER_PREFIX = 20
+        private const val ELF_HEADER_PREFIX = 64
         private val NATIVE_LIBRARY_PATH = Regex("lib/[^/]+/[^/]+\\.so")
     }
+
+    private data class PathIdentity(val fileKey: String?, val size: Long, val modifiedMillis: Long)
 }

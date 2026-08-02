@@ -26,7 +26,7 @@ internal object CompatibilityRules {
     }
 
     private fun elfAbi(header: ByteArray): String? {
-        if (header.size < ELF_HEADER_PREFIX ||
+        if (header.size < ELF32_HEADER_SIZE ||
             header[0].toInt() and 0xff != 0x7f || header[1] != 'E'.code.toByte() ||
             header[2] != 'L'.code.toByte() || header[3] != 'F'.code.toByte() ||
             header[5].toInt() and 0xff != ELF_DATA_LITTLE_ENDIAN ||
@@ -35,6 +35,20 @@ internal object CompatibilityRules {
             return null
         }
         val elfClass = header[4].toInt() and 0xff
+        val expectedHeaderSize = when (elfClass) {
+            ELF_CLASS_32 -> ELF32_HEADER_SIZE
+            ELF_CLASS_64 -> ELF64_HEADER_SIZE
+            else -> return null
+        }
+        if (header.size < expectedHeaderSize) return null
+        val headerSizeOffset = if (elfClass == ELF_CLASS_32) ELF32_EHSIZE_OFFSET else ELF64_EHSIZE_OFFSET
+        val declaredHeaderSize = (header[headerSizeOffset].toInt() and 0xff) or
+            ((header[headerSizeOffset + 1].toInt() and 0xff) shl 8)
+        val fileVersion = (header[20].toLong() and 0xff) or
+            ((header[21].toLong() and 0xff) shl 8) or
+            ((header[22].toLong() and 0xff) shl 16) or
+            ((header[23].toLong() and 0xff) shl 24)
+        if (declaredHeaderSize != expectedHeaderSize || fileVersion != ELF_VERSION_CURRENT.toLong()) return null
         val machine = (header[18].toInt() and 0xff) or ((header[19].toInt() and 0xff) shl 8)
         return when (elfClass to machine) {
             ELF_CLASS_32 to ELF_MACHINE_ARM -> "armeabi-v7a"
@@ -199,7 +213,10 @@ internal object CompatibilityRules {
         return parts.size == 3 && parts[0] == "lib" && parts[2] == fileName
     }
 
-    private const val ELF_HEADER_PREFIX = 20
+    private const val ELF32_HEADER_SIZE = 52
+    private const val ELF64_HEADER_SIZE = 64
+    private const val ELF32_EHSIZE_OFFSET = 40
+    private const val ELF64_EHSIZE_OFFSET = 52
     private const val ELF_CLASS_32 = 1
     private const val ELF_CLASS_64 = 2
     private const val ELF_DATA_LITTLE_ENDIAN = 1

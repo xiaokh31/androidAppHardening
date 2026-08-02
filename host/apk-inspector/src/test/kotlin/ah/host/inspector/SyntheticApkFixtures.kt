@@ -166,25 +166,41 @@ internal object SyntheticApkFixtures {
             stringOffsets += cursor
             cursor += encoded.size
         }
-        val bytes = ByteArray(cursor)
+        val mapOffset = align4(cursor)
+        val mapItemCount = 6
+        val fileSize = mapOffset + 4 + mapItemCount * DEX_MAP_ITEM_SIZE
+        val bytes = ByteArray(fileSize)
         "dex\n035\u0000".toByteArray(Charsets.US_ASCII).copyInto(bytes, 0)
-        putU4(bytes, 32, bytes.size)
+        putU4(bytes, 32, fileSize)
         putU4(bytes, 36, DEX_HEADER_SIZE)
         putU4(bytes, 40, 0x12345678)
+        putU4(bytes, 52, mapOffset)
         putU4(bytes, 56, descriptors.size)
         putU4(bytes, 60, stringIdsOffset)
         putU4(bytes, 64, descriptors.size)
         putU4(bytes, 68, typeIdsOffset)
         putU4(bytes, 96, descriptors.size)
         putU4(bytes, 100, classDefsOffset)
-        putU4(bytes, 104, bytes.size - stringDataOffset)
+        putU4(bytes, 104, fileSize - stringDataOffset)
         putU4(bytes, 108, stringDataOffset)
         descriptors.indices.forEach { index ->
             putU4(bytes, stringIdsOffset + index * 4, stringOffsets[index])
             putU4(bytes, typeIdsOffset + index * 4, index)
-            putU4(bytes, classDefsOffset + index * CLASS_DEF_SIZE, index)
+            val classOffset = classDefsOffset + index * CLASS_DEF_SIZE
+            putU4(bytes, classOffset, index)
+            putU4(bytes, classOffset + 4, 1)
+            putU4(bytes, classOffset + 8, 0xffff_ffffL)
+            putU4(bytes, classOffset + 16, 0xffff_ffffL)
             encodedStrings[index].copyInto(bytes, stringOffsets[index])
         }
+        putU4(bytes, mapOffset, mapItemCount)
+        var mapItem = mapOffset + 4
+        mapItem = putMapItem(bytes, mapItem, 0x0000, 1, 0)
+        mapItem = putMapItem(bytes, mapItem, 0x0001, descriptors.size, stringIdsOffset)
+        mapItem = putMapItem(bytes, mapItem, 0x0002, descriptors.size, typeIdsOffset)
+        mapItem = putMapItem(bytes, mapItem, 0x0006, descriptors.size, classDefsOffset)
+        mapItem = putMapItem(bytes, mapItem, 0x2002, descriptors.size, stringDataOffset)
+        putMapItem(bytes, mapItem, 0x1000, 1, mapOffset)
         sealDex(bytes)
         return bytes
     }
@@ -233,6 +249,16 @@ internal object SyntheticApkFixtures {
         sealDex(bytes)
     }
 
+    fun dexWithMissingMap(): ByteArray = dex("Lfixture/Main;").also { bytes ->
+        putU4(bytes, 52, 0)
+        sealDex(bytes)
+    }
+
+    fun dexWithInvalidDataRange(): ByteArray = dex("Lfixture/Main;").also { bytes ->
+        putU4(bytes, 104, readU4(bytes, 104) + 1)
+        sealDex(bytes)
+    }
+
     fun elf(abi: String): ByteArray {
         val (elfClass, machine) = when (abi) {
             "armeabi-v7a" -> 1 to 40
@@ -241,7 +267,8 @@ internal object SyntheticApkFixtures {
             "x86_64" -> 2 to 62
             else -> error("unsupported synthetic ABI $abi")
         }
-        return ByteArray(20).also { bytes ->
+        val headerSize = if (elfClass == 1) ELF32_HEADER_SIZE else ELF64_HEADER_SIZE
+        return ByteArray(headerSize).also { bytes ->
             bytes[0] = 0x7f
             bytes[1] = 'E'.code.toByte()
             bytes[2] = 'L'.code.toByte()
@@ -251,6 +278,8 @@ internal object SyntheticApkFixtures {
             bytes[6] = 1
             putU2(bytes, 16, 3)
             putU2(bytes, 18, machine)
+            putU4(bytes, 20, 1)
+            putU2(bytes, if (elfClass == 1) 40 else 52, headerSize)
         }
     }
 
@@ -542,6 +571,16 @@ internal object SyntheticApkFixtures {
         repeat(4) { shift -> bytes[offset + shift] = (value ushr (shift * 8)).toByte() }
     }
 
+    private fun putMapItem(bytes: ByteArray, offset: Int, type: Int, size: Int, itemOffset: Int): Int {
+        putU2(bytes, offset, type)
+        putU2(bytes, offset + 2, 0)
+        putU4(bytes, offset + 4, size)
+        putU4(bytes, offset + 8, itemOffset)
+        return offset + DEX_MAP_ITEM_SIZE
+    }
+
+    private fun align4(value: Int): Int = (value + 3) and -4
+
     private fun readU4(bytes: ByteArray, offset: Int): Long =
         bytes[offset].toLong() and 0xff or
             ((bytes[offset + 1].toLong() and 0xff) shl 8) or
@@ -568,6 +607,9 @@ internal object SyntheticApkFixtures {
     private const val ANDROID_ATTR_APP_COMPONENT_FACTORY = 0x0101057a
     private const val DEX_HEADER_SIZE = 112
     private const val CLASS_DEF_SIZE = 32
+    private const val DEX_MAP_ITEM_SIZE = 12
+    private const val ELF32_HEADER_SIZE = 52
+    private const val ELF64_HEADER_SIZE = 64
     private const val METHOD_DEFLATED = 8
     private const val LOCAL_SIGNATURE = 0x04034b50L
     private const val CENTRAL_SIGNATURE = 0x02014b50L

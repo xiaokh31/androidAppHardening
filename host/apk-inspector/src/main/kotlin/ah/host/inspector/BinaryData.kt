@@ -10,20 +10,37 @@ import java.util.zip.Adler32
 
 internal class FileSource(private val channel: FileChannel) {
     val size: Long = channel.size()
+    private var snapshotHashes: List<ByteArray>? = null
+    private val cachedBlocks = object : LinkedHashMap<Int, ByteArray>(SNAPSHOT_CACHE_BLOCKS, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, ByteArray>?): Boolean =
+            size > SNAPSHOT_CACHE_BLOCKS
+    }
+
+    fun captureSnapshot(): ByteArray {
+        if (snapshotHashes != null) throw StructureFailure()
+        val fullDigest = MessageDigest.getInstance("SHA-256")
+        val hashes = ArrayList<ByteArray>(blockCount())
+        repeat(blockCount()) { index ->
+            val block = readRawBlock(index)
+            fullDigest.update(block)
+            hashes += MessageDigest.getInstance("SHA-256").digest(block)
+        }
+        snapshotHashes = immutableList(hashes)
+        return fullDigest.digest()
+    }
+
+    fun currentDigest(): ByteArray {
+        val digest = MessageDigest.getInstance("SHA-256")
+        repeat(blockCount()) { index -> digest.update(readRawBlock(index)) }
+        return digest.digest()
+    }
 
     fun readFully(position: Long, length: Int): ByteArray {
         if (position < 0L || length < 0 || position > size - length.toLong()) {
             throw StructureFailure()
         }
         val result = ByteArray(length)
-        val buffer = ByteBuffer.wrap(result)
-        var offset = position
-        while (buffer.hasRemaining()) {
-            interrupted()
-            val read = channel.read(buffer, offset)
-            if (read <= 0) throw StructureFailure()
-            offset = checkedAdd(offset, read.toLong())
-        }
+        readInto(position, result, 0, length)
         return result
     }
 
@@ -31,14 +48,52 @@ internal class FileSource(private val channel: FileChannel) {
         if (position < 0L || offset < 0 || length < 0 || offset > target.size - length || position > size - length) {
             throw StructureFailure()
         }
-        val buffer = ByteBuffer.wrap(target, offset, length)
-        var fileOffset = position
-        while (buffer.hasRemaining()) {
+        if (snapshotHashes == null) throw StructureFailure()
+        var sourcePosition = position
+        var targetOffset = offset
+        var remaining = length
+        while (remaining > 0) {
             interrupted()
-            val read = channel.read(buffer, fileOffset)
-            if (read <= 0) throw StructureFailure()
-            fileOffset = checkedAdd(fileOffset, read.toLong())
+            val blockIndex = (sourcePosition / SNAPSHOT_BLOCK_SIZE).toInt()
+            val inBlock = (sourcePosition % SNAPSHOT_BLOCK_SIZE).toInt()
+            val block = verifiedBlock(blockIndex)
+            val count = minOf(remaining, block.size - inBlock)
+            block.copyInto(target, targetOffset, inBlock, inBlock + count)
+            sourcePosition += count
+            targetOffset += count
+            remaining -= count
         }
+    }
+
+    private fun verifiedBlock(index: Int): ByteArray = cachedBlocks[index] ?: run {
+        val block = readRawBlock(index)
+        val expected = snapshotHashes?.getOrNull(index) ?: throw StructureFailure()
+        val actual = MessageDigest.getInstance("SHA-256").digest(block)
+        if (!MessageDigest.isEqual(expected, actual)) throw InputChangedFailure()
+        cachedBlocks[index] = block
+        block
+    }
+
+    private fun readRawBlock(index: Int): ByteArray {
+        val position = index.toLong() * SNAPSHOT_BLOCK_SIZE
+        val length = minOf(SNAPSHOT_BLOCK_SIZE.toLong(), size - position).toInt()
+        if (index < 0 || length <= 0) throw StructureFailure()
+        val result = ByteArray(length)
+        val buffer = ByteBuffer.wrap(result)
+        var offset = position
+        while (buffer.hasRemaining()) {
+            val read = channel.read(buffer, offset)
+            if (read <= 0) throw InputChangedFailure()
+            offset = checkedAdd(offset, read.toLong())
+        }
+        return result
+    }
+
+    private fun blockCount(): Int = ((size + SNAPSHOT_BLOCK_SIZE - 1L) / SNAPSHOT_BLOCK_SIZE).toInt()
+
+    companion object {
+        private const val SNAPSHOT_BLOCK_SIZE = 64 * 1024
+        private const val SNAPSHOT_CACHE_BLOCKS = 4
     }
 }
 
@@ -171,3 +226,4 @@ internal class PathFailure : ParserFailure()
 internal class ManifestFailure : ParserFailure()
 internal class DexFailure : ParserFailure()
 internal class InterruptedFailure : ParserFailure()
+internal class InputChangedFailure : ParserFailure()

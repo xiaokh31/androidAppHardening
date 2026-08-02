@@ -245,6 +245,8 @@ object ApkInspectorSelfTest {
                 "dex-file-size.apk" to SyntheticApkFixtures.dexWithFileSizeDelta(1),
                 "dex-sha1.apk" to SyntheticApkFixtures.dexWithInvalidSha1(),
                 "dex-table-offset.apk" to SyntheticApkFixtures.dexWithInvalidTableOffset(),
+                "dex-map-missing.apk" to SyntheticApkFixtures.dexWithMissingMap(),
+                "dex-data-range.apk" to SyntheticApkFixtures.dexWithInvalidDataRange(),
                 "dex-descriptor-syntax.apk" to SyntheticApkFixtures.dex("not-a-descriptor"),
             )
             for ((name, dex) in dexFailures) {
@@ -443,6 +445,22 @@ object ApkInspectorSelfTest {
             )
             expectCode(
                 corpusDir,
+                "native-elf-truncated-header.apk",
+                SyntheticApkFixtures.apk(
+                    SyntheticApkFixtures.baselineEntries().map { entry ->
+                        if (entry.name == "lib/arm64-v8a/libfixture.so") {
+                            entry.copy(data = SyntheticApkFixtures.elf("arm64-v8a").copyOf(20))
+                        } else {
+                            entry
+                        }
+                    },
+                ),
+                InspectionErrorCode.COMPAT_FRAMEWORK,
+                errorResults,
+                expectedMarkers = listOf("NATIVE_ELF_INVALID"),
+            )
+            expectCode(
+                corpusDir,
                 "native-elf-abi-mismatch.apk",
                 SyntheticApkFixtures.apk(
                     SyntheticApkFixtures.baselineEntries().map { entry ->
@@ -523,6 +541,40 @@ object ApkInspectorSelfTest {
             check(changed.code == InspectionErrorCode.INPUT_CHANGED)
             errorResults += ErrorResult("input-changed.apk", hex(sha256(Files.readAllBytes(changedPath))), changed.code, changed.markerIds)
             verifyHandleReleased(changedPath)
+
+            val restoredChangePath = write(corpusDir, "input-changed-restored.apk", baselineBytes)
+            val alternateBytes = SyntheticApkFixtures.apk(
+                SyntheticApkFixtures.baselineEntries(
+                    manifest = SyntheticApkFixtures.manifest(packageName = "ah.fixtures.alternate"),
+                ),
+            )
+            val restoredChangeInspector = ApkInspector(
+                beforeFinalHash = { path ->
+                    Files.write(
+                        path,
+                        baselineBytes,
+                        StandardOpenOption.WRITE,
+                        StandardOpenOption.TRUNCATE_EXISTING,
+                    )
+                },
+                afterInitialHash = { path ->
+                    Files.write(
+                        path,
+                        alternateBytes,
+                        StandardOpenOption.WRITE,
+                        StandardOpenOption.TRUNCATE_EXISTING,
+                    )
+                },
+            )
+            val restoredChange = expectFailure { restoredChangeInspector.inspect(restoredChangePath) }
+            check(restoredChange.code == InspectionErrorCode.INPUT_CHANGED)
+            errorResults += ErrorResult(
+                "input-changed-restored.apk",
+                hex(sha256(Files.readAllBytes(restoredChangePath))),
+                restoredChange.code,
+                restoredChange.markerIds,
+            )
+            verifyHandleReleased(restoredChangePath)
 
             val cancelledPath = write(corpusDir, "cancelled.apk", baselineBytes)
             try {

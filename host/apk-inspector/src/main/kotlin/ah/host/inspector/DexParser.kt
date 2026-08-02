@@ -1,7 +1,7 @@
 package ah.host.inspector
 
 import java.security.MessageDigest
-import java.util.HashMap
+import java.util.BitSet
 import java.util.LinkedHashSet
 
 internal data class ParsedDex(
@@ -33,47 +33,89 @@ internal class DexParser(
         val actualSignature = data.digest("SHA-1", SHA1_DATA_OFFSET, data.size - SHA1_DATA_OFFSET)
         if (!MessageDigest.isEqual(expectedSignature, actualSignature)) throw DexFailure()
 
+        if (data.u4(LINK_SIZE_OFFSET) != 0L || data.u4(LINK_OFFSET_OFFSET) != 0L) throw DexFailure()
+
         val stringCount = tableCount(STRING_IDS_SIZE_OFFSET)
         val stringOffset = tableOffset(STRING_IDS_OFFSET_OFFSET, stringCount, 4)
-        val stringDataOffsets = IntArray(stringCount)
-        val seenStringDataOffsets = LinkedHashSet<Int>()
-        repeat(stringCount) { index ->
-            val value = toInt(data.u4(stringOffset + index * 4))
-            if (value < HEADER_SIZE || value >= data.size || !seenStringDataOffsets.add(value)) throw DexFailure()
-            stringDataOffsets[index] = value
-        }
         val typeCount = tableCount(TYPE_IDS_SIZE_OFFSET)
         val typeOffset = tableOffset(TYPE_IDS_OFFSET_OFFSET, typeCount, 4)
+        val protoCount = tableCount(PROTO_IDS_SIZE_OFFSET)
+        val protoOffset = tableOffset(PROTO_IDS_OFFSET_OFFSET, protoCount, PROTO_ID_SIZE)
+        val fieldCount = tableCount(FIELD_IDS_SIZE_OFFSET)
+        val fieldOffset = tableOffset(FIELD_IDS_OFFSET_OFFSET, fieldCount, FIELD_ID_SIZE)
+        val methodCount = tableCount(METHOD_IDS_SIZE_OFFSET)
+        val methodOffset = tableOffset(METHOD_IDS_OFFSET_OFFSET, methodCount, METHOD_ID_SIZE)
+        val classCount = tableCount(CLASS_DEFS_SIZE_OFFSET)
+        val classOffset = tableOffset(CLASS_DEFS_OFFSET_OFFSET, classCount, CLASS_DEF_SIZE)
+        val dataSize = toInt(data.u4(DATA_SIZE_OFFSET))
+        val dataOffset = toInt(data.u4(DATA_OFFSET_OFFSET))
+        if (dataSize <= 0 || dataOffset < HEADER_SIZE || dataOffset and 3 != 0 || dataOffset > data.size - dataSize ||
+            dataOffset + dataSize != data.size
+        ) {
+            throw DexFailure()
+        }
+        validateFixedRanges(
+            dataOffset,
+            listOf(
+                FixedRange(0, HEADER_SIZE),
+                FixedRange(stringOffset, checkedTableSize(stringCount, 4)),
+                FixedRange(typeOffset, checkedTableSize(typeCount, 4)),
+                FixedRange(protoOffset, checkedTableSize(protoCount, PROTO_ID_SIZE)),
+                FixedRange(fieldOffset, checkedTableSize(fieldCount, FIELD_ID_SIZE)),
+                FixedRange(methodOffset, checkedTableSize(methodCount, METHOD_ID_SIZE)),
+                FixedRange(classOffset, checkedTableSize(classCount, CLASS_DEF_SIZE)),
+            ).filter { it.size > 0 },
+        )
+
+        val stringStarts = BitSet(data.size)
+        var firstStringDataOffset = Int.MAX_VALUE
+        repeat(stringCount) { index ->
+            val value = toInt(data.u4(stringOffset + index * 4))
+            if (value < dataOffset || value >= data.size || stringStarts.get(value)) throw DexFailure()
+            stringStarts.set(value)
+            firstStringDataOffset = minOf(firstStringDataOffset, value)
+        }
+        validateMap(
+            toInt(data.u4(MAP_OFFSET)),
+            dataOffset,
+            stringCount,
+            firstStringDataOffset,
+            listOf(
+                ExpectedMap(TYPE_HEADER_ITEM, 1, 0),
+                ExpectedMap(TYPE_STRING_ID_ITEM, stringCount, stringOffset),
+                ExpectedMap(TYPE_TYPE_ID_ITEM, typeCount, typeOffset),
+                ExpectedMap(TYPE_PROTO_ID_ITEM, protoCount, protoOffset),
+                ExpectedMap(TYPE_FIELD_ID_ITEM, fieldCount, fieldOffset),
+                ExpectedMap(TYPE_METHOD_ID_ITEM, methodCount, methodOffset),
+                ExpectedMap(TYPE_CLASS_DEF_ITEM, classCount, classOffset),
+            ),
+        )
         var previousDescriptorIndex = -1
         repeat(typeCount) { index ->
             val descriptorIndex = toInt(data.u4(typeOffset + index * 4))
             if (descriptorIndex >= stringCount || descriptorIndex <= previousDescriptorIndex) throw DexFailure()
             previousDescriptorIndex = descriptorIndex
         }
-        val classCount = tableCount(CLASS_DEFS_SIZE_OFFSET)
-        val classOffset = tableOffset(CLASS_DEFS_OFFSET_OFFSET, classCount, CLASS_DEF_SIZE)
         val descriptorMarkers = LinkedHashSet<String>()
-        val descriptorsByOffset = HashMap<Int, DescriptorRead>()
-        val descriptorRanges = ArrayList<IntRange>()
         var previousClassIndex = -1
         repeat(classCount) { index ->
-            val classIndex = toInt(data.u4(classOffset + index * CLASS_DEF_SIZE))
+            val itemOffset = classOffset + index * CLASS_DEF_SIZE
+            val classIndex = toInt(data.u4(itemOffset))
             if (classIndex >= typeCount || classIndex <= previousClassIndex) throw DexFailure()
             previousClassIndex = classIndex
+            validateOptionalIndex(data.u4(itemOffset + 8), typeCount)
+            validateOptionalDataOffset(data.u4(itemOffset + 12), dataOffset)
+            validateOptionalIndex(data.u4(itemOffset + 16), stringCount)
+            validateOptionalDataOffset(data.u4(itemOffset + 20), dataOffset)
+            validateOptionalDataOffset(data.u4(itemOffset + 24), dataOffset)
+            validateOptionalDataOffset(data.u4(itemOffset + 28), dataOffset)
             val descriptorIndex = toInt(data.u4(typeOffset + classIndex * 4))
             if (descriptorIndex >= stringCount) throw DexFailure()
-            val stringDataOffset = stringDataOffsets[descriptorIndex]
-            val descriptor = descriptorsByOffset.getOrPut(stringDataOffset) {
-                readDescriptorMarkerIds(stringDataOffset).also {
-                    descriptorRanges += stringDataOffset until it.endOffset
-                }
-            }
+            val stringDataOffset = toInt(data.u4(stringOffset + descriptorIndex * 4))
+            val descriptor = readDescriptorMarkerIds(stringDataOffset)
+            val nextStringStart = stringStarts.nextSetBit(stringDataOffset + 1)
+            if (nextStringStart >= 0 && nextStringStart < descriptor.endOffset) throw DexFailure()
             descriptorMarkers += descriptor.markerIds
-        }
-        var previousEnd = -1
-        for (range in descriptorRanges.sortedBy { it.first }) {
-            if (range.first < previousEnd) throw DexFailure()
-            previousEnd = range.last + 1
         }
         return ParsedDex(
             summary = DexSummary(
@@ -114,6 +156,85 @@ internal class DexParser(
         }
         if (offset < HEADER_SIZE || offset > data.size - byteCount) throw DexFailure()
         return offset
+    }
+
+    private fun checkedTableSize(count: Int, itemSize: Int): Int = try {
+        Math.multiplyExact(count, itemSize)
+    } catch (_: ArithmeticException) {
+        throw DexFailure()
+    }
+
+    private fun validateFixedRanges(dataOffset: Int, ranges: List<FixedRange>) {
+        var previousEnd = 0
+        for (range in ranges.sortedBy { it.offset }) {
+            if (range.offset < previousEnd || range.offset > dataOffset - range.size) throw DexFailure()
+            previousEnd = range.offset + range.size
+        }
+    }
+
+    private fun validateMap(
+        mapOffset: Int,
+        dataOffset: Int,
+        stringCount: Int,
+        firstStringDataOffset: Int,
+        expected: List<ExpectedMap>,
+    ) {
+        if (mapOffset < dataOffset || mapOffset and 3 != 0 || mapOffset > data.size - 4) throw DexFailure()
+        val count = toInt(data.u4(mapOffset))
+        if (count <= 0 || count > MAX_MAP_ITEMS) throw DexFailure()
+        val byteCount = try {
+            Math.multiplyExact(count, MAP_ITEM_SIZE)
+        } catch (_: ArithmeticException) {
+            throw DexFailure()
+        }
+        if (mapOffset + 4 > data.size - byteCount) throw DexFailure()
+        val seenTypes = BooleanArray(1 shl 16)
+        val expectedSeen = BooleanArray(expected.size)
+        var previousOffset = -1
+        var firstDataItemOffset = Int.MAX_VALUE
+        var stringDataSeen = stringCount == 0
+        var mapListSeen = false
+        repeat(count) { index ->
+            val item = mapOffset + 4 + index * MAP_ITEM_SIZE
+            val type = data.u2(item)
+            if (data.u2(item + 2) != 0 || !seenTypes.indices.contains(type) || seenTypes[type]) throw DexFailure()
+            seenTypes[type] = true
+            if (type !in SUPPORTED_MAP_TYPES) throw DexFailure()
+            val size = toInt(data.u4(item + 4))
+            val offset = toInt(data.u4(item + 8))
+            if (size <= 0 || offset <= previousOffset || offset >= data.size) throw DexFailure()
+            previousOffset = offset
+            if (type >= TYPE_MAP_LIST && offset < dataOffset) throw DexFailure()
+            if (type >= TYPE_MAP_LIST) firstDataItemOffset = minOf(firstDataItemOffset, offset)
+
+            val expectedIndex = expected.indexOfFirst { it.type == type }
+            if (expectedIndex >= 0) {
+                val value = expected[expectedIndex]
+                if (value.count == 0 || value.count != size || value.offset != offset) throw DexFailure()
+                expectedSeen[expectedIndex] = true
+            }
+            if (type == TYPE_STRING_DATA_ITEM) {
+                if (stringCount == 0 || size != stringCount || offset != firstStringDataOffset) throw DexFailure()
+                stringDataSeen = true
+            }
+            if (type == TYPE_MAP_LIST) {
+                if (size != 1 || offset != mapOffset) throw DexFailure()
+                mapListSeen = true
+            }
+        }
+        expected.forEachIndexed { index, item ->
+            if (item.count > 0 && !expectedSeen[index]) throw DexFailure()
+            if (item.count == 0 && expectedSeen[index]) throw DexFailure()
+        }
+        if (!stringDataSeen || !mapListSeen || firstDataItemOffset != dataOffset) throw DexFailure()
+    }
+
+    private fun validateOptionalIndex(value: Long, count: Int) {
+        if (value != NO_INDEX && (value < 0L || value >= count)) throw DexFailure()
+    }
+
+    private fun validateOptionalDataOffset(value: Long, dataOffset: Int) {
+        if (value != 0L && (value < dataOffset || value >= data.size)) throw DexFailure()
     }
 
     private fun readDescriptorMarkerIds(offset: Int): DescriptorRead {
@@ -197,6 +318,8 @@ internal class DexParser(
 
     private data class Uleb(val value: Int, val next: Int)
     private data class DescriptorRead(val markerIds: List<String>, val endOffset: Int)
+    private data class ExpectedMap(val type: Int, val count: Int, val offset: Int)
+    private data class FixedRange(val offset: Int, val size: Int)
 
     companion object {
         private const val HEADER_SIZE = 112
@@ -207,16 +330,65 @@ internal class DexParser(
         private const val FILE_SIZE_OFFSET = 32
         private const val HEADER_SIZE_OFFSET = 36
         private const val ENDIAN_TAG_OFFSET = 40
+        private const val LINK_SIZE_OFFSET = 44
+        private const val LINK_OFFSET_OFFSET = 48
+        private const val MAP_OFFSET = 52
         private const val STRING_IDS_SIZE_OFFSET = 56
         private const val STRING_IDS_OFFSET_OFFSET = 60
         private const val TYPE_IDS_SIZE_OFFSET = 64
         private const val TYPE_IDS_OFFSET_OFFSET = 68
+        private const val PROTO_IDS_SIZE_OFFSET = 72
+        private const val PROTO_IDS_OFFSET_OFFSET = 76
+        private const val FIELD_IDS_SIZE_OFFSET = 80
+        private const val FIELD_IDS_OFFSET_OFFSET = 84
+        private const val METHOD_IDS_SIZE_OFFSET = 88
+        private const val METHOD_IDS_OFFSET_OFFSET = 92
         private const val CLASS_DEFS_SIZE_OFFSET = 96
         private const val CLASS_DEFS_OFFSET_OFFSET = 100
+        private const val DATA_SIZE_OFFSET = 104
+        private const val DATA_OFFSET_OFFSET = 108
+        private const val PROTO_ID_SIZE = 12
+        private const val FIELD_ID_SIZE = 8
+        private const val METHOD_ID_SIZE = 8
         private const val CLASS_DEF_SIZE = 32
         private const val ENDIAN_CONSTANT = 0x1234_5678L
-        private val SUPPORTED_VERSIONS = setOf(35, 37, 38, 39, 40, 41)
+        private val SUPPORTED_VERSIONS = setOf(35, 37, 38, 39, 40)
         private const val MAX_TABLE_ITEMS = 16_777_216
+        private const val MAX_MAP_ITEMS = 65_536
+        private const val MAP_ITEM_SIZE = 12
+        private const val NO_INDEX = 0xffff_ffffL
+        private const val TYPE_HEADER_ITEM = 0x0000
+        private const val TYPE_STRING_ID_ITEM = 0x0001
+        private const val TYPE_TYPE_ID_ITEM = 0x0002
+        private const val TYPE_PROTO_ID_ITEM = 0x0003
+        private const val TYPE_FIELD_ID_ITEM = 0x0004
+        private const val TYPE_METHOD_ID_ITEM = 0x0005
+        private const val TYPE_CLASS_DEF_ITEM = 0x0006
+        private const val TYPE_MAP_LIST = 0x1000
+        private const val TYPE_STRING_DATA_ITEM = 0x2002
+        private val SUPPORTED_MAP_TYPES = setOf(
+            TYPE_HEADER_ITEM,
+            TYPE_STRING_ID_ITEM,
+            TYPE_TYPE_ID_ITEM,
+            TYPE_PROTO_ID_ITEM,
+            TYPE_FIELD_ID_ITEM,
+            TYPE_METHOD_ID_ITEM,
+            TYPE_CLASS_DEF_ITEM,
+            0x0007,
+            0x0008,
+            TYPE_MAP_LIST,
+            0x1001,
+            0x1002,
+            0x1003,
+            0x2000,
+            0x2001,
+            TYPE_STRING_DATA_ITEM,
+            0x2003,
+            0x2004,
+            0x2005,
+            0x2006,
+            0x2007,
+        )
         private const val MARKER_PREFIX_CHARS = 128
     }
 }

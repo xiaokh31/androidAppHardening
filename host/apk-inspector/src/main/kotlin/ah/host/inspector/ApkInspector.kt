@@ -104,7 +104,17 @@ class ApkInspector internal constructor(
         }
         val descriptorMarkerIds = parsedDex.flatMap { it.descriptorMarkerIds }.distinct()
         val entryNames = zip.entries.map { it.record.name }
-        val nativeAbis = CompatibilityRules.nativeAbis(entryNames)
+        CompatibilityRules.evaluate(
+            safeFileName,
+            manifest,
+            entryNames,
+            descriptorMarkerIds,
+            NativeAbiSummary(emptyList()),
+        )
+        val nativeLibraries = zip.entries.filter { NATIVE_LIBRARY_PATH.matches(it.record.name) }.map { entry ->
+            NativeLibraryHeader(entry.record.name, parser.prefix(entry, ELF_HEADER_PREFIX))
+        }
+        val nativeAbis = CompatibilityRules.nativeAbis(nativeLibraries, safeFileName)
         val findings = CompatibilityRules.evaluate(
             safeFileName,
             manifest,
@@ -119,6 +129,7 @@ class ApkInspector internal constructor(
             dexEntries = parsedDex.map { it.summary },
             nativeAbis = nativeAbis,
             findings = findings,
+            compatibilityRulesVersion = CompatibilityRules.VERSION,
             limitsApplied = InspectionLimits.snapshot(),
         )
     }
@@ -170,5 +181,7 @@ class ApkInspector internal constructor(
         private const val HASH_BUFFER_SIZE = 64 * 1024
         private const val MAX_SAFE_FILE_NAME = 128
         private const val MANIFEST_NAME = "AndroidManifest.xml"
+        private const val ELF_HEADER_PREFIX = 20
+        private val NATIVE_LIBRARY_PATH = Regex("lib/[^/]+/[^/]+\\.so")
     }
 }

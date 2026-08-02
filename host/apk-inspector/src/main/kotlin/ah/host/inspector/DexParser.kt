@@ -1,6 +1,7 @@
 package ah.host.inspector
 
 import java.security.MessageDigest
+import java.util.HashMap
 import java.util.LinkedHashSet
 
 internal data class ParsedDex(
@@ -34,6 +35,13 @@ internal class DexParser(
 
         val stringCount = tableCount(STRING_IDS_SIZE_OFFSET)
         val stringOffset = tableOffset(STRING_IDS_OFFSET_OFFSET, stringCount, 4)
+        val stringDataOffsets = IntArray(stringCount)
+        val seenStringDataOffsets = LinkedHashSet<Int>()
+        repeat(stringCount) { index ->
+            val value = toInt(data.u4(stringOffset + index * 4))
+            if (value < HEADER_SIZE || value >= data.size || !seenStringDataOffsets.add(value)) throw DexFailure()
+            stringDataOffsets[index] = value
+        }
         val typeCount = tableCount(TYPE_IDS_SIZE_OFFSET)
         val typeOffset = tableOffset(TYPE_IDS_OFFSET_OFFSET, typeCount, 4)
         var previousDescriptorIndex = -1
@@ -45,6 +53,8 @@ internal class DexParser(
         val classCount = tableCount(CLASS_DEFS_SIZE_OFFSET)
         val classOffset = tableOffset(CLASS_DEFS_OFFSET_OFFSET, classCount, CLASS_DEF_SIZE)
         val descriptorMarkers = LinkedHashSet<String>()
+        val descriptorsByOffset = HashMap<Int, DescriptorRead>()
+        val descriptorRanges = ArrayList<IntRange>()
         var previousClassIndex = -1
         repeat(classCount) { index ->
             val classIndex = toInt(data.u4(classOffset + index * CLASS_DEF_SIZE))
@@ -52,8 +62,18 @@ internal class DexParser(
             previousClassIndex = classIndex
             val descriptorIndex = toInt(data.u4(typeOffset + classIndex * 4))
             if (descriptorIndex >= stringCount) throw DexFailure()
-            val stringDataOffset = toInt(data.u4(stringOffset + descriptorIndex * 4))
-            descriptorMarkers += readDescriptorMarkerIds(stringDataOffset)
+            val stringDataOffset = stringDataOffsets[descriptorIndex]
+            val descriptor = descriptorsByOffset.getOrPut(stringDataOffset) {
+                readDescriptorMarkerIds(stringDataOffset).also {
+                    descriptorRanges += stringDataOffset until it.endOffset
+                }
+            }
+            descriptorMarkers += descriptor.markerIds
+        }
+        var previousEnd = -1
+        for (range in descriptorRanges.sortedBy { it.first }) {
+            if (range.first < previousEnd) throw DexFailure()
+            previousEnd = range.last + 1
         }
         return ParsedDex(
             summary = DexSummary(
@@ -72,7 +92,7 @@ internal class DexParser(
             return false
         }
         val version = data.copy(4, 3).toString(Charsets.US_ASCII).toIntOrNull() ?: return false
-        return version in MIN_VERSION..MAX_VERSION && data.u1(7) == 0
+        return version in SUPPORTED_VERSIONS && data.u1(7) == 0
     }
 
     private fun tableCount(offset: Int): Int {
@@ -96,7 +116,7 @@ internal class DexParser(
         return offset
     }
 
-    private fun readDescriptorMarkerIds(offset: Int): List<String> {
+    private fun readDescriptorMarkerIds(offset: Int): DescriptorRead {
         if (offset < HEADER_SIZE || offset >= data.size) throw DexFailure()
         val length = readUleb128(offset)
         var cursor = length.next
@@ -150,7 +170,7 @@ internal class DexParser(
             }
         }
         if (decodedLength != length.value || !semicolonSeen || previous != ';') throw DexFailure()
-        return CompatibilityRules.descriptorMarkerIds(markerPrefix.toString())
+        return DescriptorRead(CompatibilityRules.descriptorMarkerIds(markerPrefix.toString()), cursor)
     }
 
     private fun readUleb128(offset: Int): Uleb {
@@ -176,6 +196,7 @@ internal class DexParser(
     }
 
     private data class Uleb(val value: Int, val next: Int)
+    private data class DescriptorRead(val markerIds: List<String>, val endOffset: Int)
 
     companion object {
         private const val HEADER_SIZE = 112
@@ -194,8 +215,7 @@ internal class DexParser(
         private const val CLASS_DEFS_OFFSET_OFFSET = 100
         private const val CLASS_DEF_SIZE = 32
         private const val ENDIAN_CONSTANT = 0x1234_5678L
-        private const val MIN_VERSION = 35
-        private const val MAX_VERSION = 41
+        private val SUPPORTED_VERSIONS = setOf(35, 37, 38, 39, 40, 41)
         private const val MAX_TABLE_ITEMS = 16_777_216
         private const val MARKER_PREFIX_CHARS = 128
     }

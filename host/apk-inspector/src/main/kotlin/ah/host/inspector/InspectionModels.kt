@@ -108,6 +108,7 @@ class ApkInspection(
     dexEntries: List<DexSummary>,
     val nativeAbis: NativeAbiSummary,
     findings: List<CompatibilityFinding>,
+    val compatibilityRulesVersion: String,
     val limitsApplied: LimitsApplied,
 ) {
     private val inputSha256Value = inputSha256.copyOf()

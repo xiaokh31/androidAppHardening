@@ -27,7 +27,7 @@ internal class BinaryManifestParser(private val data: SegmentedBytes) {
         var cursor = XML_HEADER_SIZE
         var pool: StringPool? = null
         var resourceMapSeen = false
-        val elementStack = ArrayDeque<String>()
+        val elementStack = ArrayDeque<ElementName>()
         val namespaceStack = ArrayDeque<Namespace>()
         var rootSeen = false
         var rootClosed = false
@@ -51,25 +51,26 @@ internal class BinaryManifestParser(private val data: SegmentedBytes) {
                 TYPE_RESOURCE_MAP -> {
                     val strings = pool ?: throw ManifestFailure()
                     if (resourceMapSeen || rootSeen) throw ManifestFailure()
-                    validateResourceMap(chunk, strings)
+                    strings.bindResourceIds(parseResourceMap(chunk, strings))
                     resourceMapSeen = true
                 }
                 TYPE_START_NAMESPACE -> {
                     val strings = pool ?: throw ManifestFailure()
-                    namespaceStack.addLast(parseNamespace(chunk, strings))
+                    if (rootClosed) throw ManifestFailure()
+                    namespaceStack.addLast(parseNamespace(chunk, strings, elementStack.size))
                 }
                 TYPE_END_NAMESPACE -> {
                     val strings = pool ?: throw ManifestFailure()
-                    val namespace = parseNamespace(chunk, strings)
+                    val namespace = parseNamespace(chunk, strings, elementStack.size)
                     if (namespaceStack.isEmpty() || namespaceStack.removeLast() != namespace) throw ManifestFailure()
                 }
                 TYPE_START_ELEMENT -> {
                     val strings = pool ?: throw ManifestFailure()
                     if (rootClosed) throw ManifestFailure()
-                    val element = parseStartElement(chunk, strings)
+                    val element = parseStartElement(chunk, strings, namespaceStack)
                     val depth = elementStack.size
                     if (depth == 0) {
-                        if (rootSeen || element.name != "manifest") throw ManifestFailure()
+                        if (rootSeen || element.namespace != null || element.name != "manifest") throw ManifestFailure()
                         rootSeen = true
                         packageName = requiredUniqueStringAttribute(element, null, "package")
                         splitName = optionalUniqueStringAttribute(element, null, "split")
@@ -78,21 +79,28 @@ internal class BinaryManifestParser(private val data: SegmentedBytes) {
                             splitMarkers += "MANIFEST_DYNAMIC_FEATURE_ATTRIBUTE"
                         }
                     } else if (depth == 1 && element.name == "uses-sdk") {
+                        if (element.namespace != null) throw ManifestFailure()
                         if (usesSdkSeen) throw ManifestFailure()
                         usesSdkSeen = true
-                        optionalUniqueIntAttribute(element, ANDROID_NS, "minSdkVersion")?.let { minSdk = it }
-                        targetSdk = optionalUniqueIntAttribute(element, ANDROID_NS, "targetSdkVersion")
+                        optionalUniqueIntAttribute(element, ANDROID_NS, "minSdkVersion", ANDROID_ATTR_MIN_SDK)?.let { minSdk = it }
+                        targetSdk = optionalUniqueIntAttribute(element, ANDROID_NS, "targetSdkVersion", ANDROID_ATTR_TARGET_SDK)
                     } else if (depth == 1 && element.name == "application") {
+                        if (element.namespace != null) throw ManifestFailure()
                         if (applicationSeen) throw ManifestFailure()
                         applicationSeen = true
-                        applicationClass = optionalUniqueStringAttribute(element, ANDROID_NS, "name")
-                        factoryClass = optionalUniqueStringAttribute(element, ANDROID_NS, "appComponentFactory")
+                        applicationClass = optionalUniqueStringAttribute(element, ANDROID_NS, "name", ANDROID_ATTR_NAME)
+                        factoryClass = optionalUniqueStringAttribute(
+                            element,
+                            ANDROID_NS,
+                            "appComponentFactory",
+                            ANDROID_ATTR_APP_COMPONENT_FACTORY,
+                        )
                     }
-                    elementStack.addLast(element.name)
+                    elementStack.addLast(ElementName(element.namespaceIndex, element.name))
                 }
                 TYPE_END_ELEMENT -> {
                     val strings = pool ?: throw ManifestFailure()
-                    val name = parseEndElement(chunk, strings)
+                    val name = parseEndElement(chunk, strings, namespaceStack)
                     if (elementStack.isEmpty() || elementStack.removeLast() != name) throw ManifestFailure()
                     if (elementStack.isEmpty()) rootClosed = true
                 }
@@ -178,9 +186,16 @@ internal class BinaryManifestParser(private val data: SegmentedBytes) {
         return value
     }
 
-    private fun parseStartElement(chunk: Chunk, strings: StringPool): Element {
+    private fun parseStartElement(
+        chunk: Chunk,
+        strings: StringPool,
+        namespaces: ArrayDeque<Namespace>,
+    ): Element {
         if (chunk.headerSize < XML_NODE_HEADER_SIZE || chunk.size < START_ELEMENT_MIN_SIZE) throw ManifestFailure()
         val extension = chunk.start + XML_NODE_HEADER_SIZE
+        val elementNamespaceIndex = data.u4(extension)
+        validateNamespaceReference(elementNamespaceIndex, strings, namespaces)
+        val elementNamespace = if (elementNamespaceIndex == NO_INDEX) null else strings.get(elementNamespaceIndex)
         val name = strings.get(data.u4(extension + 4))
         val attributeStart = data.u2(extension + 8)
         val attributeSize = data.u2(extension + 10)
@@ -196,42 +211,69 @@ internal class BinaryManifestParser(private val data: SegmentedBytes) {
         repeat(attributeCount) { index ->
             val offset = attributesStart + index * attributeSize
             val namespaceIndex = data.u4(offset)
-            val attributeName = strings.get(data.u4(offset + 4))
+            validateNamespaceReference(namespaceIndex, strings, namespaces)
+            val attributeNameIndex = data.u4(offset + 4)
+            val attributeName = strings.get(attributeNameIndex)
             val rawIndex = data.u4(offset + 8)
             if (data.u2(offset + 12) != TYPED_VALUE_SIZE || data.u1(offset + 14) != 0) throw ManifestFailure()
             val type = data.u1(offset + 15)
             val typedData = data.u4(offset + 16)
             val namespace = if (namespaceIndex == NO_INDEX) null else strings.get(namespaceIndex)
             val rawValue = if (rawIndex == NO_INDEX) null else strings.get(rawIndex)
+            val resourceId = strings.resourceId(attributeNameIndex)
+            validateKnownAndroidAttribute(namespace, attributeName, resourceId)
             val key = "${namespace ?: ""}\u0000$attributeName"
             if (!keys.add(key)) throw ManifestFailure()
-            attributes += Attribute(namespace, attributeName, rawValue, type, typedData, strings)
+            attributes += Attribute(namespace, attributeName, resourceId, rawValue, type, typedData, strings)
         }
-        return Element(name, attributes)
+        return Element(elementNamespaceIndex, elementNamespace, name, attributes)
     }
 
-    private fun parseEndElement(chunk: Chunk, strings: StringPool): String {
+    private fun parseEndElement(
+        chunk: Chunk,
+        strings: StringPool,
+        namespaces: ArrayDeque<Namespace>,
+    ): ElementName {
         if (chunk.headerSize < XML_NODE_HEADER_SIZE || chunk.size < END_ELEMENT_SIZE) throw ManifestFailure()
-        return strings.get(data.u4(chunk.start + XML_NODE_HEADER_SIZE + 4))
+        val namespaceIndex = data.u4(chunk.start + XML_NODE_HEADER_SIZE)
+        validateNamespaceReference(namespaceIndex, strings, namespaces)
+        return ElementName(namespaceIndex, strings.get(data.u4(chunk.start + XML_NODE_HEADER_SIZE + 4)))
     }
 
-    private fun validateResourceMap(chunk: Chunk, strings: StringPool) {
+    private fun parseResourceMap(chunk: Chunk, strings: StringPool): LongArray {
         if (chunk.headerSize != CHUNK_HEADER_SIZE || (chunk.size - chunk.headerSize) % 4 != 0) {
             throw ManifestFailure()
         }
         val count = (chunk.size - chunk.headerSize) / 4
         if (count > strings.size) throw ManifestFailure()
-        repeat(count) { index -> data.u4(chunk.start + chunk.headerSize + index * 4) }
+        return LongArray(count) { index -> data.u4(chunk.start + chunk.headerSize + index * 4) }
     }
 
-    private fun parseNamespace(chunk: Chunk, strings: StringPool): Namespace {
+    private fun parseNamespace(chunk: Chunk, strings: StringPool, depth: Int): Namespace {
         if (chunk.headerSize != XML_NODE_HEADER_SIZE || chunk.size != NAMESPACE_CHUNK_SIZE) throw ManifestFailure()
         val prefix = data.u4(chunk.start + XML_NODE_HEADER_SIZE)
         val uri = data.u4(chunk.start + XML_NODE_HEADER_SIZE + 4)
         if (prefix != NO_INDEX) strings.get(prefix)
         if (uri == NO_INDEX) throw ManifestFailure()
         strings.get(uri)
-        return Namespace(prefix, uri)
+        return Namespace(prefix, uri, depth)
+    }
+
+    private fun validateNamespaceReference(
+        index: Long,
+        strings: StringPool,
+        namespaces: ArrayDeque<Namespace>,
+    ) {
+        if (index == NO_INDEX) return
+        strings.get(index)
+        if (namespaces.none { it.uri == index }) throw ManifestFailure()
+    }
+
+    private fun validateKnownAndroidAttribute(namespace: String?, name: String, resourceId: Long) {
+        val expectedByName = ANDROID_ATTRIBUTE_IDS[name]
+        val expectedName = ANDROID_ATTRIBUTE_NAMES[resourceId]
+        if (namespace == ANDROID_NS && expectedByName != null && resourceId != expectedByName) throw ManifestFailure()
+        if (expectedName != null && (namespace != ANDROID_NS || name != expectedName)) throw ManifestFailure()
     }
 
     private fun validateCdata(chunk: Chunk, strings: StringPool) {
@@ -249,14 +291,23 @@ internal class BinaryManifestParser(private val data: SegmentedBytes) {
     private fun requiredUniqueStringAttribute(element: Element, namespace: String?, name: String): String =
         optionalUniqueStringAttribute(element, namespace, name)?.takeIf { it.isNotEmpty() } ?: throw ManifestFailure()
 
-    private fun optionalUniqueStringAttribute(element: Element, namespace: String?, name: String): String? {
-        val matches = element.attributes.filter { it.namespace == namespace && it.name == name }
+    private fun optionalUniqueStringAttribute(
+        element: Element,
+        namespace: String?,
+        name: String,
+        resourceId: Long? = null,
+    ): String? {
+        val matches = element.attributes.filter {
+            it.namespace == namespace && it.name == name && (resourceId == null || it.resourceId == resourceId)
+        }
         if (matches.size > 1) throw ManifestFailure()
         return matches.firstOrNull()?.stringValue()
     }
 
-    private fun optionalUniqueIntAttribute(element: Element, namespace: String, name: String): Int? {
-        val matches = element.attributes.filter { it.namespace == namespace && it.name == name }
+    private fun optionalUniqueIntAttribute(element: Element, namespace: String, name: String, resourceId: Long): Int? {
+        val matches = element.attributes.filter {
+            it.namespace == namespace && it.name == name && it.resourceId == resourceId
+        }
         if (matches.size > 1) throw ManifestFailure()
         return matches.firstOrNull()?.intValue()
     }
@@ -325,18 +376,30 @@ internal class BinaryManifestParser(private val data: SegmentedBytes) {
 
     private data class Chunk(val type: Int, val headerSize: Int, val size: Int, val start: Int, val end: Int)
     private data class Length(val value: Int, val next: Int)
-    private data class Element(val name: String, val attributes: List<Attribute>)
-    private data class Namespace(val prefix: Long, val uri: Long)
+    private data class Element(
+        val namespaceIndex: Long,
+        val namespace: String?,
+        val name: String,
+        val attributes: List<Attribute>,
+    )
+    private data class ElementName(val namespaceIndex: Long, val name: String)
+    private data class Namespace(val prefix: Long, val uri: Long, val depth: Int)
 
     private class Attribute(
         val namespace: String?,
         val name: String,
+        val resourceId: Long,
         private val rawValue: String?,
         private val type: Int,
         private val data: Long,
         private val strings: StringPool,
     ) {
-        fun stringValue(): String = rawValue ?: if (type == TYPE_STRING) strings.get(data) else throw ManifestFailure()
+        fun stringValue(): String {
+            if (type != TYPE_STRING) throw ManifestFailure()
+            val typedValue = strings.get(data)
+            if (rawValue != null && rawValue != typedValue) throw ManifestFailure()
+            return typedValue
+        }
 
         fun intValue(): Int {
             if (type != TYPE_INT_DEC && type != TYPE_INT_HEX) throw ManifestFailure()
@@ -347,11 +410,24 @@ internal class BinaryManifestParser(private val data: SegmentedBytes) {
 
     private class StringPool(values: List<String>) {
         private val values = immutableList(values)
+        private var resourceIds = LongArray(values.size)
+        private var resourceIdsBound = false
         val size: Int get() = values.size
 
         fun get(index: Long): String {
             if (index < 0L || index >= values.size) throw ManifestFailure()
             return values[index.toInt()]
+        }
+
+        fun bindResourceIds(values: LongArray) {
+            if (resourceIdsBound || values.size > resourceIds.size) throw ManifestFailure()
+            values.copyInto(resourceIds)
+            resourceIdsBound = true
+        }
+
+        fun resourceId(index: Long): Long {
+            if (index < 0L || index >= resourceIds.size) throw ManifestFailure()
+            return resourceIds[index.toInt()]
         }
     }
 
@@ -383,6 +459,17 @@ internal class BinaryManifestParser(private val data: SegmentedBytes) {
         private const val CDATA_CHUNK_SIZE = 28
         private const val MAX_TABLE_ITEMS = 1_000_000
         private const val ANDROID_NS = "http://schemas.android.com/apk/res/android"
+        private const val ANDROID_ATTR_NAME = 0x0101_0003L
+        private const val ANDROID_ATTR_MIN_SDK = 0x0101_020cL
+        private const val ANDROID_ATTR_TARGET_SDK = 0x0101_0270L
+        private const val ANDROID_ATTR_APP_COMPONENT_FACTORY = 0x0101_057aL
+        private val ANDROID_ATTRIBUTE_IDS = mapOf(
+            "name" to ANDROID_ATTR_NAME,
+            "minSdkVersion" to ANDROID_ATTR_MIN_SDK,
+            "targetSdkVersion" to ANDROID_ATTR_TARGET_SDK,
+            "appComponentFactory" to ANDROID_ATTR_APP_COMPONENT_FACTORY,
+        )
+        private val ANDROID_ATTRIBUTE_NAMES = ANDROID_ATTRIBUTE_IDS.entries.associate { (name, id) -> id to name }
         private val APPLICATION_ID = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+")
     }
 }

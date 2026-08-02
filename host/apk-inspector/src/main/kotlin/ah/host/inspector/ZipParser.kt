@@ -39,6 +39,17 @@ internal class ZipParser(private val source: FileSource) {
     fun materialize(entry: ParsedZipEntry): SegmentedBytes =
         readAndVerify(entry, true) ?: throw StructureFailure()
 
+    fun prefix(entry: ParsedZipEntry, limit: Int): ByteArray {
+        if (limit < 0) throw StructureFailure()
+        val wanted = minOf(entry.record.uncompressedSize, limit.toLong()).toInt()
+        if (wanted == 0) return ByteArray(0)
+        return when (entry.record.method) {
+            METHOD_STORED -> source.readFully(entry.dataOffset, wanted)
+            METHOD_DEFLATED -> inflatePrefix(entry, wanted)
+            else -> throw StructureFailure()
+        }
+    }
+
     private fun findEocd(): Eocd {
         val tailLength = minOf(source.size, (EOCD_MIN_SIZE + MAX_COMMENT).toLong()).toInt()
         val tailOffset = source.size - tailLength
@@ -267,6 +278,40 @@ internal class ZipParser(private val source: FileSource) {
             }
             val consumed = fed - inflater.remaining
             if (consumed != entry.record.compressedSize) throw StructureFailure()
+        } finally {
+            inflater.end()
+        }
+    }
+
+    private fun inflatePrefix(entry: ParsedZipEntry, wanted: Int): ByteArray {
+        val inflater = Inflater(true)
+        val input = ByteArray(IO_CHUNK)
+        val result = ByteArray(wanted)
+        var fed = 0L
+        var written = 0
+        try {
+            while (written < wanted) {
+                interrupted()
+                if (inflater.needsDictionary() || inflater.finished()) throw StructureFailure()
+                if (inflater.needsInput()) {
+                    if (fed >= entry.record.compressedSize) throw StructureFailure()
+                    val count = minOf(input.size.toLong(), entry.record.compressedSize - fed).toInt()
+                    source.readInto(entry.dataOffset + fed, input, 0, count)
+                    inflater.setInput(input, 0, count)
+                    fed += count
+                }
+                val count = try {
+                    inflater.inflate(result, written, wanted - written)
+                } catch (_: DataFormatException) {
+                    throw StructureFailure()
+                }
+                if (count > 0) {
+                    written += count
+                } else if (!inflater.needsInput()) {
+                    throw StructureFailure()
+                }
+            }
+            return result
         } finally {
             inflater.end()
         }

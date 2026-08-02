@@ -3,18 +3,53 @@ package ah.host.inspector
 import java.util.LinkedHashSet
 
 internal object CompatibilityRules {
+    const val VERSION = "compatibility-rules-v1"
     private val supportedAbis = linkedSetOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
 
-    fun nativeAbis(entryNames: List<String>): NativeAbiSummary {
+    fun nativeAbis(libraries: List<NativeLibraryHeader>, safeFileName: String): NativeAbiSummary {
         val abis = LinkedHashSet<String>()
-        for (name in entryNames) {
+        for (library in libraries) {
+            val name = library.entryName
             val parts = name.split('/')
             if (parts.size == 3 && parts[0] == "lib" && parts[2].endsWith(".so") && parts[2].length > 3) {
-                abis += parts[1]
+                val declaredAbi = parts[1]
+                if (declaredAbi !in supportedAbis) {
+                    abis += declaredAbi
+                    continue
+                }
+                val actualAbi = elfAbi(library.header) ?: rejectNative(safeFileName, "NATIVE_ELF_INVALID")
+                if (declaredAbi != actualAbi) rejectNative(safeFileName, "NATIVE_ELF_ABI_MISMATCH")
+                abis += actualAbi
             }
         }
         return NativeAbiSummary(abis.toList())
     }
+
+    private fun elfAbi(header: ByteArray): String? {
+        if (header.size < ELF_HEADER_PREFIX ||
+            header[0].toInt() and 0xff != 0x7f || header[1] != 'E'.code.toByte() ||
+            header[2] != 'L'.code.toByte() || header[3] != 'F'.code.toByte() ||
+            header[5].toInt() and 0xff != ELF_DATA_LITTLE_ENDIAN ||
+            header[6].toInt() and 0xff != ELF_VERSION_CURRENT
+        ) {
+            return null
+        }
+        val elfClass = header[4].toInt() and 0xff
+        val machine = (header[18].toInt() and 0xff) or ((header[19].toInt() and 0xff) shl 8)
+        return when (elfClass to machine) {
+            ELF_CLASS_32 to ELF_MACHINE_ARM -> "armeabi-v7a"
+            ELF_CLASS_64 to ELF_MACHINE_AARCH64 -> "arm64-v8a"
+            ELF_CLASS_32 to ELF_MACHINE_X86 -> "x86"
+            ELF_CLASS_64 to ELF_MACHINE_X86_64 -> "x86_64"
+            else -> null
+        }
+    }
+
+    private fun rejectNative(safeFileName: String, marker: String): Nothing = throw InspectionException(
+        code = InspectionErrorCode.COMPAT_FRAMEWORK,
+        safeFileName = safeFileName,
+        markerIds = listOf(marker),
+    )
 
     fun evaluate(
         safeFileName: String,
@@ -163,4 +198,16 @@ internal object CompatibilityRules {
         val parts = split('/')
         return parts.size == 3 && parts[0] == "lib" && parts[2] == fileName
     }
+
+    private const val ELF_HEADER_PREFIX = 20
+    private const val ELF_CLASS_32 = 1
+    private const val ELF_CLASS_64 = 2
+    private const val ELF_DATA_LITTLE_ENDIAN = 1
+    private const val ELF_VERSION_CURRENT = 1
+    private const val ELF_MACHINE_X86 = 3
+    private const val ELF_MACHINE_ARM = 40
+    private const val ELF_MACHINE_X86_64 = 62
+    private const val ELF_MACHINE_AARCH64 = 183
 }
+
+internal data class NativeLibraryHeader(val entryName: String, val header: ByteArray)

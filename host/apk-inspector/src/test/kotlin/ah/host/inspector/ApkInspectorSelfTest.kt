@@ -98,6 +98,7 @@ object ApkInspectorSelfTest {
                         if (index == 0) entry.copy(flags = entry.flags or 1) else entry
                     },
                 ),
+                "actual-crc-corruption.apk" to SyntheticApkFixtures.mutateFirstEntryData(baselineBytes),
             )
             for ((name, bytes) in structural) {
                 expectCode(corpusDir, name, bytes, InspectionErrorCode.INPUT_ZIP_STRUCTURE, errorResults)
@@ -184,6 +185,30 @@ object ApkInspectorSelfTest {
                 InspectionErrorCode.INPUT_MANIFEST_INVALID,
                 errorResults,
             )
+            val manifestFailures = linkedMapOf(
+                "manifest-package-missing.apk" to SyntheticApkFixtures.manifest(packageName = null),
+                "manifest-package-duplicate.apk" to SyntheticApkFixtures.manifest(duplicatePackage = true),
+                "manifest-invalid-utf8.apk" to SyntheticApkFixtures.manifestWithInvalidUtf8(),
+                "manifest-resource-id-mismatch.apk" to SyntheticApkFixtures.manifest(minSdkResourceId = 0x01010000),
+                "manifest-namespace-out-of-scope.apk" to SyntheticApkFixtures.manifest(declareAndroidNamespace = false),
+                "manifest-namespaced-uses-sdk.apk" to SyntheticApkFixtures.manifest(usesSdkElementNamespace = true),
+                "manifest-namespaced-application.apk" to SyntheticApkFixtures.manifest(applicationElementNamespace = true),
+                "manifest-raw-typed-conflict.apk" to SyntheticApkFixtures.manifest(conflictingApplicationRawValue = true),
+                "manifest-factory-resource-id-mismatch.apk" to SyntheticApkFixtures.manifest(factoryResourceId = 0x01010000),
+            )
+            for ((name, manifest) in manifestFailures) {
+                try {
+                    expectCode(
+                        corpusDir,
+                        name,
+                        SyntheticApkFixtures.apk(SyntheticApkFixtures.baselineEntries(manifest = manifest)),
+                        InspectionErrorCode.INPUT_MANIFEST_INVALID,
+                        errorResults,
+                    )
+                } catch (exception: IllegalStateException) {
+                    error("$name did not fail closed: ${exception.message}")
+                }
+            }
             expectCode(
                 corpusDir,
                 "dex-checksum.apk",
@@ -214,6 +239,34 @@ object ApkInspectorSelfTest {
                 InspectionErrorCode.INPUT_DEX_INVALID,
                 errorResults,
             )
+            val dexFailures = linkedMapOf(
+                "dex-magic.apk" to SyntheticApkFixtures.dexWithVersion("034"),
+                "dex-version-036.apk" to SyntheticApkFixtures.dexWithVersion("036"),
+                "dex-file-size.apk" to SyntheticApkFixtures.dexWithFileSizeDelta(1),
+                "dex-sha1.apk" to SyntheticApkFixtures.dexWithInvalidSha1(),
+                "dex-table-offset.apk" to SyntheticApkFixtures.dexWithInvalidTableOffset(),
+                "dex-descriptor-syntax.apk" to SyntheticApkFixtures.dex("not-a-descriptor"),
+            )
+            for ((name, dex) in dexFailures) {
+                expectCode(
+                    corpusDir,
+                    name,
+                    SyntheticApkFixtures.apk(entriesWithDex(dex)),
+                    InspectionErrorCode.INPUT_DEX_INVALID,
+                    errorResults,
+                )
+            }
+            val repeatedOffsetStart = System.nanoTime()
+            expectCode(
+                corpusDir,
+                "dex-repeated-string-data-offset.apk",
+                SyntheticApkFixtures.apk(entriesWithDex(SyntheticApkFixtures.dexWithRepeatedStringDataOffsets(4_096))),
+                InspectionErrorCode.INPUT_DEX_INVALID,
+                errorResults,
+            )
+            check(System.nanoTime() - repeatedOffsetStart < 5_000_000_000L) {
+                "repeated DEX string-data offsets exceeded the five-second bounded-work gate"
+            }
             expectCode(
                 corpusDir,
                 "dex-noncanonical-asset.apk",
@@ -378,10 +431,40 @@ object ApkInspectorSelfTest {
             )
             expectCode(
                 corpusDir,
+                "native-elf-invalid.apk",
+                SyntheticApkFixtures.apk(
+                    SyntheticApkFixtures.baselineEntries().map { entry ->
+                        if (entry.name == "lib/arm64-v8a/libfixture.so") entry.copy(data = byteArrayOf(1)) else entry
+                    },
+                ),
+                InspectionErrorCode.COMPAT_FRAMEWORK,
+                errorResults,
+                expectedMarkers = listOf("NATIVE_ELF_INVALID"),
+            )
+            expectCode(
+                corpusDir,
+                "native-elf-abi-mismatch.apk",
+                SyntheticApkFixtures.apk(
+                    SyntheticApkFixtures.baselineEntries().map { entry ->
+                        if (entry.name == "lib/arm64-v8a/libfixture.so") {
+                            entry.copy(data = SyntheticApkFixtures.elf("x86"))
+                        } else {
+                            entry
+                        }
+                    },
+                ),
+                InspectionErrorCode.COMPAT_FRAMEWORK,
+                errorResults,
+                expectedMarkers = listOf("NATIVE_ELF_ABI_MISMATCH"),
+            )
+            expectCode(
+                corpusDir,
                 "existing-shell.apk",
                 SyntheticApkFixtures.apk(
                     SyntheticApkFixtures.baselineEntries(
-                        additional = listOf(SyntheticZipEntry("lib/arm64-v8a/libjiagu.so", byteArrayOf(1))),
+                        additional = listOf(
+                            SyntheticZipEntry("lib/arm64-v8a/libjiagu.so", SyntheticApkFixtures.elf("arm64-v8a")),
+                        ),
                     ),
                 ),
                 InspectionErrorCode.COMPAT_EXISTING_SHELL,
@@ -417,7 +500,9 @@ object ApkInspectorSelfTest {
                 "reserved-native.apk",
                 SyntheticApkFixtures.apk(
                     SyntheticApkFixtures.baselineEntries(
-                        additional = listOf(SyntheticZipEntry("lib/x86_64/libah_runtime.so", byteArrayOf(1))),
+                        additional = listOf(
+                            SyntheticZipEntry("lib/x86_64/libah_runtime.so", SyntheticApkFixtures.elf("x86_64")),
+                        ),
                     ),
                 ),
                 InspectionErrorCode.COMPAT_RESERVED_NAMESPACE,
@@ -494,6 +579,7 @@ object ApkInspectorSelfTest {
             .digest(inspection.packageName.toByteArray(Charsets.UTF_8))
         check(MessageDigest.isEqual(packageHash, inspection.packageNameSha256))
         check(inspection.limitsApplied.values["dexEntries"] == 64L)
+        check(inspection.compatibilityRulesVersion == "compatibility-rules-v1")
     }
 
     private fun manyDexEntries(count: Int): List<SyntheticZipEntry> {
@@ -506,6 +592,11 @@ object ApkInspectorSelfTest {
         }
         return entries
     }
+
+    private fun entriesWithDex(dex: ByteArray): List<SyntheticZipEntry> =
+        SyntheticApkFixtures.baselineEntries(dexDescriptors = emptyList()).toMutableList().apply {
+            add(1, SyntheticZipEntry("classes.dex", dex))
+        }
 
     private fun verifyImmutability(inspection: ApkInspection) {
         val originalHash = inspection.inputSha256
@@ -607,6 +698,7 @@ object ApkInspectorSelfTest {
         append("\"targetSdk\":").append(inspection.targetSdk).append(',')
         append("\"applicationClass\":\"").append(inspection.applicationClass).append("\",")
         append("\"appComponentFactoryClass\":\"").append(inspection.appComponentFactoryClass).append("\",")
+        append("\"compatibilityRulesVersion\":\"").append(inspection.compatibilityRulesVersion).append("\",")
         append("\"dexEntries\":[")
         append(inspection.dexEntries.joinToString(",") { "\"${it.entryName}\"" })
         append("],\"nativeAbis\":[")

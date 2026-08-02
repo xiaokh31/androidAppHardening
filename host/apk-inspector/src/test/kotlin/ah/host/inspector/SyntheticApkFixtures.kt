@@ -24,6 +24,13 @@ internal object SyntheticApkFixtures {
         applicationClass: String? = ".FixtureApplication",
         factoryClass: String? = ".FixtureFactory",
         splitName: String? = null,
+        duplicatePackage: Boolean = false,
+        declareAndroidNamespace: Boolean = true,
+        minSdkResourceId: Int = ANDROID_ATTR_MIN_SDK,
+        factoryResourceId: Int = ANDROID_ATTR_APP_COMPONENT_FACTORY,
+        usesSdkElementNamespace: Boolean = false,
+        applicationElementNamespace: Boolean = false,
+        conflictingApplicationRawValue: Boolean = false,
     ): ByteArray {
         val strings = StringTable()
         val manifestName = strings.add("manifest")
@@ -36,15 +43,32 @@ internal object SyntheticApkFixtures {
         val nameAttribute = strings.add("name")
         val factoryAttribute = strings.add("appComponentFactory")
         val androidNamespace = strings.add(ANDROID_NAMESPACE)
+        val androidPrefix = strings.add("android")
         val packageValue = packageName?.let(strings::add)
         val splitValue = splitName?.let(strings::add)
         val applicationValue = applicationClass?.let(strings::add)
         val factoryValue = factoryClass?.let(strings::add)
+        val conflictingRawValue = if (conflictingApplicationRawValue) strings.add(".DifferentApplication") else null
 
         val xmlBody = ByteWriter()
         xmlBody.bytes(strings.encodePool())
+        xmlBody.bytes(
+            resourceMap(
+                strings.size,
+                mapOf(
+                    minSdkAttribute to minSdkResourceId,
+                    targetSdkAttribute to ANDROID_ATTR_TARGET_SDK,
+                    nameAttribute to ANDROID_ATTR_NAME,
+                    factoryAttribute to factoryResourceId,
+                ),
+            ),
+        )
+        if (declareAndroidNamespace) xmlBody.bytes(namespaceChunk(TYPE_START_NAMESPACE, androidPrefix, androidNamespace))
         val manifestAttributes = ArrayList<XmlAttribute>()
         if (packageValue != null) manifestAttributes += XmlAttribute(NO_INDEX, packageAttribute, packageValue, TYPE_STRING, packageValue)
+        if (duplicatePackage && packageValue != null) {
+            manifestAttributes += XmlAttribute(NO_INDEX, packageAttribute, packageValue, TYPE_STRING, packageValue)
+        }
         if (splitValue != null) manifestAttributes += XmlAttribute(NO_INDEX, splitAttribute, splitValue, TYPE_STRING, splitValue)
         xmlBody.bytes(startElement(manifestName, manifestAttributes))
         xmlBody.bytes(
@@ -54,19 +78,28 @@ internal object SyntheticApkFixtures {
                     XmlAttribute(androidNamespace, minSdkAttribute, NO_INDEX, TYPE_INT_DEC, minSdk),
                     XmlAttribute(androidNamespace, targetSdkAttribute, NO_INDEX, TYPE_INT_DEC, targetSdk),
                 ),
+                if (usesSdkElementNamespace) androidNamespace else NO_INDEX,
             ),
         )
-        xmlBody.bytes(endElement(usesSdkName))
+        xmlBody.bytes(endElement(usesSdkName, if (usesSdkElementNamespace) androidNamespace else NO_INDEX))
         val applicationAttributes = ArrayList<XmlAttribute>()
         if (applicationValue != null) {
-            applicationAttributes += XmlAttribute(androidNamespace, nameAttribute, applicationValue, TYPE_STRING, applicationValue)
+            applicationAttributes += XmlAttribute(
+                androidNamespace,
+                nameAttribute,
+                conflictingRawValue ?: applicationValue,
+                TYPE_STRING,
+                applicationValue,
+            )
         }
         if (factoryValue != null) {
             applicationAttributes += XmlAttribute(androidNamespace, factoryAttribute, factoryValue, TYPE_STRING, factoryValue)
         }
-        xmlBody.bytes(startElement(applicationName, applicationAttributes))
-        xmlBody.bytes(endElement(applicationName))
+        val applicationNamespace = if (applicationElementNamespace) androidNamespace else NO_INDEX
+        xmlBody.bytes(startElement(applicationName, applicationAttributes, applicationNamespace))
+        xmlBody.bytes(endElement(applicationName, applicationNamespace))
         xmlBody.bytes(endElement(manifestName))
+        if (declareAndroidNamespace) xmlBody.bytes(namespaceChunk(TYPE_END_NAMESPACE, androidPrefix, androidNamespace))
 
         val body = xmlBody.toByteArray()
         return ByteWriter().apply {
@@ -104,6 +137,14 @@ internal object SyntheticApkFixtures {
         }.toByteArray()
         putU4(result, 4, result.size)
         return result
+    }
+
+    fun manifestWithInvalidUtf8(): ByteArray {
+        val bytes = manifest(packageName = "ah.fixtures.invalidutf8")
+        val needle = "ah.fixtures.invalidutf8".toByteArray(Charsets.UTF_8)
+        val offset = findBytes(bytes, needle)
+        bytes[offset] = 0xc0.toByte()
+        return bytes
     }
 
     fun dex(vararg descriptors: String): ByteArray {
@@ -156,6 +197,61 @@ internal object SyntheticApkFixtures {
         encodedLength.copyInto(bytes, stringDataOffset)
         sealDex(bytes)
         return bytes
+    }
+
+    fun dexWithRepeatedStringDataOffsets(count: Int): ByteArray {
+        require(count >= 2)
+        val bytes = dex(*Array(count) { index -> "Lfixture/C$index;" })
+        val stringIdsOffset = readU4(bytes, 60).toInt()
+        val first = readU4(bytes, stringIdsOffset)
+        repeat(count) { index -> putU4(bytes, stringIdsOffset + index * 4, first) }
+        sealDex(bytes)
+        return bytes
+    }
+
+    fun dexWithVersion(version: String): ByteArray {
+        require(version.length == 3)
+        val bytes = dex("Lfixture/Main;")
+        version.toByteArray(Charsets.US_ASCII).copyInto(bytes, 4)
+        sealDex(bytes)
+        return bytes
+    }
+
+    fun dexWithFileSizeDelta(delta: Int): ByteArray = dex("Lfixture/Main;").also { bytes ->
+        putU4(bytes, 32, bytes.size + delta)
+        sealDex(bytes)
+    }
+
+    fun dexWithInvalidSha1(): ByteArray = dex("Lfixture/Main;").also { bytes ->
+        bytes[12] = (bytes[12].toInt() xor 1).toByte()
+        val adler = Adler32().apply { update(bytes, 12, bytes.size - 12) }.value
+        putU4(bytes, 8, adler)
+    }
+
+    fun dexWithInvalidTableOffset(): ByteArray = dex("Lfixture/Main;").also { bytes ->
+        putU4(bytes, 60, bytes.size - 1)
+        sealDex(bytes)
+    }
+
+    fun elf(abi: String): ByteArray {
+        val (elfClass, machine) = when (abi) {
+            "armeabi-v7a" -> 1 to 40
+            "arm64-v8a" -> 2 to 183
+            "x86" -> 1 to 3
+            "x86_64" -> 2 to 62
+            else -> error("unsupported synthetic ABI $abi")
+        }
+        return ByteArray(20).also { bytes ->
+            bytes[0] = 0x7f
+            bytes[1] = 'E'.code.toByte()
+            bytes[2] = 'L'.code.toByte()
+            bytes[3] = 'F'.code.toByte()
+            bytes[4] = elfClass.toByte()
+            bytes[5] = 1
+            bytes[6] = 1
+            putU2(bytes, 16, 3)
+            putU2(bytes, 18, machine)
+        }
     }
 
     fun apk(entries: List<SyntheticZipEntry>): ByteArray {
@@ -231,10 +327,10 @@ internal object SyntheticApkFixtures {
             val name = if (index == 0) "classes.dex" else "classes${index + 1}.dex"
             entries += SyntheticZipEntry(name, dex(*descriptors.toTypedArray()))
         }
-        entries += SyntheticZipEntry("lib/armeabi-v7a/libfixture.so", byteArrayOf(1))
-        entries += SyntheticZipEntry("lib/arm64-v8a/libfixture.so", byteArrayOf(2))
-        entries += SyntheticZipEntry("lib/x86/libfixture.so", byteArrayOf(3))
-        entries += SyntheticZipEntry("lib/x86_64/libfixture.so", byteArrayOf(4))
+        entries += SyntheticZipEntry("lib/armeabi-v7a/libfixture.so", elf("armeabi-v7a"))
+        entries += SyntheticZipEntry("lib/arm64-v8a/libfixture.so", elf("arm64-v8a"))
+        entries += SyntheticZipEntry("lib/x86/libfixture.so", elf("x86"))
+        entries += SyntheticZipEntry("lib/x86_64/libfixture.so", elf("x86_64"))
         entries += additional
         return entries
     }
@@ -254,13 +350,43 @@ internal object SyntheticApkFixtures {
         return result
     }
 
-    private fun startElement(nameIndex: Int, attributes: List<XmlAttribute>): ByteArray = ByteWriter().apply {
+    fun mutateFirstEntryData(bytes: ByteArray): ByteArray {
+        val result = bytes.copyOf()
+        val nameLength = readU2(result, 26)
+        val extraLength = readU2(result, 28)
+        val dataOffset = 30 + nameLength + extraLength
+        result[dataOffset] = (result[dataOffset].toInt() xor 1).toByte()
+        return result
+    }
+
+    private fun resourceMap(stringCount: Int, values: Map<Int, Int>): ByteArray = ByteWriter().apply {
+        u2(TYPE_RESOURCE_MAP)
+        u2(8)
+        u4(8 + stringCount * 4)
+        repeat(stringCount) { index -> u4(values[index] ?: 0) }
+    }.toByteArray()
+
+    private fun namespaceChunk(type: Int, prefixIndex: Int, uriIndex: Int): ByteArray = ByteWriter().apply {
+        u2(type)
+        u2(16)
+        u4(24)
+        u4(1)
+        u4(NO_INDEX)
+        u4(prefixIndex)
+        u4(uriIndex)
+    }.toByteArray()
+
+    private fun startElement(
+        nameIndex: Int,
+        attributes: List<XmlAttribute>,
+        namespaceIndex: Int = NO_INDEX,
+    ): ByteArray = ByteWriter().apply {
         u2(TYPE_START_ELEMENT)
         u2(16)
         u4(36 + attributes.size * 20)
         u4(1)
         u4(NO_INDEX)
-        u4(NO_INDEX)
+        u4(namespaceIndex)
         u4(nameIndex)
         u2(20)
         u2(20)
@@ -279,13 +405,13 @@ internal object SyntheticApkFixtures {
         }
     }.toByteArray()
 
-    private fun endElement(nameIndex: Int): ByteArray = ByteWriter().apply {
+    private fun endElement(nameIndex: Int, namespaceIndex: Int = NO_INDEX): ByteArray = ByteWriter().apply {
         u2(TYPE_END_ELEMENT)
         u2(16)
         u4(24)
         u4(1)
         u4(NO_INDEX)
-        u4(NO_INDEX)
+        u4(namespaceIndex)
         u4(nameIndex)
     }.toByteArray()
 
@@ -321,6 +447,13 @@ internal object SyntheticApkFixtures {
         error("signature not found")
     }
 
+    private fun findBytes(bytes: ByteArray, needle: ByteArray): Int {
+        for (index in 0..bytes.size - needle.size) {
+            if (needle.indices.all { offset -> bytes[index + offset] == needle[offset] }) return index
+        }
+        error("byte sequence not found")
+    }
+
     private data class XmlAttribute(
         val namespace: Int,
         val name: Int,
@@ -333,6 +466,7 @@ internal object SyntheticApkFixtures {
         private val indices = LinkedHashMap<String, Int>()
 
         fun add(value: String): Int = indices.getOrPut(value) { indices.size }
+        val size: Int get() = indices.size
 
         fun encodePool(): ByteArray {
             val values = indices.keys.toList()
@@ -414,14 +548,24 @@ internal object SyntheticApkFixtures {
             ((bytes[offset + 2].toLong() and 0xff) shl 16) or
             ((bytes[offset + 3].toLong() and 0xff) shl 24)
 
+    private fun readU2(bytes: ByteArray, offset: Int): Int =
+        bytes[offset].toInt() and 0xff or ((bytes[offset + 1].toInt() and 0xff) shl 8)
+
     private const val ANDROID_NAMESPACE = "http://schemas.android.com/apk/res/android"
     private const val NO_INDEX = -1
     private const val TYPE_XML = 0x0003
     private const val TYPE_STRING_POOL = 0x0001
+    private const val TYPE_RESOURCE_MAP = 0x0180
+    private const val TYPE_START_NAMESPACE = 0x0100
+    private const val TYPE_END_NAMESPACE = 0x0101
     private const val TYPE_START_ELEMENT = 0x0102
     private const val TYPE_END_ELEMENT = 0x0103
     private const val TYPE_STRING = 0x03
     private const val TYPE_INT_DEC = 0x10
+    private const val ANDROID_ATTR_NAME = 0x01010003
+    private const val ANDROID_ATTR_MIN_SDK = 0x0101020c
+    private const val ANDROID_ATTR_TARGET_SDK = 0x01010270
+    private const val ANDROID_ATTR_APP_COMPONENT_FACTORY = 0x0101057a
     private const val DEX_HEADER_SIZE = 112
     private const val CLASS_DEF_SIZE = 32
     private const val METHOD_DEFLATED = 8

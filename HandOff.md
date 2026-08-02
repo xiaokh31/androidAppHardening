@@ -1,23 +1,23 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260802-122224
-updated_at: 2026-08-02T12:22:24+08:00
+handoff_id: HO-20260802-123553
+updated_at: 2026-08-02T12:35:53+08:00
 updated_by: /root
-state: active
-source_branch: spike/m0-05-application-factory-provider-jni-poc
-base_commit: 350d08ee5f3c83bf60dcbd4564866ffb5f819844
+state: ready
+source_branch: main
+base_commit: 1fe9ea9ca7ac989e2e071ccb00ae2a0c0010c463
 working_tree: clean
-current_milestone: M0
-active_task: M0-05
-next_owner: /root
+current_milestone: M1
+active_task: NONE
+next_owner: unassigned
 ---
 
 # Project HandOff
 
 ## Objective
 
-在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内完成 M0-05 兼容性 PoC。验证 API 29/36 x86_64 与 API 29+ arm64 非 root 环境中的 ConfigV2/sourceDir 启动门禁、原始 `AppComponentFactory`、Provider、跨 DEX、JNI、失败清理、冷启动、内存和无明文 DEX 落盘，不扩展到 M1/M2 生产实现。
+在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内推进离线 APK 加固工具。M0 的公开 ClassLoader、ConfigV2/sourceDir、原始 `AppComponentFactory`、Provider、跨 DEX 与 JNI 兼容性合同已经冻结并合并；下一入口是尚未领取的 M1-01 不可信 APK 检查器，本快照不启动 M1/M2 实现。
 
 ## Current State
 
@@ -36,7 +36,10 @@ next_owner: /root
 - 首轮独立只读 `m0_05_security_review` 在 `859fe25d15cc7e8670ac621d25d2e0101cf93c9a` 上结论为 FAIL：P0 `0`、P1 `3`、P2 `3`；原三套设备证据因此被复核否决，不再作为最终验收。
 - 六项发现的修复候选已提交为 `789d37e9fa321b54ee19bf4af1382e589f2942d4`：五类组件委托失败归一、双变体 17 例矩阵、重复 ABI 条目、目标恢复计时、Linux 包精确固定，以及 JUnit/SO/R8/验证器内存证据。
 - 本地静态门禁、双变体 Release/R8 和静态 APK 验证已 PASS；GitHub Actions run `30708544925` 的 API 29/36 x86_64 repaired KVM 双 job 已 PASS。
-- review-3 API 29 arm64 非 root 真机与 API 29/36 x86_64 Linux/KVM 均已完成 extracted/direct instrumentation、各自 18/18 负例、各 20 次冷启动、JUnit、内存、无明文 DEX、组件委托和认证后的重复 ABI 负例，cleanup PASS。纠正证据已冻结为 `350d08ee5f3c83bf60dcbd4564866ffb5f819844`。第五次独立只读复核已对协调提交 `05c4b0641cbab7819da59189bb363039f4276fe8` 给出 PASS：P0 `0`、P1 `0`、P2 `0`。完整分支已发布，草稿 PR #32 已创建，发布 HEAD `6f9a072a60072d6db83c7a0da8659bb7cd772666` 的六项 PR CI 全部 PASS；仍禁止擅自转 ready、合并或启动 M1/M2。
+- M0-05 的 API 29 arm64 非 root 真机与 API 29/36 x86_64 Linux/KVM 双变体矩阵、第五次独立只读复核和 PR 最终 HEAD 六项 CI 全部 PASS；冻结证据为 `350d08ee5f3c83bf60dcbd4564866ffb5f819844`，复核结果为 P0 `0`、P1 `0`、P2 `0`。
+- 用户已明确授权把 PR #32 转为 ready 并合并；PR #32 已于 `2026-08-02T12:34:55+08:00` 以 merge commit `1fe9ea9ca7ac989e2e071ccb00ae2a0c0010c463` 合并到 `main`，Issue #5 已关闭。
+- 合并后的首次 Governance run `30732622423` 只因 HandOff 仍声明旧 source branch 而失败；本快照在 `main` 上完成合并状态协调，未修改实现、workflow 或冻结证据。
+- 当前没有活动开发任务；M1-01 仍为 planned/unassigned，未启动 M1/M2。
 
 ## Active Workstreams
 
@@ -44,7 +47,8 @@ next_owner: /root
 |---|---|---|---|---|---|
 | M0-04 | `runtime-security-agent` | `spike/m0-04-classloader-poc` | done | M0-03 | PR #29、正式设备矩阵和独立复核已通过 |
 | M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | done | M0-04 | PR #31、合并后 strict HandOff 和双平台 CI 已通过 |
-| M0-05 | `/root` | `spike/m0-05-application-factory-provider-jni-poc` | review | M0-04, M0-06 | 推送 merger-ready HandOff，等待最终 HEAD PR CI 后请求 ready/merge 授权 |
+| M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | done | M0-04, M0-06 | PR #32、三环境矩阵、独立安全复核和最终 PR CI 已通过 |
+| M1-01 | `unassigned` | `feat/m1-01-untrusted-apk-inspector` | planned | M0-05 | 仅在用户明确领取后，从最新 `main` 启动不可信 APK 检查器 |
 
 ## Decisions and Invariants
 
@@ -85,7 +89,10 @@ next_owner: /root
 - Fourth independent read-only review of coordinating HEAD `3ddae22709775d5badb97671c4c2ee3f16d45a5e` returned FAIL with P0 `0`, P1 `0`, P2 `1`: its sole finding was that this HandOff still listed the already-completed documentation commit as a future action; it reconfirmed all technical and device-evidence closures and required no device rerun.
 - Fifth independent read-only review of coordinating commit `05c4b0641cbab7819da59189bb363039f4276fe8` returned PASS with P0 `0`, P1 `0`, P2 `0`; it confirmed the fourth-review documentation P2 closed, the three-environment evidence unchanged, live KVM run successful, remote at `e54d3d2a06b11375cb08f09ebaedb51d6623920f`, and no existing PR.
 - Complete branch published at `6f9a072a60072d6db83c7a0da8659bb7cd772666`; draft PR [#32](https://github.com/xiaokh31/androidAppHardening/pull/32) is the sole Issue #5 PR. PR runs `30732016374` (API 29/36 KVM), `30732016378` (Ubuntu/Windows Build), and `30732016377` (Ubuntu/Windows Governance) all passed.
-- Exact next action: publish this merger-ready HandOff and require fresh PR CI on that final head. After it passes, request explicit authorization before converting PR #32 to ready or merging; keep M1/M2 blocked.
+- Final PR head `fbcb2d1a89bc46126d987605fed0c44913c7e320` passed KVM run `30732302393`, Build run `30732302394`, and Governance run `30732302403` before merge.
+- User authorized ready/merge; PR #32 was merged as `1fe9ea9ca7ac989e2e071ccb00ae2a0c0010c463` and Issue #5 closed.
+- Post-merge Governance run `30732622423` reproduced one HandOff-only source-branch mismatch on Ubuntu and Windows; this coordination update changes the resume point to `main`, marks M0-05 done, and leaves M1-01 unassigned.
+- Exact next action: publish this post-merge HandOff, require Build and Governance to pass on `main`, then leave the repository ready with no active task until the user assigns M1-01.
 
 ## Verification Evidence
 
@@ -160,6 +167,18 @@ next_owner: /root
 - artifact: draft PR `https://github.com/xiaokh31/androidAppHardening/pull/32`; KVM run `30732016374`, Build run `30732016378`, Governance run `30732016377`
 - sha256: not_applicable
 - result: PASS; API 29 KVM job `91453957462` in 6m51s, API 36 KVM job `91453957410` in 7m52s, Ubuntu/Windows Build and Ubuntu/Windows Governance all succeeded; PR remained draft and merge state was CLEAN
+
+### M0-05 merge
+
+- task_id: M0-05
+- git_commit: 1fe9ea9ca7ac989e2e071ccb00ae2a0c0010c463
+- command: `gh pr ready 32`; `gh pr merge 32 --merge`; `gh pr view 32 --json ...`; `git pull --ff-only origin main`; post-merge strict HandOff and Governance log inspection
+- exit_code: 0
+- environment: GitHub; Windows 10 x64 local coordinator; Git 2.52.0; Node 24.12.0; GitHub CLI 2.96.0; no local emulator
+- timestamp: 2026-08-02T12:35:53+08:00
+- artifact: merged PR `https://github.com/xiaokh31/androidAppHardening/pull/32`; closed Issue `https://github.com/xiaokh31/androidAppHardening/issues/5`; merge commit `1fe9ea9ca7ac989e2e071ccb00ae2a0c0010c463`; initial post-merge Governance run `30732622423`
+- sha256: not_applicable
+- result: MERGED; PR final head passed all six checks before merge; initial main Governance failure was limited to the stale HandOff source branch and is reconciled by this coordinator-only update
 
 ### M0-04 completed dependency
 
@@ -271,19 +290,19 @@ next_owner: /root
 
 ## Blockers and Required Approvals
 
-- 独立复核发布门禁已关闭：协调提交 `05c4b0641cbab7819da59189bb363039f4276fe8` 的结论为 PASS，P0/P1/P2 全为零；草稿 PR #32 首轮六项 CI 全部 PASS。
-- PR #32 转 ready 与合并均未授权；必须先让本 merger-ready HandOff 所在最终 HEAD 的 PR CI 全部 PASS，再向用户请求明确授权。
+None
 
 ## Ordered Next Actions
 
-1. `/root` pushes this merger-ready HandOff and waits for all required PR checks on the final head.
-2. After final-head CI PASS, request explicit authorization before converting PR #32 to ready or merging; do not merge without it.
-3. Keep M1/M2 blocked until M0-05 is merged and strict HandOff passes on `main`.
+1. `/root` pushes this post-merge HandOff and verifies Build plus Governance on `main`.
+2. Leave M1-01 planned and unassigned; start it only after a new explicit user request and the normal task-claim workflow.
+3. Do not start M2 or any adjacent task implicitly.
 
 ## Relevant Files and Artifacts
 
 - `HandOff.md`
 - `docs/tasks/M0-05-application-factory-provider-jni-poc.md`
+- `docs/tasks/M1-01-untrusted-apk-inspector.md`
 - `docs/adr/0003-api29-public-classloader-hook.md`
 - `docs/adr/0006-offline-key-protection-boundary.md`
 - `docs/adr/0007-source-dir-startup-configuration.md`
@@ -314,12 +333,14 @@ next_owner: /root
 - [x] 第四次独立复核 FAIL 已归档；其唯一 P2 是已完成的文档提交仍被列为未来动作，技术与设备证据闭环再次确认。
 - [x] 第五次独立 reviewer 已对协调提交 `05c4b0641cbab7819da59189bb363039f4276fe8`、冻结设备证据和远端 KVM SHA 给出 PASS，P0/P1/P2 全为零。
 - [x] 完整分支已发布，唯一草稿 PR #32 已创建，发布 HEAD `6f9a072` 的首轮六项 PR CI 全部 PASS。
-- [ ] 推送本 merger-ready HandOff 并确认最终 HEAD 的 PR CI 全部 PASS。
-- [ ] M0-05 完成前不启动 M1/M2。
+- [x] merger-ready HandOff 所在最终 PR HEAD `fbcb2d1` 的六项 CI 全部 PASS。
+- [x] PR #32 已转 ready 并以 merge commit `1fe9ea9` 合并，Issue #5 已关闭。
+- [ ] 推送本 post-merge HandOff 并确认 `main` 的 Build/Governance 全部 PASS。
+- [x] M0-05 完成前未启动 M1/M2；M1-01 当前保持 planned/unassigned。
 
 ## Handoff Sign-off
 
 - Coordinator `/root` 已核验首轮独立复核 FAIL、六项修复 diff、本地 Gradle/check/governance、双变体 Release/R8 和静态 APK 验证结果。
-- 当前快照声明三套 review-3 设备环境验收 PASS，第五次独立复核 P0/P1/P2 全为零，草稿 PR #32 首轮六项 CI 全部 PASS；本提交是 merger-ready HandOff，仍需最终 HEAD 的 PR CI 通过和用户明确 ready/merge 授权。旧证据仅保留为历史回归基线。
+- 当前快照声明三套 review-3 设备环境验收 PASS、第五次独立复核 P0/P1/P2 全为零、最终 PR HEAD 六项 CI 全部 PASS，且 PR #32 已合并；M0-05 标记 done。旧证据仅保留为历史回归基线。
 - `/root` 已核验真机为 API 29 arm64 64-bit、user/release-keys、非 root 环境，设备 runner cleanup PASS；本轮未启动任何本机模拟器。
-- GitHub KVM workflow 继续具有 35 分钟 job 上限、180 秒 boot 上限、900 秒 device-runner 上限和 EXIT/INT/TERM 强制清理；草稿 PR #32 保持不转 ready、不合并。
+- GitHub KVM workflow 继续具有 35 分钟 job 上限、180 秒 boot 上限、900 秒 device-runner 上限和 EXIT/INT/TERM 强制清理；本轮未启动本机模拟器，M1/M2 未启动。

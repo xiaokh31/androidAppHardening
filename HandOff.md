@@ -106,8 +106,8 @@ next_owner: /root
 - environment: GitHub Linux/KVM API 29 r8 and API 36 r2 x86_64 with Emulator 37.1.11; physical Android API 29 arm64-v8a user/release-keys, adb shell uid 2000 non-root; no local emulator
 - timestamp: 2026-08-02T11:50:38+08:00
 - artifact: `docs/evidence/M0-05/formal-compatibility.md`; `https://github.com/xiaokh31/androidAppHardening/actions/runs/30729952586`; ignored `build/m0-05/review3-device-arm64-api29/` and `build/m0-05/github-run-30729952586/`
-- sha256: arm64 report `a44c64bbb0f9d8c17c0e1fab4b11e5ec0a31b060fda81ff99a330954ab9a312b`; API 29 KVM report `57b0b6b53eafbc9f2ce1f2496201918d25cb7ac0989e40c908463cf8c592ce6f`; API 36 KVM report `9e7de9b2bc33fd27cc632d64f8b84a4301fa5a9e9e1bf1dec0c82d8e063721b8`
-- result: PASS_DEVICE_EVIDENCE; all six device variants passed lifecycle, cross-DEX, JNI, signer/config/metadata, authenticated duplicate-ABI rejection, independent 18/18 startup negatives, 20 cold starts, memory, zero plaintext DEX and cleanup; verifier peak memory was `51,900 / 71,348 / 73,516 KB`; the cross-variant M0-04 baseline delta is correctly scoped as `1,668` bytes and is not attributed solely to the verifier; third independent review remains pending
+- sha256: not_applicable
+- result: PASS_DEVICE_EVIDENCE; all six device variants passed lifecycle, cross-DEX, JNI, signer/config/metadata, authenticated duplicate-ABI rejection, independent 18/18 startup negatives, 20 cold starts, memory, zero plaintext DEX and cleanup; report SHA-256 values are arm64 `a44c64bbb0f9d8c17c0e1fab4b11e5ec0a31b060fda81ff99a330954ab9a312b`, API 29 KVM `57b0b6b53eafbc9f2ce1f2496201918d25cb7ac0989e40c908463cf8c592ce6f`, and API 36 KVM `9e7de9b2bc33fd27cc632d64f8b84a4301fa5a9e9e1bf1dec0c82d8e063721b8`; verifier peak memory was `51,900 / 71,348 / 73,516 KB`; the cross-variant M0-04 baseline delta is correctly scoped as `1,668` bytes and is not attributed solely to the verifier; third independent review remains pending
 
 ### M0-04 completed dependency
 

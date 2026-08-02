@@ -5,10 +5,10 @@
 - Task: M1-02, Issue [#7](https://github.com/xiaokh31/androidAppHardening/issues/7).
 - Branch: `feat/m1-02-signer-policy`.
 - Base: `aebbc441da34d2fba78648415c1d80ea844d774d`.
-- Frozen implementation: `146aac3795a1f92adefbab376939129e55975c65`.
+- Frozen remediation implementation: `5016cd39426b2d50d1fbedfafee2f24c567e0546`.
 - Product boundary: read-only input verification and public certificate identity only. Product code has no output signing, private-key, keystore, alias, password, HSM or remote-signing entry point.
 
-The implementation uses the pinned `com.android.tools.build:apksig:9.3.0` verifier with minimum checked platform 29. It requires exactly one current signer, hashes the current X.509 DER certificate with SHA-256, records an authenticated oldest-to-newest lineage, and binds verification to the M1-01 inspection digest and the same open file handle. It does not encode `SPV1`; it only enforces the ADR 0004 model constraints needed by M1-04.
+The implementation uses the pinned `com.android.tools.build:apksig:9.3.0` verifier with minimum checked platform 29. It requires exactly one current signer, hashes the current X.509 DER certificate with SHA-256, records an authenticated oldest-to-newest lineage, and binds verification to the M1-01 inspection digest and the same open file handle. A bounded envelope check and a 32 MiB contiguous-read limit prevent apksig from materializing an attacker-sized Signing Block. Public failures retain only stable codes and safe file names, never raw causes. It does not encode `SPV1`; it only enforces the ADR 0004 model constraints needed by M1-04.
 
 ## Environment
 
@@ -28,19 +28,19 @@ All APKs, DER certificates, PKCS#8 keys and lineage files are deterministic synt
 
 | Command | Exit | Result |
 |---|---:|---|
-| project-local Gradle `:host:apk-inspector:clean :host:apk-inspector:signerPolicyTest` with offline verified dependencies | 0 | clean generation and signer matrix PASS in 100 seconds |
+| project-local Gradle `:host:apk-inspector:clean :host:apk-inspector:signerPolicyTest` with offline verified dependencies | 0 | remediation clean generation and signer matrix PASS in 102 seconds |
 | project-local Gradle `clean check verifyGovernance` with offline verified dependencies | 0 | 256 actionable tasks; M1-01 10,000-sample regression and M1-02 signer matrix PASS |
 | `node tools/governance/validate-project-package.mjs` | 0 | 26 task cards, 11 core docs and 7 ADRs PASS |
 | `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict` | 0 | strict HandOff PASS |
 | `git diff --check` and strict UTF-8 replacement-character scan of all M1-02 files | 0 | PASS |
 
-The formal root validation ran from `2026-08-02T08:05:47.7488843Z` through `2026-08-02T08:08:29.6641619Z` and completed in 2 minutes 41 seconds. No emulator or physical device was started.
+The remediation root validation ran from `2026-08-02T08:37:23.5456547Z` through `2026-08-02T08:40:07.2419047Z` and completed in 2 minutes 43 seconds. No emulator or physical device was started.
 
 The optional local `node tools/validation/test-dependency-verification.mjs` invocation exited 1 before reaching the tampered-checksum assertion because its deliberate `--refresh-dependencies` copy could not resolve AGP through the restricted local network. The committed checksum remains present, the offline verified root build passed, and the unchanged fail-closed script remains a required Ubuntu CI step after publication.
 
 ## Positive and negative matrix
 
-Positive fixtures cover v1, v2, v3, combined v1/v2/v3, a v4-generated APK with its ignored `.idsig`, and a valid two-certificate rotation lineage. Standalone APK verification deliberately does not consume `.idsig`; v4 is therefore not claimed as an independently verified scheme.
+Positive fixtures cover v1, v2, v3, combined v1/v2/v3, a v4-generated APK with its ignored `.idsig`, and a valid two-certificate rotation lineage. Every fixture is independently run through pinned `apksigner --print-certs`; the rotation output is checked as current then historical signer records. Standalone product verification deliberately does not consume `.idsig`; v4 is therefore not claimed as an independently verified scheme.
 
 The official `apksigner verify --min-sdk-version 29 --print-certs` digest and the verifier's DER digest are both:
 
@@ -58,12 +58,16 @@ d183c6e5aa4fc22150451b37879c6bb8aa2fdc392b1dcf2fd45414fad9908a16
 | Fixture | Stable result |
 |---|---|
 | unsigned | `SIGNER_UNSIGNED` |
+| unsigned with magic-only ZIP padding | `SIGNER_UNSIGNED` |
 | signed-content tamper | `SIGNER_INVALID` |
 | malformed signing-block trailer | `SIGNER_INVALID` |
+| structurally complete Signing Block above 32 MiB | `SIGNER_INVALID` before apksig materialization |
+| declared oversized block with a truncated body | `SIGNER_INVALID` |
 | multiple current signers | `SIGNER_MULTIPLE_CURRENT` |
 | invalid proof-of-rotation signature | `SIGNER_LINEAGE_INVALID` |
 | inspection digest mismatch | `SIGNER_INPUT_CHANGED` |
 | bytes changed after the initial snapshot | `SIGNER_INPUT_CHANGED` |
+| missing input with a sensitive parent path | `SIGNER_INTERNAL`; no cause or rendered path leakage |
 
 The invalid-lineage fixture changes the proof record itself. Android's official `SigningCertificateLineage.readFromApkDataSource` rejects that record with a security failure; the implementation does not implement or substitute a signature algorithm.
 
@@ -74,11 +78,12 @@ Model tests cover the unrotated and rotated cases, empty lineage, more than 16 e
 | Artifact | SHA-256 |
 |---|---|
 | `canonical-policy.json` | `b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2` |
-| `error-matrix.json` | `ecd2193e7ec38418715cc7ee57023d0aa9ba9923d4001fa8d6d1da71cbea3762` |
-| `artifact-manifest.json` | `187c200809051300e028bfc5270f43fc264c1e62baa414890fa501893d0b4488` |
+| `error-matrix.json` | `dce3c1a17647a96e93da291033e28c169ad0f5daee5d7544c6555392d66fc7eb` |
+| `official-cross-check.json` | `c63d706f08763819e30c1e682fff87448a999a3ce53a27c7253e35ef9f82e2ba` |
+| `artifact-manifest.json` | `fddc19d2a1ed3068c8ac5cdf8bc44299df0279a927a62da0af33be7cc1a0eab8` |
 | `capability-scan.txt` | `97c89653b10a7e7b2fd97b53e7ae2ccc53994d623de2fc7c56852d982adbfcfa` |
 
-The artifact manifest fixes hashes for the unsigned, v1, v2, v3, combined, v4, rotated and multi-signer APKs, three DER certificates, the lineage and both canonical reports. Its `generated_at` is deliberately fixed to the Unix epoch.
+The artifact manifest fixes hashes for every positive and negative APK, the v4 `.idsig`, three DER certificates, the lineage, capability scan, official cross-check and both canonical reports. Each error-matrix row records the product error and whether official verification accepts the underlying APK. Its `generated_at` is deliberately fixed to the Unix epoch.
 
 The production source and bytecode capability scan passed across nine source files. It rejects references to the apksig signer CLI, `PrivateKey`, `KeyStore`, key/store passwords, signing executors and process execution.
 
@@ -86,4 +91,4 @@ The production source and bytecode capability scan passed across nine source fil
 
 `.github/workflows/build.yml` now requires Ubuntu 24.04 and Windows 2025 to regenerate both canonical M1-02 reports and match the exact hashes above after a clean root check. Windows is proven locally. Ubuntu byte equivalence remains pending publication and cannot be claimed before the branch runs in GitHub Actions.
 
-Independent reviewer `m1_02_security_review` must review the frozen implementation and this evidence. P0, P1 and P2 must all be closed before publication is requested. The branch is not published, no M1-02 PR exists, and M1-03/M1-04/M2-03 remain unstarted.
+The first independent review of evidence HEAD `21bfd6db333767c9182c1310e6cd838a8fae49a1` returned FAIL with P0 `0`, P1 `1`, P2 `3`; it is archived in `security-review-1.md` and that target is invalid. Remediation commit `5016cd39426b2d50d1fbedfafee2f24c567e0546` closes the reported unbounded materialization, cause leakage, magic-only classification and evidence gaps. A new independent review must still return P0/P1/P2 all zero before publication is requested. The branch is not published, no M1-02 PR exists, and M1-03/M1-04/M2-03 remain unstarted.

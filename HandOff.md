@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260802-153213
-updated_at: 2026-08-02T16:11:36+08:00
+updated_at: 2026-08-02T16:40:49+08:00
 updated_by: /root
 state: active
 source_branch: feat/m1-02-signer-policy
@@ -40,7 +40,7 @@ next_owner: /root
 - 用户已明确授权把 PR #32 转为 ready 并合并；PR #32 已于 `2026-08-02T12:34:55+08:00` 以 merge commit `1fe9ea9ca7ac989e2e071ccb00ae2a0c0010c463` 合并到 `main`，Issue #5 已关闭。
 - 合并后的首次 Governance run `30732622423` 只因 HandOff 仍声明旧 source branch 而失败；coordinator-only 提交 `d682c85125e11084cf023b5f523d715e28c74e75` 已完成状态协调，随后 Governance run `30732725929` 与 Build run `30732725931` 在 Ubuntu/Windows 全部 PASS。
 - 用户已明确领取 M1-01；固定 Issue 为 #6，固定分支为 `feat/m1-01-untrusted-apk-inspector`，从已通过合并后 CI 与 strict HandOff 的 `main@e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030` 启动。
-- `/root` 当前仅负责 M1-01。实现顺序固定为公开模型与稳定错误码、恶意输入测试、检查器实现、冻结证据、独立只读安全复核；复核通过前不推送、不创建 PR，也不启动 M1-02/M1-03/M2。
+- M1-01 启动时 `/root` 仅负责该任务；该历史范围已由 PR #33 合并关闭，当前唯一活动任务为 M1-02。
 - 首次独立复核尝试被平台中断，未形成有效 PASS/FAIL；其终止前指出 DEX MUTF-8 声明长度可被直接用于 `StringBuilder` 容量。旧冻结目标 `4f55222fd00408f7f67b3b58a93733e9a77c23e2` 因此作废，不得作为完成证据。
 - 修正候选 `d3dbfaa8ce4317d8b394f22478ddbb185fd480cb` 改为固定 128 字符 marker 前缀的流式 descriptor 校验，增加 DEX 表顺序唯一性、拒绝非规范 `.dex` 路径，并收紧 AXML resource map、namespace 与 string-pool 验证；35 个负例、10,000 样本 fuzz 和全仓库 check 均 PASS。
 - 第二次完整独立只读复核对冻结提交 `02e6334e916581f3d49c89ec512f6e9a9ec4a245` 给出 FAIL：P0 `0`、P1 `4`、P2 `3`。旧冻结提交立即失效；结论归档于 `docs/evidence/M1-01/security-review-2.md`。
@@ -57,8 +57,9 @@ next_owner: /root
 - M1-01 的 post-merge `main@aebbc441da34d2fba78648415c1d80ea844d774d` 已在 Ubuntu/Windows Build 与 Governance 全部 PASS；两平台字节一致性步骤和 `main` strict HandOff 均通过。
 - 用户已明确启动 M1-02。固定 Issue 为 #7，固定分支为 `feat/m1-02-signer-policy`，base 为 `aebbc441da34d2fba78648415c1d80ea844d774d`；远端不存在同名分支或既有 M1-02 PR。
 - `apksig 9.3.0` 已由 version catalog 和 dependency verification 固定；ADR 0002 与 ADR 0004 已覆盖 signer/未签名输出和 `SPV1` 模型合同，无需新增 ADR。独立复核者预定为 `m1_02_security_review`，只在实现与证据提交冻结后启动。
-- M1-02 实现已冻结为 `146aac3795a1f92adefbab376939129e55975c65`：固定 API 29 官方验证、唯一当前 signer、DER SHA-256、官方 proof-of-rotation、稳定错误码、同句柄输入绑定、不可变模型和无签名能力扫描均已实现。
-- Windows clean signer matrix 与 256-task 根 `check verifyGovernance` 已 PASS；规范 policy 和错误矩阵 SHA-256 分别为 `b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2` 与 `ecd2193e7ec38418715cc7ee57023d0aa9ba9923d4001fa8d6d1da71cbea3762`。Ubuntu 字节一致性必须在独立复核 PASS、用户授权发布后由 GitHub CI 验证。
+- 首次独立 `m1_02_security_review` 对证据 HEAD `21bfd6db333767c9182c1310e6cd838a8fae49a1` 给出 FAIL：P0 `0`、P1 `1`、P2 `3`。发现无界 Signing Block materialization、公开 cause 路径泄露、magic-only unsigned 误分类和官方 cross-check/manifest 缺口；旧冻结目标立即失效并归档于 `docs/evidence/M1-02/security-review-1.md`。
+- 修复候选 `5016cd39426b2d50d1fbedfafee2f24c567e0546` 关闭四项发现：32 MiB block/连续读取上限、公开异常无 cause、完整 block envelope 分类、六个正向官方交叉验证、每个负例官方状态和完整 artifact manifest。
+- 修复后的 Windows clean signer matrix 与 256-task 根 `clean check verifyGovernance` 已 PASS；规范 policy 和错误矩阵 SHA-256 分别为 `b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2` 与 `dce3c1a17647a96e93da291033e28c169ad0f5daee5d7544c6555392d66fc7eb`。Ubuntu 字节一致性仍须在新独立复核 PASS、用户授权发布后由 GitHub CI 验证。
 
 ## Active Workstreams
 
@@ -68,7 +69,7 @@ next_owner: /root
 | M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | done | M0-04 | PR #31、合并后 strict HandOff 和双平台 CI 已通过 |
 | M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | done | M0-04, M0-06 | PR #32、三环境矩阵、独立安全复核和最终 PR CI 已通过 |
 | M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | done | M0-05 | PR #33、Issue #6、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
-| M1-02 | `/root` | `feat/m1-02-signer-policy` | in_progress | M1-01 | 提交正式证据并启动独立 `m1_02_security_review`；PASS 前不发布 |
+| M1-02 | `/root` | `feat/m1-02-signer-policy` | in_progress | M1-01 | 冻结修复证据并启动第二次独立复核；PASS 前不发布 |
 
 ## Decisions and Invariants
 
@@ -109,6 +110,9 @@ next_owner: /root
 - `146aac3795a1f92adefbab376939129e55975c65` 新增 `SignerPolicyVerifier`、不可变 `SignerPolicyV1`、官方 lineage 解析、同句柄输入变更检测、v1/v2/v3/v4/rotation/multi-signer 合成矩阵、官方 `apksigner` digest 交叉验证和生产能力扫描。
 - Windows clean M1-02 矩阵与根 `clean check verifyGovernance` 均退出 `0`；根回归共 256 actionable tasks，M1-01 10,000 样本保持 PASS。本轮未启动模拟器或真机。
 - `.github/workflows/build.yml` 已增加 Ubuntu/Windows 规范 policy 与错误矩阵固定哈希门禁；分支尚未发布，故 Ubuntu 等价性未声明。
+- 首次独立复核否决 `21bfd6db333767c9182c1310e6cd838a8fae49a1`，结论为 P0 `0`、P1 `1`、P2 `3`；完整 finding、攻击路径和独立命令已归档于 `docs/evidence/M1-02/security-review-1.md`。
+- `5016cd39426b2d50d1fbedfafee2f24c567e0546` 对 Signing Block envelope 和 materialization 设置 32 MiB 上限，断开公开异常 cause，修正 magic-only unsigned，并补齐六个正向/十一行错误矩阵的官方验证和全部 artifact 哈希。
+- 修复候选的 clean signer task 在 102 秒内 PASS；根 `clean check verifyGovernance` 在 2 分 43 秒内 PASS，共 256 actionable tasks。新 error matrix SHA-256 为 `dce3c1a17647a96e93da291033e28c169ad0f5daee5d7544c6555392d66fc7eb`，official cross-check 为 `c63d706f08763819e30c1e682fff87448a999a3ce53a27c7253e35ef9f82e2ba`，artifact manifest 为 `fddc19d2a1ed3068c8ac5cdf8bc44299df0279a927a62da0af33be7cc1a0eab8`。
 
 - PR #31 已合并，旧 metadata blocker 的架构依赖已解除，M0-05 从 `blocked` 恢复为 `in_progress`。
 - 既有 M0-05 分支保留四个本地历史提交和 Issue #5，不创建第二分支或第二任务。
@@ -165,6 +169,30 @@ next_owner: /root
 - artifact: `docs/evidence/M1-02/formal-host-validation.md`; ignored `host/apk-inspector/build/reports/m1-02/`; canonical policy SHA-256 `b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2`; error matrix SHA-256 `ecd2193e7ec38418715cc7ee57023d0aa9ba9923d4001fa8d6d1da71cbea3762`; artifact manifest SHA-256 `187c200809051300e028bfc5270f43fc264c1e62baa414890fa501893d0b4488`; capability scan SHA-256 `97c89653b10a7e7b2fd97b53e7ae2ccc53994d623de2fc7c56852d982adbfcfa`
 - sha256: not_applicable
 - result: PASS_WINDOWS_REVIEW_CANDIDATE; official signer digest, valid schemes and rotation, unsigned/tampered/malformed/multi-signer/invalid-lineage/input-change failures, SPV1 model constraints, production capability scan, full root regression and governance passed; independent review and published Ubuntu/Windows equivalence remain pending
+
+### M1-02 first independent security review
+
+- task_id: M1-02
+- git_commit: 21bfd6db333767c9182c1310e6cd838a8fae49a1
+- command: independent offline read-only code and apksig bytecode review; clean signer matrix; root `clean check verifyGovernance`; six-fixture `apksigner` verification; exception and magic-only probes; Governance; strict HandOff; diff and UTF-8 scans
+- exit_code: 1
+- environment: Windows 10 x64 10.0.19045; Temurin 17.0.19+10; Gradle 9.5.0; apksig 9.3.0; Build Tools 36.1.0; no network, device or emulator
+- timestamp: 2026-08-02T16:29:00+08:00
+- artifact: `docs/evidence/M1-02/security-review-1.md`
+- sha256: not_applicable
+- result: FAIL; P0 `0`, P1 `1`, P2 `3`; unbounded Signing Block materialization, raw cause path disclosure, magic-only unsigned misclassification and incomplete official/artifact evidence invalidate the target
+
+### M1-02 review-1 remediation candidate
+
+- task_id: M1-02
+- git_commit: 5016cd39426b2d50d1fbedfafee2f24c567e0546
+- command: project-local offline Gradle `:host:apk-inspector:clean :host:apk-inspector:signerPolicyTest`; project-local offline Gradle `clean check verifyGovernance`; diff and strict UTF-8 scans
+- exit_code: 0
+- environment: Windows 10 x64 10.0.19045; Temurin 17.0.19+10; Gradle 9.5.0; Kotlin plugin 2.4.10; apksig 9.3.0; Build Tools 36.1.0; no network, device or emulator
+- timestamp: 2026-08-02T16:40:07+08:00
+- artifact: `docs/evidence/M1-02/formal-host-validation.md`; ignored `host/apk-inspector/build/reports/m1-02/`; canonical policy SHA-256 `b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2`; error matrix SHA-256 `dce3c1a17647a96e93da291033e28c169ad0f5daee5d7544c6555392d66fc7eb`; official cross-check SHA-256 `c63d706f08763819e30c1e682fff87448a999a3ce53a27c7253e35ef9f82e2ba`; artifact manifest SHA-256 `fddc19d2a1ed3068c8ac5cdf8bc44299df0279a927a62da0af33be7cc1a0eab8`
+- sha256: not_applicable
+- result: PASS_WINDOWS_SECOND_REVIEW_CANDIDATE; all four review-1 findings have implementation and deterministic regression closure, 256-task root regression passes, and the exact target now requires a new independent review
 
 ### M1-01 third-review remediation candidate
 
@@ -432,13 +460,13 @@ next_owner: /root
 
 ## Blockers and Required Approvals
 
-No technical blocker. Independent M1-02 review is mandatory before publication; pushing the branch and creating any PR require explicit user authorization after review PASS.
+No technical blocker. A second independent M1-02 review of the remediation evidence is mandatory before publication; pushing the branch and creating any PR require explicit user authorization after review PASS.
 
 ## Ordered Next Actions
 
-1. Commit this formal M1-02 evidence and coordinating HandOff, then freeze that exact review target.
-2. Start independent `m1_02_security_review` against the frozen target and require P0/P1/P2 all closed.
-3. If review fails, remediate only M1-02 findings, rerun the formal Windows gates, refreeze and request a new independent review.
+1. Commit the updated formal evidence and coordinating HandOff on top of remediation `5016cd39426b2d50d1fbedfafee2f24c567e0546`, then freeze that exact second-review target.
+2. Start a new independent M1-02 security review against the frozen target and require P0/P1/P2 all closed.
+3. If the second review fails, remediate only its M1-02 findings, rerun the formal Windows gates, refreeze and request another independent review.
 4. If review passes, request explicit user authorization before pushing the fixed branch or creating the sole Issue #7 PR.
 5. After authorized publication, require Ubuntu/Windows Build, Governance and M1-02 byte-equivalence gates before any ready/merge request.
 6. Do not start M1-03, M1-04, M2-03 or any adjacent task implicitly.
@@ -462,6 +490,7 @@ No technical blocker. Independent M1-02 review is mandatory before publication; 
 - `docs/evidence/M1-01/security-review-4.md`
 - `docs/evidence/M1-02/implementation-plan.md`
 - `docs/evidence/M1-02/formal-host-validation.md`
+- `docs/evidence/M1-02/security-review-1.md`
 - `runtime/bootstrap/src/main/java/ah/runtime/bootstrap/ShellAppComponentFactory.java`
 - `fixtures/android/src/androidTestCompatFixture/java/ah/fixtures/android/CompatibilityPocRunner.java`
 - `tools/validation/verify-m0-05-apks.mjs`
@@ -500,7 +529,8 @@ No technical blocker. Independent M1-02 review is mandatory before publication; 
 - [x] 用户明确启动 M1-02；Issue #7、固定分支、base、既有 PR/远端分支缺失状态和 `apksig 9.3.0` 来源锁均已核验。
 - [x] ADR 0002/0004 与实现计划已固定 signer policy、无签名能力和 `SPV1` 模型边界；独立复核者预定为 `m1_02_security_review`。
 - [x] 完成 M1-02 实现、完整负向矩阵、官方工具交叉验证、Windows 根回归和正式证据候选。
-- [ ] 冻结正式证据提交并完成独立 `m1_02_security_review`；PASS 前不发布。
+- [x] 首次独立 `m1_02_security_review` FAIL 已归档，P1/P2 四项修复候选 `5016cd3` 已通过 clean signer 与 256-task 根回归。
+- [ ] 冻结修复后的正式证据提交并完成第二次独立复核；PASS 前不发布。
 - [ ] 获得用户发布授权后完成唯一 Issue #7 PR 的 Ubuntu/Windows 字节一致性与治理 CI。
 
 ## Handoff Sign-off
@@ -510,6 +540,6 @@ No technical blocker. Independent M1-02 review is mandatory before publication; 
 - `/root` 已核验真机为 API 29 arm64 64-bit、user/release-keys、非 root 环境，设备 runner cleanup PASS；本轮未启动任何本机模拟器。
 - GitHub KVM workflow 的既有超时与强制清理合同保持不变；M1-01 是纯 Host 任务，本轮不启动本机模拟器或真机，也不启动 M1-02/M1-03/M2。
 - `/root` 已核验 PR #33 的首轮、证据 HEAD 与 merger-ready HEAD 的 Build/Governance 四个 job 和两个字节一致性步骤均 PASS；独立复核 P0/P1/P2 全为零。
-- `/root` 已核验 PR #33 使用普通 merge commit `74c5f6252ea9b89154c285764d5f9601a0347358` 合并、Issue #6 关闭，并在本地 `main` 无豁免通过 strict HandOff；M1-01 标记 done，当前无活动任务。
+- `/root` 已核验 PR #33 使用普通 merge commit `74c5f6252ea9b89154c285764d5f9601a0347358` 合并、Issue #6 关闭，并在本地 `main` 无豁免通过 strict HandOff；M1-01 标记 done，当前活动任务已转为 M1-02。
 - `/root` 已领取 M1-02 并核验其唯一 Issue、分支、依赖、固定官方 `apksig` 与既有 ADR；当前活动范围仅为 Host signer policy，M1-03/M1-04/M2-03 未启动。
-- `/root` 已核验冻结实现 `146aac3795a1f92adefbab376939129e55975c65` 的 clean signer matrix、256-task 根回归、Governance、官方 digest、lineage/error/SPV1 矩阵和无签名能力扫描均 PASS；当前只待证据提交与独立复核，分支仍未发布。
+- `/root` 已核验首个证据 HEAD `21bfd6db333767c9182c1310e6cd838a8fae49a1` 的独立复核 FAIL 并废止该目标；修复候选 `5016cd39426b2d50d1fbedfafee2f24c567e0546` 的 clean signer、256-task 根回归、Governance、官方六 fixture/十一行错误矩阵、block 资源上界、异常脱敏、SPV1 和无签名能力扫描均 PASS。当前只待新证据提交与第二次独立复核，分支仍未发布。

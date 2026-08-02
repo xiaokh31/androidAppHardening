@@ -85,7 +85,7 @@ jobs:
           policy="host/apk-inspector/build/reports/m1-02/canonical-policy.json"
           errors="host/apk-inspector/build/reports/m1-02/error-matrix.json"
           test "$(sha256sum "$policy" | awk '{print $1}')" = "b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2"
-          test "$(sha256sum "$errors" | awk '{print $1}')" = "dce3c1a17647a96e93da291033e28c169ad0f5daee5d7544c6555392d66fc7eb"
+          test "$(sha256sum "$errors" | awk '{print $1}')" = "c33d342077c371878399c80e76ae025cd0efc56bfcca6d5bf80ffde4d75677c6"
           sha256sum "$policy" "$errors"
 
       - name: Test dependency verification failure
@@ -176,6 +176,6 @@ jobs:
           $policyHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $policy).Hash.ToLowerInvariant()
           $errorHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $errors).Hash.ToLowerInvariant()
           if ($policyHash -ne "b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2") { exit 1 }
-          if ($errorHash -ne "dce3c1a17647a96e93da291033e28c169ad0f5daee5d7544c6555392d66fc7eb") { exit 1 }
+          if ($errorHash -ne "c33d342077c371878399c80e76ae025cd0efc56bfcca6d5bf80ffde4d75677c6") { exit 1 }
           Write-Output "$policyHash  $policy"
           Write-Output "$errorHash  $errors"

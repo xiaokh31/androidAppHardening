@@ -132,6 +132,15 @@ object SignerPolicySelfTest {
                 signingBlockFooter(SignerPolicyVerifier.MAX_APKSIG_SIGNING_BLOCK_BYTES + 1),
             ),
         )
+        val highBitSigningBlock = fixtureDir.resolve("high-bit-signing-block.apk")
+        highBitSigningBlock.writeBytes(
+            insertBeforeCentralDirectory(unsigned.readBytes(), signingBlockFooter(Long.MIN_VALUE)),
+        )
+        val allBitsSigningBlock = fixtureDir.resolve("all-bits-signing-block.apk")
+        allBitsSigningBlock.writeBytes(
+            insertBeforeCentralDirectory(unsigned.readBytes(), signingBlockFooter(-1L)),
+        )
+        val changedDuringVerification = fixtureDir.resolve("changed-during-verification.apk")
         val missing = fixtureDir.resolve("reviewer-secret-parent/secret.apk")
 
         val errorMatrix = linkedMapOf(
@@ -153,6 +162,14 @@ object SignerPolicySelfTest {
                 expectError(truncatedHugeSigningBlock, SignerErrorCode.SIGNER_INVALID),
                 tools.isVerified(truncatedHugeSigningBlock),
             ),
+            "high_bit_signing_block" to ErrorResult(
+                expectError(highBitSigningBlock, SignerErrorCode.SIGNER_INVALID),
+                tools.isVerified(highBitSigningBlock),
+            ),
+            "all_bits_signing_block" to ErrorResult(
+                expectError(allBitsSigningBlock, SignerErrorCode.SIGNER_INVALID),
+                tools.isVerified(allBitsSigningBlock),
+            ),
             "multiple_current" to ErrorResult(
                 expectError(multiple, SignerErrorCode.SIGNER_MULTIPLE_CURRENT),
                 tools.isVerified(multiple),
@@ -166,8 +183,8 @@ object SignerPolicySelfTest {
                 tools.isVerified(v2),
             ),
             "input_changed" to ErrorResult(
-                expectConcurrentInputChange(v2, fixtureDir.resolve("changed-during-verification.apk")),
-                tools.isVerified(v2),
+                expectConcurrentInputChange(v2, changedDuringVerification),
+                tools.isVerified(changedDuringVerification),
             ),
             "internal_failure" to ErrorResult(
                 expectSanitizedInternalFailure(missing, v2),
@@ -185,7 +202,6 @@ object SignerPolicySelfTest {
         check(errorMatrix.filterValues(ErrorResult::officialVerified).keys == setOf(
             "multiple_current",
             "inspection_mismatch",
-            "input_changed",
         ))
         scanProductionCapabilities(reportDir)
 
@@ -213,7 +229,9 @@ object SignerPolicySelfTest {
                     magicOnlyUnsigned,
                     oversizedSigningBlock,
                     truncatedHugeSigningBlock,
-                    fixtureDir.resolve("changed-during-verification.apk"),
+                    highBitSigningBlock,
+                    allBitsSigningBlock,
+                    changedDuringVerification,
                     oldIdentity.certificate,
                     currentIdentity.certificate,
                     otherIdentity.certificate,

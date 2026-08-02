@@ -266,6 +266,7 @@ class SignerPolicyVerifier internal constructor(
                         return SigningBlockState.ABSENT
                     }
                     val declaredSize = leI8(footer, 0)
+                    if (declaredSize < 0) return SigningBlockState.MALFORMED
                     if (declaredSize < APK_SIGNING_BLOCK_MIN_SIZE_FIELD) return SigningBlockState.ABSENT
                     val totalSize = declaredSize + Long.SIZE_BYTES
                     if (totalSize <= 0 || totalSize > centralOffset) return SigningBlockState.MALFORMED

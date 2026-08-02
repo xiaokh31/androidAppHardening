@@ -1,23 +1,23 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260802-124227
-updated_at: 2026-08-02T12:42:27+08:00
+handoff_id: HO-20260802-125158
+updated_at: 2026-08-02T12:51:58+08:00
 updated_by: /root
-state: ready
-source_branch: main
-base_commit: d682c85125e11084cf023b5f523d715e28c74e75
+state: active
+source_branch: feat/m1-01-untrusted-apk-inspector
+base_commit: e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030
 working_tree: clean
 current_milestone: M1
-active_task: NONE
-next_owner: unassigned
+active_task: M1-01
+next_owner: /root
 ---
 
 # Project HandOff
 
 ## Objective
 
-在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内推进离线 APK 加固工具。M0 的公开 ClassLoader、ConfigV2/sourceDir、原始 `AppComponentFactory`、Provider、跨 DEX 与 JNI 兼容性合同已经冻结并合并；下一入口是尚未领取的 M1-01 不可信 APK 检查器，本快照不启动 M1/M2 实现。
+在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内完成 M1-01 不可信 APK 检查器。当前只实现 Host 侧有界 ZIP、Binary AXML、DEX 与兼容性检查，不启动模拟器，不读取客户 APK，不实现 M1-02/M1-03 或任何 M2 Runtime 功能。
 
 ## Current State
 
@@ -39,7 +39,8 @@ next_owner: unassigned
 - M0-05 的 API 29 arm64 非 root 真机与 API 29/36 x86_64 Linux/KVM 双变体矩阵、第五次独立只读复核和 PR 最终 HEAD 六项 CI 全部 PASS；冻结证据为 `350d08ee5f3c83bf60dcbd4564866ffb5f819844`，复核结果为 P0 `0`、P1 `0`、P2 `0`。
 - 用户已明确授权把 PR #32 转为 ready 并合并；PR #32 已于 `2026-08-02T12:34:55+08:00` 以 merge commit `1fe9ea9ca7ac989e2e071ccb00ae2a0c0010c463` 合并到 `main`，Issue #5 已关闭。
 - 合并后的首次 Governance run `30732622423` 只因 HandOff 仍声明旧 source branch 而失败；coordinator-only 提交 `d682c85125e11084cf023b5f523d715e28c74e75` 已完成状态协调，随后 Governance run `30732725929` 与 Build run `30732725931` 在 Ubuntu/Windows 全部 PASS。
-- 当前没有活动开发任务；M1-01 仍为 planned/unassigned，未启动 M1/M2。
+- 用户已明确领取 M1-01；固定 Issue 为 #6，固定分支为 `feat/m1-01-untrusted-apk-inspector`，从已通过合并后 CI 与 strict HandOff 的 `main@e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030` 启动。
+- `/root` 当前仅负责 M1-01。实现顺序固定为公开模型与稳定错误码、恶意输入测试、检查器实现、冻结证据、独立只读安全复核；复核通过前不推送、不创建 PR，也不启动 M1-02/M1-03/M2。
 
 ## Active Workstreams
 
@@ -48,7 +49,7 @@ next_owner: unassigned
 | M0-04 | `runtime-security-agent` | `spike/m0-04-classloader-poc` | done | M0-03 | PR #29、正式设备矩阵和独立复核已通过 |
 | M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | done | M0-04 | PR #31、合并后 strict HandOff 和双平台 CI 已通过 |
 | M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | done | M0-04, M0-06 | PR #32、三环境矩阵、独立安全复核和最终 PR CI 已通过 |
-| M1-01 | `unassigned` | `feat/m1-01-untrusted-apk-inspector` | planned | M0-05 | 仅在用户明确领取后，从最新 `main` 启动不可信 APK 检查器 |
+| M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | in_progress | M0-05 | 冻结公开模型、限制、错误码和恶意 ZIP/AXML/DEX 测试合同 |
 
 ## Decisions and Invariants
 
@@ -62,8 +63,11 @@ next_owner: unassigned
 - 每个平台覆盖 extracted/direct 两种 Release/R8 变体，并验证 instrumentation、生命周期顺序、跨 DEX、JNI、早期 signer、ConfigV2、篡改失败、20 次冷启动、内存和无明文 DEX 落盘。
 - 冻结设备证据和提交后，由独立 `m0_05_security_review` 只读复核；P0/P1/P2 全部关闭前不完成任务。
 - x86/x86_64 结果不得冒充 ARM-only 应用兼容性；离线 Runtime 只提高提取成本，不作绝对防护声明。
+- M1-01 只使用仓库生成的合成 APK/AXML/DEX fixture；输入只读、不得解压到磁盘、不得执行输入代码、不得引入未经审计的第三方 parser。独立只读复核者预指定为 `m1_01_security_review`，仅在实现与证据提交冻结后启动。
 
 ## Changes Since Previous Handoff
+
+- 用户明确要求开始 M1-01；协调者从 `main@e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030` 创建唯一固定分支 `feat/m1-01-untrusted-apk-inspector`，领取 Issue #6，并保留 M1-02/M1-03/M2 未启动。
 
 - PR #31 已合并，旧 metadata blocker 的架构依赖已解除，M0-05 从 `blocked` 恢复为 `in_progress`。
 - 既有 M0-05 分支保留四个本地历史提交和 Issue #5，不创建第二分支或第二任务。
@@ -91,9 +95,9 @@ next_owner: unassigned
 - Complete branch published at `6f9a072a60072d6db83c7a0da8659bb7cd772666`; draft PR [#32](https://github.com/xiaokh31/androidAppHardening/pull/32) is the sole Issue #5 PR. PR runs `30732016374` (API 29/36 KVM), `30732016378` (Ubuntu/Windows Build), and `30732016377` (Ubuntu/Windows Governance) all passed.
 - Final PR head `fbcb2d1a89bc46126d987605fed0c44913c7e320` passed KVM run `30732302393`, Build run `30732302394`, and Governance run `30732302403` before merge.
 - User authorized ready/merge; PR #32 was merged as `1fe9ea9ca7ac989e2e071ccb00ae2a0c0010c463` and Issue #5 closed.
-- Post-merge Governance run `30732622423` reproduced one HandOff-only source-branch mismatch on Ubuntu and Windows; coordinator commit `d682c85125e11084cf023b5f523d715e28c74e75` changed the resume point to `main`, marked M0-05 done, and left M1-01 unassigned.
+- Post-merge Governance run `30732622423` reproduced one HandOff-only source-branch mismatch on Ubuntu and Windows; coordinator commit `d682c85125e11084cf023b5f523d715e28c74e75` changed the resume point to `main` and marked M0-05 done. The later `main@e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030` is the verified M1-01 base.
 - On `d682c85125e11084cf023b5f523d715e28c74e75`, Governance run `30732725929` and Build run `30732725931` passed on Ubuntu 24.04 and Windows 2025, including strict HandOff on `main` with no exemption.
-- Exact next action: leave the repository ready with no active task; start M1-01 only after the user explicitly assigns it through the normal task workflow.
+- Exact next action: define M1-01 immutable models, public limits and error taxonomy first; add synthetic malicious ZIP/AXML/DEX contract tests before implementing parser behavior.
 
 ## Verification Evidence
 
@@ -307,14 +311,18 @@ None
 
 ## Ordered Next Actions
 
-1. Leave M1-01 planned and unassigned; start it only after a new explicit user request and the normal task-claim workflow.
-2. Do not start M2 or any adjacent task implicitly.
+1. Freeze M1-01 immutable models, limits, error codes and deterministic compatibility markers.
+2. Add synthetic positive, boundary, malformed, tamper and seeded-fuzz tests without extracting APK contents.
+3. Implement bounded ZIP, Binary AXML and DEX inspection, then run module, root, governance and strict HandOff gates.
+4. Freeze the implementation/evidence commit and launch independent read-only `m1_01_security_review`; do not publish or create a PR before the review passes.
+5. Do not start M1-02, M1-03, M2 or any adjacent task implicitly.
 
 ## Relevant Files and Artifacts
 
 - `HandOff.md`
 - `docs/tasks/M0-05-application-factory-provider-jni-poc.md`
 - `docs/tasks/M1-01-untrusted-apk-inspector.md`
+- `host/apk-inspector/`
 - `docs/adr/0003-api29-public-classloader-hook.md`
 - `docs/adr/0006-offline-key-protection-boundary.md`
 - `docs/adr/0007-source-dir-startup-configuration.md`
@@ -333,7 +341,7 @@ None
 
 ## Resume Checklist
 
-- [x] 当前分支为 `spike/m0-05-application-factory-provider-jni-poc`，Issue 固定为 #5。
+- [x] 当前分支为 `feat/m1-01-untrusted-apk-inspector`，Issue 固定为 #6，base 固定为 `e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030`。
 - [x] M0-04 与 M0-06 已合并并完成各自门禁。
 - [x] 完成最新 main 合并并无豁免运行 strict HandOff。
 - [x] 建立 M0-05 十三项验收条件到实现、静态测试、设备 runner 与 GitHub KVM workflow 的映射。
@@ -348,11 +356,14 @@ None
 - [x] merger-ready HandOff 所在最终 PR HEAD `fbcb2d1` 的六项 CI 全部 PASS。
 - [x] PR #32 已转 ready 并以 merge commit `1fe9ea9` 合并，Issue #5 已关闭。
 - [x] post-merge HandOff 提交 `d682c85` 已在 `main` 的 Ubuntu/Windows Build 与 Governance 全部 PASS，并无豁免通过 strict HandOff。
-- [x] M0-05 完成前未启动 M1/M2；M1-01 当前保持 planned/unassigned。
+- [x] M0-05 完成后由用户明确启动 M1-01；M1-02/M1-03/M2 保持未启动。
+- [ ] 冻结公开模型、限制、稳定错误码和恶意输入测试合同。
+- [ ] 完成有界 ZIP/AXML/DEX 检查器、确定性 Windows/Ubuntu 验证和证据归档。
+- [ ] 独立只读 `m1_01_security_review` 对冻结提交给出 P0/P1/P2 全零 PASS。
 
 ## Handoff Sign-off
 
 - Coordinator `/root` 已核验首轮独立复核 FAIL、六项修复 diff、本地 Gradle/check/governance、双变体 Release/R8 和静态 APK 验证结果。
 - 当前快照声明三套 review-3 设备环境验收 PASS、第五次独立复核 P0/P1/P2 全为零、最终 PR HEAD 六项 CI 全部 PASS，PR #32 已合并，且 post-merge `main` Build/Governance 全绿并无豁免通过 strict HandOff；M0-05 标记 done。旧证据仅保留为历史回归基线。
 - `/root` 已核验真机为 API 29 arm64 64-bit、user/release-keys、非 root 环境，设备 runner cleanup PASS；本轮未启动任何本机模拟器。
-- GitHub KVM workflow 继续具有 35 分钟 job 上限、180 秒 boot 上限、900 秒 device-runner 上限和 EXIT/INT/TERM 强制清理；本轮未启动本机模拟器，M1/M2 未启动。
+- GitHub KVM workflow 的既有超时与强制清理合同保持不变；M1-01 是纯 Host 任务，本轮不启动本机模拟器或真机，也不启动 M1-02/M1-03/M2。

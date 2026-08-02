@@ -32,7 +32,15 @@ The formal fuzz seed is `0x4d312d3031`. The root-check run reported peak used JV
 - Full 58-fixture error matrix SHA-256: `b396616ff369fa2d4db56c92f6908253339867d71554f96debee4d7ed06a02fc`.
 - Fuzz summary is deliberately non-canonical because it includes measured memory; seed and sample count remain fixed.
 
-These canonical reports are the byte-equivalence inputs for the later Ubuntu/Windows PR gate.
+These canonical reports are the byte-equivalence inputs for the Ubuntu/Windows PR gate.
+
+## Draft PR and first cross-platform CI
+
+- Fixed branch publication HEAD: `83faffb17b41efc7cd9c81cff6759ddf2208a135`.
+- Sole Issue #6 draft PR: [#33](https://github.com/xiaokh31/androidAppHardening/pull/33).
+- Build run [30736757259](https://github.com/xiaokh31/androidAppHardening/actions/runs/30736757259): Ubuntu job `91466820734` and Windows job `91466820755` both passed.
+- Governance run [30736757261](https://github.com/xiaokh31/androidAppHardening/actions/runs/30736757261): Ubuntu job `91466820833` and Windows job `91466820830` both passed.
+- Both Build job logs contain canonical model SHA-256 `c15561ee6d6e879ad9db058be2762282538a77d4204279d6b5d6d57b1f1d52bf` and error-matrix SHA-256 `b396616ff369fa2d4db56c92f6908253339867d71554f96debee4d7ed06a02fc`; each platform's explicit byte-equivalence step passed.
 
 ## Representative failure evidence
 
@@ -61,4 +69,4 @@ The full matrix additionally covers `INPUT_IO`, actual CRC corruption, Zip64, en
 - Implementation `e97d67f9fbfc5b4c23751a85822dc6c96af4c6c5` binds every parser read to an initial per-block snapshot on the same handle, bounds offset uniqueness with a file-sized BitSet, validates complete ELF headers and emits canonical synthetic ELF32/ELF64 headers, and closes DEX fixed-table/data/map-list structure with standard positive fixtures.
 - The fourth independent read-only review of frozen SHA `19ea544ddec32fcaac63dfee81f25546084d8bae` returned PASS with P0 `0`, P1 `0`, P2 `0`. It independently reran the root check, governance validation, strict HandOff validation and diff check, and confirmed that the third-review findings are closed. The formal conclusion is archived in `security-review-4.md`.
 
-The local implementation and independent-review gate is closed at frozen SHA `19ea544ddec32fcaac63dfee81f25546084d8bae`. The branch remains unpublished and no PR exists. Explicit publication authority, the sole Issue #6 draft PR, and byte-identical Ubuntu/Windows PR CI remain required before ready/merge consideration. M1-02, M1-03 and M2 remain blocked.
+The local implementation and independent-review gate is closed at frozen SHA `19ea544ddec32fcaac63dfee81f25546084d8bae`. The branch is published and the sole Issue #6 PR remains draft. Its first Ubuntu/Windows Build and Governance runs passed, including byte-identical canonical reports. The evidence-only final PR HEAD must pass the same checks before ready/merge consideration. M1-02, M1-03 and M2 remain blocked.

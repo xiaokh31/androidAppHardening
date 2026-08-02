@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260802-144950
-updated_at: 2026-08-02T14:49:50+08:00
+handoff_id: HO-20260802-145828
+updated_at: 2026-08-02T14:58:28+08:00
 updated_by: /root
 state: active
 source_branch: feat/m1-01-untrusted-apk-inspector
@@ -49,6 +49,7 @@ next_owner: /root
 - 修正实现 `e97d67f9fbfc5b4c23751a85822dc6c96af4c6c5` 已使用同句柄 64 KiB 分块快照绑定全部 parser 读取、以文件大小受限 BitSet 取代大装箱集合、验证完整 ELF32/ELF64 header，并为 DEX 固定表/data/map-list 建立闭环。58 个命名错误 fixture、10,000 样本和 231-task 根 check 均 PASS；分支仍未发布。
 - 第四次完整独立只读复核对冻结提交 `19ea544ddec32fcaac63dfee81f25546084d8bae` 给出 PASS：P0 `0`、P1 `0`、P2 `0`。复核者独立重跑根 check、Governance、strict HandOff 和 diff check，均退出 `0`；结论归档于 `docs/evidence/M1-01/security-review-4.md`。分支仍未发布且尚无 PR。
 - 用户已明确授权推送固定分支、创建关联 Issue #6 的唯一草稿 PR，并运行 Ubuntu/Windows 字节一致性 CI。发布前补充的 Build 门禁要求两个平台生成的规范模型与 58-fixture 错误矩阵分别严格命中同一冻结 SHA-256；不改检查器实现。
+- 固定分支已发布到 `83faffb17b41efc7cd9c81cff6759ddf2208a135`，关联 Issue #6 的唯一草稿 PR 为 [#33](https://github.com/xiaokh31/androidAppHardening/pull/33)。Build run `30736757259` 与 Governance run `30736757261` 的 Ubuntu/Windows 四个 job 全部 PASS；两个 Build job 的显式字节门禁均命中同一规范模型和错误矩阵 SHA-256。
 
 ## Active Workstreams
 
@@ -57,7 +58,7 @@ next_owner: /root
 | M0-04 | `runtime-security-agent` | `spike/m0-04-classloader-poc` | done | M0-03 | PR #29、正式设备矩阵和独立复核已通过 |
 | M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | done | M0-04 | PR #31、合并后 strict HandOff 和双平台 CI 已通过 |
 | M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | done | M0-04, M0-06 | PR #32、三环境矩阵、独立安全复核和最终 PR CI 已通过 |
-| M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | in_progress | M0-05 | 推送固定分支、创建 Issue #6 唯一草稿 PR 并运行双平台字节一致性 CI |
+| M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | review | M0-05 | 推送首轮 CI 证据提交并要求最终 PR HEAD 的 Ubuntu/Windows CI 全绿 |
 
 ## Decisions and Invariants
 
@@ -86,6 +87,7 @@ next_owner: /root
 - `e97d67f9fbfc5b4c23751a85822dc6c96af4c6c5` 关闭上述四项。正式 Windows 模块测试和根 check 退出 `0`；新规范模型 SHA-256 为 `c15561ee6d6e879ad9db058be2762282538a77d4204279d6b5d6d57b1f1d52bf`，58-fixture 错误矩阵 SHA-256 为 `b396616ff369fa2d4db56c92f6908253339867d71554f96debee4d7ed06a02fc`，峰值已用内存为 `108715272` bytes。
 - 第四次完整独立只读复核在冻结提交 `19ea544ddec32fcaac63dfee81f25546084d8bae` 上给出 PASS，P0/P1/P2 全为零；独立根 check、Governance、strict HandOff 和 diff check 均通过。该结论关闭本地实现与独立复核门禁，但不替代发布授权或双平台 PR CI。
 - 用户已授予 M1-01 发布权限；`.github/workflows/build.yml` 在原 Ubuntu/Windows 根检查后分别校验 `canonical-model.json` 与 `error-matrix.json` 的冻结 SHA-256，使两平台只有在产物逐字节等于同一规范值时才能通过。
+- 分支发布 HEAD `83faffb17b41efc7cd9c81cff6759ddf2208a135` 已创建唯一草稿 PR #33。Build #23 的 Ubuntu/Windows job `91466820734`/`91466820755` 和 Governance #32 的 Ubuntu/Windows job `91466820833`/`91466820830` 全部 PASS；Build 日志在两个平台都记录相同的两份冻结报告哈希。
 
 - PR #31 已合并，旧 metadata blocker 的架构依赖已解除，M0-05 从 `blocked` 恢复为 `in_progress`。
 - 既有 M0-05 分支保留四个本地历史提交和 Issue #5，不创建第二分支或第二任务。
@@ -115,7 +117,7 @@ next_owner: /root
 - User authorized ready/merge; PR #32 was merged as `1fe9ea9ca7ac989e2e071ccb00ae2a0c0010c463` and Issue #5 closed.
 - Post-merge Governance run `30732622423` reproduced one HandOff-only source-branch mismatch on Ubuntu and Windows; coordinator commit `d682c85125e11084cf023b5f523d715e28c74e75` changed the resume point to `main` and marked M0-05 done. The later `main@e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030` is the verified M1-01 base.
 - On `d682c85125e11084cf023b5f523d715e28c74e75`, Governance run `30732725929` and Build run `30732725931` passed on Ubuntu 24.04 and Windows 2025, including strict HandOff on `main` with no exemption.
-- Exact next action: commit the publication gate, push the sole fixed branch, create one draft PR linked to Issue #6, and monitor Ubuntu/Windows byte-equivalence CI to completion. Keep the PR draft and do not start adjacent work.
+- Exact next action: commit and push this first-PR-CI evidence, then require the evidence-only final PR HEAD to pass Ubuntu/Windows Build and Governance before requesting ready/merge authorization. Keep PR #33 draft and do not start adjacent work.
 
 ## Verification Evidence
 
@@ -142,6 +144,18 @@ next_owner: /root
 - artifact: `docs/evidence/M1-01/security-review-4.md`; `docs/evidence/M1-01/formal-host-validation.md`
 - sha256: not_applicable
 - result: PASS; P0 `0`, P1 `0`, P2 `0`; canonical model SHA-256 `c15561ee6d6e879ad9db058be2762282538a77d4204279d6b5d6d57b1f1d52bf`; 58-fixture error-matrix SHA-256 `b396616ff369fa2d4db56c92f6908253339867d71554f96debee4d7ed06a02fc`; same-handle input snapshot, bounded DEX memory, complete ELF headers, DEX fixed-table/data/map closure and earlier AXML/DEX findings are closed; branch remains unpublished pending explicit publication authority and dual-platform PR CI
+
+### M1-01 draft PR first CI
+
+- task_id: M1-01
+- git_commit: 83faffb17b41efc7cd9c81cff6759ddf2208a135
+- command: GitHub Actions Build run `30736757259` and Governance run `30736757261`; inspect both Build job logs for the frozen canonical model and error-matrix SHA-256 values
+- exit_code: 0
+- environment: GitHub Actions Ubuntu 24.04 and Windows 2025; Build jobs `91466820734`/`91466820755`; Governance jobs `91466820833`/`91466820830`; no device or local emulator
+- timestamp: 2026-08-02T14:58:28+08:00
+- artifact: draft PR `https://github.com/xiaokh31/androidAppHardening/pull/33`; Build `https://github.com/xiaokh31/androidAppHardening/actions/runs/30736757259`; Governance `https://github.com/xiaokh31/androidAppHardening/actions/runs/30736757261`
+- sha256: not_applicable
+- result: PASS; Ubuntu and Windows Build plus Governance all succeeded; both explicit byte-equivalence steps passed with canonical model SHA-256 `c15561ee6d6e879ad9db058be2762282538a77d4204279d6b5d6d57b1f1d52bf` and 58-fixture error-matrix SHA-256 `b396616ff369fa2d4db56c92f6908253339867d71554f96debee4d7ed06a02fc`; PR remains draft
 
 ### M0-05 second independent review and remediation candidate
 
@@ -353,11 +367,11 @@ None
 
 ## Ordered Next Actions
 
-1. Commit the publication gate and push the sole fixed branch.
-2. Create one draft PR linked to Issue #6.
-3. Monitor Ubuntu/Windows PR CI and require byte-identical canonical model/error reports.
-4. After CI PASS, archive the run and commit evidence while keeping the PR draft.
-5. Only then request explicit ready/merge authorization; do not start M1-02, M1-03, M2 or any adjacent task implicitly.
+1. Commit and push this first-PR-CI evidence to the sole fixed branch.
+2. Monitor the resulting final PR HEAD and require Ubuntu/Windows Build and Governance PASS, including both byte-equivalence steps.
+3. Keep PR #33 draft.
+4. After final HEAD CI PASS, request explicit ready/merge authorization.
+5. Do not start M1-02, M1-03, M2 or any adjacent task implicitly.
 
 ## Relevant Files and Artifacts
 
@@ -405,6 +419,7 @@ None
 - [x] 冻结公开模型、限制、稳定错误码和恶意输入测试合同。
 - [x] 完成有界 ZIP/AXML/DEX/ELF 检查器、确定性 Windows 验证和修正证据归档；Ubuntu 等价性留给发布后的双平台 PR CI。
 - [x] 独立只读 `m1_01_reliability_review_4` 对冻结提交 `19ea544ddec32fcaac63dfee81f25546084d8bae` 给出 P0/P1/P2 全零 PASS。
+- [x] 固定分支已发布，Issue #6 的唯一草稿 PR #33 已创建；首轮 Ubuntu/Windows Build、Governance 和两份报告字节一致性门禁全部 PASS。
 
 ## Handoff Sign-off
 
@@ -412,3 +427,4 @@ None
 - 当前快照声明三套 review-3 设备环境验收 PASS、第五次独立复核 P0/P1/P2 全为零、最终 PR HEAD 六项 CI 全部 PASS，PR #32 已合并，且 post-merge `main` Build/Governance 全绿并无豁免通过 strict HandOff；M0-05 标记 done。旧证据仅保留为历史回归基线。
 - `/root` 已核验真机为 API 29 arm64 64-bit、user/release-keys、非 root 环境，设备 runner cleanup PASS；本轮未启动任何本机模拟器。
 - GitHub KVM workflow 的既有超时与强制清理合同保持不变；M1-01 是纯 Host 任务，本轮不启动本机模拟器或真机，也不启动 M1-02/M1-03/M2。
+- `/root` 已核验 PR #33 首轮 Build/Governance 四个 job 与两个字节一致性步骤 PASS；PR 保持 draft，首轮 CI 证据提交后的最终 HEAD 仍需同一组 CI 全绿。

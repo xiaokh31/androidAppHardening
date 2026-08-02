@@ -1,14 +1,14 @@
 # M1-01 formal host validation
 
-## Frozen candidate
+## Remediated implementation candidate
 
 - Task: M1-01, Issue [#6](https://github.com/xiaokh31/androidAppHardening/issues/6).
 - Branch: `feat/m1-01-untrusted-apk-inspector`.
-- Verified implementation commit: `d3dbfaa8ce4317d8b394f22478ddbb185fd480cb`.
+- Verified implementation commit: `e267e3c7eab7d3b7d5d8c90947c79f0c77ee1208`.
 - Base: `main@e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030`.
-- Timestamp: `2026-08-02T13:36:05+08:00`.
-- Environment: Microsoft Windows 10 `10.0.19045` x64; Temurin `17.0.19+10`; Gradle `9.5.0`; Kotlin JVM plugin `2.4.10` (Gradle embedded Kotlin `2.3.20`).
-- Tool source: repository-local ignored `.toolchains/jdk/jdk-17.0.19+10` and `.toolchains/gradle/gradle-9.5.0`; existing Gradle dependency cache reused offline. No download and no emulator/device process.
+- Timestamp: `2026-08-02T14:02:26+08:00`.
+- Environment: Microsoft Windows 10 `10.0.19045` x64; Temurin `17.0.19+10`; Gradle `9.5.0`; Kotlin JVM plugin `2.4.10`.
+- Tool source: repository-local ignored JDK and Gradle with the existing dependency cache in offline mode. No download, device or emulator was used.
 
 ## Commands and results
 
@@ -16,52 +16,46 @@ All Gradle commands set `JAVA_HOME` to the repository-local JDK and use `--offli
 
 | Command | Exit | Result |
 |---|---:|---|
-| `gradle :host:apk-inspector:test` | 0 | PASS; 35 named negative fixtures, every public error code, positive/boundary models, 10,000 seeded fuzz samples |
-| `gradle check` | 0 | PASS; 231 actionable tasks, including the same formal inspector self-test, Android lint/static tasks and existing ConfigV2 tamper suite |
-| `node tools/governance/validate-project-package.mjs` | 0 | PASS; 26 task cards, 11 core docs, 7 ADRs |
-| `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict` | 0 | PASS without exemption on clean implementation commit |
+| `gradle :host:apk-inspector:test` | 0 | PASS; 54 named error fixtures, positive/boundary models and exactly 10,000 seeded samples |
+| `gradle check` | 0 | PASS; 231 actionable tasks, including the formal inspector suite, Android lint/static tasks and ConfigV2 tamper suite |
 | `git diff --check` | 0 | PASS |
 
-The formal fuzz seed is `0x4d312d3031`; sample count is exactly `10,000`. The root-check run reported peak used JVM memory `316,343,424` bytes. The self-test periodically executes identical bytes twice and requires byte-stable success/error outcomes. It also verifies input hashes before/after success and failure, `INPUT_CHANGED`, cancellation cleanup, Windows rename-after-close, defensive byte-array copies, unmodifiable lists and no extraction artifact creation.
+The formal fuzz seed is `0x4d312d3031`. The root-check run reported peak used JVM memory `316,352,352` bytes. The repeated-string-data-offset DEX regression contains 4,096 string/type/class rows and must reject within five seconds. Success, failure, input-change and cancellation paths verify handle release and unchanged input; the inspector has no extraction or output path.
 
 ## Canonical accepted model
 
-The sanitized baseline input SHA-256 is `fcad7d3410aebcec8a9347a001ee5d96f672a116445982dd6c929e98ab8879fb`. Its package UTF-8 SHA-256 is `6a74da948cef80fb8e8655c1a66992b118979135694811f53594b52f31aebc65`.
-
 ```json
-{"inputSha256":"fcad7d3410aebcec8a9347a001ee5d96f672a116445982dd6c929e98ab8879fb","packageName":"ah.fixtures.inspector","packageNameSha256":"6a74da948cef80fb8e8655c1a66992b118979135694811f53594b52f31aebc65","minSdk":29,"targetSdk":36,"applicationClass":"ah.fixtures.inspector.FixtureApplication","appComponentFactoryClass":"ah.fixtures.inspector.FixtureFactory","dexEntries":["classes.dex","classes2.dex"],"nativeAbis":["armeabi-v7a","arm64-v8a","x86","x86_64"],"markerIds":["CUSTOM_APPLICATION","CUSTOM_APP_COMPONENT_FACTORY","NATIVE_ABI_ARMEABI_V7A","NATIVE_ABI_ARM64_V8A","NATIVE_ABI_X86","NATIVE_ABI_X86_64"]}
+{"inputSha256":"3588df49187eec17af7007468f1d20ed60632078750b182a7f8e8964175f48c9","packageName":"ah.fixtures.inspector","packageNameSha256":"6a74da948cef80fb8e8655c1a66992b118979135694811f53594b52f31aebc65","minSdk":29,"targetSdk":36,"applicationClass":"ah.fixtures.inspector.FixtureApplication","appComponentFactoryClass":"ah.fixtures.inspector.FixtureFactory","compatibilityRulesVersion":"compatibility-rules-v1","dexEntries":["classes.dex","classes2.dex"],"nativeAbis":["armeabi-v7a","arm64-v8a","x86","x86_64"],"markerIds":["CUSTOM_APPLICATION","CUSTOM_APP_COMPONENT_FACTORY","NATIVE_ABI_ARMEABI_V7A","NATIVE_ABI_ARM64_V8A","NATIVE_ABI_X86","NATIVE_ABI_X86_64"]}
 ```
 
-The canonical model report SHA-256 is `a689e24f5a0e5dd81fcfe4175cacb3566477a4a659ed3da5dd3c6a84014264d3`. The full 35-fixture error matrix report SHA-256 is `184fcde7ae41234bfe4a0a3f61b76bdd32afb45882d05449573e372f69613d2e`. These two reports are deterministic inputs for the pending Ubuntu equivalence gate; peak-memory data is intentionally kept in a separate non-canonical report.
+- Canonical model report SHA-256: `fc224233c5a7a61b13075431684f0478c83f784444e712492315b4631c9efcc8`.
+- Full 54-fixture error matrix SHA-256: `b6df7c5d4ba216f78a3b52d3bac043d64900fed5ab4ed3b3a10f554a975c0d1f`.
+- Fuzz summary is deliberately non-canonical because it includes measured memory; seed and sample count remain fixed.
 
-## Public error-code evidence
+These canonical reports are the byte-equivalence inputs for the later Ubuntu/Windows PR gate.
 
-| Code | Representative synthetic fixture | Input SHA-256 | Actual |
+## Representative failure evidence
+
+| Requirement | Synthetic fixture | Input SHA-256 | Actual |
 |---|---|---|---|
-| `INPUT_IO` | `missing.apk` | not applicable | `INPUT_IO` |
-| `INPUT_ZIP_STRUCTURE` | `central-local-length-conflict.apk` | `3d1699fe363ac8c9abfa719eda3953e35c9c05d24aa59d15fcf01d3b2b9ace43` | `INPUT_ZIP_STRUCTURE` |
-| `INPUT_LIMIT_EXCEEDED` | `compression-bomb.apk` | `883d6242b5d05031135f5c9861b94f04357deb4062d92473c1b2530e1dc1ddc3` | `INPUT_LIMIT_EXCEEDED` / `compressionRatio` |
-| `INPUT_DUPLICATE_ENTRY` | `duplicate-entry.apk` | `bf2be951dc95a849af4a502bbc04b9934d2d67137385b1a1d67bc0a1cf841c50` | `INPUT_DUPLICATE_ENTRY` |
-| `INPUT_PATH_UNSAFE` | `path-traversal.apk` | `0a88fa375f5e3181b78b90e2c8cc112bbf7af22305c6408959c6b533fa378c56` | `INPUT_PATH_UNSAFE` |
-| `INPUT_MANIFEST_INVALID` | `manifest-string-offset-conflict.apk` | `b85bcad5075378318c8a28e1a39747bf32f1936acfb1a9043bd8fbf39bfdec20` | `INPUT_MANIFEST_INVALID` |
-| `INPUT_DEX_INVALID` | `dex-checksum.apk` | `8912f27bf401dd31fec98e4de9e37ddca3361a04debf59a42ea7213bb9634a30` | `INPUT_DEX_INVALID` |
-| `INPUT_CHANGED` | `input-changed.apk` | before `fcad7d...879fb`, after `c5a4a21a91b66200d4b824a32fdfa3deb2f99b91945eafd7a76e4eeefea77b0e` | `INPUT_CHANGED` |
-| `COMPAT_MIN_SDK` | `min-sdk-28.apk` | `7019a9ab9046338a147590208cfedef39762f4c624c9e0bfb85aad905e687149` | `MIN_SDK_BELOW_29` |
-| `COMPAT_SPLIT` | `split.apk` | `082573481d5749f9541e06d2baee26ef68bbbd0a0e838b2349710d4d67d4cc38` | `MANIFEST_SPLIT_ATTRIBUTE` |
-| `COMPAT_FRAMEWORK` | `flutter.apk` | `e88a29b174c075e33fa0de15e92153e623555af3c43ded001e85c7cdff68251e` | `FLUTTER_RUNTIME` |
-| `COMPAT_EXISTING_SHELL` | `existing-shell.apk` | `a6a66b7a2dc2abcf8b8ce377b36da51afae74e6e9e20b5d39abbaa0119b0120e` | `QIHO0_JIAGU_SHELL` |
-| `COMPAT_RESERVED_NAMESPACE` | `reserved-namespace.apk` | `c988902d4b0d018ed4647d0b8dcb45fa3c1d4f5e6b628c6f7e40120b2d149cda` | `AH_RUNTIME_ASSET_NAMESPACE` |
+| ZIP central/local range | `central-local-length-conflict.apk` | `95bf65f78b922d4ad6b08d02c5614633cb05609f9716ee70c8dfc7b8db6ce7a6` | `INPUT_ZIP_STRUCTURE` |
+| Compression budget | `compression-bomb.apk` | `d7d39ffd4f0892717c4d6a7309099bcbd1fb8ec1ba122abd4864bd1e02232aac` | `INPUT_LIMIT_EXCEEDED` |
+| Duplicate entry | `duplicate-entry.apk` | `320a918760b75eace1c140fc6ef3dd849591f849bcb5b9e3c5490de7de7ef880` | `INPUT_DUPLICATE_ENTRY` |
+| Unsafe path | `path-traversal.apk` | `7efcfcaa60ea0432d4f146d82d2a1a4e87dc8b6ea480301dee6d74094a443d6c` | `INPUT_PATH_UNSAFE` |
+| AXML resource ID mismatch | `manifest-resource-id-mismatch.apk` | `f779537987bb159d0212a62b1c926721755f43c2baa1fff90c81c0ac384f9a06` | `INPUT_MANIFEST_INVALID` |
+| DEX repeated string-data offset | `dex-repeated-string-data-offset.apk` | `a8eba2a704eec6f91a1a11fd4d3881484b143463faf04773a7a44a2d035cf0ca` | `INPUT_DEX_INVALID` |
+| API boundary | `min-sdk-28.apk` | `351f522b7966280d6e3b5e09dad16355790ee7cda74a179f80f8ae19615251ed` | `COMPAT_MIN_SDK` / `MIN_SDK_BELOW_29` |
+| Framework | `flutter.apk` | `f3abe460ce7b89d5f4a3250124031fe6e338f6da31d9199ca1b57b31321bd05e` | `COMPAT_FRAMEWORK` / `FLUTTER_RUNTIME` |
+| ELF ABI mismatch | `native-elf-abi-mismatch.apk` | `c8f532fc583d1d5d6543bdd72ec417d7586bdf7ecc127ab075a1c903f1c315b2` | `COMPAT_FRAMEWORK` / `NATIVE_ELF_ABI_MISMATCH` |
+| Existing shell | `existing-shell.apk` | `45efadc3a140e26f58cb3359275155f68e532b0f6cb7d33a38bc50c854760ba6` | `COMPAT_EXISTING_SHELL` / `QIHO0_JIAGU_SHELL` |
+| Reserved namespace | `reserved-namespace.apk` | `712c7fb3770c1df72a4f0f07230ea30d913ff63d357ff4a3bf424bb85c2e3504` | `COMPAT_RESERVED_NAMESPACE` / `AH_RUNTIME_ASSET_NAMESPACE` |
 
-Additional named fixtures cover NFC collision, 1025-byte path, Zip64, encrypted entry, offset overflow, 65 DEX, illegal package, oversized AXML resource map, non-contiguous/non-canonical DEX, a DEX string declaring `Int.MAX_VALUE` UTF-16 units, AAB/APKS, Unity, React Native, Tinker, Sophix, plugin Runtime, unsupported ABI, and the reserved class/native namespaces. Positive boundaries cover a 1024-byte path, 64 contiguous DEX files, single/multi DEX, custom/no Application and Factory, four independent supported ABIs, STORED, raw DEFLATE and signed data descriptor entries.
+The full matrix additionally covers `INPUT_IO`, actual CRC corruption, Zip64, encrypted entries, NFC collision, exact 1,024-byte path, package missing/duplicate/illegal/invalid UTF-8, resource-map overflow, namespace scope, namespaced core elements, raw/typed AXML conflict, DEX checksum/SHA-1/file-size/table/magic/version/descriptor errors, non-canonical and 64/65 DEX boundaries, `INPUT_CHANGED`, Split/AAB/APKS, Unity, React Native, Tinker, Sophix, plugin Runtime, unsupported ABI, invalid ELF, and all reserved namespaces.
 
-## Side-effect and resource conclusion
+## Review history and remediation
 
-- Production code opens only the input `Path` with `READ`; it has no output-path API and no filesystem write call.
-- ZIP data is CRC-checked with bounded 64 KiB buffers. Manifest and each DEX are materialized one at a time in fixed segments. DEX class descriptors are validated as a stream and retain at most a 128-character compatibility-marker prefix; attacker-declared string length is never used as allocation capacity. The implementation does not retain plaintext payloads or full class-name lists after parsing.
-- The self-test snapshots the corpus directory before/after inspection, confirms no new extraction path, then removes its generated corpus in `finally`.
-- Successful, malformed, changed and cancelled paths all release the channel; Windows rename/move succeeds immediately after each case.
-- No local emulator was started. No APK, plaintext DEX, certificate, secret or customer path is committed.
+- The first review attempt was interrupted before a formal conclusion. Its allocation concern was treated as a failed gate and fixed by `d3dbfaa8ce4317d8b394f22478ddbb185fd480cb`.
+- The completed second independent read-only review of frozen SHA `02e6334e916581f3d49c89ec512f6e9a9ec4a245` returned FAIL with P0 `0`, P1 `4`, P2 `3`; the exact findings are archived in `security-review-2.md`.
+- Implementation `e267e3c7eab7d3b7d5d8c90947c79f0c77ee1208` closes every reported code/test finding: fixed Android resource IDs and namespace scope, raw/typed agreement, bounded DEX offset uniqueness, explicit DEX versions, ELF/path ABI agreement, `compatibility-rules-v1`, and all named regression gaps.
 
-## Pending gates
-
-The first independent review attempt did not produce a final handoff because the platform interrupted the reviewer. Its pre-final resource finding was nevertheless treated as a failed gate: commit `d3dbfaa8ce4317d8b394f22478ddbb185fd480cb` replaced attacker-sized descriptor allocation with streaming validation, added DEX table-order uniqueness, rejected every non-canonical `.dex` path, tightened AXML resource-map/namespace/string-pool validation, and added three deterministic regressions. This is now the local Windows frozen candidate. The next gate is a new independent read-only `m1_01_security_review` of the exact evidence commit. Publication remains forbidden until a completed review reports P0/P1/P2 all zero. Ubuntu canonical-report equivalence and normal PR CI remain required after the independent review and publication authorization; M1-01 is not complete and M1-02/M1-03/M2 remain blocked.
+This is a remediated Windows candidate, not a completion claim. A new evidence commit must be frozen and independently reviewed with P0/P1/P2 all zero before publication. Ubuntu equivalence and normal PR CI remain later gates. M1-02, M1-03 and M2 remain blocked.

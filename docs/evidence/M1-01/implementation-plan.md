@@ -24,14 +24,15 @@ The fixed task-card limits are represented by `InspectionLimits` and copied into
 5. `minSdk`, Split/AAB/APKS, reserved project namespace, existing shell and unsupported framework gates.
 6. close the channel, hash the input again, and override any earlier result with `INPUT_CHANGED` when the bytes changed.
 
-The marker table is source-controlled and ordered. It includes Flutter, Unity, React Native, Tinker, Sophix, RePlugin, VirtualAPK, DroidPlugin, common existing-shell markers, unsupported native ABI and all three project-reserved namespaces.
+The marker table is source-controlled, ordered and exposed as `compatibility-rules-v1` in every successful model. It includes Flutter, Unity, React Native, Tinker, Sophix, RePlugin, VirtualAPK, DroidPlugin, common existing-shell markers, unsupported or ELF-mismatched native ABI and all three project-reserved namespaces.
 
 ## Verification map
 
 - Positive: single DEX, 64 DEX boundary, custom/no Application and Factory, four supported ABIs, maximum 1024-byte UTF-8 path, STORED and raw-DEFLATE/data-descriptor entries.
 - ZIP negative: malformed EOCD, central/local conflict, offset overflow, Zip64, encryption, CRC/size mismatch, compression bomb, traversal, exact duplicate and NFC collision.
-- AXML negative: missing/illegal package, duplicate string offset, malformed chunks and unsupported value encodings.
-- DEX negative: non-contiguous names, count 65, magic/file-size/checksum/signature/table/descriptor corruption.
+- AXML negative: missing/duplicate/illegal/invalid-UTF-8 package, duplicate string offset, fixed resource-ID mismatch, namespace scope, namespaced core elements, raw/typed conflicts, malformed chunks and unsupported value encodings.
+- DEX negative: non-contiguous names, count 65, repeated string-data offsets under a five-second gate, explicit magic versions, file-size/checksum/signature/table/descriptor corruption.
+- Native negative: invalid/truncated ELF and directory ABI disagreement with ELF class/endianness/`e_machine`.
 - Compatibility negative: Split, AAB, APKS, Flutter, Unity, React Native, Tinker, Sophix, plugin Runtime, existing shell, unsupported ABI and each reserved namespace.
 - Lifecycle: input SHA before/after, `INPUT_CHANGED`, cancellation, Windows rename-after-close and zero extraction artifacts.
 - Fuzz: deterministic seed `0x4d312d3031`, exactly 10,000 generated structural samples, periodic duplicate-run determinism checks.

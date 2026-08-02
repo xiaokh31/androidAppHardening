@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260802-133605
-updated_at: 2026-08-02T13:36:05+08:00
+handoff_id: HO-20260802-140226
+updated_at: 2026-08-02T14:02:26+08:00
 updated_by: /root
 state: active
 source_branch: feat/m1-01-untrusted-apk-inspector
@@ -42,7 +42,9 @@ next_owner: /root
 - 用户已明确领取 M1-01；固定 Issue 为 #6，固定分支为 `feat/m1-01-untrusted-apk-inspector`，从已通过合并后 CI 与 strict HandOff 的 `main@e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030` 启动。
 - `/root` 当前仅负责 M1-01。实现顺序固定为公开模型与稳定错误码、恶意输入测试、检查器实现、冻结证据、独立只读安全复核；复核通过前不推送、不创建 PR，也不启动 M1-02/M1-03/M2。
 - 首次独立复核尝试被平台中断，未形成有效 PASS/FAIL；其终止前指出 DEX MUTF-8 声明长度可被直接用于 `StringBuilder` 容量。旧冻结目标 `4f55222fd00408f7f67b3b58a93733e9a77c23e2` 因此作废，不得作为完成证据。
-- 修正候选 `d3dbfaa8ce4317d8b394f22478ddbb185fd480cb` 改为固定 128 字符 marker 前缀的流式 descriptor 校验，增加 DEX 表顺序唯一性、拒绝非规范 `.dex` 路径，并收紧 AXML resource map、namespace 与 string-pool 验证；35 个负例、10,000 样本 fuzz 和全仓库 check 均 PASS。当前等待新冻结证据提交后的完整独立只读复核，分支仍未发布。
+- 修正候选 `d3dbfaa8ce4317d8b394f22478ddbb185fd480cb` 改为固定 128 字符 marker 前缀的流式 descriptor 校验，增加 DEX 表顺序唯一性、拒绝非规范 `.dex` 路径，并收紧 AXML resource map、namespace 与 string-pool 验证；35 个负例、10,000 样本 fuzz 和全仓库 check 均 PASS。
+- 第二次完整独立只读复核对冻结提交 `02e6334e916581f3d49c89ec512f6e9a9ec4a245` 给出 FAIL：P0 `0`、P1 `4`、P2 `3`。旧冻结提交立即失效；结论归档于 `docs/evidence/M1-01/security-review-2.md`。
+- 修正实现 `e267e3c7eab7d3b7d5d8c90947c79f0c77ee1208` 已关闭全部七项发现：AXML 固定 resource ID/namespace/raw-typed 语义、DEX 重复偏移 CPU 上界与显式版本、ELF/path ABI 一致性、版本化规则表，以及缺失的结构化回归。54 个命名错误 fixture、10,000 样本和 231-task 根 check 均 PASS；分支仍未发布。
 
 ## Active Workstreams
 
@@ -51,7 +53,7 @@ next_owner: /root
 | M0-04 | `runtime-security-agent` | `spike/m0-04-classloader-poc` | done | M0-03 | PR #29、正式设备矩阵和独立复核已通过 |
 | M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | done | M0-04 | PR #31、合并后 strict HandOff 和双平台 CI 已通过 |
 | M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | done | M0-04, M0-06 | PR #32、三环境矩阵、独立安全复核和最终 PR CI 已通过 |
-| M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | in_progress | M0-05 | 冻结证据提交并启动独立 `m1_01_security_review` |
+| M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | in_progress | M0-05 | 对当前修正证据提交启动新的独立只读复核 |
 
 ## Decisions and Invariants
 
@@ -74,6 +76,8 @@ next_owner: /root
 - Windows 正式 `:host:apk-inspector:test` 与根 `check` 均退出 `0`；根 check 共 231 actionable tasks。规范模型与 32-fixture 错误矩阵 SHA-256 分别为 `a689e24f5a0e5dd81fcfe4175cacb3566477a4a659ed3da5dd3c6a84014264d3` 与 `545aa5987cc82fc98a0f7f20dcc5492ba84d40d91431a3350da6122854f39618`。
 - 首次独立 reviewer 在形成最终 handoff 前被平台中断；该次不计作独立复核结论。其已报告的攻击者长度分配缺口按失败门禁处理，旧冻结目标立即失效。
 - `d3dbfaa8ce4317d8b394f22478ddbb185fd480cb` 关闭该资源缺口并补充 oversized DEX string、oversized AXML resource map 和 non-canonical DEX path 回归；修正后的规范模型 SHA-256 保持 `a689e24f5a0e5dd81fcfe4175cacb3566477a4a659ed3da5dd3c6a84014264d3`，35-fixture 矩阵 SHA-256 为 `184fcde7ae41234bfe4a0a3f61b76bdd32afb45882d05449573e372f69613d2e`。
+- 第二次完整独立只读复核否决 `02e6334e916581f3d49c89ec512f6e9a9ec4a245`，发现 AXML 语义闭环、DEX CPU 放大、ELF ABI 分类和强制回归四项 P1，以及 DEX 036、规则表版本、HandOff 陈旧三项 P2。
+- `e267e3c7eab7d3b7d5d8c90947c79f0c77ee1208` 关闭上述代码与测试发现。正式 Windows 模块测试和根 check 退出 `0`；新规范模型 SHA-256 为 `fc224233c5a7a61b13075431684f0478c83f784444e712492315b4631c9efcc8`，54-fixture 错误矩阵 SHA-256 为 `b6df7c5d4ba216f78a3b52d3bac043d64900fed5ab4ed3b3a10f554a975c0d1f`，峰值已用内存为 `316352352` bytes。
 
 - PR #31 已合并，旧 metadata blocker 的架构依赖已解除，M0-05 从 `blocked` 恢复为 `in_progress`。
 - 既有 M0-05 分支保留四个本地历史提交和 Issue #5，不创建第二分支或第二任务。
@@ -103,21 +107,21 @@ next_owner: /root
 - User authorized ready/merge; PR #32 was merged as `1fe9ea9ca7ac989e2e071ccb00ae2a0c0010c463` and Issue #5 closed.
 - Post-merge Governance run `30732622423` reproduced one HandOff-only source-branch mismatch on Ubuntu and Windows; coordinator commit `d682c85125e11084cf023b5f523d715e28c74e75` changed the resume point to `main` and marked M0-05 done. The later `main@e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030` is the verified M1-01 base.
 - On `d682c85125e11084cf023b5f523d715e28c74e75`, Governance run `30732725929` and Build run `30732725931` passed on Ubuntu 24.04 and Windows 2025, including strict HandOff on `main` with no exemption.
-- Exact next action: commit the formal Windows evidence and this HandOff as the frozen review target, then launch independent read-only `m1_01_security_review`; do not publish the branch before a zero-finding PASS.
+- Exact next action: treat the commit containing this evidence and HandOff as the new frozen review target and launch a new independent read-only M1-01 review; do not publish the branch before a zero-finding PASS.
 
 ## Verification Evidence
 
-### M1-01 remediated Windows candidate
+### M1-01 second-review remediation candidate
 
 - task_id: M1-01
-- git_commit: d3dbfaa8ce4317d8b394f22478ddbb185fd480cb
+- git_commit: e267e3c7eab7d3b7d5d8c90947c79f0c77ee1208
 - command: repository-local Gradle 9.5.0 with Temurin 17.0.19, offline `:host:apk-inspector:test` and root `check`; governance validation; clean strict HandOff; `git diff --check`
 - exit_code: 0
 - environment: Windows 10 x64 10.0.19045; Kotlin JVM plugin 2.4.10; no download, device or local emulator
-- timestamp: 2026-08-02T13:36:05+08:00
+- timestamp: 2026-08-02T14:02:26+08:00
 - artifact: `docs/evidence/M1-01/formal-host-validation.md`; ignored `host/apk-inspector/build/reports/m1-01/`
 - sha256: not_applicable
-- result: PASS_WINDOWS_REMEDIATED_CANDIDATE; canonical model SHA-256 `a689e24f5a0e5dd81fcfe4175cacb3566477a4a659ed3da5dd3c6a84014264d3`; 35-fixture matrix SHA-256 `184fcde7ae41234bfe4a0a3f61b76bdd32afb45882d05449573e372f69613d2e`; every public error code, single/64 DEX, 1024-byte path, four ABIs, attacker-sized DEX string, non-canonical DEX path, AXML resource-map overflow, unsupported framework/shell/reserved gates, input-change/cancellation/handle cleanup, zero extraction, 10,000 seeded samples and root static gates passed; the interrupted review is not a conclusion, and a new completed independent review plus Ubuntu equivalence, publication and PR CI remain pending
+- result: PASS_WINDOWS_SECOND_REMEDIATION_CANDIDATE; canonical model SHA-256 `fc224233c5a7a61b13075431684f0478c83f784444e712492315b4631c9efcc8`; 54-fixture matrix SHA-256 `b6df7c5d4ba216f78a3b52d3bac043d64900fed5ab4ed3b3a10f554a975c0d1f`; AXML resource IDs/namespaces/raw-typed agreement, bounded DEX duplicate offsets and explicit versions, ELF/path ABI agreement, versioned compatibility rules, every public error code, 10,000 seeded samples, root check and zero extraction passed; a new completed independent review plus Ubuntu equivalence, publication and PR CI remain pending
 
 ### M0-05 second independent review and remediation candidate
 
@@ -329,11 +333,10 @@ None
 
 ## Ordered Next Actions
 
-1. Commit the verified implementation evidence and coordinator state as the exact frozen review target.
-2. Launch independent read-only `m1_01_security_review` against that SHA; P0/P1/P2 must all be zero.
-3. Only after review PASS, request/confirm publication authority, push the sole fixed branch and create one draft PR linked to Issue #6.
-4. Run Ubuntu/Windows PR CI and require byte-identical canonical model/error reports before ready/merge consideration.
-5. Do not start M1-02, M1-03, M2 or any adjacent task implicitly.
+1. Launch a new independent read-only M1-01 review against the current frozen evidence commit; P0/P1/P2 must all be zero.
+2. Only after review PASS, request/confirm publication authority, push the sole fixed branch and create one draft PR linked to Issue #6.
+3. Run Ubuntu/Windows PR CI and require byte-identical canonical model/error reports before ready/merge consideration.
+4. Do not start M1-02, M1-03, M2 or any adjacent task implicitly.
 
 ## Relevant Files and Artifacts
 
@@ -348,6 +351,7 @@ None
 - `docs/evidence/M0-05/arm64-api29-metadata-blocker.md`
 - `docs/evidence/M0-05/formal-compatibility.md`
 - `docs/evidence/M0-05/security-review-1.md`
+- `docs/evidence/M1-01/security-review-2.md`
 - `runtime/bootstrap/src/main/java/ah/runtime/bootstrap/ShellAppComponentFactory.java`
 - `fixtures/android/src/androidTestCompatFixture/java/ah/fixtures/android/CompatibilityPocRunner.java`
 - `tools/validation/verify-m0-05-apks.mjs`
@@ -376,7 +380,7 @@ None
 - [x] post-merge HandOff 提交 `d682c85` 已在 `main` 的 Ubuntu/Windows Build 与 Governance 全部 PASS，并无豁免通过 strict HandOff。
 - [x] M0-05 完成后由用户明确启动 M1-01；M1-02/M1-03/M2 保持未启动。
 - [x] 冻结公开模型、限制、稳定错误码和恶意输入测试合同。
-- [ ] 完成有界 ZIP/AXML/DEX 检查器、确定性 Windows/Ubuntu 验证和证据归档。
+- [x] 完成有界 ZIP/AXML/DEX/ELF 检查器、确定性 Windows 验证和修正证据归档；Ubuntu 等价性留给发布后的双平台 PR CI。
 - [ ] 独立只读 `m1_01_security_review` 对冻结提交给出 P0/P1/P2 全零 PASS。
 
 ## Handoff Sign-off

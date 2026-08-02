@@ -5,7 +5,7 @@
 - Task: M1-02, Issue [#7](https://github.com/xiaokh31/androidAppHardening/issues/7).
 - Branch: `feat/m1-02-signer-policy`.
 - Base: `aebbc441da34d2fba78648415c1d80ea844d774d`.
-- Frozen remediation implementation: `5016cd39426b2d50d1fbedfafee2f24c567e0546`.
+- Frozen remediation implementation: `61908507c741865c50aac07763d42c890bf25d4b`.
 - Product boundary: read-only input verification and public certificate identity only. Product code has no output signing, private-key, keystore, alias, password, HSM or remote-signing entry point.
 
 The implementation uses the pinned `com.android.tools.build:apksig:9.3.0` verifier with minimum checked platform 29. It requires exactly one current signer, hashes the current X.509 DER certificate with SHA-256, records an authenticated oldest-to-newest lineage, and binds verification to the M1-01 inspection digest and the same open file handle. A bounded envelope check and a 32 MiB contiguous-read limit prevent apksig from materializing an attacker-sized Signing Block. Public failures retain only stable codes and safe file names, never raw causes. It does not encode `SPV1`; it only enforces the ADR 0004 model constraints needed by M1-04.
@@ -34,7 +34,7 @@ All APKs, DER certificates, PKCS#8 keys and lineage files are deterministic synt
 | `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict` | 0 | strict HandOff PASS |
 | `git diff --check` and strict UTF-8 replacement-character scan of all M1-02 files | 0 | PASS |
 
-The remediation root validation ran from `2026-08-02T08:37:23.5456547Z` through `2026-08-02T08:40:07.2419047Z` and completed in 2 minutes 43 seconds. No emulator or physical device was started.
+The final remediation root validation ran from `2026-08-02T09:01:28.5534714Z` through `2026-08-02T09:04:11.7625329Z` and completed in 2 minutes 43 seconds. No emulator or physical device was started.
 
 The optional local `node tools/validation/test-dependency-verification.mjs` invocation exited 1 before reaching the tampered-checksum assertion because its deliberate `--refresh-dependencies` copy could not resolve AGP through the restricted local network. The committed checksum remains present, the offline verified root build passed, and the unchanged fail-closed script remains a required Ubuntu CI step after publication.
 
@@ -63,6 +63,8 @@ d183c6e5aa4fc22150451b37879c6bb8aa2fdc392b1dcf2fd45414fad9908a16
 | malformed signing-block trailer | `SIGNER_INVALID` |
 | structurally complete Signing Block above 32 MiB | `SIGNER_INVALID` before apksig materialization |
 | declared oversized block with a truncated body | `SIGNER_INVALID` |
+| size `0x8000000000000000` | `SIGNER_INVALID` |
+| size `0xffffffffffffffff` | `SIGNER_INVALID` |
 | multiple current signers | `SIGNER_MULTIPLE_CURRENT` |
 | invalid proof-of-rotation signature | `SIGNER_LINEAGE_INVALID` |
 | inspection digest mismatch | `SIGNER_INPUT_CHANGED` |
@@ -78,9 +80,9 @@ Model tests cover the unrotated and rotated cases, empty lineage, more than 16 e
 | Artifact | SHA-256 |
 |---|---|
 | `canonical-policy.json` | `b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2` |
-| `error-matrix.json` | `dce3c1a17647a96e93da291033e28c169ad0f5daee5d7544c6555392d66fc7eb` |
+| `error-matrix.json` | `c33d342077c371878399c80e76ae025cd0efc56bfcca6d5bf80ffde4d75677c6` |
 | `official-cross-check.json` | `c63d706f08763819e30c1e682fff87448a999a3ce53a27c7253e35ef9f82e2ba` |
-| `artifact-manifest.json` | `fddc19d2a1ed3068c8ac5cdf8bc44299df0279a927a62da0af33be7cc1a0eab8` |
+| `artifact-manifest.json` | `d74287aec49cfd3cb18af55c6119b3ea90689d2f03bc15df8e5e8d04f43eb201` |
 | `capability-scan.txt` | `97c89653b10a7e7b2fd97b53e7ae2ccc53994d623de2fc7c56852d982adbfcfa` |
 
 The artifact manifest fixes hashes for every positive and negative APK, the v4 `.idsig`, three DER certificates, the lineage, capability scan, official cross-check and both canonical reports. Each error-matrix row records the product error and whether official verification accepts the underlying APK. Its `generated_at` is deliberately fixed to the Unix epoch.
@@ -91,4 +93,4 @@ The production source and bytecode capability scan passed across nine source fil
 
 `.github/workflows/build.yml` now requires Ubuntu 24.04 and Windows 2025 to regenerate both canonical M1-02 reports and match the exact hashes above after a clean root check. Windows is proven locally. Ubuntu byte equivalence remains pending publication and cannot be claimed before the branch runs in GitHub Actions.
 
-The first independent review of evidence HEAD `21bfd6db333767c9182c1310e6cd838a8fae49a1` returned FAIL with P0 `0`, P1 `1`, P2 `3`; it is archived in `security-review-1.md` and that target is invalid. Remediation commit `5016cd39426b2d50d1fbedfafee2f24c567e0546` closes the reported unbounded materialization, cause leakage, magic-only classification and evidence gaps. A new independent review must still return P0/P1/P2 all zero before publication is requested. The branch is not published, no M1-02 PR exists, and M1-03/M1-04/M2-03 remain unstarted.
+The first independent review of evidence HEAD `21bfd6db333767c9182c1310e6cd838a8fae49a1` returned FAIL with P0 `0`, P1 `1`, P2 `3`; it is archived in `security-review-1.md`. The second review of remediation evidence HEAD `8718975255cfbdab4fc2ce29eae67c18f21b62ed` confirmed those four findings closed but returned FAIL with one P2 for high-bit size misclassification; it is archived in `security-review-2.md`. Commit `61908507c741865c50aac07763d42c890bf25d4b` classifies negative decoded sizes as malformed, adds both high-bit regressions and binds `input_changed` official status to the changed artifact. Both earlier targets are invalid. A third independent review must return P0/P1/P2 all zero before publication is requested. The branch is not published, no M1-02 PR exists, and M1-03/M1-04/M2-03 remain unstarted.

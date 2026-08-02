@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260802-143450
-updated_at: 2026-08-02T14:34:50+08:00
+handoff_id: HO-20260802-144950
+updated_at: 2026-08-02T14:49:50+08:00
 updated_by: /root
 state: active
 source_branch: feat/m1-01-untrusted-apk-inspector
@@ -48,6 +48,7 @@ next_owner: /root
 - 第三次完整独立只读复核对冻结提交 `0bbbeb6da8573ab770b0ca4ec1f6227e444244a1` 给出 FAIL：P0 `0`、P1 `4`、P2 `0`。发现 hash/parse 分离句柄、DEX 装箱集合内存放大、20-byte 截断 ELF 正例和缺失 DEX map/data 闭环；旧冻结提交立即失效，结论归档于 `docs/evidence/M1-01/security-review-3.md`。
 - 修正实现 `e97d67f9fbfc5b4c23751a85822dc6c96af4c6c5` 已使用同句柄 64 KiB 分块快照绑定全部 parser 读取、以文件大小受限 BitSet 取代大装箱集合、验证完整 ELF32/ELF64 header，并为 DEX 固定表/data/map-list 建立闭环。58 个命名错误 fixture、10,000 样本和 231-task 根 check 均 PASS；分支仍未发布。
 - 第四次完整独立只读复核对冻结提交 `19ea544ddec32fcaac63dfee81f25546084d8bae` 给出 PASS：P0 `0`、P1 `0`、P2 `0`。复核者独立重跑根 check、Governance、strict HandOff 和 diff check，均退出 `0`；结论归档于 `docs/evidence/M1-01/security-review-4.md`。分支仍未发布且尚无 PR。
+- 用户已明确授权推送固定分支、创建关联 Issue #6 的唯一草稿 PR，并运行 Ubuntu/Windows 字节一致性 CI。发布前补充的 Build 门禁要求两个平台生成的规范模型与 58-fixture 错误矩阵分别严格命中同一冻结 SHA-256；不改检查器实现。
 
 ## Active Workstreams
 
@@ -56,7 +57,7 @@ next_owner: /root
 | M0-04 | `runtime-security-agent` | `spike/m0-04-classloader-poc` | done | M0-03 | PR #29、正式设备矩阵和独立复核已通过 |
 | M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | done | M0-04 | PR #31、合并后 strict HandOff 和双平台 CI 已通过 |
 | M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | done | M0-04, M0-06 | PR #32、三环境矩阵、独立安全复核和最终 PR CI 已通过 |
-| M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | in_progress | M0-05 | 等待明确发布授权；授权后仅推送固定分支并创建 Issue #6 唯一草稿 PR |
+| M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | in_progress | M0-05 | 推送固定分支、创建 Issue #6 唯一草稿 PR 并运行双平台字节一致性 CI |
 
 ## Decisions and Invariants
 
@@ -84,6 +85,7 @@ next_owner: /root
 - 第三次完整独立只读复核否决 `0bbbeb6da8573ab770b0ca4ec1f6227e444244a1`，四项 P1 分别为输入 hash/model 句柄脱钩、DEX offset 装箱集合内存放大、截断 ELF 正例和 DEX map/data 非标准正例；P2 为 `0`。
 - `e97d67f9fbfc5b4c23751a85822dc6c96af4c6c5` 关闭上述四项。正式 Windows 模块测试和根 check 退出 `0`；新规范模型 SHA-256 为 `c15561ee6d6e879ad9db058be2762282538a77d4204279d6b5d6d57b1f1d52bf`，58-fixture 错误矩阵 SHA-256 为 `b396616ff369fa2d4db56c92f6908253339867d71554f96debee4d7ed06a02fc`，峰值已用内存为 `108715272` bytes。
 - 第四次完整独立只读复核在冻结提交 `19ea544ddec32fcaac63dfee81f25546084d8bae` 上给出 PASS，P0/P1/P2 全为零；独立根 check、Governance、strict HandOff 和 diff check 均通过。该结论关闭本地实现与独立复核门禁，但不替代发布授权或双平台 PR CI。
+- 用户已授予 M1-01 发布权限；`.github/workflows/build.yml` 在原 Ubuntu/Windows 根检查后分别校验 `canonical-model.json` 与 `error-matrix.json` 的冻结 SHA-256，使两平台只有在产物逐字节等于同一规范值时才能通过。
 
 - PR #31 已合并，旧 metadata blocker 的架构依赖已解除，M0-05 从 `blocked` 恢复为 `in_progress`。
 - 既有 M0-05 分支保留四个本地历史提交和 Issue #5，不创建第二分支或第二任务。
@@ -113,7 +115,7 @@ next_owner: /root
 - User authorized ready/merge; PR #32 was merged as `1fe9ea9ca7ac989e2e071ccb00ae2a0c0010c463` and Issue #5 closed.
 - Post-merge Governance run `30732622423` reproduced one HandOff-only source-branch mismatch on Ubuntu and Windows; coordinator commit `d682c85125e11084cf023b5f523d715e28c74e75` changed the resume point to `main` and marked M0-05 done. The later `main@e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030` is the verified M1-01 base.
 - On `d682c85125e11084cf023b5f523d715e28c74e75`, Governance run `30732725929` and Build run `30732725931` passed on Ubuntu 24.04 and Windows 2025, including strict HandOff on `main` with no exemption.
-- Exact next action: request and confirm explicit publication authority; only after authorization, push the sole fixed branch and create one draft PR linked to Issue #6. Do not start adjacent work.
+- Exact next action: commit the publication gate, push the sole fixed branch, create one draft PR linked to Issue #6, and monitor Ubuntu/Windows byte-equivalence CI to completion. Keep the PR draft and do not start adjacent work.
 
 ## Verification Evidence
 
@@ -351,11 +353,11 @@ None
 
 ## Ordered Next Actions
 
-1. Request and confirm explicit publication authority.
-2. Only after authorization, push the sole fixed branch and create one draft PR linked to Issue #6.
-3. Run Ubuntu/Windows PR CI and require byte-identical canonical model/error reports.
-4. Only after CI PASS, request explicit ready/merge authorization.
-5. Do not start M1-02, M1-03, M2 or any adjacent task implicitly.
+1. Commit the publication gate and push the sole fixed branch.
+2. Create one draft PR linked to Issue #6.
+3. Monitor Ubuntu/Windows PR CI and require byte-identical canonical model/error reports.
+4. After CI PASS, archive the run and commit evidence while keeping the PR draft.
+5. Only then request explicit ready/merge authorization; do not start M1-02, M1-03, M2 or any adjacent task implicitly.
 
 ## Relevant Files and Artifacts
 

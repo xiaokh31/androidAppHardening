@@ -221,6 +221,10 @@ jobs:
                 --out "$signed_dir/$output_name" \
                 "$unsigned_apk"
             done
+            duplicate_signer_digest="$("$ANDROID_HOME/build-tools/36.1.0/apksigner" verify --print-certs \
+              "$signed_dir/m0-05-native-duplicate.apk" \
+              | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')"
+            test "$duplicate_signer_digest" = "$signer_digest"
 
             signer_input="$unsigned_dir/m0-05-config-major-unsigned.apk"
             "$ANDROID_HOME/build-tools/36.1.0/apksigner" sign \
@@ -259,6 +263,7 @@ jobs:
               {name:"config-crc", apk:($root+"/signed/m0-05-config-crc.apk"), expected_code:"AAH-P009", allow_install_rejection:true},
               {name:"config-length", apk:($root+"/signed/m0-05-config-length.apk"), expected_code:"AAH-P009", allow_install_rejection:true},
               {name:"payload-corrupt", apk:($root+"/signed/m0-05-payload-corrupt.apk"), expected_code:"AAH-P001"},
+              {name:"native-duplicate", apk:($root+"/signed/m0-05-native-duplicate.apk"), expected_code:"AAH-P004", allow_install_rejection:true},
               {name:"wrong-signer", apk:($root+"/signed/m0-05-wrong-signer.apk"), expected_code:"AAH-P008"},
               {name:"multi-signer", apk:($root+"/signed/m0-05-multi-signer.apk"), expected_code:"AAH-P007"},
               {name:"duplicate-config", apk:($root+"/unsigned/m0-05-config-duplicate-unsigned.apk"), expected_code:"PLATFORM_ZIP_REJECTION", install_rejection:true},

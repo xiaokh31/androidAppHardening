@@ -312,6 +312,7 @@ public final class CompatibilityPocRunner extends Instrumentation {
                     {"m0-05-config-crc.apk", "AAH-P009"},
                     {"m0-05-config-length.apk", "AAH-P009"},
                     {"m0-05-payload-corrupt.apk", "AAH-P001"},
+                    {"m0-05-native-duplicate.apk", "AAH-P004"},
                     {"m0-05-wrong-signer.apk", "AAH-P008"},
                     {"m0-05-multi-signer.apk", "AAH-P007"},
                     {"m0-05-config-duplicate-unsigned.apk", "AAH-P006"},
@@ -324,7 +325,9 @@ public final class CompatibilityPocRunner extends Instrumentation {
             require(apk.isFile() && apk.canRead(), "external negative APK is unavailable: " + testCase[0]);
             ApplicationInfo mutated = new ApplicationInfo(actual);
             mutated.sourceDir = apk.getAbsolutePath();
+            int signersBefore = countEvents(ClassLoaderProbe.EARLY_SIGNER_VERIFIED);
             int loadersBefore = countEvents(ClassLoaderProbe.LOADER_CREATED);
+            int jniBefore = countEvents(ClassLoaderProbe.JNI_LOADED);
             try {
                 new ShellAppComponentFactory()
                         .instantiateClassLoader(getClass().getClassLoader(), mutated);
@@ -336,6 +339,16 @@ public final class CompatibilityPocRunner extends Instrumentation {
                     loadersBefore,
                     countEvents(ClassLoaderProbe.LOADER_CREATED),
                     testCase[0] + " loader count");
+            equal(
+                    jniBefore,
+                    countEvents(ClassLoaderProbe.JNI_LOADED),
+                    testCase[0] + " JNI count");
+            if ("m0-05-native-duplicate.apk".equals(testCase[0])) {
+                equal(
+                        signersBefore + 1,
+                        countEvents(ClassLoaderProbe.EARLY_SIGNER_VERIFIED),
+                        "duplicate ABI alias signer authentication count");
+            }
         }
     }
 
@@ -438,10 +451,12 @@ public final class CompatibilityPocRunner extends Instrumentation {
                 + (expectedOriginalFactory ? 6 : 0)
                 + "; signer_negative=2"
                 + "; external_startup_negative="
-                + (externalNegativeDirectory == null ? 0 : 17)
+                + (externalNegativeDirectory == null ? 0 : 18)
                 + "; component_delegate_negative="
                 + (expectedOriginalFactory ? 16 : 0)
                 + "; native_negative=3"
+                + "; authenticated_native_negative="
+                + (externalNegativeDirectory == null ? 0 : 1)
                 + "; plaintext_dex_files=0";
     }
 

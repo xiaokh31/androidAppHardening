@@ -79,6 +79,7 @@ function buildApk(sourceEntries, mutation) {
   let localOffset = 0;
   let configCount = 0;
   let payloadCount = 0;
+  let duplicatedNativeEntries = 0;
 
   for (const sourceEntry of sourceEntries) {
     if (isSignatureEntry(sourceEntry.name)) {
@@ -102,16 +103,40 @@ function buildApk(sourceEntries, mutation) {
     if ((entry.flags & DATA_DESCRIPTOR_FLAG) !== 0 && mutation !== "config-descriptor") {
       fail(`data descriptor flag survived normalization for ${entry.name}`);
     }
-    const copies = sourceEntry.name === CONFIG_ENTRY && mutation === "config-duplicate" ? 2 : 1;
+    const duplicateConfig = sourceEntry.name === CONFIG_ENTRY && mutation === "config-duplicate";
+    const duplicateNative = mutation === "native-duplicate"
+      && duplicatedNativeEntries === 0
+      && /^lib\/[^/]+\/lib[^/]+\.so$/u.test(sourceEntry.name);
+    if (duplicateNative) {
+      duplicatedNativeEntries += 1;
+    }
+    const copies = duplicateConfig ? 2 : 1;
     for (let copy = 0; copy < copies; copy += 1) {
       const local = localRecord(entry);
       localRecords.push(local);
       centralRecords.push(centralRecord(entry, localOffset));
       localOffset += local.length;
     }
+    if (duplicateNative) {
+      const segments = entry.name.split("/");
+      segments[1] = segments[1].toUpperCase();
+      const alternateName = segments.join("/");
+      const alternate = {
+        ...entry,
+        name: alternateName,
+        nameBytes: Buffer.from(alternateName, "utf8"),
+      };
+      const local = localRecord(alternate);
+      localRecords.push(local);
+      centralRecords.push(centralRecord(alternate, localOffset));
+      localOffset += local.length;
+    }
   }
   if (configCount !== 1 || payloadCount !== 1) {
     fail(`expected one config and payload entry, found ${configCount}/${payloadCount}`);
+  }
+  if (mutation === "native-duplicate" && duplicatedNativeEntries !== 1) {
+    fail(`expected one forged duplicate ABI alias, found ${duplicatedNativeEntries}`);
   }
 
   const centralDirectory = Buffer.concat(centralRecords);
@@ -184,6 +209,7 @@ async function main() {
     "config-crc",
     "config-length",
     "payload-corrupt",
+    "native-duplicate",
     "truncated-zip",
   ];
   for (const mutation of mutations) {

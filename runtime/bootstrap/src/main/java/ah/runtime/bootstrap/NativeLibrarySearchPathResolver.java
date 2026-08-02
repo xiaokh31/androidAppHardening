@@ -7,8 +7,11 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -37,6 +40,7 @@ public final class NativeLibrarySearchPathResolver {
 
         Set<String> supported = new HashSet<>(Arrays.asList(processAbis));
         Set<String> apkAbis = new HashSet<>();
+        Map<String, String> abiSpellings = new HashMap<>();
         Set<String> entryNames = new HashSet<>();
         int entryCount = 0;
         try (ZipFile apk = new ZipFile(applicationInfo.sourceDir)) {
@@ -56,6 +60,11 @@ public final class NativeLibrarySearchPathResolver {
                 validateNativeEntry(name, entry.isDirectory());
                 if (!entry.isDirectory()) {
                     String abi = name.substring(4, name.indexOf('/', 4));
+                    String normalizedAbi = abi.toLowerCase(Locale.ROOT);
+                    String priorSpelling = abiSpellings.putIfAbsent(normalizedAbi, abi);
+                    if (priorSpelling != null && !priorSpelling.equals(abi)) {
+                        throw failure("APK contains duplicate ABI aliases");
+                    }
                     if (supported.contains(abi)) {
                         apkAbis.add(abi);
                     }

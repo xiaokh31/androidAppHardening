@@ -550,7 +550,7 @@ async function main() {
         source_policy: "PASS",
         r8_signing_execution_classes: "REMOVED",
         verifier_peak_memory_kb: process.resourceUsage().maxRSS,
-        verifier_root_dex_delta: {
+        m004_baseline_root_dex_delta: {
           baseline_bytes: baselineBytes,
           extracted_bytes: extracted.root_dex_bytes,
           direct_bytes: direct.root_dex_bytes,

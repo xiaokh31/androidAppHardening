@@ -194,7 +194,7 @@ function runVariant(variant) {
     jni_verified: true,
     signer_cross_check_verified: true,
     metadata_independence_verified: true,
-    runtime_negative_matrix_verified: variant.negativeFiles.length === 17,
+    runtime_negative_matrix_verified: variant.negativeFiles.length === 18,
     external_startup_negative_cases: variant.negativeFiles.length,
     plaintext_dex_files: 0,
     cold_start_ms: coldStarts,
@@ -332,7 +332,7 @@ function negativeFileSet(negativeSignedDirectory, negativeUnsignedDirectory) {
     "config-major", "config-reserved", "config-signer-mismatch",
     "config-factory-flags", "config-invalid-utf8", "config-nul",
     "config-slot-tail", "config-deflate", "config-descriptor", "config-crc",
-    "config-length", "payload-corrupt", "wrong-signer", "multi-signer",
+    "config-length", "payload-corrupt", "native-duplicate", "wrong-signer", "multi-signer",
   ];
   const unsignedNames = ["config-duplicate", "truncated-zip", "no-factory"];
   return [

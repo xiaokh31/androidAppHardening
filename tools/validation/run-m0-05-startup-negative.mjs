@@ -161,6 +161,7 @@ function loadCases() {
     { name: "config-crc", apk: signedPath("config-crc"), expected_code: "AAH-P009", allow_install_rejection: true },
     { name: "config-length", apk: signedPath("config-length"), expected_code: "AAH-P009", allow_install_rejection: true },
     { name: "payload-corrupt", apk: signedPath("payload-corrupt"), expected_code: "AAH-P001" },
+    { name: "native-duplicate", apk: signedPath("native-duplicate"), expected_code: "AAH-P004", allow_install_rejection: true },
     { name: "wrong-signer", apk: signedPath("wrong-signer"), expected_code: "AAH-P008" },
     { name: "multi-signer", apk: signedPath("multi-signer"), expected_code: "AAH-P007" },
     { name: "duplicate-config", apk: unsignedPath("config-duplicate"), expected_code: "PLATFORM_ZIP_REJECTION", install_rejection: true },

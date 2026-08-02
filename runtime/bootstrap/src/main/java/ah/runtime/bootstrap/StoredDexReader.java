@@ -13,6 +13,8 @@ import java.util.zip.CRC32;
 
 final class StoredDexReader {
     static final String ENTRY_NAME = "assets/ah/poc/classes.dex";
+    static final String CONFIG_ENTRY_NAME = "assets/ah/runtime/config.bin";
+    static final String CONTAINER_ENTRY_NAME = "assets/ah/runtime/payload.ahdc";
 
     private static final int EOCD_SIGNATURE = 0x06054b50;
     private static final int CENTRAL_SIGNATURE = 0x02014b50;
@@ -25,6 +27,8 @@ final class StoredDexReader {
     private static final int ENCRYPTED_FLAG = 1;
     private static final int DATA_DESCRIPTOR_FLAG = 1 << 3;
     private static final int MAX_DEX_SIZE = 16 * 1024 * 1024;
+    private static final int MAX_CONTAINER_SIZE = 32 * 1024 * 1024;
+    private static final int MAX_DEX_COUNT = 8;
     private static final int MAX_CENTRAL_DIRECTORY_SIZE = 4 * 1024 * 1024;
     private static final int MAX_ENTRY_COUNT = 4096;
     private static final byte[] DEX_MAGIC = {'d', 'e', 'x', '\n'};
@@ -34,29 +38,102 @@ final class StoredDexReader {
     private StoredDexReader() {}
 
     static ByteBuffer read(String sourceDir) {
+        ByteBuffer payload = readEntry(sourceDir, ENTRY_NAME, MAX_DEX_SIZE, PocFailure.PAYLOAD_CODE, "payload");
+        validateDex(payload, zipCrc32(payload));
+        return payload;
+    }
+
+    static ByteBuffer readConfig(String sourceDir) {
+        return readEntry(
+                sourceDir,
+                CONFIG_ENTRY_NAME,
+                ConfigV2Parser.SIZE,
+                PocFailure.CONFIG_CODE,
+                "ConfigV2");
+    }
+
+    static ByteBuffer[] readContainer(String sourceDir) {
+        ByteBuffer container =
+                readEntry(
+                        sourceDir,
+                        CONTAINER_ENTRY_NAME,
+                        MAX_CONTAINER_SIZE,
+                        PocFailure.PAYLOAD_CODE,
+                        "payload");
+        ByteBuffer header = container.duplicate().order(ByteOrder.LITTLE_ENDIAN);
+        if (header.remaining() < 8
+                || header.get(0) != 'A'
+                || header.get(1) != 'H'
+                || header.get(2) != 'D'
+                || header.get(3) != 'C'
+                || Byte.toUnsignedInt(header.get(4)) != 1
+                || header.get(5) != 0) {
+            throw PocFailure.create("payload container header is invalid");
+        }
+        int dexCount = Short.toUnsignedInt(header.getShort(6));
+        if (dexCount < 2 || dexCount > MAX_DEX_COUNT) {
+            throw PocFailure.create("payload container DEX count is invalid");
+        }
+        int tableSize = Math.multiplyExact(dexCount, Integer.BYTES);
+        if (header.remaining() < 8 + tableSize) {
+            throw PocFailure.create("payload container table is truncated");
+        }
+
+        int cursor = 8 + tableSize;
+        ByteBuffer[] dexFiles = new ByteBuffer[dexCount];
+        for (int index = 0; index < dexCount; index++) {
+            int length = header.getInt(8 + index * Integer.BYTES);
+            if (length < DEX_HEADER_SIZE
+                    || length > MAX_DEX_SIZE
+                    || cursor > container.limit() - length) {
+                throw PocFailure.create("payload container DEX bounds are invalid");
+            }
+            ByteBuffer dex = ByteBuffer.allocateDirect(length);
+            ByteBuffer source = container.duplicate();
+            source.position(cursor);
+            source.limit(cursor + length);
+            dex.put(source).flip();
+            validateDex(dex, zipCrc32(dex));
+            dexFiles[index] = dex;
+            cursor += length;
+        }
+        if (cursor != container.limit()) {
+            throw PocFailure.create("payload container has trailing bytes");
+        }
+        return dexFiles;
+    }
+
+    private static ByteBuffer readEntry(
+            String sourceDir,
+            String entryName,
+            int maxEntrySize,
+            String errorCode,
+            String label) {
         if (sourceDir == null || sourceDir.isEmpty()) {
-            throw PocFailure.create("missing Framework sourceDir");
+            throw PocFailure.create(errorCode, "missing Framework sourceDir for " + label);
         }
 
         try (FileInputStream input = new FileInputStream(sourceDir);
                 FileChannel channel = input.getChannel()) {
             long fileSize = channel.size();
             CentralDirectory central = findCentralDirectory(channel, fileSize);
-            Entry entry = findEntry(channel, central, fileSize);
+            Entry entry = findEntry(channel, central, fileSize, entryName, maxEntrySize);
             long dataOffset = findDataOffset(channel, entry, fileSize);
 
             ByteBuffer payload = ByteBuffer.allocateDirect(entry.uncompressedSize);
             readFully(channel, payload, dataOffset);
             payload.flip();
-            validateDex(payload, entry.crc32);
+            if (zipCrc32(payload) != entry.crc32) {
+                throw PocFailure.create("payload ZIP CRC-32 mismatch");
+            }
             return payload.asReadOnlyBuffer();
         } catch (IOException exception) {
-            throw PocFailure.create("cannot read packaged payload");
+            throw PocFailure.create(errorCode, "cannot read packaged " + label);
         } catch (RuntimeException exception) {
-            if (PocFailure.isPocFailure(exception)) {
+            if (PocFailure.hasCode(exception, errorCode)) {
                 throw exception;
             }
-            throw PocFailure.create("cannot read packaged payload");
+            throw PocFailure.create(errorCode, "cannot read packaged " + label);
         }
     }
 
@@ -101,10 +178,14 @@ final class StoredDexReader {
     }
 
     private static Entry findEntry(
-            FileChannel channel, CentralDirectory central, long fileSize) throws IOException {
+            FileChannel channel,
+            CentralDirectory central,
+            long fileSize,
+            String entryName,
+            int maxEntrySize) throws IOException {
         long cursor = central.offset;
         long end = central.offset + central.size;
-        byte[] expectedName = ENTRY_NAME.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        byte[] expectedName = entryName.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         Entry result = null;
 
         for (int index = 0; index < central.entryCount; index++) {
@@ -147,7 +228,7 @@ final class StoredDexReader {
                         || method != STORED_METHOD
                         || compressedSize != uncompressedSize
                         || uncompressedSize <= 0
-                        || uncompressedSize > MAX_DEX_SIZE) {
+                        || uncompressedSize > maxEntrySize) {
                     throw PocFailure.create("payload ZIP contract is invalid");
                 }
                 result =
@@ -227,9 +308,7 @@ final class StoredDexReader {
             throw PocFailure.create("payload DEX header is invalid");
         }
 
-        CRC32 crc32 = new CRC32();
-        updateChecksum(crc32, payload.duplicate());
-        if (crc32.getValue() != expectedCrc32) {
+        if (zipCrc32(payload) != expectedCrc32) {
             throw PocFailure.create("payload ZIP CRC-32 mismatch");
         }
 
@@ -256,6 +335,12 @@ final class StoredDexReader {
         if (Integer.toUnsignedLong(header.getInt(8)) != adler32.getValue()) {
             throw PocFailure.create("payload DEX checksum mismatch");
         }
+    }
+
+    private static long zipCrc32(ByteBuffer payload) {
+        CRC32 crc32 = new CRC32();
+        updateChecksum(crc32, payload.duplicate());
+        return crc32.getValue();
     }
 
     private static void updateChecksum(java.util.zip.Checksum checksum, ByteBuffer bytes) {

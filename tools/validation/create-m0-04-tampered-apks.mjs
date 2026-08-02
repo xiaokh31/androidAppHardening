@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import { pathToFileURL } from "node:url";
 
 const PAYLOAD_ENTRY = "assets/ah/poc/classes.dex";
 const EOCD_SIGNATURE = 0x06054b50;
@@ -16,7 +17,7 @@ function fail(message) {
   throw new Error(`M0-04 tampered APK creation failed: ${message}`);
 }
 
-function sha256(bytes) {
+export function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
@@ -34,7 +35,7 @@ function makeCrc32Table() {
 
 const crc32Table = makeCrc32Table();
 
-function crc32(bytes) {
+export function crc32(bytes) {
   let value = 0xffffffff;
   for (const byte of bytes) {
     value = crc32Table[(value ^ byte) & 0xff] ^ (value >>> 8);
@@ -73,7 +74,7 @@ function findEocd(apk) {
   fail("EOCD is missing");
 }
 
-function readEntries(apk) {
+export function readEntries(apk) {
   const eocd = findEocd(apk);
   const centralEnd = eocd.centralOffset + eocd.centralSize;
   if (centralEnd > apk.length) {
@@ -163,11 +164,11 @@ function readEntries(apk) {
   return entries;
 }
 
-function isSignatureEntry(name) {
+export function isSignatureEntry(name) {
   return /^META-INF\/(?:MANIFEST\.MF|[^/]+\.(?:SF|RSA|DSA|EC))$/iu.test(name);
 }
 
-function normalizedEntry(entry, replacement) {
+export function normalizedEntry(entry, replacement) {
   if (replacement === undefined) {
     return {
       ...entry,
@@ -187,7 +188,7 @@ function normalizedEntry(entry, replacement) {
   };
 }
 
-function localRecord(entry) {
+export function localRecord(entry) {
   const header = Buffer.alloc(30);
   header.writeUInt32LE(LOCAL_SIGNATURE, 0);
   header.writeUInt16LE(entry.centralHeader.readUInt16LE(6), 4);
@@ -208,7 +209,7 @@ function localRecord(entry) {
   ]);
 }
 
-function centralRecord(entry, localOffset) {
+export function centralRecord(entry, localOffset) {
   const header = Buffer.from(entry.centralHeader);
   header.writeUInt16LE(entry.flags, 8);
   header.writeUInt16LE(entry.method, 10);
@@ -319,7 +320,9 @@ async function main() {
   );
 }
 
-main().catch((error) => {
-  process.stderr.write(`${error.stack ?? error}\n`);
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => {
+    process.stderr.write(`${error.stack ?? error}\n`);
+    process.exitCode = 1;
+  });
+}

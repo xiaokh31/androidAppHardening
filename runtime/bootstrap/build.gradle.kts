@@ -2,6 +2,12 @@ plugins {
     alias(libs.plugins.android.library)
 }
 
+val m005ExpectedSignerSha256 =
+    providers.gradleProperty("m005ExpectedSignerSha256").orElse("0".repeat(64)).get()
+if (!m005ExpectedSignerSha256.matches(Regex("[0-9a-fA-F]{64}"))) {
+    throw GradleException("m005ExpectedSignerSha256 must be exactly 64 hexadecimal characters")
+}
+
 android {
     namespace = "ah.runtime.bootstrap"
     compileSdk = libs.versions.android.compile.sdk.get().toInt()
@@ -9,6 +15,15 @@ android {
 
     defaultConfig {
         minSdk = libs.versions.android.min.sdk.get().toInt()
+        buildConfigField(
+            "String",
+            "M005_EXPECTED_SIGNER_SHA256_HEX",
+            "\"${m005ExpectedSignerSha256.lowercase()}\"",
+        )
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     compileOptions {
@@ -26,4 +41,5 @@ android {
 
 dependencies {
     api(project(":runtime:policy"))
+    implementation(libs.android.apksig)
 }

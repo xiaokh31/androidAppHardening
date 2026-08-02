@@ -1,0 +1,405 @@
+name: M0-05 Linux KVM
+
+on:
+  push:
+    branches:
+      - spike/m0-05-application-factory-provider-jni-poc
+    paths:
+      - ".github/workflows/m0-05-linux-kvm.yml"
+      - "fixtures/android/**"
+      - "runtime/bootstrap/**"
+      - "runtime/native/**"
+      - "tools/validation/**"
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/m0-05-linux-kvm.yml"
+      - "fixtures/android/**"
+      - "runtime/bootstrap/**"
+      - "runtime/native/**"
+      - "tools/validation/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m0-05-kvm-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  device:
+    name: API ${{ matrix.api }} x86_64 (Linux/KVM)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api: 29
+            revision: 8
+            package_index: 1
+          - api: 36
+            revision: 2
+            package_index: 2
+    steps:
+      - name: Check out repository
+        # actions/checkout v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Set up Temurin JDK
+        # actions/setup-java v5
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95
+        with:
+          distribution: temurin
+          java-version: "17.0.19+10"
+
+      - name: Set up Node.js
+        # actions/setup-node v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24.12.0
+          check-latest: false
+
+      - name: Prepare project-local pinned Android runtime
+        shell: bash
+        env:
+          API: ${{ matrix.api }}
+          PACKAGE_INDEX: ${{ matrix.package_index }}
+        run: |
+          set -euo pipefail
+          manifest="tools/validation/m0-05-linux-kvm-packages.json"
+          sdk_root="$GITHUB_WORKSPACE/.toolchains/android-m0-05-ci"
+          downloads="$sdk_root/downloads"
+          mkdir -p "$downloads" "$sdk_root/system-images/android-$API/default" build/m0-05
+
+          pulse_package="$(jq -r '.host_packages[0].package' "$manifest")"
+          pulse_version="$(jq -r '.host_packages[0].version' "$manifest")"
+          test "$pulse_package" = "libpulse0"
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends "$pulse_package=$pulse_version"
+          test "$(dpkg-query -W -f='${Version}' "$pulse_package")" = "$pulse_version"
+          dpkg-query -W -f='${Package}=${Version}\n' "$pulse_package" \
+            | tee build/m0-05/ubuntu-runtime-packages.txt
+
+          for directory in cmdline-tools licenses platform-tools; do
+            test -e "$ANDROID_HOME/$directory"
+            ln -s "$ANDROID_HOME/$directory" "$sdk_root/$directory"
+          done
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$sdk_root" \
+            "platforms;android-36" \
+            "build-tools;36.1.0" \
+            "ndk;29.0.14206865" \
+            "cmake;4.1.2"
+
+          emulator_url="$(jq -r '.packages[0].archive_url' "$manifest")"
+          emulator_name="$(jq -r '.packages[0].archive' "$manifest")"
+          emulator_sha="$(jq -r '.packages[0].sha256' "$manifest")"
+          emulator_bytes="$(jq -r '.packages[0].bytes' "$manifest")"
+          image_url="$(jq -r ".packages[$PACKAGE_INDEX].archive_url" "$manifest")"
+          image_name="$(jq -r ".packages[$PACKAGE_INDEX].archive" "$manifest")"
+          image_sha="$(jq -r ".packages[$PACKAGE_INDEX].sha256" "$manifest")"
+          image_bytes="$(jq -r ".packages[$PACKAGE_INDEX].bytes" "$manifest")"
+
+          curl --fail --location --retry 3 --output "$downloads/$emulator_name" "$emulator_url"
+          curl --fail --location --retry 3 --output "$downloads/$image_name" "$image_url"
+          test "$(stat -c %s "$downloads/$emulator_name")" = "$emulator_bytes"
+          test "$(stat -c %s "$downloads/$image_name")" = "$image_bytes"
+          echo "$emulator_sha  $downloads/$emulator_name" | sha256sum --check --strict
+          echo "$image_sha  $downloads/$image_name" | sha256sum --check --strict
+
+          unzip -q "$downloads/$emulator_name" -d "$sdk_root"
+          unzip -q "$downloads/$image_name" -d "$sdk_root/system-images/android-$API/default"
+          test -x "$sdk_root/emulator/emulator"
+          image_dir="$sdk_root/system-images/android-$API/default/x86_64"
+          source_properties="$image_dir/source.properties"
+          test -f "$source_properties"
+          grep -Fx "Pkg.Revision=${{ matrix.revision }}" "$source_properties"
+          grep -Fx "AndroidVersion.ApiLevel=$API" "$source_properties"
+          grep -Fx "SystemImage.Abi=x86_64" "$source_properties"
+          test -f "$image_dir/system.img"
+          test -f "$image_dir/kernel-ranchu"
+          test -f "$image_dir/ramdisk.img"
+          "$sdk_root/emulator/emulator" -version | tee "$GITHUB_WORKSPACE/build-emulator-version.txt"
+          grep -F "Android emulator version 37.1.11" "$GITHUB_WORKSPACE/build-emulator-version.txt"
+
+          echo "ANDROID_HOME=$sdk_root" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$sdk_root" >> "$GITHUB_ENV"
+          echo "ANDROID_AVD_HOME=$sdk_root/avd" >> "$GITHUB_ENV"
+          echo "$sdk_root/platform-tools" >> "$GITHUB_PATH"
+          echo "$sdk_root/emulator" >> "$GITHUB_PATH"
+
+      - name: Build signed Release/R8 fixtures in two passes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/m0-05-signing" build/m0-05
+          export M005_TEST_KEYSTORE="$RUNNER_TEMP/m0-05-signing/fixture.p12"
+          export M005_TEST_STORE_PASSWORD="$(openssl rand -hex 24)"
+          export M005_TEST_KEY_ALIAS="fixture"
+          export M005_TEST_KEY_PASSWORD="$M005_TEST_STORE_PASSWORD"
+          echo "::add-mask::$M005_TEST_STORE_PASSWORD"
+          echo "::add-mask::$M005_TEST_KEY_PASSWORD"
+          keytool -genkeypair -noprompt \
+            -storetype PKCS12 \
+            -keystore "$M005_TEST_KEYSTORE" \
+            -storepass "$M005_TEST_STORE_PASSWORD" \
+            -keypass "$M005_TEST_KEY_PASSWORD" \
+            -alias "$M005_TEST_KEY_ALIAS" \
+            -keyalg RSA -keysize 2048 -validity 2 \
+            -dname "CN=M0-05 Ephemeral Fixture,O=androidAppHardening,C=US"
+
+          ./gradlew --no-daemon --console=plain \
+            :fixtures:android:assembleCompatExtractedRelease
+          signer_digest="$("$ANDROID_HOME/build-tools/36.1.0/apksigner" verify --print-certs \
+            fixtures/android/build/outputs/apk/compatExtracted/release/android-compatExtracted-release.apk \
+            | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')"
+          test "${#signer_digest}" = 64
+          echo "$signer_digest" > build/m0-05/signer-sha256.txt
+
+          ./gradlew --no-daemon --console=plain "-Pm005ExpectedSignerSha256=$signer_digest" \
+            :tools:validation:testM005ConfigParser \
+            :fixtures:android:assembleClassloaderPocRelease \
+            :fixtures:android:assembleCompatExtractedDebugAndroidTest \
+            :fixtures:android:assembleCompatDirectDebugAndroidTest \
+            :fixtures:android:assembleCompatExtractedRelease \
+            :fixtures:android:assembleCompatDirectRelease
+
+          node tools/validation/verify-m0-05-apks.mjs \
+            fixtures/android/build/outputs/apk/compatExtracted/release/android-compatExtracted-release.apk \
+            fixtures/android/build/outputs/apk/compatDirect/release/android-compatDirect-release.apk \
+            fixtures/android/build/outputs/apk/androidTest/compatExtracted/debug/android-compatExtracted-debug-androidTest.apk \
+            fixtures/android/build/outputs/apk/androidTest/compatDirect/debug/android-compatDirect-debug-androidTest.apk \
+            fixtures/android/build/outputs/mapping/compatExtractedRelease/mapping.txt \
+            fixtures/android/build/outputs/mapping/compatExtractedRelease/usage.txt \
+            fixtures/android/build/outputs/mapping/compatDirectRelease/mapping.txt \
+            fixtures/android/build/outputs/mapping/compatDirectRelease/usage.txt \
+            fixtures/android/build/outputs/apk/classloaderPoc/release/android-classloaderPoc-release.apk \
+            "$signer_digest" | tee build/m0-05/static-report.json
+
+          export M005_ALT_KEYSTORE="$RUNNER_TEMP/m0-05-signing/alternate.p12"
+          export M005_ALT_STORE_PASSWORD="$(openssl rand -hex 24)"
+          export M005_ALT_KEY_ALIAS="alternate"
+          export M005_ALT_KEY_PASSWORD="$M005_ALT_STORE_PASSWORD"
+          echo "::add-mask::$M005_ALT_STORE_PASSWORD"
+          echo "::add-mask::$M005_ALT_KEY_PASSWORD"
+          keytool -genkeypair -noprompt \
+            -storetype PKCS12 \
+            -keystore "$M005_ALT_KEYSTORE" \
+            -storepass "$M005_ALT_STORE_PASSWORD" \
+            -keypass "$M005_ALT_KEY_PASSWORD" \
+            -alias "$M005_ALT_KEY_ALIAS" \
+            -keyalg RSA -keysize 2048 -validity 2 \
+            -dname "CN=M0-05 Alternate Fixture,O=androidAppHardening,C=US"
+
+          for variant in extracted direct; do
+            root="build/m0-05/test-apks/$variant"
+            unsigned_dir="$root/unsigned"
+            signed_dir="$root/signed"
+            if [[ "$variant" = extracted ]]; then
+              input_apk="fixtures/android/build/outputs/apk/compatExtracted/release/android-compatExtracted-release.apk"
+            else
+              input_apk="fixtures/android/build/outputs/apk/compatDirect/release/android-compatDirect-release.apk"
+            fi
+            mkdir -p "$unsigned_dir" "$signed_dir"
+            node tools/validation/create-m0-05-test-apks.mjs \
+              "$input_apk" "$unsigned_dir" | tee "$root/creation-report.json"
+            for unsigned_apk in "$unsigned_dir"/*.apk; do
+              case "$unsigned_apk" in
+                *config-duplicate*|*truncated-zip*) continue ;;
+              esac
+              output_name="$(basename "${unsigned_apk%-unsigned.apk}").apk"
+              "$ANDROID_HOME/build-tools/36.1.0/apksigner" sign \
+                --v4-signing-enabled false \
+                --ks "$M005_TEST_KEYSTORE" \
+                --ks-key-alias "$M005_TEST_KEY_ALIAS" \
+                --ks-pass env:M005_TEST_STORE_PASSWORD \
+                --key-pass env:M005_TEST_KEY_PASSWORD \
+                --out "$signed_dir/$output_name" \
+                "$unsigned_apk"
+            done
+            duplicate_signer_digest="$("$ANDROID_HOME/build-tools/36.1.0/apksigner" verify --print-certs \
+              "$signed_dir/m0-05-native-duplicate.apk" \
+              | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')"
+            test "$duplicate_signer_digest" = "$signer_digest"
+
+            signer_input="$unsigned_dir/m0-05-config-major-unsigned.apk"
+            "$ANDROID_HOME/build-tools/36.1.0/apksigner" sign \
+              --v4-signing-enabled false \
+              --ks "$M005_ALT_KEYSTORE" \
+              --ks-key-alias "$M005_ALT_KEY_ALIAS" \
+              --ks-pass env:M005_ALT_STORE_PASSWORD \
+              --key-pass env:M005_ALT_KEY_PASSWORD \
+              --out "$signed_dir/m0-05-wrong-signer.apk" \
+              "$signer_input"
+            "$ANDROID_HOME/build-tools/36.1.0/apksigner" sign \
+              --v4-signing-enabled false \
+              --v3-signing-enabled false \
+              --ks "$M005_TEST_KEYSTORE" \
+              --ks-key-alias "$M005_TEST_KEY_ALIAS" \
+              --ks-pass env:M005_TEST_STORE_PASSWORD \
+              --key-pass env:M005_TEST_KEY_PASSWORD \
+              --next-signer \
+              --ks "$M005_ALT_KEYSTORE" \
+              --ks-key-alias "$M005_ALT_KEY_ALIAS" \
+              --ks-pass env:M005_ALT_STORE_PASSWORD \
+              --key-pass env:M005_ALT_KEY_PASSWORD \
+              --out "$signed_dir/m0-05-multi-signer.apk" \
+              "$signer_input"
+
+            jq -n --arg root "$root" '[
+              {name:"config-major", apk:($root+"/signed/m0-05-config-major.apk"), expected_code:"AAH-P009"},
+              {name:"config-reserved", apk:($root+"/signed/m0-05-config-reserved.apk"), expected_code:"AAH-P009"},
+              {name:"config-signer-mismatch", apk:($root+"/signed/m0-05-config-signer-mismatch.apk"), expected_code:"AAH-P010"},
+              {name:"config-factory-flags", apk:($root+"/signed/m0-05-config-factory-flags.apk"), expected_code:"AAH-P009"},
+              {name:"config-invalid-utf8", apk:($root+"/signed/m0-05-config-invalid-utf8.apk"), expected_code:"AAH-P009"},
+              {name:"config-nul", apk:($root+"/signed/m0-05-config-nul.apk"), expected_code:"AAH-P009"},
+              {name:"config-slot-tail", apk:($root+"/signed/m0-05-config-slot-tail.apk"), expected_code:"AAH-P009"},
+              {name:"config-deflate", apk:($root+"/signed/m0-05-config-deflate.apk"), expected_code:"AAH-P009", allow_install_rejection:true},
+              {name:"config-descriptor", apk:($root+"/signed/m0-05-config-descriptor.apk"), expected_code:"AAH-P009", allow_install_rejection:true},
+              {name:"config-crc", apk:($root+"/signed/m0-05-config-crc.apk"), expected_code:"AAH-P009", allow_install_rejection:true},
+              {name:"config-length", apk:($root+"/signed/m0-05-config-length.apk"), expected_code:"AAH-P009", allow_install_rejection:true},
+              {name:"payload-corrupt", apk:($root+"/signed/m0-05-payload-corrupt.apk"), expected_code:"AAH-P001"},
+              {name:"native-duplicate", apk:($root+"/signed/m0-05-native-duplicate.apk"), expected_code:"AAH-P004", allow_install_rejection:true},
+              {name:"wrong-signer", apk:($root+"/signed/m0-05-wrong-signer.apk"), expected_code:"AAH-P008"},
+              {name:"multi-signer", apk:($root+"/signed/m0-05-multi-signer.apk"), expected_code:"AAH-P007"},
+              {name:"duplicate-config", apk:($root+"/unsigned/m0-05-config-duplicate-unsigned.apk"), expected_code:"PLATFORM_ZIP_REJECTION", install_rejection:true},
+              {name:"truncated-zip", apk:($root+"/unsigned/m0-05-truncated-zip-unsigned.apk"), expected_code:"PLATFORM_ZIP_REJECTION", install_rejection:true},
+              {name:"unsigned", apk:($root+"/unsigned/m0-05-no-factory-unsigned.apk"), expected_code:"PLATFORM_SIGNATURE_REJECTION", install_rejection:true}
+            ]' > "$root/startup-negative-cases.json"
+          done
+
+      - name: Run bounded device acceptance
+        shell: bash
+        env:
+          API: ${{ matrix.api }}
+        run: |
+          set -euo pipefail
+          avd_name="m0_05_api${API}_r${{ matrix.revision }}_x86_64"
+          serial="emulator-5554"
+          emulator_pid=""
+
+          cleanup() {
+            set +e
+            adb -s "$serial" uninstall ah.fixtures.android.m005.extracted.test >/dev/null 2>&1
+            adb -s "$serial" uninstall ah.fixtures.android.m005.extracted >/dev/null 2>&1
+            adb -s "$serial" uninstall ah.fixtures.android.m005.direct.test >/dev/null 2>&1
+            adb -s "$serial" uninstall ah.fixtures.android.m005.direct >/dev/null 2>&1
+            adb -s "$serial" emu kill >/dev/null 2>&1
+            if [[ -n "$emulator_pid" ]]; then
+              kill -TERM "$emulator_pid" >/dev/null 2>&1
+              pkill -TERM -P "$emulator_pid" >/dev/null 2>&1
+              timeout 10s tail --pid="$emulator_pid" -f /dev/null >/dev/null 2>&1
+              kill -KILL "$emulator_pid" >/dev/null 2>&1
+              pkill -KILL -P "$emulator_pid" >/dev/null 2>&1
+            fi
+            pkill -TERM -f "$ANDROID_HOME/emulator/qemu/" >/dev/null 2>&1
+            sleep 1
+            pkill -KILL -f "$ANDROID_HOME/emulator/qemu/" >/dev/null 2>&1
+          }
+          trap cleanup EXIT INT TERM
+
+          avd_dir="$ANDROID_AVD_HOME/$avd_name.avd"
+          mkdir -p "$avd_dir" "build/m0-05/device-api${API}-x86_64"
+          printf '%s\n' \
+            'avd.ini.encoding=UTF-8' \
+            "path=$avd_dir" \
+            "target=android-$API" \
+            > "$ANDROID_AVD_HOME/$avd_name.ini"
+          printf '%s\n' \
+            'PlayStore.enabled=no' \
+            'abi.type=x86_64' \
+            "avd.id=$avd_name" \
+            'avd.ini.encoding=UTF-8' \
+            "avd.name=$avd_name" \
+            'disk.dataPartition.size=2147483648' \
+            'fastboot.forceColdBoot=yes' \
+            'fastboot.forceFastBoot=no' \
+            'hw.cpu.arch=x86_64' \
+            'hw.cpu.ncore=2' \
+            'hw.device.name=pixel_2' \
+            'hw.gpu.enabled=yes' \
+            'hw.keyboard=yes' \
+            'hw.lcd.density=420' \
+            'hw.lcd.height=1920' \
+            'hw.lcd.width=1080' \
+            'hw.ramSize=2048' \
+            "image.sysdir.1=system-images/android-$API/default/x86_64/" \
+            'runtime.network.latency=none' \
+            'runtime.network.speed=full' \
+            'tag.id=default' \
+            > "$avd_dir/config.ini"
+          sudo chmod 666 /dev/kvm
+          "$ANDROID_HOME/emulator/emulator" \
+            -avd "$avd_name" -port 5554 -no-window -no-audio -no-boot-anim \
+            -no-snapshot -wipe-data -gpu swiftshader_indirect -accel on -no-metrics \
+            >"build/m0-05/device-api${API}-x86_64/emulator.stdout.txt" \
+            2>"build/m0-05/device-api${API}-x86_64/emulator.stderr.txt" &
+          emulator_pid=$!
+
+          timeout 180s adb -s "$serial" wait-for-device
+          timeout 180s bash -c \
+            'until [[ "$(adb -s "$1" shell getprop sys.boot_completed 2>/dev/null | tr -d "\r")" = 1 ]]; do sleep 2; done' \
+            _ "$serial"
+          adb -s "$serial" shell input keyevent 82
+
+          timeout 900s node tools/validation/run-m0-05-device-acceptance.mjs \
+            --adb "$ANDROID_HOME/platform-tools/adb" \
+            --serial "$serial" \
+            --platform "api${API}-x86_64-linux-kvm" \
+            --cold-starts 20 \
+            --command-timeout-ms 60000 \
+            --no-factory-apk build/m0-05/test-apks/extracted/signed/m0-05-no-factory.apk \
+            --extracted-negative-signed-dir build/m0-05/test-apks/extracted/signed \
+            --extracted-negative-unsigned-dir build/m0-05/test-apks/extracted/unsigned \
+            --direct-negative-signed-dir build/m0-05/test-apks/direct/signed \
+            --direct-negative-unsigned-dir build/m0-05/test-apks/direct/unsigned \
+            --evidence "build/m0-05/device-api${API}-x86_64"
+          timeout 300s node tools/validation/run-m0-05-startup-negative.mjs \
+            --adb "$ANDROID_HOME/platform-tools/adb" \
+            --serial "$serial" \
+            --package ah.fixtures.android.m005.extracted \
+            --cases build/m0-05/test-apks/extracted/startup-negative-cases.json \
+            --evidence "build/m0-05/device-api${API}-x86_64/startup-negative-extracted" \
+            --command-timeout-ms 60000
+          timeout 300s node tools/validation/run-m0-05-startup-negative.mjs \
+            --adb "$ANDROID_HOME/platform-tools/adb" \
+            --serial "$serial" \
+            --package ah.fixtures.android.m005.direct \
+            --cases build/m0-05/test-apks/direct/startup-negative-cases.json \
+            --evidence "build/m0-05/device-api${API}-x86_64/startup-negative-direct" \
+            --command-timeout-ms 60000
+          cat "build/m0-05/device-api${API}-x86_64/report.json"
+          cat "build/m0-05/device-api${API}-x86_64/startup-negative-extracted/startup-negative-report.json"
+          cat "build/m0-05/device-api${API}-x86_64/startup-negative-direct/startup-negative-report.json"
+
+      - name: Print cleanup diagnostics
+        if: always()
+        shell: bash
+        run: |
+          adb devices -l || true
+          ps -ef | grep -E '[e]mulator|[q]emu-system' || true
+          find build/m0-05 -maxdepth 2 -type f -print -exec sha256sum {} \; || true
+
+      - name: Upload bounded validation evidence
+        if: always()
+        # actions/upload-artifact v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: m0-05-api-${{ matrix.api }}-x86_64-evidence
+          if-no-files-found: warn
+          retention-days: 7
+          path: |
+            build/m0-05/*.json
+            build/m0-05/*.txt
+            build/m0-05/test-apks/**/*.json
+            build/m0-05/device-api${{ matrix.api }}-x86_64/**/*.json
+            build/m0-05/device-api${{ matrix.api }}-x86_64/**/*.txt
+            build/m0-05/device-api${{ matrix.api }}-x86_64/**/*.xml
+            fixtures/android/build/outputs/mapping/compatExtractedRelease/mapping.txt
+            fixtures/android/build/outputs/mapping/compatExtractedRelease/usage.txt
+            fixtures/android/build/outputs/mapping/compatDirectRelease/mapping.txt
+            fixtures/android/build/outputs/mapping/compatDirectRelease/usage.txt

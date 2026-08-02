@@ -1,23 +1,23 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260802-152047
-updated_at: 2026-08-02T15:20:47+08:00
+handoff_id: HO-20260802-153213
+updated_at: 2026-08-02T15:32:13+08:00
 updated_by: /root
-state: ready
-source_branch: main
-base_commit: e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030
+state: active
+source_branch: feat/m1-02-signer-policy
+base_commit: aebbc441da34d2fba78648415c1d80ea844d774d
 working_tree: clean
 current_milestone: M1
-active_task: NONE
-next_owner: unassigned
+active_task: M1-02
+next_owner: /root
 ---
 
 # Project HandOff
 
 ## Objective
 
-在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内完成 M1-01 不可信 APK 检查器。当前只实现 Host 侧有界 ZIP、Binary AXML、DEX 与兼容性检查，不启动模拟器，不读取客户 APK，不实现 M1-02/M1-03 或任何 M2 Runtime 功能。
+在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内执行 M1-02 输入签名身份策略。当前只实现 Host 侧固定 `apksig` 验证、唯一当前 signer、轮换历史与不可变 `SignerPolicyV1`，不实现签名能力、M1-04 wire encoder、M2-03 Runtime 校验或任何相邻任务。
 
 ## Current State
 
@@ -54,6 +54,9 @@ next_owner: unassigned
 - 用户已明确授权将 PR #33 转为 ready 并合并。当前 merger-ready 协调只允许更新 HandOff/证据；该协调提交通过最终 CI 后，必须以预期 HEAD 保护执行普通 merge commit，并在 `main` 无豁免运行 strict HandOff。
 - merger-ready HEAD `7a54ba7874fb47aaf749715be2ba5897ef5a6b2e` 的 Build run `30737456598` 与 Governance run `30737456604` 已在 Ubuntu/Windows 全部 PASS；两项字节一致性步骤也均命中冻结哈希。
 - PR #33 已于 `2026-08-02T15:19:49+08:00` 转为 ready，并以普通 merge commit `74c5f6252ea9b89154c285764d5f9601a0347358` 合并到 `main`；Issue #6 已自动关闭。本地 `main` 已无豁免通过 strict HandOff、Governance 与 diff check，M1-01 完成，M1-02/M1-03/M2 未启动。
+- M1-01 的 post-merge `main@aebbc441da34d2fba78648415c1d80ea844d774d` 已在 Ubuntu/Windows Build 与 Governance 全部 PASS；两平台字节一致性步骤和 `main` strict HandOff 均通过。
+- 用户已明确启动 M1-02。固定 Issue 为 #7，固定分支为 `feat/m1-02-signer-policy`，base 为 `aebbc441da34d2fba78648415c1d80ea844d774d`；远端不存在同名分支或既有 M1-02 PR。
+- `apksig 9.3.0` 已由 version catalog 和 dependency verification 固定；ADR 0002 与 ADR 0004 已覆盖 signer/未签名输出和 `SPV1` 模型合同，无需新增 ADR。独立复核者预定为 `m1_02_security_review`，只在实现与证据提交冻结后启动。
 
 ## Active Workstreams
 
@@ -63,6 +66,7 @@ next_owner: unassigned
 | M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | done | M0-04 | PR #31、合并后 strict HandOff 和双平台 CI 已通过 |
 | M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | done | M0-04, M0-06 | PR #32、三环境矩阵、独立安全复核和最终 PR CI 已通过 |
 | M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | done | M0-05 | PR #33、Issue #6、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
+| M1-02 | `/root` | `feat/m1-02-signer-policy` | in_progress | M1-01 | 先冻结测试与模型合同，再实现、验证并启动独立签名语义复核 |
 
 ## Decisions and Invariants
 
@@ -77,6 +81,8 @@ next_owner: unassigned
 - 冻结设备证据和提交后，由独立 `m0_05_security_review` 只读复核；P0/P1/P2 全部关闭前不完成任务。
 - x86/x86_64 结果不得冒充 ARM-only 应用兼容性；离线 Runtime 只提高提取成本，不作绝对防护声明。
 - M1-01 只使用仓库生成的合成 APK/AXML/DEX fixture；输入只读、不得解压到磁盘、不得执行输入代码、不得引入未经审计的第三方 parser。独立只读复核者预指定为 `m1_01_security_review`，仅在实现与证据提交冻结后启动。
+- M1-02 只使用固定 `apksig 9.3.0` 读取公开证书信息，最低检查平台固定为 API 29；要求唯一当前 signer，DER SHA-256 使用 32 字节原始摘要和 64 字符小写 hex，轮换 lineage 为旧到新、`1..16`、无重复且以当前摘要结束。
+- 产品仍不得接收或调用私钥、keystore、alias、密码、HSM、远程签名服务或任何签名执行器；M1-02 不序列化 `SPV1`，只提供 M1-04 可消费的防御性摘要副本与模型约束。
 
 ## Changes Since Previous Handoff
 
@@ -96,6 +102,8 @@ next_owner: unassigned
 - 用户已授权 PR #33 ready/merge；merger-ready HandOff 将 resume branch 设为 `main`，合并方式保持仓库普通 merge commit 策略，不使用 squash/rebase/force。
 - merger-ready 协调提交 `7a54ba7874fb47aaf749715be2ba5897ef5a6b2e` 的 Build #25 与 Governance #34 在 Ubuntu/Windows 全部通过，且两份规范报告逐字节命中冻结 SHA-256。
 - PR #33 已转为 ready 并以普通 merge commit `74c5f6252ea9b89154c285764d5f9601a0347358` 合并，Issue #6 已关闭；本地 `main` 随后无豁免通过 strict HandOff、Governance 和 diff check。
+- 用户明确启动 M1-02；协调者核验 Issue #7 为唯一 tracking Issue，远端无同名分支或 M1-02 PR，并从已验证 `main@aebbc441da34d2fba78648415c1d80ea844d774d` 创建固定分支 `feat/m1-02-signer-policy`。
+- `docs/evidence/M1-02/implementation-plan.md` 固定输入、输出、公开接口、稳定错误语义、`SPV1` 模型边界、跨平台报告和独立复核顺序；不扩大到 M1-04/M2-03。
 
 - PR #31 已合并，旧 metadata blocker 的架构依赖已解除，M0-05 从 `blocked` 恢复为 `in_progress`。
 - 既有 M0-05 分支保留四个本地历史提交和 Issue #5，不创建第二分支或第二任务。
@@ -128,6 +136,18 @@ next_owner: unassigned
 - Exact next action: push this post-merge coordinator HandOff and require its Ubuntu/Windows Build and Governance PASS. Then wait for an explicit user instruction before starting any new task; do not start M1-02, M1-03 or M2 implicitly.
 
 ## Verification Evidence
+
+### M1-02 start baseline
+
+- task_id: M1-02
+- git_commit: aebbc441da34d2fba78648415c1d80ea844d774d
+- command: `git fetch origin main`; compare local and remote `main`; Governance; strict HandOff without exemption; inspect Issue #7, existing PRs and remote branch; inspect pinned `apksig` catalog and verification metadata
+- exit_code: 0
+- environment: Windows 10 x64; Git 2.52.0; Node 24.12.0; no APK fixture, device, emulator or new download
+- timestamp: 2026-08-02T15:32:13+08:00
+- artifact: Issue `https://github.com/xiaokh31/androidAppHardening/issues/7`; `docs/evidence/M1-02/implementation-plan.md`; pinned `com.android.tools.build:apksig:9.3.0` JAR SHA-256 `562cd0a88890960d2ece48e116c61f12872222f1dcc306890799382bc019b201`
+- sha256: not_applicable
+- result: PASS; M1-01 dependency and post-merge main gates are closed, Issue #7 is open with no PR, the fixed branch was absent before creation, signer/container decisions are already accepted, and M1-02 may proceed without adjacent work
 
 ### M1-01 third-review remediation candidate
 
@@ -399,16 +419,19 @@ None
 
 ## Ordered Next Actions
 
-1. Commit and push this post-merge coordinator HandOff on `main`.
-2. Require the resulting `main` HEAD to pass Ubuntu/Windows Build and Governance, including strict HandOff and both byte-equivalence steps.
-3. Leave M1-01 closed and wait for the user to select the next task.
-4. Do not start M1-02, M1-03, M2 or any adjacent task implicitly.
+1. Commit the M1-02 start HandOff and implementation/test contract on the fixed local branch.
+2. Implement `SignerPolicyVerifier`, immutable `SignerPolicyV1`, stable `SIGNER_*` failures and model-level `SPV1` validation without signing capability.
+3. Generate only disposable ignored signing fixtures and cover valid schemes/rotation, unsigned/tampered/malformed/multi-signer/lineage/input-change paths plus official `apksigner` digest cross-checks.
+4. Run module, root, governance, strict HandOff, capability scan and cross-platform canonical report gates; freeze implementation and evidence commits.
+5. Start independent `m1_02_security_review` only after the frozen commit exists; do not publish or create a PR until review PASS and explicit user authorization.
+6. Do not start M1-03, M1-04, M2-03 or any adjacent task implicitly.
 
 ## Relevant Files and Artifacts
 
 - `HandOff.md`
 - `docs/tasks/M0-05-application-factory-provider-jni-poc.md`
 - `docs/tasks/M1-01-untrusted-apk-inspector.md`
+- `docs/tasks/M1-02-signer-policy.md`
 - `host/apk-inspector/`
 - `docs/adr/0003-api29-public-classloader-hook.md`
 - `docs/adr/0006-offline-key-protection-boundary.md`
@@ -420,6 +443,7 @@ None
 - `docs/evidence/M1-01/security-review-2.md`
 - `docs/evidence/M1-01/security-review-3.md`
 - `docs/evidence/M1-01/security-review-4.md`
+- `docs/evidence/M1-02/implementation-plan.md`
 - `runtime/bootstrap/src/main/java/ah/runtime/bootstrap/ShellAppComponentFactory.java`
 - `fixtures/android/src/androidTestCompatFixture/java/ah/fixtures/android/CompatibilityPocRunner.java`
 - `tools/validation/verify-m0-05-apks.mjs`
@@ -454,6 +478,10 @@ None
 - [x] 证据提交 `de4d69a` 的最终 Ubuntu/Windows Build、Governance 和两份报告字节一致性门禁全部 PASS；用户已授权 ready/merge。
 - [x] merger-ready HEAD `7a54ba7` 的 Ubuntu/Windows Build、Governance 和两份报告字节一致性门禁全部 PASS。
 - [x] PR #33 已转 ready，并以普通 merge commit `74c5f62` 合并；Issue #6 已关闭，本地 `main` 已无豁免通过 strict HandOff。
+- [x] M1-01 post-merge `main@aebbc44` 的 Ubuntu/Windows Build、Governance、字节一致性和 strict HandOff 全部 PASS。
+- [x] 用户明确启动 M1-02；Issue #7、固定分支、base、既有 PR/远端分支缺失状态和 `apksig 9.3.0` 来源锁均已核验。
+- [x] ADR 0002/0004 与实现计划已固定 signer policy、无签名能力和 `SPV1` 模型边界；独立复核者预定为 `m1_02_security_review`。
+- [ ] 完成 M1-02 实现、完整负向矩阵、官方工具交叉验证、冻结证据与独立复核。
 
 ## Handoff Sign-off
 
@@ -463,3 +491,4 @@ None
 - GitHub KVM workflow 的既有超时与强制清理合同保持不变；M1-01 是纯 Host 任务，本轮不启动本机模拟器或真机，也不启动 M1-02/M1-03/M2。
 - `/root` 已核验 PR #33 的首轮、证据 HEAD 与 merger-ready HEAD 的 Build/Governance 四个 job 和两个字节一致性步骤均 PASS；独立复核 P0/P1/P2 全为零。
 - `/root` 已核验 PR #33 使用普通 merge commit `74c5f6252ea9b89154c285764d5f9601a0347358` 合并、Issue #6 关闭，并在本地 `main` 无豁免通过 strict HandOff；M1-01 标记 done，当前无活动任务。
+- `/root` 已领取 M1-02 并核验其唯一 Issue、分支、依赖、固定官方 `apksig` 与既有 ADR；当前活动范围仅为 Host signer policy，M1-03/M1-04/M2-03 未启动。

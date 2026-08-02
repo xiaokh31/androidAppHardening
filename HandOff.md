@@ -1,12 +1,12 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260802-123553
-updated_at: 2026-08-02T12:35:53+08:00
+handoff_id: HO-20260802-124227
+updated_at: 2026-08-02T12:42:27+08:00
 updated_by: /root
 state: ready
 source_branch: main
-base_commit: 1fe9ea9ca7ac989e2e071ccb00ae2a0c0010c463
+base_commit: d682c85125e11084cf023b5f523d715e28c74e75
 working_tree: clean
 current_milestone: M1
 active_task: NONE
@@ -38,7 +38,7 @@ next_owner: unassigned
 - 本地静态门禁、双变体 Release/R8 和静态 APK 验证已 PASS；GitHub Actions run `30708544925` 的 API 29/36 x86_64 repaired KVM 双 job 已 PASS。
 - M0-05 的 API 29 arm64 非 root 真机与 API 29/36 x86_64 Linux/KVM 双变体矩阵、第五次独立只读复核和 PR 最终 HEAD 六项 CI 全部 PASS；冻结证据为 `350d08ee5f3c83bf60dcbd4564866ffb5f819844`，复核结果为 P0 `0`、P1 `0`、P2 `0`。
 - 用户已明确授权把 PR #32 转为 ready 并合并；PR #32 已于 `2026-08-02T12:34:55+08:00` 以 merge commit `1fe9ea9ca7ac989e2e071ccb00ae2a0c0010c463` 合并到 `main`，Issue #5 已关闭。
-- 合并后的首次 Governance run `30732622423` 只因 HandOff 仍声明旧 source branch 而失败；本快照在 `main` 上完成合并状态协调，未修改实现、workflow 或冻结证据。
+- 合并后的首次 Governance run `30732622423` 只因 HandOff 仍声明旧 source branch 而失败；coordinator-only 提交 `d682c85125e11084cf023b5f523d715e28c74e75` 已完成状态协调，随后 Governance run `30732725929` 与 Build run `30732725931` 在 Ubuntu/Windows 全部 PASS。
 - 当前没有活动开发任务；M1-01 仍为 planned/unassigned，未启动 M1/M2。
 
 ## Active Workstreams
@@ -91,8 +91,9 @@ next_owner: unassigned
 - Complete branch published at `6f9a072a60072d6db83c7a0da8659bb7cd772666`; draft PR [#32](https://github.com/xiaokh31/androidAppHardening/pull/32) is the sole Issue #5 PR. PR runs `30732016374` (API 29/36 KVM), `30732016378` (Ubuntu/Windows Build), and `30732016377` (Ubuntu/Windows Governance) all passed.
 - Final PR head `fbcb2d1a89bc46126d987605fed0c44913c7e320` passed KVM run `30732302393`, Build run `30732302394`, and Governance run `30732302403` before merge.
 - User authorized ready/merge; PR #32 was merged as `1fe9ea9ca7ac989e2e071ccb00ae2a0c0010c463` and Issue #5 closed.
-- Post-merge Governance run `30732622423` reproduced one HandOff-only source-branch mismatch on Ubuntu and Windows; this coordination update changes the resume point to `main`, marks M0-05 done, and leaves M1-01 unassigned.
-- Exact next action: publish this post-merge HandOff, require Build and Governance to pass on `main`, then leave the repository ready with no active task until the user assigns M1-01.
+- Post-merge Governance run `30732622423` reproduced one HandOff-only source-branch mismatch on Ubuntu and Windows; coordinator commit `d682c85125e11084cf023b5f523d715e28c74e75` changed the resume point to `main`, marked M0-05 done, and left M1-01 unassigned.
+- On `d682c85125e11084cf023b5f523d715e28c74e75`, Governance run `30732725929` and Build run `30732725931` passed on Ubuntu 24.04 and Windows 2025, including strict HandOff on `main` with no exemption.
+- Exact next action: leave the repository ready with no active task; start M1-01 only after the user explicitly assigns it through the normal task workflow.
 
 ## Verification Evidence
 
@@ -179,6 +180,18 @@ next_owner: unassigned
 - artifact: merged PR `https://github.com/xiaokh31/androidAppHardening/pull/32`; closed Issue `https://github.com/xiaokh31/androidAppHardening/issues/5`; merge commit `1fe9ea9ca7ac989e2e071ccb00ae2a0c0010c463`; initial post-merge Governance run `30732622423`
 - sha256: not_applicable
 - result: MERGED; PR final head passed all six checks before merge; initial main Governance failure was limited to the stale HandOff source branch and is reconciled by this coordinator-only update
+
+### M0-05 post-merge main validation
+
+- task_id: M0-05
+- git_commit: d682c85125e11084cf023b5f523d715e28c74e75
+- command: `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict`; `node tools/governance/validate-project-package.mjs`; `git diff --check`; GitHub Actions Build and Governance push workflows
+- exit_code: 0
+- environment: Windows 10 x64 local coordinator; GitHub Actions Ubuntu 24.04 and Windows 2025; Node 24.12.0 locally; no local emulator
+- timestamp: 2026-08-02T12:42:09+08:00
+- artifact: Governance run `https://github.com/xiaokh31/androidAppHardening/actions/runs/30732725929`; Build run `https://github.com/xiaokh31/androidAppHardening/actions/runs/30732725931`
+- sha256: not_applicable
+- result: PASS; strict HandOff on `main` passed without exemption on both platforms; Governance jobs `91455809943` and `91455809963`, Build jobs `91455816635` and `91455816728` all succeeded
 
 ### M0-04 completed dependency
 
@@ -294,9 +307,8 @@ None
 
 ## Ordered Next Actions
 
-1. `/root` pushes this post-merge HandOff and verifies Build plus Governance on `main`.
-2. Leave M1-01 planned and unassigned; start it only after a new explicit user request and the normal task-claim workflow.
-3. Do not start M2 or any adjacent task implicitly.
+1. Leave M1-01 planned and unassigned; start it only after a new explicit user request and the normal task-claim workflow.
+2. Do not start M2 or any adjacent task implicitly.
 
 ## Relevant Files and Artifacts
 
@@ -335,12 +347,12 @@ None
 - [x] 完整分支已发布，唯一草稿 PR #32 已创建，发布 HEAD `6f9a072` 的首轮六项 PR CI 全部 PASS。
 - [x] merger-ready HandOff 所在最终 PR HEAD `fbcb2d1` 的六项 CI 全部 PASS。
 - [x] PR #32 已转 ready 并以 merge commit `1fe9ea9` 合并，Issue #5 已关闭。
-- [ ] 推送本 post-merge HandOff 并确认 `main` 的 Build/Governance 全部 PASS。
+- [x] post-merge HandOff 提交 `d682c85` 已在 `main` 的 Ubuntu/Windows Build 与 Governance 全部 PASS，并无豁免通过 strict HandOff。
 - [x] M0-05 完成前未启动 M1/M2；M1-01 当前保持 planned/unassigned。
 
 ## Handoff Sign-off
 
 - Coordinator `/root` 已核验首轮独立复核 FAIL、六项修复 diff、本地 Gradle/check/governance、双变体 Release/R8 和静态 APK 验证结果。
-- 当前快照声明三套 review-3 设备环境验收 PASS、第五次独立复核 P0/P1/P2 全为零、最终 PR HEAD 六项 CI 全部 PASS，且 PR #32 已合并；M0-05 标记 done。旧证据仅保留为历史回归基线。
+- 当前快照声明三套 review-3 设备环境验收 PASS、第五次独立复核 P0/P1/P2 全为零、最终 PR HEAD 六项 CI 全部 PASS，PR #32 已合并，且 post-merge `main` Build/Governance 全绿并无豁免通过 strict HandOff；M0-05 标记 done。旧证据仅保留为历史回归基线。
 - `/root` 已核验真机为 API 29 arm64 64-bit、user/release-keys、非 root 环境，设备 runner cleanup PASS；本轮未启动任何本机模拟器。
 - GitHub KVM workflow 继续具有 35 分钟 job 上限、180 秒 boot 上限、900 秒 device-runner 上限和 EXIT/INT/TERM 强制清理；本轮未启动本机模拟器，M1/M2 未启动。

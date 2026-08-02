@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260802-142323
-updated_at: 2026-08-02T14:23:23+08:00
+handoff_id: HO-20260802-143317
+updated_at: 2026-08-02T14:33:17+08:00
 updated_by: /root
 state: active
 source_branch: feat/m1-01-untrusted-apk-inspector
@@ -47,6 +47,7 @@ next_owner: /root
 - 修正实现 `e267e3c7eab7d3b7d5d8c90947c79f0c77ee1208` 已关闭全部七项发现：AXML 固定 resource ID/namespace/raw-typed 语义、DEX 重复偏移 CPU 上界与显式版本、ELF/path ABI 一致性、版本化规则表，以及缺失的结构化回归。54 个命名错误 fixture、10,000 样本和 231-task 根 check 均 PASS；分支仍未发布。
 - 第三次完整独立只读复核对冻结提交 `0bbbeb6da8573ab770b0ca4ec1f6227e444244a1` 给出 FAIL：P0 `0`、P1 `4`、P2 `0`。发现 hash/parse 分离句柄、DEX 装箱集合内存放大、20-byte 截断 ELF 正例和缺失 DEX map/data 闭环；旧冻结提交立即失效，结论归档于 `docs/evidence/M1-01/security-review-3.md`。
 - 修正实现 `e97d67f9fbfc5b4c23751a85822dc6c96af4c6c5` 已使用同句柄 64 KiB 分块快照绑定全部 parser 读取、以文件大小受限 BitSet 取代大装箱集合、验证完整 ELF32/ELF64 header，并为 DEX 固定表/data/map-list 建立闭环。58 个命名错误 fixture、10,000 样本和 231-task 根 check 均 PASS；分支仍未发布。
+- 第四次完整独立只读复核对冻结提交 `19ea544ddec32fcaac63dfee81f25546084d8bae` 给出 PASS：P0 `0`、P1 `0`、P2 `0`。复核者独立重跑根 check、Governance、strict HandOff 和 diff check，均退出 `0`；结论归档于 `docs/evidence/M1-01/security-review-4.md`。分支仍未发布且尚无 PR。
 
 ## Active Workstreams
 
@@ -55,7 +56,7 @@ next_owner: /root
 | M0-04 | `runtime-security-agent` | `spike/m0-04-classloader-poc` | done | M0-03 | PR #29、正式设备矩阵和独立复核已通过 |
 | M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | done | M0-04 | PR #31、合并后 strict HandOff 和双平台 CI 已通过 |
 | M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | done | M0-04, M0-06 | PR #32、三环境矩阵、独立安全复核和最终 PR CI 已通过 |
-| M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | in_progress | M0-05 | 对当前修正证据提交启动新的独立只读复核 |
+| M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | in_progress | M0-05 | 等待明确发布授权；授权后仅推送固定分支并创建 Issue #6 唯一草稿 PR |
 
 ## Decisions and Invariants
 
@@ -82,6 +83,7 @@ next_owner: /root
 - `e267e3c7eab7d3b7d5d8c90947c79f0c77ee1208` 关闭上述代码与测试发现。正式 Windows 模块测试和根 check 退出 `0`；新规范模型 SHA-256 为 `fc224233c5a7a61b13075431684f0478c83f784444e712492315b4631c9efcc8`，54-fixture 错误矩阵 SHA-256 为 `b6df7c5d4ba216f78a3b52d3bac043d64900fed5ab4ed3b3a10f554a975c0d1f`，峰值已用内存为 `316352352` bytes。
 - 第三次完整独立只读复核否决 `0bbbeb6da8573ab770b0ca4ec1f6227e444244a1`，四项 P1 分别为输入 hash/model 句柄脱钩、DEX offset 装箱集合内存放大、截断 ELF 正例和 DEX map/data 非标准正例；P2 为 `0`。
 - `e97d67f9fbfc5b4c23751a85822dc6c96af4c6c5` 关闭上述四项。正式 Windows 模块测试和根 check 退出 `0`；新规范模型 SHA-256 为 `c15561ee6d6e879ad9db058be2762282538a77d4204279d6b5d6d57b1f1d52bf`，58-fixture 错误矩阵 SHA-256 为 `b396616ff369fa2d4db56c92f6908253339867d71554f96debee4d7ed06a02fc`，峰值已用内存为 `108715272` bytes。
+- 第四次完整独立只读复核在冻结提交 `19ea544ddec32fcaac63dfee81f25546084d8bae` 上给出 PASS，P0/P1/P2 全为零；独立根 check、Governance、strict HandOff 和 diff check 均通过。该结论关闭本地实现与独立复核门禁，但不替代发布授权或双平台 PR CI。
 
 - PR #31 已合并，旧 metadata blocker 的架构依赖已解除，M0-05 从 `blocked` 恢复为 `in_progress`。
 - 既有 M0-05 分支保留四个本地历史提交和 Issue #5，不创建第二分支或第二任务。
@@ -111,7 +113,7 @@ next_owner: /root
 - User authorized ready/merge; PR #32 was merged as `1fe9ea9ca7ac989e2e071ccb00ae2a0c0010c463` and Issue #5 closed.
 - Post-merge Governance run `30732622423` reproduced one HandOff-only source-branch mismatch on Ubuntu and Windows; coordinator commit `d682c85125e11084cf023b5f523d715e28c74e75` changed the resume point to `main` and marked M0-05 done. The later `main@e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030` is the verified M1-01 base.
 - On `d682c85125e11084cf023b5f523d715e28c74e75`, Governance run `30732725929` and Build run `30732725931` passed on Ubuntu 24.04 and Windows 2025, including strict HandOff on `main` with no exemption.
-- Exact next action: treat the commit containing this evidence and HandOff as the new frozen review target and launch a new independent read-only M1-01 review; do not publish the branch before a zero-finding PASS.
+- Exact next action: request and confirm explicit publication authority; only after authorization, push the sole fixed branch and create one draft PR linked to Issue #6. Do not start adjacent work.
 
 ## Verification Evidence
 
@@ -126,6 +128,18 @@ next_owner: /root
 - artifact: `docs/evidence/M1-01/formal-host-validation.md`; ignored `host/apk-inspector/build/reports/m1-01/`
 - sha256: not_applicable
 - result: PASS_WINDOWS_THIRD_REMEDIATION_CANDIDATE; canonical model SHA-256 `c15561ee6d6e879ad9db058be2762282538a77d4204279d6b5d6d57b1f1d52bf`; 58-fixture matrix SHA-256 `b396616ff369fa2d4db56c92f6908253339867d71554f96debee4d7ed06a02fc`; same-handle block snapshot binding, restored-byte `INPUT_CHANGED`, BitSet-bounded DEX offsets, fixed-table/data/map closure, complete ELF headers, AXML semantics, every public error code, 10,000 seeded samples, root check and zero extraction passed; a new completed independent review plus Ubuntu equivalence, publication and PR CI remain pending
+
+### M1-01 fourth independent review
+
+- task_id: M1-01
+- git_commit: 19ea544ddec32fcaac63dfee81f25546084d8bae
+- command: independent read-only implementation and evidence review; repository-local offline root `check`; governance validation; strict HandOff validation; `git diff --check`
+- exit_code: 0
+- environment: Windows 10 x64 10.0.19045; Temurin 17.0.19+10; Gradle 9.5.0; Kotlin JVM plugin 2.4.10; independent `m1_01_reliability_review_4`; no network, device or local emulator
+- timestamp: 2026-08-02T14:33:17+08:00
+- artifact: `docs/evidence/M1-01/security-review-4.md`; `docs/evidence/M1-01/formal-host-validation.md`
+- sha256: canonical model `c15561ee6d6e879ad9db058be2762282538a77d4204279d6b5d6d57b1f1d52bf`; 58-fixture error matrix `b396616ff369fa2d4db56c92f6908253339867d71554f96debee4d7ed06a02fc`
+- result: PASS; P0 `0`, P1 `0`, P2 `0`; same-handle input snapshot, bounded DEX memory, complete ELF headers, DEX fixed-table/data/map closure and earlier AXML/DEX findings are closed; branch remains unpublished pending explicit publication authority and dual-platform PR CI
 
 ### M0-05 second independent review and remediation candidate
 
@@ -337,10 +351,11 @@ None
 
 ## Ordered Next Actions
 
-1. Launch a new independent read-only M1-01 review against the current frozen evidence commit; P0/P1/P2 must all be zero.
-2. Only after review PASS, request/confirm publication authority, push the sole fixed branch and create one draft PR linked to Issue #6.
-3. Run Ubuntu/Windows PR CI and require byte-identical canonical model/error reports before ready/merge consideration.
-4. Do not start M1-02, M1-03, M2 or any adjacent task implicitly.
+1. Request and confirm explicit publication authority.
+2. Only after authorization, push the sole fixed branch and create one draft PR linked to Issue #6.
+3. Run Ubuntu/Windows PR CI and require byte-identical canonical model/error reports.
+4. Only after CI PASS, request explicit ready/merge authorization.
+5. Do not start M1-02, M1-03, M2 or any adjacent task implicitly.
 
 ## Relevant Files and Artifacts
 
@@ -357,6 +372,7 @@ None
 - `docs/evidence/M0-05/security-review-1.md`
 - `docs/evidence/M1-01/security-review-2.md`
 - `docs/evidence/M1-01/security-review-3.md`
+- `docs/evidence/M1-01/security-review-4.md`
 - `runtime/bootstrap/src/main/java/ah/runtime/bootstrap/ShellAppComponentFactory.java`
 - `fixtures/android/src/androidTestCompatFixture/java/ah/fixtures/android/CompatibilityPocRunner.java`
 - `tools/validation/verify-m0-05-apks.mjs`
@@ -386,7 +402,7 @@ None
 - [x] M0-05 完成后由用户明确启动 M1-01；M1-02/M1-03/M2 保持未启动。
 - [x] 冻结公开模型、限制、稳定错误码和恶意输入测试合同。
 - [x] 完成有界 ZIP/AXML/DEX/ELF 检查器、确定性 Windows 验证和修正证据归档；Ubuntu 等价性留给发布后的双平台 PR CI。
-- [ ] 独立只读 `m1_01_security_review` 对冻结提交给出 P0/P1/P2 全零 PASS。
+- [x] 独立只读 `m1_01_reliability_review_4` 对冻结提交 `19ea544ddec32fcaac63dfee81f25546084d8bae` 给出 P0/P1/P2 全零 PASS。
 
 ## Handoff Sign-off
 

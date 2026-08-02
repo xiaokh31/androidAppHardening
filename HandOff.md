@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260802-153213
-updated_at: 2026-08-02T17:17:49+08:00
+updated_at: 2026-08-02T22:44:56+08:00
 updated_by: /root
 state: active
 source_branch: feat/m1-02-signer-policy
@@ -63,6 +63,7 @@ next_owner: /root
 - 最终修复候选 `61908507c741865c50aac07763d42c890bf25d4b` 将负 size 明确归为 malformed，增加 `Long.MIN_VALUE`/`-1L` 回归，并把 `input_changed` 官方状态绑定变更后 artifact。
 - 最终 Windows clean signer matrix 与 256-task 根 `clean check verifyGovernance` 已 PASS；规范 policy 和错误矩阵 SHA-256 分别为 `b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2` 与 `c33d342077c371878399c80e76ae025cd0efc56bfcca6d5bf80ffde4d75677c6`。Ubuntu 字节一致性仍须在第三次独立复核 PASS、用户授权发布后由 GitHub CI 验证。
 - 第三次独立只读复核对冻结证据 HEAD `902c20977d787ea9646078bbbe4c3c46bf0041cc` 给出 PASS：P0 `0`、P1 `0`、P2 `0`。两轮历史发现全部关闭；边界探针、十三行错误矩阵、二十六项 manifest、官方 signer 摘要、异常脱敏和无签名能力边界均通过。结论归档于 `docs/evidence/M1-02/security-review-3.md`。
+- 用户已明确授权推送 `feat/m1-02-signer-policy`、创建关联 Issue #7 的唯一草稿 PR，并运行 Ubuntu/Windows CI；该授权不包含 ready 或 merge。
 
 ## Active Workstreams
 
@@ -72,7 +73,7 @@ next_owner: /root
 | M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | done | M0-04 | PR #31、合并后 strict HandOff 和双平台 CI 已通过 |
 | M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | done | M0-04, M0-06 | PR #32、三环境矩阵、独立安全复核和最终 PR CI 已通过 |
 | M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | done | M0-05 | PR #33、Issue #6、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
-| M1-02 | `/root` | `feat/m1-02-signer-policy` | in_progress | M1-01 | 本地实现与独立复核门禁已通过；等待用户授权发布并运行双平台 CI |
+| M1-02 | `/root` | `feat/m1-02-signer-policy` | in_progress | M1-01 | 发布授权已获得；推送唯一草稿 PR 并运行双平台 CI |
 
 ## Decisions and Invariants
 
@@ -501,12 +502,12 @@ next_owner: /root
 
 ## Blockers and Required Approvals
 
-No technical blocker. The third independent M1-02 review passed with P0/P1/P2 all zero. Pushing the branch and creating the sole Issue #7 PR require explicit user authorization; Ubuntu/Windows CI cannot run until publication.
+None. The third independent M1-02 review passed with P0/P1/P2 all zero, and the user authorized the branch push, sole Issue #7 draft PR and Ubuntu/Windows CI. Ready/merge remains outside the current authorization.
 
 ## Ordered Next Actions
 
-1. Request explicit user authorization before pushing `feat/m1-02-signer-policy` or creating the sole Issue #7 draft PR.
-2. After authorized publication, require Ubuntu/Windows Build, Governance and M1-02 byte-equivalence gates.
+1. Push `feat/m1-02-signer-policy` and create the sole Issue #7 draft PR against `main`.
+2. Require Ubuntu/Windows Build, Governance and M1-02 byte-equivalence gates.
 3. Archive the final PR CI evidence and request separate ready/merge authorization; do not merge implicitly.
 4. Do not start M1-03, M1-04, M2-03 or any adjacent task implicitly.
 
@@ -573,7 +574,8 @@ No technical blocker. The third independent M1-02 review passed with P0/P1/P2 al
 - [x] 首次独立 `m1_02_security_review` FAIL 已归档，P1/P2 四项修复候选 `5016cd3` 已通过 clean signer 与 256-task 根回归。
 - [x] 第二次独立复核 FAIL 已归档；唯一高位 size P2 修复候选 `6190850` 已通过 clean signer 与 256-task 根回归。
 - [x] 冻结高位边界修复后的正式证据提交并完成第三次独立复核；`902c209` 复核为 P0/P1/P2 全零 PASS。
-- [ ] 获得用户发布授权后完成唯一 Issue #7 PR 的 Ubuntu/Windows 字节一致性与治理 CI。
+- [x] 获得用户对固定分支、唯一 Issue #7 草稿 PR 和 Ubuntu/Windows CI 的明确发布授权。
+- [ ] 推送并完成唯一 Issue #7 PR 的 Ubuntu/Windows 字节一致性与治理 CI。
 
 ## Handoff Sign-off
 
@@ -584,4 +586,4 @@ No technical blocker. The third independent M1-02 review passed with P0/P1/P2 al
 - `/root` 已核验 PR #33 的首轮、证据 HEAD 与 merger-ready HEAD 的 Build/Governance 四个 job 和两个字节一致性步骤均 PASS；独立复核 P0/P1/P2 全为零。
 - `/root` 已核验 PR #33 使用普通 merge commit `74c5f6252ea9b89154c285764d5f9601a0347358` 合并、Issue #6 关闭，并在本地 `main` 无豁免通过 strict HandOff；M1-01 标记 done，当前活动任务已转为 M1-02。
 - `/root` 已领取 M1-02 并核验其唯一 Issue、分支、依赖、固定官方 `apksig` 与既有 ADR；当前活动范围仅为 Host signer policy，M1-03/M1-04/M2-03 未启动。
-- `/root` 已核验首个证据 HEAD 与第二个修复证据 HEAD 的独立复核均 FAIL 并废止；第三次独立只读复核已对冻结证据 `902c20977d787ea9646078bbbe4c3c46bf0041cc` 给出 P0/P1/P2 全零 PASS。clean signer、256-task 根回归、Governance、官方六 fixture/十三行错误矩阵、二十六项 artifact manifest、block 资源上界/高位边界、异常脱敏、SPV1 和无签名能力扫描均已闭环；分支仍未发布，下一步只等待用户发布授权。
+- `/root` 已核验首个证据 HEAD 与第二个修复证据 HEAD 的独立复核均 FAIL 并废止；第三次独立只读复核已对冻结证据 `902c20977d787ea9646078bbbe4c3c46bf0041cc` 给出 P0/P1/P2 全零 PASS。clean signer、256-task 根回归、Governance、官方六 fixture/十三行错误矩阵、二十六项 artifact manifest、block 资源上界/高位边界、异常脱敏、SPV1 和无签名能力扫描均已闭环；用户已授权发布固定分支、创建唯一草稿 PR 和运行双平台 CI，但未授权 ready 或 merge。

@@ -9,7 +9,9 @@
 - First-review remediation commit: `789d37e9fa321b54ee19bf4af1382e589f2942d4`
 - Second-review remediation implementation commit: `189a04c5286187ae61575d3a9ec574d62501eacc`
 - KVM validation commit: `e54d3d2a06b11375cb08f09ebaedb51d6623920f`
-- Status at this snapshot: API 29/36 x86_64 GitHub Linux/KVM and API 29 arm64 physical-device review-3 acceptance PASS; evidence freeze and third independent read-only security review pending. The second independent review of `39a30ed1bb5ab80bb13c2ac71968c1599bbb6db4` was FAIL with P0 `0`, P1 `0`, P2 `3` and is superseded only as an acceptance candidate, not erased.
+- Frozen corrected evidence commit: `350d08ee5f3c83bf60dcbd4564866ffb5f819844`
+- Remote KVM validation head: `e54d3d2a06b11375cb08f09ebaedb51d6623920f`
+- Status at this snapshot: API 29/36 x86_64 GitHub Linux/KVM and API 29 arm64 physical-device review-3 acceptance PASS, and the corrected evidence is frozen locally at `350d08ee5f3c83bf60dcbd4564866ffb5f819844`. The third independent read-only review returned FAIL with P0 `0`, P1 `0`, P2 `1` solely because this document and `HandOff.md` had stale freeze/next-action wording; it confirmed the technical and device-evidence findings closed. The remote branch intentionally remains at `e54d3d2a06b11375cb08f09ebaedb51d6623920f`, no PR exists, and the exact next action is a fourth independent read-only review after this documentation reconciliation. Earlier review failures remain historical evidence and are not erased.
 - Local emulator use: none. The x86_64 workflow owns its emulator lifecycle, has a 35-minute job limit, a 180-second boot limit, a 900-second acceptance-runner limit, and EXIT/INT/TERM cleanup.
 - Security boundary: the signer/config binding is a synthetic-fixture PoC check. It is not the production ConfigV2 authentication planned for M1/M2.
 
@@ -126,4 +128,4 @@ For both KVM jobs, the M0-04 baseline/root-DEX values are `145,488 / 147,156` by
 
 ## Completion gate
 
-M0-05 is not complete at this snapshot. All three review-3 environments passed, including authenticated duplicate-ABI rejection, independent extracted/direct 18-case negative matrices, JUnit XML, two payload DEX hashes, ConfigV2/AHDC hashes, per-ABI SO hashes, R8 mapping/usage hashes, verifier peak memory, the correctly scoped M0-04 baseline delta, cold-start metrics and cleanup. Completion still requires freezing this corrected evidence commit and a third independent read-only security review with zero open P0/P1/P2 findings. No PR is created before that review passes, and M1/M2 remain blocked.
+M0-05 is not complete at this snapshot. All three review-3 environments passed, including authenticated duplicate-ABI rejection, independent extracted/direct 18-case negative matrices, JUnit XML, two payload DEX hashes, ConfigV2/AHDC hashes, per-ABI SO hashes, R8 mapping/usage hashes, verifier peak memory, the correctly scoped M0-04 baseline delta, cold-start metrics and cleanup. That evidence is frozen locally at `350d08ee5f3c83bf60dcbd4564866ffb5f819844`, while the remote branch remains at KVM validation commit `e54d3d2a06b11375cb08f09ebaedb51d6623920f`. The only remaining review gate is a new independent read-only review of the reconciled documentation and already-frozen evidence with zero open P0/P1/P2 findings. No PR is created before that review passes, and M1/M2 remain blocked.

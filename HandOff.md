@@ -1,12 +1,12 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260802-103600
-updated_at: 2026-08-02T10:36:00+08:00
+handoff_id: HO-20260802-110223
+updated_at: 2026-08-02T11:02:23+08:00
 updated_by: /root
 state: active
 source_branch: spike/m0-05-application-factory-provider-jni-poc
-base_commit: 7591727a6ef1df7b597694e3eb8b73143ccda5e6
+base_commit: 189a04c5286187ae61575d3a9ec574d62501eacc
 working_tree: clean
 current_milestone: M0
 active_task: M0-05
@@ -77,7 +77,23 @@ next_owner: /root
 - run `30708544925` 在 `587e7f2c7ab9ba44296891fb3d2668e4bd54998c` 上完成 repaired API 29/36 x86_64 KVM：双变体各自 17/17 负例、各 20 次冷启动、JUnit、R8/SO/验证器内存证据和 cleanup 全部 PASS；原始证据位于 ignored `build/m0-05/github-run-30708544925/`。
 - repaired API 29 arm64 真机在 `2026-08-02T10:31:01+08:00` 完成：双变体 instrumentation 和独立 17/17 负例、各 20 次冷启动、JUnit、组件委托 16 例、native 3 例、无明文 DEX 和 cleanup 全部 PASS；报告 SHA-256 为 `e2b154a79f22b900956f4eccdd9c8a450a69a6be340244c031ccf6103aaa94dd`。
 
+- Second independent read-only review of frozen SHA `39a30ed1bb5ab80bb13c2ac71968c1599bbb6db4` returned FAIL with P0 `0`, P1 `0`, P2 `3`; no PR was created and the evidence-only commit remains unpushed.
+- Commit `189a04c5286187ae61575d3a9ec574d62501eacc` adds an authenticated, signed duplicate-ABI-alias startup negative, renames the M0-04 baseline DEX comparison so it is not attributed solely to the verifier, and raises each extracted/direct matrix to 18 cases.
+- Exact next action: push the implementation candidate only for bounded Linux/KVM validation, rerun the API 29 arm64 physical matrix at the same SHA, freeze complete corrected evidence, then request a third independent read-only review. PR creation remains prohibited until P0/P1/P2 are all zero.
+
 ## Verification Evidence
+
+### M0-05 second independent review and remediation candidate
+
+- task_id: M0-05
+- git_commit: 189a04c5286187ae61575d3a9ec574d62501eacc
+- command: second independent read-only review of `39a30ed1bb5ab80bb13c2ac71968c1599bbb6db4`; local Gradle/check/governance gate; official `apksigner` duplicate-ABI-alias signing and verification probe
+- exit_code: 0
+- environment: Windows 10 x64 local validation; no local emulator; independent `m0_05_security_review_2`
+- timestamp: 2026-08-02T11:02:23+08:00
+- artifact: ignored `build/m0-05/native-duplicate-signing-probe/`; second-review result recorded in this handoff
+- sha256: not_applicable
+- result: REVIEW_FAIL_REMEDIATING; P0 `0`, P1 `0`, P2 `3`; exact duplicate ZIP names cannot pass official `apksig` authentication, so the bounded repair uses a signed case-folded duplicate ABI alias that passes signer/config authentication and must fail with `AAH-P004` before `LOADER_CREATED` or `JNI_LOADED`
 
 ### M0-04 completed dependency
 

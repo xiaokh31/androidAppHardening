@@ -22,7 +22,7 @@ The fixed task-card limits are represented by `InspectionLimits` and copied into
 3. UTF-8 path safety and exact/NFC duplicate checks.
 4. bounded Binary AXML and DEX validation.
 5. `minSdk`, Split/AAB/APKS, reserved project namespace, existing shell and unsupported framework gates.
-6. close the channel, hash the input again, and override any earlier result with `INPUT_CHANGED` when the bytes changed.
+6. bind every parser read to an initial 64 KiB block-hash snapshot on the same read-only handle, re-hash that handle and verify path identity at the end, and override any earlier result with `INPUT_CHANGED` when bytes or identity changed.
 
 The marker table is source-controlled, ordered and exposed as `compatibility-rules-v1` in every successful model. It includes Flutter, Unity, React Native, Tinker, Sophix, RePlugin, VirtualAPK, DroidPlugin, common existing-shell markers, unsupported or ELF-mismatched native ABI and all three project-reserved namespaces.
 
@@ -31,8 +31,8 @@ The marker table is source-controlled, ordered and exposed as `compatibility-rul
 - Positive: single DEX, 64 DEX boundary, custom/no Application and Factory, four supported ABIs, maximum 1024-byte UTF-8 path, STORED and raw-DEFLATE/data-descriptor entries.
 - ZIP negative: malformed EOCD, central/local conflict, offset overflow, Zip64, encryption, CRC/size mismatch, compression bomb, traversal, exact duplicate and NFC collision.
 - AXML negative: missing/duplicate/illegal/invalid-UTF-8 package, duplicate string offset, fixed resource-ID mismatch, namespace scope, namespaced core elements, raw/typed conflicts, malformed chunks and unsupported value encodings.
-- DEX negative: non-contiguous names, count 65, repeated string-data offsets under a five-second gate, explicit magic versions, file-size/checksum/signature/table/descriptor corruption.
-- Native negative: invalid/truncated ELF and directory ABI disagreement with ELF class/endianness/`e_machine`.
+- DEX negative: non-contiguous names, count 65, repeated string-data offsets under a five-second gate, explicit magic versions, file-size/checksum/signature/fixed-table/data/map/descriptor corruption.
+- Native negative: invalid/truncated ELF and directory ABI disagreement with complete ELF32/ELF64 header, class, endianness, `e_version`, `e_ehsize` and `e_machine`.
 - Compatibility negative: Split, AAB, APKS, Flutter, Unity, React Native, Tinker, Sophix, plugin Runtime, existing shell, unsupported ABI and each reserved namespace.
 - Lifecycle: input SHA before/after, `INPUT_CHANGED`, cancellation, Windows rename-after-close and zero extraction artifacts.
 - Fuzz: deterministic seed `0x4d312d3031`, exactly 10,000 generated structural samples, periodic duplicate-run determinism checks.

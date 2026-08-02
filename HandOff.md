@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260802-143317
-updated_at: 2026-08-02T14:33:17+08:00
+handoff_id: HO-20260802-143450
+updated_at: 2026-08-02T14:34:50+08:00
 updated_by: /root
 state: active
 source_branch: feat/m1-01-untrusted-apk-inspector
@@ -138,8 +138,8 @@ next_owner: /root
 - environment: Windows 10 x64 10.0.19045; Temurin 17.0.19+10; Gradle 9.5.0; Kotlin JVM plugin 2.4.10; independent `m1_01_reliability_review_4`; no network, device or local emulator
 - timestamp: 2026-08-02T14:33:17+08:00
 - artifact: `docs/evidence/M1-01/security-review-4.md`; `docs/evidence/M1-01/formal-host-validation.md`
-- sha256: canonical model `c15561ee6d6e879ad9db058be2762282538a77d4204279d6b5d6d57b1f1d52bf`; 58-fixture error matrix `b396616ff369fa2d4db56c92f6908253339867d71554f96debee4d7ed06a02fc`
-- result: PASS; P0 `0`, P1 `0`, P2 `0`; same-handle input snapshot, bounded DEX memory, complete ELF headers, DEX fixed-table/data/map closure and earlier AXML/DEX findings are closed; branch remains unpublished pending explicit publication authority and dual-platform PR CI
+- sha256: not_applicable
+- result: PASS; P0 `0`, P1 `0`, P2 `0`; canonical model SHA-256 `c15561ee6d6e879ad9db058be2762282538a77d4204279d6b5d6d57b1f1d52bf`; 58-fixture error-matrix SHA-256 `b396616ff369fa2d4db56c92f6908253339867d71554f96debee4d7ed06a02fc`; same-handle input snapshot, bounded DEX memory, complete ELF headers, DEX fixed-table/data/map closure and earlier AXML/DEX findings are closed; branch remains unpublished pending explicit publication authority and dual-platform PR CI
 
 ### M0-05 second independent review and remediation candidate
 

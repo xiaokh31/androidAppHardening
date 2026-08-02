@@ -8,7 +8,7 @@
 - Issue: `#5`
 - Review-remediation implementation commit: `789d37e9fa321b54ee19bf4af1382e589f2942d4`
 - KVM validation commit: `587e7f2c7ab9ba44296891fb3d2668e4bd54998c`
-- Status at this snapshot: repaired API 29/36 x86_64 GitHub Linux/KVM acceptance PASS; repaired API 29 arm64 physical-device acceptance pending manual device unlock; second independent read-only security review pending.
+- Status at this snapshot: repaired API 29/36 x86_64 GitHub Linux/KVM and repaired API 29 arm64 physical-device acceptance PASS; evidence freeze and second independent read-only security review pending.
 - Local emulator use: none. The x86_64 workflow owns its emulator lifecycle, has a 35-minute job limit, a 180-second boot limit, a 900-second acceptance-runner limit, and EXIT/INT/TERM cleanup.
 - Security boundary: the signer/config binding is a synthetic-fixture PoC check. It is not the production ConfigV2 authentication planned for M1/M2.
 
@@ -27,22 +27,21 @@ All commands exited `0`. The Gradle gate reported `BUILD SUCCESSFUL`, the Config
 
 ## API 29 arm64 physical device
 
-> Historical evidence only: the first independent review rejected this run as final acceptance because the direct variant did not execute its own 17-case mutation matrix and the evidence classes were incomplete. The repaired commit must be rerun after the physical device is manually unlocked.
-
-- Timestamp: `2026-08-01T22:44:17+08:00`
+- Timestamp: `2026-08-02T10:31:01+08:00`
 - Result: `PASS`
 - Environment: Android API 29; `arm64-v8a,armeabi-v7a,armeabi`; 64-bit process; Xiaomi user/release-keys build; `ro.secure=1`; `ro.debuggable=0`; adb shell uid 2000; non-root.
 - Device identifier: omitted. The ignored report stores only a SHA-256 digest of the serial.
-- Command: `node tools/validation/run-m0-05-device-acceptance.mjs --adb <project-local-adb> --serial <redacted> --platform arm64-api29-physical --cold-starts 20 --command-timeout-ms 60000 --no-factory-apk <ignored-signed-apk> --extracted-negative-signed-dir <ignored-dir> --extracted-negative-unsigned-dir <ignored-dir> --direct-negative-signed-dir <ignored-dir> --direct-negative-unsigned-dir <ignored-dir> --evidence build/m0-05/device-arm64-api29-physical`
-- Exit code: `0`
-- Raw ignored report: `build/m0-05/device-arm64-api29-physical/report.json`
-- Raw report SHA-256: `833ae034e7c99389a398bce2acdd24b17bb300f98374292c7da5988c9496731f`
-- Redacted command log SHA-256: `2c0ab50114aefc8ebe16f9eab6c5f81c530a22ae547ded5db41796d06d08166d`
+- Commands: repaired `run-m0-05-device-acceptance.mjs` with four extracted/direct signed/unsigned negative directories, followed by separate `run-m0-05-startup-negative.mjs` invocations for the extracted and direct packages.
+- Validation command exit codes: `0`, `0`, `0`. A surrounding convenience wrapper later returned `1` only because MIUI denied a direct `settings put` while restoring the temporary stay-awake value; `svc power stayon false` then exited `0`, restored `STAY_ON=0`, and cleanup verification found no installed M0-05 package or remote negative directory.
+- Raw ignored evidence: `build/m0-05/device-arm64-api29-repaired-20260802/`
+- Raw report SHA-256: `e2b154a79f22b900956f4eccdd9c8a450a69a6be340244c031ccf6103aaa94dd`
+- Redacted command log SHA-256: `15d700aae1be8f2f9b82839cf1469c0e93dc21f58d47818b613a6cac4d5aa830`
+- Device JUnit XML SHA-256: `04a12c0e60857dac8a41468b79780b036d37df3ed2c2047ed06dc92239edd15d`
 
 | Variant | Instrumentation | Lifecycle/factory | Cross-DEX | JNI | Signer/config/metadata | Startup negatives | Plaintext DEX | Cold starts | p50 | p95 | Peak PSS |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| extracted (`extractNativeLibs=true`) | PASS | PASS | PASS | PASS | PASS | 17/17 PASS | 0 | 20/20 | 277 ms | 437 ms | 49,289 KB |
-| direct (`extractNativeLibs=false`) | PASS | PASS | PASS | PASS | PASS | covered by the same authenticated matrix | 0 | 20/20 | 271 ms | 292 ms | 52,156 KB |
+| extracted (`extractNativeLibs=true`) | PASS | PASS | PASS | PASS | PASS | 17/17 PASS | 0 | 20/20 | 265 ms | 286 ms | 50,039 KB |
+| direct (`extractNativeLibs=false`) | PASS | PASS | PASS | PASS | PASS | 17/17 PASS | 0 | 20/20 | 267 ms | 292 ms | 50,310 KB |
 
 The no-original-factory case also passed: no original-factory events occurred, all six original component counts were zero, and the provisional and final loader identities were equal. Cleanup completed and the runner did not own or start an emulator.
 
@@ -50,17 +49,22 @@ The no-original-factory case also passed: no original-factory events occurred, a
 
 | Artifact | SHA-256 |
 |---|---|
-| extracted Release/R8 APK | `ce978151ee329daab7bbc7db86f01e287c63f8652b53cb9815cc45a9fe6a87a0` |
-| direct Release/R8 APK | `cb5ff8cbb524fff159d4926e2231f87f90064e0b60918000c083bd83058f6c44` |
-| extracted instrumentation APK | `1a1787f4062a347026667ea474f2f8566cb661746eca501a1156d23d5fd56197` |
-| direct instrumentation APK | `4d0839e6d051dffe4ebdaecafbebc95336080304c586e4edeeeb8563c320f345` |
-| no-original-factory APK | `0aaaa0193327d182483b3d9bf46cb983f01561c3dff6b8b85c4e10f63f9a095b` |
-| AHDC payload | `3e644b308186f92bc90f59ce6bab8e3c33845b97a840f5e14f73fae534d6a7ec` |
-| payload DEX 1 | `ed56309f63de448b8c7ebf45ae53a98a1937616658afc56aaa6a25f009681426` |
-| payload DEX 2 | `06200c4901642a01d3d7e2ab5a3e23e9b863f015d528731eb29823b7c858f819` |
-| ConfigV2 | `929c4b316ec1c1ef53bc2ccc3a112c77d7c2bb292f30e7ed9dad494c26f0d455` |
+| extracted Release/R8 APK | `4f4e1d3166d44078b3a721d69b3a943f5a435515151cc5ba074fbdf94529800c` |
+| direct Release/R8 APK | `c670a8b8e84c7a479ae558df8be0a06cadfe985c5fe52d8aec7f9f0f5a64e368` |
+| extracted instrumentation APK | `47e22fd3bef439dee00091624b227ce73233b63f5f5c2f1169f1b142c98ffeb3` |
+| direct instrumentation APK | `7087dae6fa3d8aa819186bb2cd23948908860b3cb525ba8f9a5abf7d51261d21` |
+| no-original-factory APK | `9b5120781cb621095024bfee577787e4659e74a514dbaa0f388c6f164ee1fc83` |
+| AHDC payload | `bbfd4c5ce0434793d47a4f2e6ff01ec7a40fdeb1e7738ea017133e7a7fadd879` |
+| ConfigV2 | `3cb4874df2052d07fa9e5be6410ef040d4e6367177ce4b7b47d909336ea353d2` |
+| R8 mapping | `154e41c163b364270cd5ad25a3f76536e291292823e2fff13b1c3719a757d1cb` |
+| R8 usage | `b84a8d149f8e8d9dbc1bcd26bfb0bee783bb0ce55388c6d370c4584ef7987cc4` |
+| `libfixture_jni.so` arm64-v8a | `a2334bdf16584dc7d5983bb17f1e65bb0d3ac98ea51eac8a25f9a67483155e25` |
+| `libfixture_jni.so` x86_64 | `fac69e5f5b9776b97c14e40d83ee54bbd0eb600c098949a09754cfe94198e2d1` |
+| static verifier report | `03d535c96ba38e8c2c006691ce08d1d8145f32efc9b270fb7c479b4401f2618a` |
+| extracted startup-negative report / JUnit | `c172f84b3861909eff72efdb4b5bb6cb4e684e5d69c051e725736dfb30788b2a` / `b22fa9d2e1b90bc9a9ecacbb3a1f348ab7b32ee87dc748d66cb8fcd980f30f00` |
+| direct startup-negative report / JUnit | `54d398ddbde87462c6b7fb6fd26a773713aa1c3271cfc17cb455cb356a2519de` / `f20d9e11fadab0658273b3b4adb54cc5b3a34203fea6c0aa9df08830d7fa75c0` |
 
-The ignored one-time fixture signer digest is recorded in the raw report/config verification output, but no keystore, certificate, password, private key, device path, or plaintext DEX is committed.
+Both instrumentation runs reported the exact lifecycle order, six original-factory component counts of `1`, `component_delegate_negative=16`, `native_negative=3`, signer/config/metadata checks, cross-DEX and JNI success. The ignored one-time fixture signer digest is recorded in the raw report/config verification output, but no keystore, certificate, password, private key, device path, or plaintext DEX is committed.
 
 ## GitHub Linux/KVM matrix
 
@@ -115,4 +119,4 @@ The generated APKs are ignored, run-scoped integration artifacts signed only wit
 
 ## Completion gate
 
-M0-05 is not complete at this snapshot. The repaired API 29/36 x86_64 environments passed, including exact `libpulse0=1:16.1+dfsg1-2ubuntu10.1`, JUnit XML, per-ABI SO hashes, R8 mapping/usage hashes, and verifier peak memory of 67,488/73,268 KB. Completion still requires the repaired API 29 arm64 physical run and a second independent read-only security review with zero open P0/P1/P2 findings. No PR is created before that review passes, and M1/M2 remain blocked.
+M0-05 is not complete at this snapshot. All three repaired environments passed, including independent extracted/direct negative matrices, JUnit XML, per-ABI SO hashes, R8 mapping/usage hashes, verifier peak memory, cold-start metrics and cleanup. Completion still requires freezing this evidence commit and a second independent read-only security review with zero open P0/P1/P2 findings. No PR is created before that review passes, and M1/M2 remain blocked.

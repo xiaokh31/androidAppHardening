@@ -4,9 +4,9 @@
 
 - Task: M1-01, Issue [#6](https://github.com/xiaokh31/androidAppHardening/issues/6).
 - Branch: `feat/m1-01-untrusted-apk-inspector`.
-- Verified implementation commit: `bb2a6a93b840dd0416118119b4fe4434e395be02`.
+- Verified implementation commit: `d3dbfaa8ce4317d8b394f22478ddbb185fd480cb`.
 - Base: `main@e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030`.
-- Timestamp: `2026-08-02T13:20:17+08:00`.
+- Timestamp: `2026-08-02T13:36:05+08:00`.
 - Environment: Microsoft Windows 10 `10.0.19045` x64; Temurin `17.0.19+10`; Gradle `9.5.0`; Kotlin JVM plugin `2.4.10` (Gradle embedded Kotlin `2.3.20`).
 - Tool source: repository-local ignored `.toolchains/jdk/jdk-17.0.19+10` and `.toolchains/gradle/gradle-9.5.0`; existing Gradle dependency cache reused offline. No download and no emulator/device process.
 
@@ -16,13 +16,13 @@ All Gradle commands set `JAVA_HOME` to the repository-local JDK and use `--offli
 
 | Command | Exit | Result |
 |---|---:|---|
-| `gradle :host:apk-inspector:test` | 0 | PASS; 32 named negative fixtures, every public error code, positive/boundary models, 10,000 seeded fuzz samples |
+| `gradle :host:apk-inspector:test` | 0 | PASS; 35 named negative fixtures, every public error code, positive/boundary models, 10,000 seeded fuzz samples |
 | `gradle check` | 0 | PASS; 231 actionable tasks, including the same formal inspector self-test, Android lint/static tasks and existing ConfigV2 tamper suite |
 | `node tools/governance/validate-project-package.mjs` | 0 | PASS; 26 task cards, 11 core docs, 7 ADRs |
 | `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict` | 0 | PASS without exemption on clean implementation commit |
 | `git diff --check` | 0 | PASS |
 
-The formal fuzz seed is `0x4d312d3031`; sample count is exactly `10,000`. The root-check run reported peak used JVM memory `316,326,544` bytes. The self-test periodically executes identical bytes twice and requires byte-stable success/error outcomes. It also verifies input hashes before/after success and failure, `INPUT_CHANGED`, cancellation cleanup, Windows rename-after-close, defensive byte-array copies, unmodifiable lists and no extraction artifact creation.
+The formal fuzz seed is `0x4d312d3031`; sample count is exactly `10,000`. The root-check run reported peak used JVM memory `316,343,424` bytes. The self-test periodically executes identical bytes twice and requires byte-stable success/error outcomes. It also verifies input hashes before/after success and failure, `INPUT_CHANGED`, cancellation cleanup, Windows rename-after-close, defensive byte-array copies, unmodifiable lists and no extraction artifact creation.
 
 ## Canonical accepted model
 
@@ -32,7 +32,7 @@ The sanitized baseline input SHA-256 is `fcad7d3410aebcec8a9347a001ee5d96f672a11
 {"inputSha256":"fcad7d3410aebcec8a9347a001ee5d96f672a116445982dd6c929e98ab8879fb","packageName":"ah.fixtures.inspector","packageNameSha256":"6a74da948cef80fb8e8655c1a66992b118979135694811f53594b52f31aebc65","minSdk":29,"targetSdk":36,"applicationClass":"ah.fixtures.inspector.FixtureApplication","appComponentFactoryClass":"ah.fixtures.inspector.FixtureFactory","dexEntries":["classes.dex","classes2.dex"],"nativeAbis":["armeabi-v7a","arm64-v8a","x86","x86_64"],"markerIds":["CUSTOM_APPLICATION","CUSTOM_APP_COMPONENT_FACTORY","NATIVE_ABI_ARMEABI_V7A","NATIVE_ABI_ARM64_V8A","NATIVE_ABI_X86","NATIVE_ABI_X86_64"]}
 ```
 
-The canonical model report SHA-256 is `a689e24f5a0e5dd81fcfe4175cacb3566477a4a659ed3da5dd3c6a84014264d3`. The full 32-fixture error matrix report SHA-256 is `545aa5987cc82fc98a0f7f20dcc5492ba84d40d91431a3350da6122854f39618`. These two reports are deterministic inputs for the pending Ubuntu equivalence gate; peak-memory data is intentionally kept in a separate non-canonical report.
+The canonical model report SHA-256 is `a689e24f5a0e5dd81fcfe4175cacb3566477a4a659ed3da5dd3c6a84014264d3`. The full 35-fixture error matrix report SHA-256 is `184fcde7ae41234bfe4a0a3f61b76bdd32afb45882d05449573e372f69613d2e`. These two reports are deterministic inputs for the pending Ubuntu equivalence gate; peak-memory data is intentionally kept in a separate non-canonical report.
 
 ## Public error-code evidence
 
@@ -52,16 +52,16 @@ The canonical model report SHA-256 is `a689e24f5a0e5dd81fcfe4175cacb3566477a4a65
 | `COMPAT_EXISTING_SHELL` | `existing-shell.apk` | `a6a66b7a2dc2abcf8b8ce377b36da51afae74e6e9e20b5d39abbaa0119b0120e` | `QIHO0_JIAGU_SHELL` |
 | `COMPAT_RESERVED_NAMESPACE` | `reserved-namespace.apk` | `c988902d4b0d018ed4647d0b8dcb45fa3c1d4f5e6b628c6f7e40120b2d149cda` | `AH_RUNTIME_ASSET_NAMESPACE` |
 
-Additional named fixtures cover NFC collision, 1025-byte path, Zip64, encrypted entry, offset overflow, 65 DEX, illegal package, non-contiguous DEX, AAB/APKS, Unity, React Native, Tinker, Sophix, plugin Runtime, unsupported ABI, and the reserved class/native namespaces. Positive boundaries cover a 1024-byte path, 64 contiguous DEX files, single/multi DEX, custom/no Application and Factory, four independent supported ABIs, STORED, raw DEFLATE and signed data descriptor entries.
+Additional named fixtures cover NFC collision, 1025-byte path, Zip64, encrypted entry, offset overflow, 65 DEX, illegal package, oversized AXML resource map, non-contiguous/non-canonical DEX, a DEX string declaring `Int.MAX_VALUE` UTF-16 units, AAB/APKS, Unity, React Native, Tinker, Sophix, plugin Runtime, unsupported ABI, and the reserved class/native namespaces. Positive boundaries cover a 1024-byte path, 64 contiguous DEX files, single/multi DEX, custom/no Application and Factory, four independent supported ABIs, STORED, raw DEFLATE and signed data descriptor entries.
 
 ## Side-effect and resource conclusion
 
 - Production code opens only the input `Path` with `READ`; it has no output-path API and no filesystem write call.
-- ZIP data is CRC-checked with bounded 64 KiB buffers. Manifest and each DEX are materialized one at a time in fixed segments; the implementation does not retain plaintext payloads or full class-name lists after parsing.
+- ZIP data is CRC-checked with bounded 64 KiB buffers. Manifest and each DEX are materialized one at a time in fixed segments. DEX class descriptors are validated as a stream and retain at most a 128-character compatibility-marker prefix; attacker-declared string length is never used as allocation capacity. The implementation does not retain plaintext payloads or full class-name lists after parsing.
 - The self-test snapshots the corpus directory before/after inspection, confirms no new extraction path, then removes its generated corpus in `finally`.
 - Successful, malformed, changed and cancelled paths all release the channel; Windows rename/move succeeds immediately after each case.
 - No local emulator was started. No APK, plaintext DEX, certificate, secret or customer path is committed.
 
 ## Pending gates
 
-This is the local Windows frozen candidate. The next gate is an independent read-only `m1_01_security_review` of the exact evidence commit. Publication remains forbidden until that review reports P0/P1/P2 all zero. Ubuntu canonical-report equivalence and normal PR CI remain required after the independent review and publication authorization; M1-01 is not complete and M1-02/M1-03/M2 remain blocked.
+The first independent review attempt did not produce a final handoff because the platform interrupted the reviewer. Its pre-final resource finding was nevertheless treated as a failed gate: commit `d3dbfaa8ce4317d8b394f22478ddbb185fd480cb` replaced attacker-sized descriptor allocation with streaming validation, added DEX table-order uniqueness, rejected every non-canonical `.dex` path, tightened AXML resource-map/namespace/string-pool validation, and added three deterministic regressions. This is now the local Windows frozen candidate. The next gate is a new independent read-only `m1_01_security_review` of the exact evidence commit. Publication remains forbidden until a completed review reports P0/P1/P2 all zero. Ubuntu canonical-report equivalence and normal PR CI remain required after the independent review and publication authorization; M1-01 is not complete and M1-02/M1-03/M2 remain blocked.

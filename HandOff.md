@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260802-132108
-updated_at: 2026-08-02T13:21:08+08:00
+handoff_id: HO-20260802-133605
+updated_at: 2026-08-02T13:36:05+08:00
 updated_by: /root
 state: active
 source_branch: feat/m1-01-untrusted-apk-inspector
@@ -41,7 +41,8 @@ next_owner: /root
 - 合并后的首次 Governance run `30732622423` 只因 HandOff 仍声明旧 source branch 而失败；coordinator-only 提交 `d682c85125e11084cf023b5f523d715e28c74e75` 已完成状态协调，随后 Governance run `30732725929` 与 Build run `30732725931` 在 Ubuntu/Windows 全部 PASS。
 - 用户已明确领取 M1-01；固定 Issue 为 #6，固定分支为 `feat/m1-01-untrusted-apk-inspector`，从已通过合并后 CI 与 strict HandOff 的 `main@e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030` 启动。
 - `/root` 当前仅负责 M1-01。实现顺序固定为公开模型与稳定错误码、恶意输入测试、检查器实现、冻结证据、独立只读安全复核；复核通过前不推送、不创建 PR，也不启动 M1-02/M1-03/M2。
-- M1-01 实现候选 `bb2a6a93b840dd0416118119b4fe4434e395be02` 已完成只读有界 ZIP、Binary AXML、DEX、ABI 和兼容性检查；Windows 正式模块测试、10,000 样本 fuzz、全仓库 check、治理和 clean strict HandOff 均为 PASS。当前等待冻结证据提交后的独立只读复核，尚未发布分支。
+- 首次独立复核尝试被平台中断，未形成有效 PASS/FAIL；其终止前指出 DEX MUTF-8 声明长度可被直接用于 `StringBuilder` 容量。旧冻结目标 `4f55222fd00408f7f67b3b58a93733e9a77c23e2` 因此作废，不得作为完成证据。
+- 修正候选 `d3dbfaa8ce4317d8b394f22478ddbb185fd480cb` 改为固定 128 字符 marker 前缀的流式 descriptor 校验，增加 DEX 表顺序唯一性、拒绝非规范 `.dex` 路径，并收紧 AXML resource map、namespace 与 string-pool 验证；35 个负例、10,000 样本 fuzz 和全仓库 check 均 PASS。当前等待新冻结证据提交后的完整独立只读复核，分支仍未发布。
 
 ## Active Workstreams
 
@@ -71,6 +72,8 @@ next_owner: /root
 - 用户明确要求开始 M1-01；协调者从 `main@e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030` 创建唯一固定分支 `feat/m1-01-untrusted-apk-inspector`，领取 Issue #6，并保留 M1-02/M1-03/M2 未启动。
 - 提交 `bb2a6a93b840dd0416118119b4fe4434e395be02` 新增不可变公开模型、固定限制与错误码、有界 ZIP/AXML/DEX/ABI 检查、版本化兼容 marker 表、无依赖合成 fixture 和 10,000 样本 deterministic fuzz；未新增第三方依赖。
 - Windows 正式 `:host:apk-inspector:test` 与根 `check` 均退出 `0`；根 check 共 231 actionable tasks。规范模型与 32-fixture 错误矩阵 SHA-256 分别为 `a689e24f5a0e5dd81fcfe4175cacb3566477a4a659ed3da5dd3c6a84014264d3` 与 `545aa5987cc82fc98a0f7f20dcc5492ba84d40d91431a3350da6122854f39618`。
+- 首次独立 reviewer 在形成最终 handoff 前被平台中断；该次不计作独立复核结论。其已报告的攻击者长度分配缺口按失败门禁处理，旧冻结目标立即失效。
+- `d3dbfaa8ce4317d8b394f22478ddbb185fd480cb` 关闭该资源缺口并补充 oversized DEX string、oversized AXML resource map 和 non-canonical DEX path 回归；修正后的规范模型 SHA-256 保持 `a689e24f5a0e5dd81fcfe4175cacb3566477a4a659ed3da5dd3c6a84014264d3`，35-fixture 矩阵 SHA-256 为 `184fcde7ae41234bfe4a0a3f61b76bdd32afb45882d05449573e372f69613d2e`。
 
 - PR #31 已合并，旧 metadata blocker 的架构依赖已解除，M0-05 从 `blocked` 恢复为 `in_progress`。
 - 既有 M0-05 分支保留四个本地历史提交和 Issue #5，不创建第二分支或第二任务。
@@ -104,17 +107,17 @@ next_owner: /root
 
 ## Verification Evidence
 
-### M1-01 Windows frozen candidate
+### M1-01 remediated Windows candidate
 
 - task_id: M1-01
-- git_commit: bb2a6a93b840dd0416118119b4fe4434e395be02
+- git_commit: d3dbfaa8ce4317d8b394f22478ddbb185fd480cb
 - command: repository-local Gradle 9.5.0 with Temurin 17.0.19, offline `:host:apk-inspector:test` and root `check`; governance validation; clean strict HandOff; `git diff --check`
 - exit_code: 0
 - environment: Windows 10 x64 10.0.19045; Kotlin JVM plugin 2.4.10; no download, device or local emulator
-- timestamp: 2026-08-02T13:20:17+08:00
+- timestamp: 2026-08-02T13:36:05+08:00
 - artifact: `docs/evidence/M1-01/formal-host-validation.md`; ignored `host/apk-inspector/build/reports/m1-01/`
 - sha256: not_applicable
-- result: PASS_WINDOWS_CANDIDATE; canonical model SHA-256 `a689e24f5a0e5dd81fcfe4175cacb3566477a4a659ed3da5dd3c6a84014264d3`; 32-fixture matrix SHA-256 `545aa5987cc82fc98a0f7f20dcc5492ba84d40d91431a3350da6122854f39618`; every public error code, single/64 DEX, 1024-byte path, four ABIs, unsupported framework/shell/reserved gates, input-change/cancellation/handle cleanup, zero extraction, 10,000 seeded samples and root static gates passed; Ubuntu equivalence, independent review, publication and PR CI remain pending
+- result: PASS_WINDOWS_REMEDIATED_CANDIDATE; canonical model SHA-256 `a689e24f5a0e5dd81fcfe4175cacb3566477a4a659ed3da5dd3c6a84014264d3`; 35-fixture matrix SHA-256 `184fcde7ae41234bfe4a0a3f61b76bdd32afb45882d05449573e372f69613d2e`; every public error code, single/64 DEX, 1024-byte path, four ABIs, attacker-sized DEX string, non-canonical DEX path, AXML resource-map overflow, unsupported framework/shell/reserved gates, input-change/cancellation/handle cleanup, zero extraction, 10,000 seeded samples and root static gates passed; the interrupted review is not a conclusion, and a new completed independent review plus Ubuntu equivalence, publication and PR CI remain pending
 
 ### M0-05 second independent review and remediation candidate
 

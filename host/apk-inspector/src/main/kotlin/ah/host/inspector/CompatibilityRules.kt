@@ -1,0 +1,230 @@
+package ah.host.inspector
+
+import java.util.LinkedHashSet
+
+internal object CompatibilityRules {
+    const val VERSION = "compatibility-rules-v1"
+    private val supportedAbis = linkedSetOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+
+    fun nativeAbis(libraries: List<NativeLibraryHeader>, safeFileName: String): NativeAbiSummary {
+        val abis = LinkedHashSet<String>()
+        for (library in libraries) {
+            val name = library.entryName
+            val parts = name.split('/')
+            if (parts.size == 3 && parts[0] == "lib" && parts[2].endsWith(".so") && parts[2].length > 3) {
+                val declaredAbi = parts[1]
+                if (declaredAbi !in supportedAbis) {
+                    abis += declaredAbi
+                    continue
+                }
+                val actualAbi = elfAbi(library.header) ?: rejectNative(safeFileName, "NATIVE_ELF_INVALID")
+                if (declaredAbi != actualAbi) rejectNative(safeFileName, "NATIVE_ELF_ABI_MISMATCH")
+                abis += actualAbi
+            }
+        }
+        return NativeAbiSummary(abis.toList())
+    }
+
+    private fun elfAbi(header: ByteArray): String? {
+        if (header.size < ELF32_HEADER_SIZE ||
+            header[0].toInt() and 0xff != 0x7f || header[1] != 'E'.code.toByte() ||
+            header[2] != 'L'.code.toByte() || header[3] != 'F'.code.toByte() ||
+            header[5].toInt() and 0xff != ELF_DATA_LITTLE_ENDIAN ||
+            header[6].toInt() and 0xff != ELF_VERSION_CURRENT
+        ) {
+            return null
+        }
+        val elfClass = header[4].toInt() and 0xff
+        val expectedHeaderSize = when (elfClass) {
+            ELF_CLASS_32 -> ELF32_HEADER_SIZE
+            ELF_CLASS_64 -> ELF64_HEADER_SIZE
+            else -> return null
+        }
+        if (header.size < expectedHeaderSize) return null
+        val headerSizeOffset = if (elfClass == ELF_CLASS_32) ELF32_EHSIZE_OFFSET else ELF64_EHSIZE_OFFSET
+        val declaredHeaderSize = (header[headerSizeOffset].toInt() and 0xff) or
+            ((header[headerSizeOffset + 1].toInt() and 0xff) shl 8)
+        val fileVersion = (header[20].toLong() and 0xff) or
+            ((header[21].toLong() and 0xff) shl 8) or
+            ((header[22].toLong() and 0xff) shl 16) or
+            ((header[23].toLong() and 0xff) shl 24)
+        if (declaredHeaderSize != expectedHeaderSize || fileVersion != ELF_VERSION_CURRENT.toLong()) return null
+        val machine = (header[18].toInt() and 0xff) or ((header[19].toInt() and 0xff) shl 8)
+        return when (elfClass to machine) {
+            ELF_CLASS_32 to ELF_MACHINE_ARM -> "armeabi-v7a"
+            ELF_CLASS_64 to ELF_MACHINE_AARCH64 -> "arm64-v8a"
+            ELF_CLASS_32 to ELF_MACHINE_X86 -> "x86"
+            ELF_CLASS_64 to ELF_MACHINE_X86_64 -> "x86_64"
+            else -> null
+        }
+    }
+
+    private fun rejectNative(safeFileName: String, marker: String): Nothing = throw InspectionException(
+        code = InspectionErrorCode.COMPAT_FRAMEWORK,
+        safeFileName = safeFileName,
+        markerIds = listOf(marker),
+    )
+
+    fun evaluate(
+        safeFileName: String,
+        manifest: ParsedManifest,
+        entryNames: List<String>,
+        descriptorMarkerIds: List<String>,
+        nativeAbis: NativeAbiSummary,
+    ): List<CompatibilityFinding> {
+        if (manifest.summary.minSdk < 29) {
+            reject(safeFileName, InspectionErrorCode.COMPAT_MIN_SDK, listOf("MIN_SDK_BELOW_29"), "minSdk")
+        }
+
+        val splitMarkers = LinkedHashSet<String>()
+        splitMarkers += manifest.splitMarkers
+        for (name in entryNames) {
+            when {
+                name == "BundleConfig.pb" -> splitMarkers += "AAB_BUNDLE_CONFIG"
+                name == "toc.pb" -> splitMarkers += "APKS_TABLE_OF_CONTENTS"
+                name.startsWith("splits/") -> splitMarkers += "APKS_SPLITS_DIRECTORY"
+                name.startsWith("base/manifest/") -> splitMarkers += "AAB_BASE_MANIFEST"
+            }
+        }
+        if (splitMarkers.isNotEmpty()) {
+            reject(safeFileName, InspectionErrorCode.COMPAT_SPLIT, splitMarkers.toList())
+        }
+
+        val reserved = LinkedHashSet<String>()
+        if (entryNames.any { it == "assets/ah/runtime" || it.startsWith("assets/ah/runtime/") }) {
+            reserved += "AH_RUNTIME_ASSET_NAMESPACE"
+        }
+        if (entryNames.any { RESERVED_NATIVE.matches(it) }) reserved += "AH_RUNTIME_NATIVE_LIBRARY"
+        if ("AH_RUNTIME_CLASS_NAMESPACE" in descriptorMarkerIds) reserved += "AH_RUNTIME_CLASS_NAMESPACE"
+        if (reserved.isNotEmpty()) {
+            reject(safeFileName, InspectionErrorCode.COMPAT_RESERVED_NAMESPACE, reserved.toList())
+        }
+
+        val shellMarkers = markerMatches(entryNames, descriptorMarkerIds, SHELL_MARKERS)
+        if (shellMarkers.isNotEmpty()) {
+            reject(safeFileName, InspectionErrorCode.COMPAT_EXISTING_SHELL, shellMarkers)
+        }
+
+        val frameworkMarkers = markerMatches(entryNames, descriptorMarkerIds, FRAMEWORK_MARKERS).toMutableList()
+        if (nativeAbis.abis.any { it !in supportedAbis }) frameworkMarkers += "NATIVE_ABI_UNSUPPORTED"
+        if (frameworkMarkers.isNotEmpty()) {
+            reject(safeFileName, InspectionErrorCode.COMPAT_FRAMEWORK, frameworkMarkers.distinct())
+        }
+
+        val findings = ArrayList<CompatibilityFinding>()
+        if (manifest.summary.applicationClass != null) {
+            findings += CompatibilityFinding("CUSTOM_APPLICATION", "SUPPORTED_CONFIGURATION")
+        }
+        if (manifest.summary.hasAppComponentFactory) {
+            findings += CompatibilityFinding("CUSTOM_APP_COMPONENT_FACTORY", "SUPPORTED_CONFIGURATION")
+        }
+        for (abi in nativeAbis.abis) {
+            findings += CompatibilityFinding("NATIVE_ABI_${abi.uppercase().replace('-', '_')}", "SUPPORTED_ABI")
+        }
+        return immutableList(findings)
+    }
+
+    private fun markerMatches(
+        entryNames: List<String>,
+        descriptorMarkerIds: List<String>,
+        rules: List<MarkerRule>,
+    ): List<String> {
+        val matches = LinkedHashSet<String>()
+        for (rule in rules) {
+            if (entryNames.any(rule.pathMatch) || rule.id in descriptorMarkerIds) matches += rule.id
+        }
+        return matches.toList()
+    }
+
+    private fun reject(
+        safeFileName: String,
+        code: InspectionErrorCode,
+        markers: List<String>,
+        limitName: String? = null,
+    ): Nothing = throw InspectionException(
+        code = code,
+        safeFileName = safeFileName,
+        limitName = limitName,
+        markerIds = markers,
+    )
+
+    private data class MarkerRule(
+        val id: String,
+        val pathMatch: (String) -> Boolean = { false },
+        val descriptorMatch: (String) -> Boolean = { false },
+    )
+
+    fun descriptorMarkerIds(descriptorPrefix: String): List<String> {
+        val result = ArrayList<String>()
+        if (descriptorPrefix.startsWith("Lah/runtime/")) result += "AH_RUNTIME_CLASS_NAMESPACE"
+        for (rule in SHELL_MARKERS) {
+            if (rule.descriptorMatch(descriptorPrefix)) result += rule.id
+        }
+        for (rule in FRAMEWORK_MARKERS) {
+            if (rule.descriptorMatch(descriptorPrefix)) result += rule.id
+        }
+        return result
+    }
+
+    private val FRAMEWORK_MARKERS = listOf(
+        MarkerRule(
+            id = "FLUTTER_RUNTIME",
+            pathMatch = { it.startsWith("assets/flutter_assets/") || it.matchesNative("libflutter.so") },
+            descriptorMatch = { it.startsWith("Lio/flutter/") },
+        ),
+        MarkerRule(
+            id = "UNITY_RUNTIME",
+            pathMatch = { it.startsWith("assets/bin/Data/") || it.matchesNative("libunity.so") },
+            descriptorMatch = { it.startsWith("Lcom/unity3d/player/") },
+        ),
+        MarkerRule(
+            id = "REACT_NATIVE_RUNTIME",
+            pathMatch = { it == "assets/index.android.bundle" || it.matchesNative("libreactnative.so") },
+            descriptorMatch = { it.startsWith("Lcom/facebook/react/") },
+        ),
+        MarkerRule(id = "TINKER_HOTFIX", descriptorMatch = { it.startsWith("Lcom/tencent/tinker/") }),
+        MarkerRule(
+            id = "SOPHIX_HOTFIX",
+            descriptorMatch = { it.startsWith("Lcom/taobao/sophix/") || it.startsWith("Lcom/ali/mobisecenhance/") },
+        ),
+        MarkerRule(id = "REPLUGIN_RUNTIME", descriptorMatch = { it.startsWith("Lcom/qihoo360/replugin/") }),
+        MarkerRule(id = "VIRTUALAPK_RUNTIME", descriptorMatch = { it.startsWith("Lcom/didi/virtualapk/") }),
+        MarkerRule(id = "DROIDPLUGIN_RUNTIME", descriptorMatch = { it.startsWith("Lcom/morgoo/droidplugin/") }),
+    )
+
+    private val SHELL_MARKERS = listOf(
+        MarkerRule(
+            id = "QIHO0_JIAGU_SHELL",
+            pathMatch = { it.matchesNative("libjiagu.so") },
+            descriptorMatch = { it == "Lcom/stub/StubApp;" },
+        ),
+        MarkerRule(
+            id = "SECNEO_SHELL",
+            pathMatch = { it.matchesNative("libDexHelper.so") },
+            descriptorMatch = { it.startsWith("Lcom/secneo/apkwrapper/") },
+        ),
+        MarkerRule(id = "BANGCLE_SHELL", descriptorMatch = { it == "Ls/h/e/l/l/S;" }),
+    )
+
+    private val RESERVED_NATIVE = Regex("lib/[^/]+/libah_runtime\\.so")
+
+    private fun String.matchesNative(fileName: String): Boolean {
+        val parts = split('/')
+        return parts.size == 3 && parts[0] == "lib" && parts[2] == fileName
+    }
+
+    private const val ELF32_HEADER_SIZE = 52
+    private const val ELF64_HEADER_SIZE = 64
+    private const val ELF32_EHSIZE_OFFSET = 40
+    private const val ELF64_EHSIZE_OFFSET = 52
+    private const val ELF_CLASS_32 = 1
+    private const val ELF_CLASS_64 = 2
+    private const val ELF_DATA_LITTLE_ENDIAN = 1
+    private const val ELF_VERSION_CURRENT = 1
+    private const val ELF_MACHINE_X86 = 3
+    private const val ELF_MACHINE_ARM = 40
+    private const val ELF_MACHINE_X86_64 = 62
+    private const val ELF_MACHINE_AARCH64 = 183
+}
+
+internal data class NativeLibraryHeader(val entryName: String, val header: ByteArray)

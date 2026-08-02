@@ -70,6 +70,15 @@ jobs:
         shell: bash
         run: ./gradlew --no-daemon clean check lint verifyGovernance :runtime:native:assemble
 
+      - name: Verify M1-01 byte-identical reports
+        shell: bash
+        run: |
+          canonical="host/apk-inspector/build/reports/m1-01/canonical-model.json"
+          errors="host/apk-inspector/build/reports/m1-01/error-matrix.json"
+          test "$(sha256sum "$canonical" | awk '{print $1}')" = "c15561ee6d6e879ad9db058be2762282538a77d4204279d6b5d6d57b1f1d52bf"
+          test "$(sha256sum "$errors" | awk '{print $1}')" = "b396616ff369fa2d4db56c92f6908253339867d71554f96debee4d7ed06a02fc"
+          sha256sum "$canonical" "$errors"
+
       - name: Test dependency verification failure
         shell: bash
         run: node tools/validation/test-dependency-verification.mjs
@@ -137,3 +146,15 @@ jobs:
       - name: Run Windows checks
         shell: pwsh
         run: .\gradlew.bat --no-daemon clean check verifyGovernance
+
+      - name: Verify M1-01 byte-identical reports
+        shell: pwsh
+        run: |
+          $canonical = "host/apk-inspector/build/reports/m1-01/canonical-model.json"
+          $errors = "host/apk-inspector/build/reports/m1-01/error-matrix.json"
+          $canonicalHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $canonical).Hash.ToLowerInvariant()
+          $errorHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $errors).Hash.ToLowerInvariant()
+          if ($canonicalHash -ne "c15561ee6d6e879ad9db058be2762282538a77d4204279d6b5d6d57b1f1d52bf") { exit 1 }
+          if ($errorHash -ne "b396616ff369fa2d4db56c92f6908253339867d71554f96debee4d7ed06a02fc") { exit 1 }
+          Write-Output "$canonicalHash  $canonical"
+          Write-Output "$errorHash  $errors"

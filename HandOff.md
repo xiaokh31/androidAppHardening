@@ -1,12 +1,12 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260802-110223
-updated_at: 2026-08-02T11:02:23+08:00
+handoff_id: HO-20260802-115408
+updated_at: 2026-08-02T11:54:08+08:00
 updated_by: /root
 state: active
 source_branch: spike/m0-05-application-factory-provider-jni-poc
-base_commit: 189a04c5286187ae61575d3a9ec574d62501eacc
+base_commit: 350d08ee5f3c83bf60dcbd4564866ffb5f819844
 working_tree: clean
 current_milestone: M0
 active_task: M0-05
@@ -36,7 +36,7 @@ next_owner: /root
 - 首轮独立只读 `m0_05_security_review` 在 `859fe25d15cc7e8670ac621d25d2e0101cf93c9a` 上结论为 FAIL：P0 `0`、P1 `3`、P2 `3`；原三套设备证据因此被复核否决，不再作为最终验收。
 - 六项发现的修复候选已提交为 `789d37e9fa321b54ee19bf4af1382e589f2942d4`：五类组件委托失败归一、双变体 17 例矩阵、重复 ABI 条目、目标恢复计时、Linux 包精确固定，以及 JUnit/SO/R8/验证器内存证据。
 - 本地静态门禁、双变体 Release/R8 和静态 APK 验证已 PASS；GitHub Actions run `30708544925` 的 API 29/36 x86_64 repaired KVM 双 job 已 PASS。
-- repaired API 29 arm64 非 root 真机已完成 extracted/direct instrumentation、各自 17/17 负例、各 20 次冷启动、JUnit、内存、无明文 DEX、组件委托和重复 ABI 负例，cleanup PASS。三套 repaired 设备环境现已全部 PASS，等待证据提交冻结和第二次独立复核；复核 PASS 前仍禁止创建 PR。
+- review-3 API 29 arm64 非 root 真机与 API 29/36 x86_64 Linux/KVM 均已完成 extracted/direct instrumentation、各自 18/18 负例、各 20 次冷启动、JUnit、内存、无明文 DEX、组件委托和认证后的重复 ABI 负例，cleanup PASS。纠正证据已冻结为 `350d08ee5f3c83bf60dcbd4564866ffb5f819844`，等待第三次独立只读复核；复核 PASS 前仍禁止创建 PR。
 
 ## Active Workstreams
 
@@ -44,7 +44,7 @@ next_owner: /root
 |---|---|---|---|---|---|
 | M0-04 | `runtime-security-agent` | `spike/m0-04-classloader-poc` | done | M0-03 | PR #29、正式设备矩阵和独立复核已通过 |
 | M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | done | M0-04 | PR #31、合并后 strict HandOff 和双平台 CI 已通过 |
-| M0-05 | `/root` | `spike/m0-05-application-factory-provider-jni-poc` | review | M0-04, M0-06 | 提交冻结三套 repaired 证据并启动第二次独立只读复核 |
+| M0-05 | `/root` | `spike/m0-05-application-factory-provider-jni-poc` | review | M0-04, M0-06 | 对冻结证据 `350d08e` 启动第三次独立只读复核 |
 
 ## Decisions and Invariants
 
@@ -79,7 +79,9 @@ next_owner: /root
 
 - Second independent read-only review of frozen SHA `39a30ed1bb5ab80bb13c2ac71968c1599bbb6db4` returned FAIL with P0 `0`, P1 `0`, P2 `3`; no PR was created and the evidence-only commit remains unpushed.
 - Commit `189a04c5286187ae61575d3a9ec574d62501eacc` adds an authenticated, signed duplicate-ABI-alias startup negative, renames the M0-04 baseline DEX comparison so it is not attributed solely to the verifier, and raises each extracted/direct matrix to 18 cases.
-- Exact next action: push the implementation candidate only for bounded Linux/KVM validation, rerun the API 29 arm64 physical matrix at the same SHA, freeze complete corrected evidence, then request a third independent read-only review. PR creation remains prohibited until P0/P1/P2 are all zero.
+- Review-3 KVM run `30729952586` passed on API 29/36 x86_64, and the API 29 arm64 physical matrix passed at the same implementation lineage. Each environment and variant passed 18/18 startup negatives, including an installed signed duplicate-ABI alias returning `AAH-P004` with no loader creation.
+- Corrected device evidence is frozen at `350d08ee5f3c83bf60dcbd4564866ffb5f819844`; the pushed remote branch remains at KVM validation commit `e54d3d2a06b11375cb08f09ebaedb51d6623920f`, so the frozen evidence commit itself is intentionally local pending review.
+- Exact next action: run a third independent read-only review of frozen SHA `350d08ee5f3c83bf60dcbd4564866ffb5f819844`. PR creation remains prohibited until P0/P1/P2 are all zero.
 
 ## Verification Evidence
 
@@ -94,6 +96,18 @@ next_owner: /root
 - artifact: ignored `build/m0-05/native-duplicate-signing-probe/`; second-review result recorded in this handoff
 - sha256: not_applicable
 - result: REVIEW_FAIL_REMEDIATING; P0 `0`, P1 `0`, P2 `3`; exact duplicate ZIP names cannot pass official `apksig` authentication, so the bounded repair uses a signed case-folded duplicate ABI alias that passes signer/config authentication and must fail with `AAH-P004` before `LOADER_CREATED` or `JNI_LOADED`
+
+### M0-05 review-3 frozen device matrix
+
+- task_id: M0-05
+- git_commit: 350d08ee5f3c83bf60dcbd4564866ffb5f819844
+- command: GitHub Actions run `30729952586`; local `run-m0-05-device-acceptance.mjs`; separate extracted/direct `run-m0-05-startup-negative.mjs`; post-run package, remote-directory and stay-awake cleanup checks
+- exit_code: 0
+- environment: GitHub Linux/KVM API 29 r8 and API 36 r2 x86_64 with Emulator 37.1.11; physical Android API 29 arm64-v8a user/release-keys, adb shell uid 2000 non-root; no local emulator
+- timestamp: 2026-08-02T11:50:38+08:00
+- artifact: `docs/evidence/M0-05/formal-compatibility.md`; `https://github.com/xiaokh31/androidAppHardening/actions/runs/30729952586`; ignored `build/m0-05/review3-device-arm64-api29/` and `build/m0-05/github-run-30729952586/`
+- sha256: arm64 report `a44c64bbb0f9d8c17c0e1fab4b11e5ec0a31b060fda81ff99a330954ab9a312b`; API 29 KVM report `57b0b6b53eafbc9f2ce1f2496201918d25cb7ac0989e40c908463cf8c592ce6f`; API 36 KVM report `9e7de9b2bc33fd27cc632d64f8b84a4301fa5a9e9e1bf1dec0c82d8e063721b8`
+- result: PASS_DEVICE_EVIDENCE; all six device variants passed lifecycle, cross-DEX, JNI, signer/config/metadata, authenticated duplicate-ABI rejection, independent 18/18 startup negatives, 20 cold starts, memory, zero plaintext DEX and cleanup; verifier peak memory was `51,900 / 71,348 / 73,516 KB`; the cross-variant M0-04 baseline delta is correctly scoped as `1,668` bytes and is not attributed solely to the verifier; third independent review remains pending
 
 ### M0-04 completed dependency
 
@@ -205,8 +219,8 @@ next_owner: /root
 
 ## Blockers and Required Approvals
 
-- 用户已授权为 KVM 验证推送候选冻结分支且暂不创建 PR；仍须遵守“第二次独立复核 PASS 前不创建 PR”。
-- 技术门禁仅剩：提交并冻结 reconciled evidence SHA，随后第二次独立只读安全复核 P0/P1/P2 全为零。
+- 用户已授权为 KVM 验证推送候选冻结分支且暂不创建 PR；仍须遵守“第三次独立复核 PASS 前不创建 PR”。
+- 技术门禁仅剩：第三次独立只读安全复核必须对冻结 SHA `350d08ee5f3c83bf60dcbd4564866ffb5f819844` 给出 P0/P1/P2 全为零。
 
 ## Ordered Next Actions
 
@@ -252,6 +266,6 @@ next_owner: /root
 ## Handoff Sign-off
 
 - Coordinator `/root` 已核验首轮独立复核 FAIL、六项修复 diff、本地 Gradle/check/governance、双变体 Release/R8 和静态 APK 验证结果。
-- 当前快照声明三套 repaired 设备环境验收 PASS，但在第二次独立复核前不声明 M0-05 完成；旧证据仅保留为历史回归基线。
+- 当前快照声明三套 review-3 设备环境验收 PASS，但在第三次独立复核前不声明 M0-05 完成；旧证据仅保留为历史回归基线。
 - `/root` 已核验真机为 API 29 arm64 64-bit、user/release-keys、非 root 环境，设备 runner cleanup PASS；本轮未启动任何本机模拟器。
-- GitHub KVM workflow 继续具有 35 分钟 job 上限、180 秒 boot 上限、900 秒 device-runner 上限和 EXIT/INT/TERM 强制清理；第二次独立复核 PASS 前不创建 PR。
+- GitHub KVM workflow 继续具有 35 分钟 job 上限、180 秒 boot 上限、900 秒 device-runner 上限和 EXIT/INT/TERM 强制清理；第三次独立复核 PASS 前不创建 PR。

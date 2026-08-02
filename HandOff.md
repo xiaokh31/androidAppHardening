@@ -1,16 +1,16 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260802-151413
-updated_at: 2026-08-02T15:14:13+08:00
+handoff_id: HO-20260802-152047
+updated_at: 2026-08-02T15:20:47+08:00
 updated_by: /root
 state: ready
 source_branch: main
 base_commit: e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030
 working_tree: clean
 current_milestone: M1
-active_task: M1-01
-next_owner: /root
+active_task: NONE
+next_owner: unassigned
 ---
 
 # Project HandOff
@@ -52,6 +52,8 @@ next_owner: /root
 - 固定分支已发布到 `83faffb17b41efc7cd9c81cff6759ddf2208a135`，关联 Issue #6 的唯一草稿 PR 为 [#33](https://github.com/xiaokh31/androidAppHardening/pull/33)。Build run `30736757259` 与 Governance run `30736757261` 的 Ubuntu/Windows 四个 job 全部 PASS；两个 Build job 的显式字节门禁均命中同一规范模型和错误矩阵 SHA-256。
 - 证据提交 `de4d69a6c178de97da1e7700948d8d1db5a4ff79` 的最终 PR Build run `30736945439` 与 Governance run `30736945448` 再次在 Ubuntu/Windows 四个 job 全部 PASS；两个最终 Build job 的字节一致性步骤均 PASS。
 - 用户已明确授权将 PR #33 转为 ready 并合并。当前 merger-ready 协调只允许更新 HandOff/证据；该协调提交通过最终 CI 后，必须以预期 HEAD 保护执行普通 merge commit，并在 `main` 无豁免运行 strict HandOff。
+- merger-ready HEAD `7a54ba7874fb47aaf749715be2ba5897ef5a6b2e` 的 Build run `30737456598` 与 Governance run `30737456604` 已在 Ubuntu/Windows 全部 PASS；两项字节一致性步骤也均命中冻结哈希。
+- PR #33 已于 `2026-08-02T15:19:49+08:00` 转为 ready，并以普通 merge commit `74c5f6252ea9b89154c285764d5f9601a0347358` 合并到 `main`；Issue #6 已自动关闭。本地 `main` 已无豁免通过 strict HandOff、Governance 与 diff check，M1-01 完成，M1-02/M1-03/M2 未启动。
 
 ## Active Workstreams
 
@@ -60,7 +62,7 @@ next_owner: /root
 | M0-04 | `runtime-security-agent` | `spike/m0-04-classloader-poc` | done | M0-03 | PR #29、正式设备矩阵和独立复核已通过 |
 | M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | done | M0-04 | PR #31、合并后 strict HandOff 和双平台 CI 已通过 |
 | M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | done | M0-04, M0-06 | PR #32、三环境矩阵、独立安全复核和最终 PR CI 已通过 |
-| M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | review | M0-05 | merger-ready 协调提交全绿后转 ready、普通合并并在 main 无豁免运行 strict HandOff |
+| M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | done | M0-05 | PR #33、Issue #6、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
 
 ## Decisions and Invariants
 
@@ -92,6 +94,8 @@ next_owner: /root
 - 分支发布 HEAD `83faffb17b41efc7cd9c81cff6759ddf2208a135` 已创建唯一草稿 PR #33。Build #23 的 Ubuntu/Windows job `91466820734`/`91466820755` 和 Governance #32 的 Ubuntu/Windows job `91466820833`/`91466820830` 全部 PASS；Build 日志在两个平台都记录相同的两份冻结报告哈希。
 - 证据提交 `de4d69a6c178de97da1e7700948d8d1db5a4ff79` 的 Build #24 Ubuntu/Windows job `91467352371`/`91467352342` 与 Governance #33 Ubuntu/Windows job `91467352594`/`91467352631` 全部 PASS；最终两个 Build 日志再次包含相同规范模型和 58-fixture 错误矩阵哈希。
 - 用户已授权 PR #33 ready/merge；merger-ready HandOff 将 resume branch 设为 `main`，合并方式保持仓库普通 merge commit 策略，不使用 squash/rebase/force。
+- merger-ready 协调提交 `7a54ba7874fb47aaf749715be2ba5897ef5a6b2e` 的 Build #25 与 Governance #34 在 Ubuntu/Windows 全部通过，且两份规范报告逐字节命中冻结 SHA-256。
+- PR #33 已转为 ready 并以普通 merge commit `74c5f6252ea9b89154c285764d5f9601a0347358` 合并，Issue #6 已关闭；本地 `main` 随后无豁免通过 strict HandOff、Governance 和 diff check。
 
 - PR #31 已合并，旧 metadata blocker 的架构依赖已解除，M0-05 从 `blocked` 恢复为 `in_progress`。
 - 既有 M0-05 分支保留四个本地历史提交和 Issue #5，不创建第二分支或第二任务。
@@ -121,7 +125,7 @@ next_owner: /root
 - User authorized ready/merge; PR #32 was merged as `1fe9ea9ca7ac989e2e071ccb00ae2a0c0010c463` and Issue #5 closed.
 - Post-merge Governance run `30732622423` reproduced one HandOff-only source-branch mismatch on Ubuntu and Windows; coordinator commit `d682c85125e11084cf023b5f523d715e28c74e75` changed the resume point to `main` and marked M0-05 done. The later `main@e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030` is the verified M1-01 base.
 - On `d682c85125e11084cf023b5f523d715e28c74e75`, Governance run `30732725929` and Build run `30732725931` passed on Ubuntu 24.04 and Windows 2025, including strict HandOff on `main` with no exemption.
-- Exact next action: commit and push this merger-ready HandOff, require its Ubuntu/Windows Build and Governance PASS, then mark PR #33 ready and merge with expected-head protection. Pull `main` fast-forward and run strict HandOff without exemption; do not start adjacent work.
+- Exact next action: push this post-merge coordinator HandOff and require its Ubuntu/Windows Build and Governance PASS. Then wait for an explicit user instruction before starting any new task; do not start M1-02, M1-03 or M2 implicitly.
 
 ## Verification Evidence
 
@@ -172,6 +176,18 @@ next_owner: /root
 - artifact: draft PR `https://github.com/xiaokh31/androidAppHardening/pull/33`; Build `https://github.com/xiaokh31/androidAppHardening/actions/runs/30736945439`; Governance `https://github.com/xiaokh31/androidAppHardening/actions/runs/30736945448`
 - sha256: not_applicable
 - result: PASS; final evidence HEAD passed Ubuntu/Windows Build and Governance; both byte-equivalence steps passed with canonical model SHA-256 `c15561ee6d6e879ad9db058be2762282538a77d4204279d6b5d6d57b1f1d52bf` and 58-fixture error-matrix SHA-256 `b396616ff369fa2d4db56c92f6908253339867d71554f96debee4d7ed06a02fc`; user authorized ready/merge
+
+### M1-01 merger-ready HEAD and merge
+
+- task_id: M1-01
+- git_commit: 74c5f6252ea9b89154c285764d5f9601a0347358
+- command: GitHub Actions Build run `30737456598` and Governance run `30737456604`; mark PR #33 ready; ordinary merge commit; `git pull --ff-only origin main`; `node tools/governance/validate-project-package.mjs`; strict HandOff without exemption; `git diff --check`; live PR and Issue state query
+- exit_code: 0
+- environment: GitHub Actions Ubuntu 24.04 and Windows 2025; Build jobs `91468754251`/`91468754228`; Governance jobs `91468754252`/`91468754234`; Windows 10 x64 local coordinator; no device or local emulator
+- timestamp: 2026-08-02T15:20:47+08:00
+- artifact: merged PR `https://github.com/xiaokh31/androidAppHardening/pull/33`; closed Issue `https://github.com/xiaokh31/androidAppHardening/issues/6`; Build `https://github.com/xiaokh31/androidAppHardening/actions/runs/30737456598`; Governance `https://github.com/xiaokh31/androidAppHardening/actions/runs/30737456604`
+- sha256: not_applicable
+- result: PASS; merger-ready HEAD `7a54ba7874fb47aaf749715be2ba5897ef5a6b2e` passed all four jobs and both byte-equivalence steps; PR #33 was merged by ordinary merge commit `74c5f6252ea9b89154c285764d5f9601a0347358`, Issue #6 closed, and local `main` passed strict HandOff without exemption
 
 ### M0-05 second independent review and remediation candidate
 
@@ -383,11 +399,10 @@ None
 
 ## Ordered Next Actions
 
-1. Commit and push this merger-ready HandOff to the sole fixed branch.
-2. Require the merger-ready HEAD to pass Ubuntu/Windows Build and Governance, including both byte-equivalence steps.
-3. Mark PR #33 ready and merge it with an expected-head ordinary merge commit.
-4. Fast-forward local `main`, run Governance and strict HandOff without exemption, and reconcile post-merge state if required.
-5. Do not start M1-02, M1-03, M2 or any adjacent task implicitly.
+1. Commit and push this post-merge coordinator HandOff on `main`.
+2. Require the resulting `main` HEAD to pass Ubuntu/Windows Build and Governance, including strict HandOff and both byte-equivalence steps.
+3. Leave M1-01 closed and wait for the user to select the next task.
+4. Do not start M1-02, M1-03, M2 or any adjacent task implicitly.
 
 ## Relevant Files and Artifacts
 
@@ -416,7 +431,7 @@ None
 
 ## Resume Checklist
 
-- [x] 当前分支为 `feat/m1-01-untrusted-apk-inspector`，Issue 固定为 #6，base 固定为 `e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030`。
+- [x] M1-01 从固定 base `e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030` 与唯一分支 `feat/m1-01-untrusted-apk-inspector` 启动，Issue 固定为 #6；当前恢复点为 `main`。
 - [x] M0-04 与 M0-06 已合并并完成各自门禁。
 - [x] 完成最新 main 合并并无豁免运行 strict HandOff。
 - [x] 建立 M0-05 十三项验收条件到实现、静态测试、设备 runner 与 GitHub KVM workflow 的映射。
@@ -437,6 +452,8 @@ None
 - [x] 独立只读 `m1_01_reliability_review_4` 对冻结提交 `19ea544ddec32fcaac63dfee81f25546084d8bae` 给出 P0/P1/P2 全零 PASS。
 - [x] 固定分支已发布，Issue #6 的唯一草稿 PR #33 已创建；首轮 Ubuntu/Windows Build、Governance 和两份报告字节一致性门禁全部 PASS。
 - [x] 证据提交 `de4d69a` 的最终 Ubuntu/Windows Build、Governance 和两份报告字节一致性门禁全部 PASS；用户已授权 ready/merge。
+- [x] merger-ready HEAD `7a54ba7` 的 Ubuntu/Windows Build、Governance 和两份报告字节一致性门禁全部 PASS。
+- [x] PR #33 已转 ready，并以普通 merge commit `74c5f62` 合并；Issue #6 已关闭，本地 `main` 已无豁免通过 strict HandOff。
 
 ## Handoff Sign-off
 
@@ -444,5 +461,5 @@ None
 - 当前快照声明三套 review-3 设备环境验收 PASS、第五次独立复核 P0/P1/P2 全为零、最终 PR HEAD 六项 CI 全部 PASS，PR #32 已合并，且 post-merge `main` Build/Governance 全绿并无豁免通过 strict HandOff；M0-05 标记 done。旧证据仅保留为历史回归基线。
 - `/root` 已核验真机为 API 29 arm64 64-bit、user/release-keys、非 root 环境，设备 runner cleanup PASS；本轮未启动任何本机模拟器。
 - GitHub KVM workflow 的既有超时与强制清理合同保持不变；M1-01 是纯 Host 任务，本轮不启动本机模拟器或真机，也不启动 M1-02/M1-03/M2。
-- `/root` 已核验 PR #33 首轮 Build/Governance 四个 job 与两个字节一致性步骤 PASS；PR 保持 draft，首轮 CI 证据提交后的最终 HEAD 仍需同一组 CI 全绿。
-- `/root` 已核验 `de4d69a` 最终 Build/Governance 四个 job 与两个字节一致性步骤 PASS；本协调提交只准备 merger-ready HandOff，合并后仍须在 `main` 无豁免运行 strict HandOff。
+- `/root` 已核验 PR #33 的首轮、证据 HEAD 与 merger-ready HEAD 的 Build/Governance 四个 job 和两个字节一致性步骤均 PASS；独立复核 P0/P1/P2 全为零。
+- `/root` 已核验 PR #33 使用普通 merge commit `74c5f6252ea9b89154c285764d5f9601a0347358` 合并、Issue #6 关闭，并在本地 `main` 无豁免通过 strict HandOff；M1-01 标记 done，当前无活动任务。

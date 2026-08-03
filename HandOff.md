@@ -2,12 +2,12 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260803-121343
-updated_at: 2026-08-03T13:08:00+08:00
+updated_at: 2026-08-03T13:34:00+08:00
 updated_by: /root
 state: active
 source_branch: feat/m1-03-binary-axml-transformer
 base_commit: 077e4be14865c777dbbf3c1a5a3d9609b3620868
-working_tree: clean
+working_tree: dirty
 current_milestone: M1
 active_task: M1-03
 next_owner: /root
@@ -26,10 +26,12 @@ next_owner: /root
 - M0-06/ADR 0007 已解除旧的 `ApplicationInfo.metaData == null` 阻塞，启动配置唯一来源改为 `ApplicationInfo.sourceDir` 中的固定 ConfigV2 与 AHDC 条目。
 - M1-02 的 PR #34 已以 merge commit `d590b94f08047352d2b1f56c1c08aba4cbf079ec` 合并；post-merge `main@077e4be14865c777dbbf3c1a5a3d9609b3620868` 已通过 Ubuntu/Windows Build、Governance、M1-02 字节门禁和无豁免 strict HandOff。
 - 用户已明确启动 M1-03；唯一 tracking Issue 为 [#8](https://github.com/xiaokh31/androidAppHardening/issues/8)，固定分支为 `feat/m1-03-binary-axml-transformer`，远端无同名分支且当前没有 M1-03 PR。
-- M1-03 已完成有界 binary AXML reader/writer、固定请求/结果模型、单属性 semantic diff、自有 UTF-8/UTF-16/unknown-chunk/resource-map fixtures、13 个稳定错误负例、seed `0x4d313033` 的 5,000 样本 fuzz 与固定 `aapt2` 独立解析；Windows 四份规范报告 hashes 已冻结在 workflow 中。
+- M1-03 已完成有界 binary AXML reader/writer、固定请求/结果模型、单属性 semantic diff、自有 UTF-8/UTF-16/unknown-chunk/resource-map fixtures、17 个稳定错误负例、seed `0x4d313033` 的 5,000 样本 fuzz 与固定 `aapt2` 独立解析；Windows 四份规范报告 hashes 已冻结在 workflow 中。
 - M1-03 实现、Host/static 证据与受阻设备尝试已提交为 `352a6d15a7a7b6443123638ef8e5f4fc1aebc527`；该实现提交之后的协调提交只把 HandOff 恢复为 clean 冻结点，不改变产品实现。
 - Windows `:host:axml:test` 与 237-task 根 `check verifyGovernance` 均退出 `0`；双变体 Release/R8 测试 APK 的签名、双 DEX、JNI、ABI、R8、原 Factory 配置、metadata 与无明文 payload 静态门禁均 PASS。未下载新工具到 C 盘，也未启动本机模拟器。
 - API 29 arm64 非 root 真机被确认是 64-bit `user/release-keys` 且 shell UID 2000；本轮首个 extracted 安装在约 18 秒内因 MIUI `INSTALL_FAILED_USER_RESTRICTED: Install canceled by user` 停止。runner 已执行最终清理并确认四个目标/测试包均未安装，因此本轮不声明任何设备验收通过。
+- 首轮独立只读 `m1_03_security_review` 对冻结 HEAD `9fee22df524f0465f5a9fc310bec153b6d37696b` 给出 FAIL：P0 `0`、P1 `3`、P2 `1`。发现既有属性扩展尾部被清零、style/namespace 超线性工作、tiny unknown chunk 堆放大及高位 unsigned/显式保留证据缺口；旧冻结点立即失效，结论归档于 `docs/evidence/M1-03/security-review-1.md`。
+- 当前修正候选保留既有 Factory 属性的非零扩展尾部，将 chunk/string/attribute/namespace 预算前置，使用常数时间 namespace 活动计数、style 全局线性工作预算与重复 offset 缓存，并把 unknown chunk 保留证明合并为带语义锚点的单一摘要；新增高位 resource/typed value 和三项放大负例。
 - 用户已要求完成 M0-05 剩余部分；固定 Issue 为 #5，固定分支为 `spike/m0-05-application-factory-provider-jni-poc`。
 - 旧实现提交 `d58a277681443a5e79b770a3e9162ae54006138d` 已具备 early signer、原 Factory 五类组件委托、双 DEX、JNI 和两种 Native 路径的初始 PoC，但仍依赖已废弃 metadata，必须按 ConfigV2/sourceDir 合同修订。
 - 旧 arm64 真机证据仅证明 early signer 可用并复现 metadata 缺失，不构成当前合同的设备验收。
@@ -566,7 +568,7 @@ next_owner: /root
 ## Ordered Next Actions
 
 1. 提交并冻结当前实现、Host/static/device-attempt 证据；验证 clean strict HandOff。
-2. 启动未参与实现的独立 parser/security reviewer；P0/P1/P2 全部关闭，否则废止冻结提交并修复后重新冻结。
+2. 首轮独立复核已 FAIL 并废止旧冻结点；完成四项发现的全仓回归后重新冻结，再启动第二个未参与实现的独立 parser/security reviewer。
 3. 用户重新允许 MIUI USB 安装后，只重跑一次有超时和最终清理的 API 29 arm64 双变体矩阵。
 4. 独立复核与 API 29 真机均通过后请求发布授权；发布后运行 API 29/36 x86_64 KVM 和 Ubuntu/Windows 四报告字节一致性 CI。
 5. 未获单独授权前不推送、不创建 PR；M1-03 全部门禁关闭前不启动 M1-04、M2 或任何相邻任务。
@@ -597,6 +599,7 @@ next_owner: /root
 - `docs/evidence/M1-02/security-review-3.md`
 - `docs/evidence/M1-03/implementation-plan.md`
 - `docs/evidence/M1-03/formal-host-validation.md`
+- `docs/evidence/M1-03/security-review-1.md`
 - `runtime/bootstrap/src/main/java/ah/runtime/bootstrap/ShellAppComponentFactory.java`
 - `fixtures/android/src/androidTestCompatFixture/java/ah/fixtures/android/CompatibilityPocRunner.java`
 - `tools/validation/verify-m0-05-apks.mjs`
@@ -648,7 +651,8 @@ next_owner: /root
 - [x] merger-ready HEAD `43fd2dd` 的 Ubuntu/Windows Build、Governance 与 M1-02 字节门禁全部 PASS。
 - [x] PR #34 已转 ready 并以 expected-head 普通 merge commit `d590b94` 合并；Issue #7 已关闭，本地 `main` 已无豁免通过 strict HandOff。
 - [x] 用户明确启动 M1-03；Issue #8、固定分支、base、既有 PR/远端分支缺失状态和 ADR 0003/0007 单属性合同均已核验。
-- [x] 完成有界 reader/writer、单属性 semantic diff、13 个稳定错误负例、5,000 样本 fuzz、固定 aapt2 解析、双变体 Release/R8 构造与 Windows 静态验证。
+- [x] 完成有界 reader/writer、单属性 semantic diff、17 个稳定错误负例、5,000 样本 fuzz、固定 aapt2 解析、双变体 Release/R8 构造与 Windows 静态验证。
+- [x] 首轮独立复核 FAIL 已归档，旧冻结 HEAD `9fee22d` 已废止；P1 `3` / P2 `1` 的修正候选与 6 正例/17 负例已通过模块自测。
 - [ ] API 29 arm64 首次安装被 MIUI 用户限制拒绝；重新允许安装后完成双变体设备矩阵。API 29/36 x86_64 与 Ubuntu 字节一致性留给获授权发布后的 KVM/Build CI。
 - [ ] 冻结实现与证据提交并完成独立 parser/security 复核；P0/P1/P2 全零后再请求发布权限。
 
@@ -667,3 +671,4 @@ next_owner: /root
 - `/root` 已核验最终证据 HEAD `2ed5f4f7973c9ff87a3e3cbbf6e4e5325a259418` 的 Build/Governance 四项 CI、两项 M1-02 字节门禁、CLEAN/MERGEABLE 状态与用户 ready/merge 授权；本协调提交只准备 post-merge `main` 恢复点，产品实现未改变。
 - `/root` 已核验 merger-ready HEAD `43fd2dd0671b90430b5f4b06f1728c563eb4c07c` 的四项 CI 与两项字节门禁全部 PASS；PR #34 使用 expected-head 普通 merge commit `d590b94f08047352d2b1f56c1c08aba4cbf079ec` 合并，Issue #7 关闭，并在本地 `main` 无豁免通过 strict HandOff。M1-02 标记 done，当前无活动任务。
 - `/root` 已核验 M1-03 Windows Host/静态候选、规范报告 hashes、双变体 Release/R8 测试包和 237-task 根回归；API 29 真机仅确认环境与拒绝安装后的零残留，不构成验收 PASS。当前下一步是冻结提交与独立复核，未授权发布且未启动任何本机模拟器。
+- `/root` 已核验首轮 M1-03 独立复核为 FAIL 并废止旧冻结点；当前只允许关闭四项发现、重跑门禁与重新冻结，不得发布、创建 PR 或把设备/Ubuntu/API 36 待办表述为 PASS。

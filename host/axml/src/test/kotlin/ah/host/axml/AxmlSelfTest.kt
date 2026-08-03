@@ -33,12 +33,20 @@ object AxmlSelfTest {
                 metadata = true,
                 unknownChunk = true,
             ),
+            "utf8-extended-factory" to SyntheticManifest.build(
+                utf8 = true,
+                applicationClass = ".FixtureApplication",
+                factoryClass = ".FixtureFactory",
+                applicationAttributeExtension = byteArrayOf(0x6a, 0x7b, 0x8c.toByte(), 0x9d.toByte()),
+            ),
             "utf16-resource-reference" to SyntheticManifest.build(
                 utf8 = false,
                 applicationClass = "ah.fixtures.axml.FixtureApplication",
                 factoryClass = "FixtureFactory",
                 metadata = true,
                 resourceReference = true,
+                valueResourceId = HIGH_RESOURCE_MAP_ID,
+                resourceReferenceId = HIGH_TYPED_REFERENCE,
             ),
         )
         val transformRows = ArrayList<String>()
@@ -60,12 +68,26 @@ object AxmlSelfTest {
             check(change.beforeValue == fixture.factoryClass)
             check(change.afterValue == ManifestTransformRequest.SHELL_FACTORY)
             check(fixture.bytes.contentEquals(fixture.originalCopy)) { "$name input mutated" }
+            val preservation = preservationEvidence(fixture.bytes, first.bytes)
+            fixture.factoryAttributeExtension?.let { extension ->
+                check(countSequence(fixture.bytes, extension) == countSequence(first.bytes, extension)) {
+                    "$name factory attribute extension changed"
+                }
+            }
             transformRows += jsonObject(
                 "fixture" to name,
                 "before_sha256" to hex(first.beforeSha256),
                 "after_sha256" to hex(first.afterSha256),
                 "diff_sha256" to hex(sha256(diffJson(change).toByteArray(StandardCharsets.UTF_8))),
                 "encoding" to if (fixture.utf8) "UTF-8" else "UTF-16",
+                "old_string_count" to preservation.oldStringCount.toString(),
+                "old_string_index_sha256" to preservation.oldStringIndexSha256,
+                "resource_map_prefix_count" to preservation.resourceMapPrefixCount.toString(),
+                "resource_map_prefix_sha256" to preservation.resourceMapPrefixSha256,
+                "unknown_chunk_count" to preservation.unknownChunkCount.toString(),
+                "unknown_chunk_sequence_sha256" to preservation.unknownChunkSequenceSha256,
+                "high_bit_typed_value_count" to preservation.highBitTypedValueCount.toString(),
+                "high_bit_typed_value_sha256" to preservation.highBitTypedValueSha256,
             )
         }
 
@@ -84,7 +106,7 @@ object AxmlSelfTest {
             "truncated" to (base.bytes.copyOf(base.bytes.size - 1) to AxmlErrorCode.AXML_MALFORMED),
             "oversized-root" to (base.bytes.copyOf().also { putU4(it, 4, Int.MAX_VALUE) } to AxmlErrorCode.AXML_MALFORMED),
             "unsupported-string-flags" to (base.bytes.copyOf().also { putU4(it, 8 + 16, 0x200) } to AxmlErrorCode.AXML_UNSUPPORTED_ENCODING),
-            "string-count-limit" to (base.bytes.copyOf().also { putU4(it, 8 + 8, 1_000_001) } to AxmlErrorCode.AXML_LIMIT_EXCEEDED),
+            "string-count-limit" to (base.bytes.copyOf().also { putU4(it, 8 + 8, 262_145) } to AxmlErrorCode.AXML_LIMIT_EXCEEDED),
             "string-length-truncated" to (
                 base.bytes.copyOf().also {
                     val stringsStart = 8 + readU4(it, 8 + 20)
@@ -100,6 +122,10 @@ object AxmlSelfTest {
                 ),
             "duplicate-application" to (SyntheticManifest.build(duplicateApplication = true).bytes to AxmlErrorCode.AXML_MALFORMED),
             "nesting-limit" to (SyntheticManifest.build(nestedDepth = 1_025).bytes to AxmlErrorCode.AXML_LIMIT_EXCEEDED),
+            "namespace-budget" to (SyntheticManifest.build(namespaceCount = 1_025).bytes to AxmlErrorCode.AXML_LIMIT_EXCEEDED),
+            "chunk-budget" to (SyntheticManifest.build(unknownChunkCount = 16_385).bytes to AxmlErrorCode.AXML_LIMIT_EXCEEDED),
+            "attribute-budget" to (withFirstStartElementAttributeCount(base.bytes, 16_385) to AxmlErrorCode.AXML_LIMIT_EXCEEDED),
+            "style-work-budget" to (amplifiedStyleFixture(base.bytes) to AxmlErrorCode.AXML_LIMIT_EXCEEDED),
             "missing-application" to (SyntheticManifest.build(includeApplication = false).bytes to AxmlErrorCode.AXML_APPLICATION_MISSING),
             "shell-collision" to (
                 SyntheticManifest.build(factoryClass = ManifestTransformRequest.SHELL_FACTORY).bytes to
@@ -173,6 +199,173 @@ object AxmlSelfTest {
             "\"${it.key.name}\":${it.value}"
         }
         return "{\"seed\":$FUZZ_SEED,\"samples\":$samples,\"accepted\":$accepted,\"rejected\":{$counts}}"
+    }
+
+    private fun preservationEvidence(beforeBytes: ByteArray, afterBytes: ByteArray): PreservationEvidence {
+        val before = readEvidence(beforeBytes)
+        val after = readEvidence(afterBytes)
+        check(after.strings.size >= before.strings.size)
+        check(after.strings.take(before.strings.size) == before.strings) { "old string indexes changed" }
+        check(after.resourceIds.size >= before.resourceIds.size)
+        check(after.resourceIds.take(before.resourceIds.size) == before.resourceIds) { "resource-map prefix changed" }
+        check(after.unknownChunks == before.unknownChunks) { "unknown chunk bytes or order changed" }
+        check(after.highBitTypedValues == before.highBitTypedValues) { "high-bit typed value changed" }
+        return PreservationEvidence(
+            oldStringCount = before.strings.size,
+            oldStringIndexSha256 = indexedStringsSha256(before.strings),
+            resourceMapPrefixCount = before.resourceIds.size,
+            resourceMapPrefixSha256 = resourceIdsSha256(before.resourceIds),
+            unknownChunkCount = before.unknownChunks.size,
+            unknownChunkSequenceSha256 = unknownChunksSha256(before.unknownChunks),
+            highBitTypedValueCount = before.highBitTypedValues.size,
+            highBitTypedValueSha256 = resourceIdsSha256(before.highBitTypedValues),
+        )
+    }
+
+    private fun readEvidence(bytes: ByteArray): EvidenceDocument {
+        val strings = ArrayList<String>()
+        val resourceIds = ArrayList<Long>()
+        val unknown = ArrayList<String>()
+        val highTyped = ArrayList<Long>()
+        var offset = 8
+        while (offset < bytes.size) {
+            val type = readU2(bytes, offset)
+            val headerSize = readU2(bytes, offset + 2)
+            val size = readU4(bytes, offset + 4)
+            when (type) {
+                TYPE_STRING_POOL -> {
+                    val count = readU4(bytes, offset + 8)
+                    val utf8 = readU4(bytes, offset + 16) and 0x100 != 0
+                    val stringsStart = readU4(bytes, offset + 20)
+                    repeat(count) { index ->
+                        var cursor = offset + stringsStart + readU4(bytes, offset + headerSize + index * 4)
+                        if (utf8) {
+                            cursor = skipLength8(bytes, cursor)
+                            val byteLength = readLength8Value(bytes, cursor)
+                            cursor = byteLength.second
+                            strings += bytes.copyOfRange(cursor, cursor + byteLength.first).toString(StandardCharsets.UTF_8)
+                        } else {
+                            val length = readLength16Value(bytes, cursor)
+                            cursor = length.second
+                            strings += bytes.copyOfRange(cursor, cursor + length.first * 2).toString(StandardCharsets.UTF_16LE)
+                        }
+                    }
+                }
+                TYPE_RESOURCE_MAP -> repeat((size - headerSize) / 4) { index ->
+                    resourceIds += readU4Long(bytes, offset + headerSize + index * 4)
+                }
+                TYPE_START_ELEMENT -> {
+                    val attributeStart = readU2(bytes, offset + 24)
+                    val attributeSize = readU2(bytes, offset + 26)
+                    val count = readU2(bytes, offset + 28)
+                    val attributes = offset + 16 + attributeStart
+                    repeat(count) { index ->
+                        val data = readU4Long(bytes, attributes + index * attributeSize + 16)
+                        if (data >= 0x8000_0000L) highTyped += data
+                    }
+                }
+                TYPE_START_NAMESPACE, TYPE_END_NAMESPACE, TYPE_END_ELEMENT, TYPE_CDATA -> Unit
+                else -> unknown += "$type:${hex(sha256(bytes.copyOfRange(offset, offset + size)))}"
+            }
+            offset += size
+        }
+        return EvidenceDocument(strings, resourceIds, unknown, highTyped)
+    }
+
+    private fun indexedStringsSha256(strings: List<String>): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        strings.forEachIndexed { index, value ->
+            val encoded = value.toByteArray(StandardCharsets.UTF_8)
+            updateInt(digest, index)
+            updateInt(digest, encoded.size)
+            digest.update(encoded)
+        }
+        return hex(digest.digest())
+    }
+
+    private fun resourceIdsSha256(values: List<Long>): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        values.forEach { value -> updateInt(digest, value.toInt()) }
+        return hex(digest.digest())
+    }
+
+    private fun unknownChunksSha256(values: List<String>): String =
+        hex(sha256(values.joinToString("\n").toByteArray(StandardCharsets.UTF_8)))
+
+    private fun updateInt(digest: MessageDigest, value: Int) {
+        repeat(4) { shift -> digest.update((value ushr (24 - shift * 8)).toByte()) }
+    }
+
+    private fun countSequence(bytes: ByteArray, sequence: ByteArray): Int {
+        var count = 0
+        for (offset in 0..bytes.size - sequence.size) {
+            if (sequence.indices.all { bytes[offset + it] == sequence[it] }) count++
+        }
+        return count
+    }
+
+    private fun amplifiedStyleFixture(base: ByteArray): ByteArray {
+        val chunkStart = 8
+        check(readU2(base, chunkStart) == TYPE_STRING_POOL)
+        val oldSize = readU4(base, chunkStart + 4)
+        val headerSize = readU2(base, chunkStart + 2)
+        val stringCount = readU4(base, chunkStart + 8)
+        val oldStringsStart = readU4(base, chunkStart + 20)
+        val stringData = base.copyOfRange(chunkStart + oldStringsStart, chunkStart + oldSize)
+        val styleCount = 2_048
+        val stringsStart = headerSize + (stringCount + styleCount) * 4
+        val stylesStart = stringsStart + stringData.size
+        val styles = ByteArray(styleCount * 12 + 12) { 0xff.toByte() }
+        repeat(styleCount) { index ->
+            putU4(styles, index * 12, 0)
+            putU4(styles, index * 12 + 4, 0)
+            putU4(styles, index * 12 + 8, 0)
+        }
+        val newChunk = ByteArray(stylesStart + styles.size)
+        base.copyInto(newChunk, 0, chunkStart, chunkStart + headerSize)
+        putU4(newChunk, 4, newChunk.size)
+        putU4(newChunk, 12, styleCount)
+        putU4(newChunk, 20, stringsStart)
+        putU4(newChunk, 24, stylesStart)
+        repeat(stringCount) { index -> putU4(newChunk, headerSize + index * 4, readU4(base, chunkStart + headerSize + index * 4)) }
+        repeat(styleCount) { index -> putU4(newChunk, headerSize + (stringCount + index) * 4, index * 12) }
+        stringData.copyInto(newChunk, stringsStart)
+        styles.copyInto(newChunk, stylesStart)
+        val result = ByteArray(base.size - oldSize + newChunk.size)
+        base.copyInto(result, 0, 0, chunkStart)
+        newChunk.copyInto(result, chunkStart)
+        base.copyInto(result, chunkStart + newChunk.size, chunkStart + oldSize, base.size)
+        putU4(result, 4, result.size)
+        return result
+    }
+
+    private fun withFirstStartElementAttributeCount(base: ByteArray, count: Int): ByteArray {
+        val result = base.copyOf()
+        var offset = 8
+        while (offset < result.size) {
+            val type = readU2(result, offset)
+            val size = readU4(result, offset + 4)
+            if (type == TYPE_START_ELEMENT) {
+                result[offset + 28] = count.toByte()
+                result[offset + 29] = (count ushr 8).toByte()
+                return result
+            }
+            offset += size
+        }
+        error("start element not found")
+    }
+
+    private fun skipLength8(bytes: ByteArray, offset: Int): Int = if (bytes[offset].toInt() and 0x80 == 0) offset + 1 else offset + 2
+    private fun readLength8Value(bytes: ByteArray, offset: Int): Pair<Int, Int> {
+        val first = bytes[offset].toInt() and 0xff
+        return if (first and 0x80 == 0) first to offset + 1 else (((first and 0x7f) shl 8) or
+            (bytes[offset + 1].toInt() and 0xff)) to offset + 2
+    }
+
+    private fun readLength16Value(bytes: ByteArray, offset: Int): Pair<Int, Int> {
+        val first = readU2(bytes, offset)
+        return if (first and 0x8000 == 0) first to offset + 2 else
+            (((first and 0x7fff) shl 16) or readU2(bytes, offset + 2)) to offset + 4
     }
 
     private fun runAapt2CrossCheck(reportDir: Path, fixtures: Map<String, Fixture>) {
@@ -317,9 +510,41 @@ object AxmlSelfTest {
             ((bytes[offset + 2].toInt() and 0xff) shl 16) or
             ((bytes[offset + 3].toInt() and 0xff) shl 24)
 
+    private fun readU2(bytes: ByteArray, offset: Int): Int =
+        (bytes[offset].toInt() and 0xff) or ((bytes[offset + 1].toInt() and 0xff) shl 8)
+
+    private fun readU4Long(bytes: ByteArray, offset: Int): Long = readU4(bytes, offset).toLong() and 0xffff_ffffL
+
     private const val FUZZ_SEED = 0x4d31_3033L
     private const val ANDROID_NS = "http://schemas.android.com/apk/res/android"
+    private const val TYPE_STRING_POOL = 0x0001
+    private const val TYPE_RESOURCE_MAP = 0x0180
+    private const val TYPE_START_NAMESPACE = 0x0100
+    private const val TYPE_END_NAMESPACE = 0x0101
+    private const val TYPE_START_ELEMENT = 0x0102
+    private const val TYPE_END_ELEMENT = 0x0103
+    private const val TYPE_CDATA = 0x0104
+    private const val HIGH_RESOURCE_MAP_ID = -0x0edc_ba99
+    private const val HIGH_TYPED_REFERENCE = -0x0123_4568
 }
+
+private data class EvidenceDocument(
+    val strings: List<String>,
+    val resourceIds: List<Long>,
+    val unknownChunks: List<String>,
+    val highBitTypedValues: List<Long>,
+)
+
+private data class PreservationEvidence(
+    val oldStringCount: Int,
+    val oldStringIndexSha256: String,
+    val resourceMapPrefixCount: Int,
+    val resourceMapPrefixSha256: String,
+    val unknownChunkCount: Int,
+    val unknownChunkSequenceSha256: String,
+    val highBitTypedValueCount: Int,
+    val highBitTypedValueSha256: String,
+)
 
 private data class Fixture(
     val bytes: ByteArray,
@@ -330,6 +555,7 @@ private data class Fixture(
     val targetSdk: Int,
     val applicationClass: String?,
     val factoryClass: String?,
+    val factoryAttributeExtension: ByteArray?,
 ) {
     val normalizedApplicationClass: String? get() = normalize(applicationClass)
     val normalizedFactoryClass: String? get() = normalize(factoryClass)
@@ -352,14 +578,21 @@ private object SyntheticManifest {
         factoryClass: String? = null,
         metadata: Boolean = false,
         resourceReference: Boolean = false,
+        valueResourceId: Int = ANDROID_ATTR_VALUE,
+        resourceReferenceId: Int = 0x7f01_0001,
         unknownChunk: Boolean = false,
+        unknownChunkCount: Int = if (unknownChunk) 1 else 0,
         duplicateApplication: Boolean = false,
         includeApplication: Boolean = true,
         factoryResourceId: Int = ANDROID_ATTR_APP_COMPONENT_FACTORY,
         nestedDepth: Int = 0,
         includeResourceMap: Boolean = true,
         reserveFactoryKey: Boolean = false,
+        namespaceCount: Int = 1,
+        applicationAttributeExtension: ByteArray = ByteArray(0),
     ): Fixture {
+        require(namespaceCount >= 1)
+        require(applicationAttributeExtension.size % 4 == 0)
         val strings = StringTable(utf8)
         val manifestName = strings.add("manifest")
         val packageNameAttribute = strings.add("package")
@@ -387,12 +620,12 @@ private object SyntheticManifest {
                 minSdkName to ANDROID_ATTR_MIN_SDK,
                 targetSdkName to ANDROID_ATTR_TARGET_SDK,
                 androidName to ANDROID_ATTR_NAME,
-                valueName to ANDROID_ATTR_VALUE,
+                valueName to valueResourceId,
             )
             if (factoryName != null) mappings[factoryName] = factoryResourceId
             body.bytes(resourceMap(strings.size, mappings))
         }
-        body.bytes(namespace(TYPE_START_NAMESPACE, androidPrefix, androidUri))
+        repeat(namespaceCount) { body.bytes(namespace(TYPE_START_NAMESPACE, androidPrefix, androidUri)) }
         body.bytes(
             startElement(
                 manifestName,
@@ -409,7 +642,7 @@ private object SyntheticManifest {
             ),
         )
         body.bytes(endElement(usesSdkName))
-        if (unknownChunk) body.bytes(unknownChunk())
+        repeat(unknownChunkCount) { body.bytes(unknownChunk()) }
         if (includeApplication) {
             val count = if (duplicateApplication) 2 else 1
             repeat(count) {
@@ -422,10 +655,10 @@ private object SyntheticManifest {
                     TYPE_STRING,
                     factoryValue,
                 )
-                body.bytes(startElement(applicationName, attributes))
+                body.bytes(startElement(applicationName, attributes, applicationAttributeExtension))
                 if (metadata && metadataKey != null) {
                     val valueAttribute = if (resourceReference) {
-                        Attribute(androidUri, valueName, NO_INDEX, TYPE_REFERENCE, 0x7f01_0001)
+                        Attribute(androidUri, valueName, NO_INDEX, TYPE_REFERENCE, resourceReferenceId)
                     } else {
                         Attribute(androidUri, valueName, metadataValue!!, TYPE_STRING, metadataValue)
                     }
@@ -446,7 +679,7 @@ private object SyntheticManifest {
             }
         }
         body.bytes(endElement(manifestName))
-        body.bytes(namespace(TYPE_END_NAMESPACE, androidPrefix, androidUri))
+        repeat(namespaceCount) { body.bytes(namespace(TYPE_END_NAMESPACE, androidPrefix, androidUri)) }
         val bodyBytes = body.toByteArray()
         val bytes = Writer().apply {
             u2(TYPE_XML)
@@ -463,6 +696,7 @@ private object SyntheticManifest {
             targetSdk = targetSdk,
             applicationClass = applicationClass,
             factoryClass = factoryClass,
+            factoryAttributeExtension = applicationAttributeExtension.takeIf { factoryClass != null && it.isNotEmpty() }?.copyOf(),
         )
     }
 
@@ -483,16 +717,21 @@ private object SyntheticManifest {
         u4(uri)
     }.toByteArray()
 
-    private fun startElement(name: Int, attributes: List<Attribute>): ByteArray = Writer().apply {
+    private fun startElement(
+        name: Int,
+        attributes: List<Attribute>,
+        attributeExtension: ByteArray = ByteArray(0),
+    ): ByteArray = Writer().apply {
+        val attributeSize = 20 + attributeExtension.size
         u2(TYPE_START_ELEMENT)
         u2(16)
-        u4(36 + attributes.size * 20)
+        u4(36 + attributes.size * attributeSize)
         u4(1)
         u4(NO_INDEX)
         u4(NO_INDEX)
         u4(name)
         u2(20)
-        u2(20)
+        u2(attributeSize)
         u2(attributes.size)
         u2(0)
         u2(0)
@@ -505,6 +744,7 @@ private object SyntheticManifest {
             u1(0)
             u1(attribute.type)
             u4(attribute.data)
+            bytes(attributeExtension)
         }
     }.toByteArray()
 

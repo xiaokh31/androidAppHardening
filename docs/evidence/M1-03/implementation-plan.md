@@ -33,9 +33,12 @@
 7. Reparse the result and compare a full ordered semantic event model with only the application Factory attribute removed from both sides.
 8. Return bytes only when original string indexes, resource-map prefix, unknown chunk hashes/order and all non-whitelisted semantics match. Otherwise return `AXML_DIFF_VIOLATION` with no result.
 
+The parser additionally caps chunks and active namespaces before object allocation, maintains constant-time namespace activity counts, applies a global input-proportional style-span work budget with duplicate-offset caching, and aggregates unknown-chunk bytes/order into one anchored digest. Existing extended attribute records preserve every byte after the standard 20-byte fields.
+
 ## Test contract
 
 - Cover UTF-8 and UTF-16 pools, absent/custom Application, absent/existing Factory, absent/existing resource map, metadata, resource reference and an unknown XML-node chunk.
+- Cover non-zero extended Factory attributes, high-bit unsigned resource IDs/typed values, namespace/chunk budgets and overlapping style-chain amplification.
 - Independently link a real Manifest with pinned Build Tools `36.1.0` `aapt2`, transform it and require `aapt2 dump xmltree` to retain Application/metadata and expose the Shell Factory.
 - Cover truncation, oversized root, unsupported flags, excessive string count, truncated string length/resource map, duplicate/missing application, excessive nesting, Shell/reserved-ID collision and summary mismatch.
 - Run at least 5,000 deterministic malformed samples with seed `0x4d313033`; no non-AXML exception, crash or unbounded sample allocation is allowed.
@@ -47,3 +50,4 @@
 - Independent reviewer: `m1_03_security_review`.
 - Start only after implementation, Host evidence and device-test harness are committed and frozen.
 - Completion requires all P0/P1/P2 findings closed or the task remains blocked.
+- Review 1 of frozen commit `9fee22df524f0465f5a9fc310bec153b6d37696b` failed with P0 `0`, P1 `3`, P2 `1`; it is invalid and archived in `security-review-1.md`.

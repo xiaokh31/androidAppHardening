@@ -5,7 +5,7 @@
 - Task: M1-03, Issue [#8](https://github.com/xiaokh31/androidAppHardening/issues/8).
 - Branch: `feat/m1-03-binary-axml-transformer`.
 - Base: `077e4be14865c777dbbf3c1a5a3d9609b3620868`.
-- Current status: Host implementation candidate; synthetic Release/R8 APK construction and static validation pass. API 29 physical installation is blocked by the device-side MIUI install confirmation, while API 36 KVM parsing and independent review remain pending.
+- Current status: first frozen candidate failed independent review with P0 `0`, P1 `3`, P2 `1` and is invalid. A corrected Host candidate now preserves attribute extensions, applies bounded chunk/style/namespace budgets and emits explicit unsigned-resource and preservation evidence; rerun and second independent review are pending.
 - Product boundary: binary Manifest bytes only. No production ZIP/APK writer, signing operation, DEX change, ConfigV2 encoder or Runtime change is present.
 
 The implementation copies the caller input, validates the supplied M1-01 summary, parses binary AXML iteratively under fixed limits, appends only missing strings/resource-map data, replaces or appends one application Factory attribute, reparses the result and enforces an ordered semantic whitelist. Public results and hashes use defensive byte-array copies; public failures do not include input paths, Manifest text or nested causes.
@@ -28,7 +28,7 @@ No emulator was started. The only physical-device command was the bounded API 29
 
 | Command | Exit | Result |
 |---|---:|---|
-| project-local JDK 17 `./gradlew :host:axml:test --offline` with pinned `aapt2` and Android 36 `android.jar` properties | 0 | five positive fixtures, thirteen stable negatives, real `aapt2 link/dump` cross-check and 5,000 malformed samples PASS |
+| project-local JDK 17 `./gradlew :host:axml:test --offline` with pinned `aapt2` and Android 36 `android.jar` properties | 0 | six positive fixtures, seventeen stable negatives, real `aapt2 link/dump` cross-check and 5,000 malformed samples PASS |
 | project-local JDK 17 `./gradlew check verifyGovernance --offline` | 0 | 237 actionable tasks; M1-01 10,000-sample and M1-02 signer regressions PASS |
 | `node tools/validation/verify-m0-05-apks.mjs` against both transformed Release/R8 APKs | 0 | signer/config, dual DEX, JNI, ABI, R8, native extraction modes and no-plaintext-payload static gates PASS |
 | bounded API 29 arm64 runner, 20 cold starts requested per variant | 1 | stopped before execution at the first `adb install`: `INSTALL_FAILED_USER_RESTRICTED: Install canceled by user`; no target or test package remained installed |
@@ -38,7 +38,7 @@ The local Kotlin daemon could not create its marker under the user-local C-drive
 
 ## Positive and negative coverage
 
-Positive fixtures cover UTF-8, UTF-16, default/custom Application, absent/existing Factory, absent/existing resource map, metadata string/reference values and an unknown XML node chunk. The transform runs twice for every fixture and must produce identical bytes. Input and returned arrays are mutated in the test harness to prove input immutability and defensive result copies.
+Positive fixtures cover UTF-8, UTF-16, default/custom Application, absent/existing Factory, a non-zero extended Factory attribute record, absent/existing resource map, metadata string/reference values, high-bit unsigned resource/typed values and an unknown XML node chunk. The transform runs twice for every fixture and must produce identical bytes. Input and returned arrays are mutated in the test harness to prove input immutability and defensive result copies. Every transform report row now records the old string-index digest, resource-map prefix digest, unknown-chunk sequence digest and high-bit typed-value digest/count.
 
 The explicit negative matrix currently contains:
 
@@ -52,6 +52,10 @@ The explicit negative matrix currently contains:
 | truncated resource map | `AXML_MALFORMED` |
 | duplicate application | `AXML_MALFORMED` |
 | nesting over 1,024 | `AXML_LIMIT_EXCEEDED` |
+| active namespace count over 1,024 | `AXML_LIMIT_EXCEEDED` |
+| chunk count over 16,384 | `AXML_LIMIT_EXCEEDED` |
+| attribute count over 16,384 | `AXML_LIMIT_EXCEEDED` |
+| overlapping style chains exceed linear work budget | `AXML_LIMIT_EXCEEDED` |
 | missing application | `AXML_APPLICATION_MISSING` |
 | existing Shell Factory | `AXML_RESERVED_COLLISION` |
 | reserved name/resource-ID collision | `AXML_RESERVED_COLLISION` |
@@ -64,10 +68,10 @@ The 5,000-sample deterministic corpus accepted 220 structurally valid mutations 
 
 | Artifact | SHA-256 |
 |---|---|
-| `transform-matrix.json` | `01757e930cd3bb0a60a9b7b2445db4fa0000f050c65f9e88dba82e1d4b3c5d63` |
-| `error-matrix.json` | `54a785f3a4ccd698452fccedaec8e98d509907efcbf67578dd16d6cedcf4956b` |
-| `fuzz-summary.json` | `7910c602477e7ff1b560075468468dd4ccfd9985468655ddca3a2174fdbca199` |
-| `aapt2-cross-check.json` | `e9e3b0307b6953e5b8cc98b651925f6c6cfc5a15b081115138e225efcf69f38e` |
+| `transform-matrix.json` | `35bd420aa0fe05e1a5efee197bdea8d3699f5de743bf54974f13833e24ef5635` |
+| `error-matrix.json` | `8b491ed0fab772bd729274596eaa9058e747dcec9498f9d2737cf73777047240` |
+| `fuzz-summary.json` | `d1dbf919a489a067506ab40b629916ea66a5b8a3e3ced42e710ae8dc57f8dced` |
+| `aapt2-cross-check.json` | `916e2d79af152c6090fc7ba0c4b9b24f054f0eb094ff2968192b922d0d593672` |
 
 The transform report records before/after/diff hashes for every fixture. The `aapt2` report includes a Manifest independently produced by `aapt2 link`, then transformed and read by `aapt2 dump xmltree`; it confirms the Shell Factory while retaining the original `.AaptApplication` and `fixture.metadata=kept`.
 

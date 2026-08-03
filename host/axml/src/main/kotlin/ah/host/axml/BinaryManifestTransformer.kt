@@ -66,7 +66,9 @@ object BinaryManifestTransformer {
             after.stringPool.strings.subList(0, before.stringPool.strings.size) != before.stringPool.strings ||
             after.resourceIds.size < before.resourceIds.size ||
             !after.resourceIds.copyOf(before.resourceIds.size).contentEquals(before.resourceIds) ||
-            before.unknownChunks != after.unknownChunks
+            before.unknownSummary != after.unknownSummary ||
+            (before.application.factoryAttributeIndex != null &&
+                before.application.factoryExtensionSha256 != after.application.factoryExtensionSha256)
         ) {
             fail(AxmlErrorCode.AXML_DIFF_VIOLATION)
         }
@@ -203,7 +205,7 @@ private class AxmlWriter(private val document: AxmlDocument) {
         val existing = application.factoryAttributeIndex
         if (existing != null) {
             val offset = application.attributeOffset + existing * application.attributeSize
-            writeStringAttribute(raw, offset, application.androidNamespaceIndex, nameIndex, shellIndex)
+            writeStringAttribute(raw, offset, application.androidNamespaceIndex, nameIndex, shellIndex, clearExtension = false)
             return raw
         }
         if (application.attributeCount >= MAX_ATTRIBUTES) {
@@ -213,7 +215,7 @@ private class AxmlWriter(private val document: AxmlDocument) {
         val result = ByteArray(checkedAdd(raw.size, application.attributeSize))
         raw.copyInto(result, 0, 0, insertion)
         raw.copyInto(result, insertion + application.attributeSize, insertion, raw.size)
-        writeStringAttribute(result, insertion, application.androidNamespaceIndex, nameIndex, shellIndex)
+        writeStringAttribute(result, insertion, application.androidNamespaceIndex, nameIndex, shellIndex, clearExtension = true)
         putU2(result, START_ELEMENT_ATTRIBUTE_COUNT_OFFSET, application.attributeCount + 1)
         putU4(result, 4, result.size)
         return result
@@ -225,6 +227,7 @@ private class AxmlWriter(private val document: AxmlDocument) {
         namespaceIndex: Int,
         nameIndex: Int,
         valueIndex: Int,
+        clearExtension: Boolean,
     ) {
         putU4(target, offset, namespaceIndex)
         putU4(target, offset + 4, nameIndex)
@@ -233,7 +236,9 @@ private class AxmlWriter(private val document: AxmlDocument) {
         target[offset + 14] = 0
         target[offset + 15] = TYPE_STRING.toByte()
         putU4(target, offset + 16, valueIndex)
-        for (index in offset + ATTRIBUTE_SIZE until offset + document.application.attributeSize) target[index] = 0
+        if (clearExtension) {
+            for (index in offset + ATTRIBUTE_SIZE until offset + document.application.attributeSize) target[index] = 0
+        }
     }
 }
 
@@ -242,9 +247,12 @@ private class AxmlParser(private val bytes: ByteArray) {
     private var resourceIds = LongArray(0)
     private val chunks = ArrayList<AxmlChunk>()
     private val semanticEvents = ArrayList<SemanticEvent>()
-    private val unknownChunks = ArrayList<UnknownChunk>()
+    private val unknownDigest = MessageDigest.getInstance("SHA-256")
+    private var unknownCount = 0
+    private var semanticAnchor = 0
     private val elements = ArrayDeque<ElementFrame>()
     private val namespaces = ArrayDeque<NamespaceFrame>()
+    private var activeNamespaceCounts = IntArray(0)
     private var resourceMapChunk: AxmlChunk? = null
     private var application: ApplicationLocation? = null
     private var applicationCount = 0
@@ -278,11 +286,14 @@ private class AxmlParser(private val bytes: ByteArray) {
                 TYPE_CDATA -> parseCdata(chunk)
                 else -> {
                     requirePool(chunk)
-                    val hash = hex(sha256(chunk.raw))
-                    semanticEvents += SemanticEvent("unknown", null, "${chunk.type}:$hash", emptyList(), null)
-                    unknownChunks += UnknownChunk(chunk.ordinal, chunk.type, chunk.size, hash)
+                    updateDigestInt(unknownDigest, semanticAnchor)
+                    updateDigestInt(unknownDigest, chunk.type)
+                    updateDigestInt(unknownDigest, chunk.size)
+                    unknownDigest.update(chunk.raw)
+                    unknownCount++
                 }
             }
+            if (chunk.type in TYPE_START_NAMESPACE..TYPE_CDATA) semanticAnchor++
             offset = checkedAdd(offset, chunk.size)
         }
         if (offset != bytes.size || !::pool.isInitialized || elements.isNotEmpty() || namespaces.isNotEmpty() ||
@@ -308,7 +319,7 @@ private class AxmlParser(private val bytes: ByteArray) {
                 factoryClass = factoryClass,
             ),
             semanticEventsWithoutFactory = semanticEvents.map { it.withoutFactory() },
-            unknownChunks = unknownChunks.toList(),
+            unknownSummary = UnknownSummary(unknownCount, hex(unknownDigest.digest())),
         )
     }
 
@@ -341,6 +352,7 @@ private class AxmlParser(private val bytes: ByteArray) {
         val utf8 = flags and UTF8_FLAG != 0
         val strings = stringOffsets.map { relative -> decodeString(chunk, stringsStart, stringDataEnd, relative, utf8) }
         if (styleCount > 0) validateStyles(chunk, stylesStart, styleOffsets, stringCount)
+        activeNamespaceCounts = IntArray(stringCount)
         pool = StringPoolData(
             chunk = chunk,
             headerSize = chunk.headerSize,
@@ -374,11 +386,13 @@ private class AxmlParser(private val bytes: ByteArray) {
     private fun parseStartNamespace(chunk: AxmlChunk) {
         requirePool(chunk)
         requireNode(chunk, NAMESPACE_CHUNK_SIZE)
+        if (namespaces.size >= MAX_NAMESPACES) fail(AxmlErrorCode.AXML_LIMIT_EXCEEDED, chunk.offset, chunk.type)
         val prefixIndex = indexOrNone(u4Long(chunk.raw, 16), chunk)
         val uriIndex = stringIndex(u4Long(chunk.raw, 20), chunk)
         val prefix = prefixIndex?.let { pool.strings[it] }
         val uri = pool.strings[uriIndex]
         namespaces.addLast(NamespaceFrame(prefixIndex, uriIndex, elements.size))
+        activeNamespaceCounts[uriIndex]++
         semanticEvents += SemanticEvent("namespace-start", uri, prefix ?: "", emptyList(), null)
     }
 
@@ -395,6 +409,7 @@ private class AxmlParser(private val bytes: ByteArray) {
         if (expected.prefixIndex != prefixIndex || expected.uriIndex != uriIndex || expected.depth != elements.size) {
             fail(AxmlErrorCode.AXML_MALFORMED, chunk.offset, chunk.type)
         }
+        activeNamespaceCounts[uriIndex]--
         semanticEvents += SemanticEvent(
             "namespace-end",
             pool.strings[uriIndex],
@@ -419,7 +434,10 @@ private class AxmlParser(private val bytes: ByteArray) {
         val attributeStart = u2(chunk.raw, 24)
         val attributeSize = u2(chunk.raw, 26)
         val attributeCount = u2(chunk.raw, 28)
-        if (attributeStart < ATTRIBUTE_EXTENSION_SIZE || attributeSize < ATTRIBUTE_SIZE || attributeCount > MAX_ATTRIBUTES) {
+        if (attributeCount > MAX_ATTRIBUTES) {
+            fail(AxmlErrorCode.AXML_LIMIT_EXCEEDED, chunk.offset, chunk.type)
+        }
+        if (attributeStart < ATTRIBUTE_EXTENSION_SIZE || attributeSize < ATTRIBUTE_SIZE) {
             fail(AxmlErrorCode.AXML_MALFORMED, chunk.offset, chunk.type)
         }
         val attributeOffset = checkedAdd(XML_NODE_HEADER_SIZE, attributeStart)
@@ -483,6 +501,7 @@ private class AxmlParser(private val bytes: ByteArray) {
                 attributeCount = attributeCount,
                 factoryAttributeIndex = factoryAttributeIndex,
                 factoryValue = factoryRaw,
+                factoryExtensionSha256 = factoryAttributeIndex?.let { attributes[it].extensionSha256 },
                 androidNamespaceIndex = androidNamespaceIndex,
             )
         }
@@ -549,6 +568,10 @@ private class AxmlParser(private val bytes: ByteArray) {
             type = type,
             typedValue = stringValue ?: data.toString(),
             stringValue = stringValue,
+            extensionSha256 = if (chunkAttributeSize(chunk) == ATTRIBUTE_SIZE) null else {
+                val extensionStart = offset + ATTRIBUTE_SIZE
+                hex(sha256(chunk.raw.copyOfRange(extensionStart, offset + chunkAttributeSize(chunk))))
+            },
         )
     }
 
@@ -579,18 +602,22 @@ private class AxmlParser(private val bytes: ByteArray) {
     }
 
     private fun validateStyles(chunk: AxmlChunk, stylesStart: Int, offsets: IntArray, stringCount: Int) {
+        val validatedOffsets = HashSet<Int>()
+        val workBudget = checkedAdd(offsets.size, (chunk.size - stylesStart) / 4)
+        var work = 0
         for (relative in offsets) {
             var offset = checkedAdd(stylesStart, relative)
             if (relative < 0 || relative % 4 != 0 || offset < stylesStart || offset > chunk.size - 4) {
                 fail(AxmlErrorCode.AXML_MALFORMED, chunk.offset, chunk.type)
             }
-            var spans = 0
+            if (!validatedOffsets.add(relative)) continue
             while (true) {
+                if (++work > workBudget) fail(AxmlErrorCode.AXML_LIMIT_EXCEEDED, chunk.offset, chunk.type)
                 if (offset > chunk.size - 4) fail(AxmlErrorCode.AXML_MALFORMED, chunk.offset, chunk.type)
                 val name = u4Long(chunk.raw, offset)
                 if (name == NO_INDEX) break
-                if (name >= stringCount.toLong() || offset > chunk.size - 12 || ++spans > MAX_STYLE_SPANS) {
-                    fail(if (spans > MAX_STYLE_SPANS) AxmlErrorCode.AXML_LIMIT_EXCEEDED else AxmlErrorCode.AXML_MALFORMED, chunk.offset, chunk.type)
+                if (name >= stringCount.toLong() || offset > chunk.size - 12) {
+                    fail(AxmlErrorCode.AXML_MALFORMED, chunk.offset, chunk.type)
                 }
                 offset = checkedAdd(offset, 12)
             }
@@ -625,8 +652,10 @@ private class AxmlParser(private val bytes: ByteArray) {
     }
 
     private fun requireNamespaceActive(index: Int, chunk: AxmlChunk) {
-        if (namespaces.none { it.uriIndex == index }) fail(AxmlErrorCode.AXML_MALFORMED, chunk.offset, chunk.type)
+        if (activeNamespaceCounts.getOrElse(index) { 0 } == 0) fail(AxmlErrorCode.AXML_MALFORMED, chunk.offset, chunk.type)
     }
+
+    private fun chunkAttributeSize(chunk: AxmlChunk): Int = u2(chunk.raw, 26)
 
     private fun requiredStringAttribute(
         attributes: List<SemanticAttribute>,
@@ -707,7 +736,7 @@ private data class AxmlDocument(
     val application: ApplicationLocation,
     val summary: ParsedSummary,
     val semanticEventsWithoutFactory: List<SemanticEvent>,
-    val unknownChunks: List<UnknownChunk>,
+    val unknownSummary: UnknownSummary,
 )
 
 private data class ParsedSummary(
@@ -750,12 +779,13 @@ private data class ApplicationLocation(
     val attributeCount: Int,
     val factoryAttributeIndex: Int?,
     val factoryValue: String?,
+    val factoryExtensionSha256: String?,
     val androidNamespaceIndex: Int,
 )
 
 private data class ElementFrame(val namespaceIndex: Int?, val nameIndex: Int, val path: String)
 private data class NamespaceFrame(val prefixIndex: Int?, val uriIndex: Int, val depth: Int)
-private data class UnknownChunk(val ordinal: Int, val type: Int, val size: Int, val sha256: String)
+private data class UnknownSummary(val count: Int, val sha256: String)
 
 private data class SemanticEvent(
     val kind: String,
@@ -779,6 +809,7 @@ private data class SemanticAttribute(
     val type: Int,
     val typedValue: String,
     val stringValue: String?,
+    val extensionSha256: String?,
 )
 
 private data class LengthValue(val value: Int, val next: Int)
@@ -864,6 +895,13 @@ private fun strictDecode(
 private fun sha256(value: ByteArray): ByteArray = MessageDigest.getInstance("SHA-256").digest(value)
 private fun hex(value: ByteArray): String = value.joinToString("") { "%02x".format(it) }
 
+private fun updateDigestInt(digest: MessageDigest, value: Int) {
+    digest.update((value ushr 24).toByte())
+    digest.update((value ushr 16).toByte())
+    digest.update((value ushr 8).toByte())
+    digest.update(value.toByte())
+}
+
 private fun checkedAdd(left: Int, right: Int): Int = try {
     Math.addExact(left, right)
 } catch (_: ArithmeticException) {
@@ -947,11 +985,11 @@ private const val END_ELEMENT_SIZE = 24
 private const val NAMESPACE_CHUNK_SIZE = 24
 private const val CDATA_CHUNK_SIZE = 28
 private const val START_ELEMENT_ATTRIBUTE_COUNT_OFFSET = 28
-private const val MAX_CHUNKS = 1_000_000
-private const val MAX_STRINGS = 1_000_000
-private const val MAX_ATTRIBUTES = 65_535
+private const val MAX_CHUNKS = 16_384
+private const val MAX_STRINGS = 262_144
+private const val MAX_ATTRIBUTES = 16_384
 private const val MAX_DEPTH = 1_024
-private const val MAX_STYLE_SPANS = 1_000_000
+private const val MAX_NAMESPACES = 1_024
 private const val ANDROID_NS = "http://schemas.android.com/apk/res/android"
 private const val APP_COMPONENT_FACTORY = "appComponentFactory"
 private const val ANDROID_ATTR_APP_COMPONENT_FACTORY = 0x0101_057aL

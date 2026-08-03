@@ -98,10 +98,10 @@ jobs:
           errors="host/axml/build/reports/m1-03/error-matrix.json"
           fuzz="host/axml/build/reports/m1-03/fuzz-summary.json"
           aapt2="host/axml/build/reports/m1-03/aapt2-cross-check.json"
-          test "$(sha256sum "$transforms" | awk '{print $1}')" = "01757e930cd3bb0a60a9b7b2445db4fa0000f050c65f9e88dba82e1d4b3c5d63"
-          test "$(sha256sum "$errors" | awk '{print $1}')" = "54a785f3a4ccd698452fccedaec8e98d509907efcbf67578dd16d6cedcf4956b"
-          test "$(sha256sum "$fuzz" | awk '{print $1}')" = "7910c602477e7ff1b560075468468dd4ccfd9985468655ddca3a2174fdbca199"
-          test "$(sha256sum "$aapt2" | awk '{print $1}')" = "e9e3b0307b6953e5b8cc98b651925f6c6cfc5a15b081115138e225efcf69f38e"
+          test "$(sha256sum "$transforms" | awk '{print $1}')" = "35bd420aa0fe05e1a5efee197bdea8d3699f5de743bf54974f13833e24ef5635"
+          test "$(sha256sum "$errors" | awk '{print $1}')" = "8b491ed0fab772bd729274596eaa9058e747dcec9498f9d2737cf73777047240"
+          test "$(sha256sum "$fuzz" | awk '{print $1}')" = "d1dbf919a489a067506ab40b629916ea66a5b8a3e3ced42e710ae8dc57f8dced"
+          test "$(sha256sum "$aapt2" | awk '{print $1}')" = "916e2d79af152c6090fc7ba0c4b9b24f054f0eb094ff2968192b922d0d593672"
           sha256sum "$transforms" "$errors" "$fuzz" "$aapt2"
 
       - name: Test dependency verification failure
@@ -203,10 +203,10 @@ jobs:
         shell: pwsh
         run: |
           $expected = @{
-            "host/axml/build/reports/m1-03/transform-matrix.json" = "01757e930cd3bb0a60a9b7b2445db4fa0000f050c65f9e88dba82e1d4b3c5d63"
-            "host/axml/build/reports/m1-03/error-matrix.json" = "54a785f3a4ccd698452fccedaec8e98d509907efcbf67578dd16d6cedcf4956b"
-            "host/axml/build/reports/m1-03/fuzz-summary.json" = "7910c602477e7ff1b560075468468dd4ccfd9985468655ddca3a2174fdbca199"
-            "host/axml/build/reports/m1-03/aapt2-cross-check.json" = "e9e3b0307b6953e5b8cc98b651925f6c6cfc5a15b081115138e225efcf69f38e"
+            "host/axml/build/reports/m1-03/transform-matrix.json" = "35bd420aa0fe05e1a5efee197bdea8d3699f5de743bf54974f13833e24ef5635"
+            "host/axml/build/reports/m1-03/error-matrix.json" = "8b491ed0fab772bd729274596eaa9058e747dcec9498f9d2737cf73777047240"
+            "host/axml/build/reports/m1-03/fuzz-summary.json" = "d1dbf919a489a067506ab40b629916ea66a5b8a3e3ced42e710ae8dc57f8dced"
+            "host/axml/build/reports/m1-03/aapt2-cross-check.json" = "916e2d79af152c6090fc7ba0c4b9b24f054f0eb094ff2968192b922d0d593672"
           }
           foreach ($entry in $expected.GetEnumerator()) {
             $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $entry.Key).Hash.ToLowerInvariant()

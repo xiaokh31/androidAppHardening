@@ -1,23 +1,23 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260802-152047
-updated_at: 2026-08-02T15:20:47+08:00
+handoff_id: HO-20260803-113534
+updated_at: 2026-08-03T11:35:34+08:00
 updated_by: /root
 state: ready
 source_branch: main
-base_commit: e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030
+base_commit: aebbc441da34d2fba78648415c1d80ea844d774d
 working_tree: clean
 current_milestone: M1
-active_task: NONE
-next_owner: unassigned
+active_task: M1-02
+next_owner: /root
 ---
 
 # Project HandOff
 
 ## Objective
 
-在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内完成 M1-01 不可信 APK 检查器。当前只实现 Host 侧有界 ZIP、Binary AXML、DEX 与兼容性检查，不启动模拟器，不读取客户 APK，不实现 M1-02/M1-03 或任何 M2 Runtime 功能。
+在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内执行 M1-02 输入签名身份策略。当前只实现 Host 侧固定 `apksig` 验证、唯一当前 signer、轮换历史与不可变 `SignerPolicyV1`，不实现签名能力、M1-04 wire encoder、M2-03 Runtime 校验或任何相邻任务。
 
 ## Current State
 
@@ -40,7 +40,7 @@ next_owner: unassigned
 - 用户已明确授权把 PR #32 转为 ready 并合并；PR #32 已于 `2026-08-02T12:34:55+08:00` 以 merge commit `1fe9ea9ca7ac989e2e071ccb00ae2a0c0010c463` 合并到 `main`，Issue #5 已关闭。
 - 合并后的首次 Governance run `30732622423` 只因 HandOff 仍声明旧 source branch 而失败；coordinator-only 提交 `d682c85125e11084cf023b5f523d715e28c74e75` 已完成状态协调，随后 Governance run `30732725929` 与 Build run `30732725931` 在 Ubuntu/Windows 全部 PASS。
 - 用户已明确领取 M1-01；固定 Issue 为 #6，固定分支为 `feat/m1-01-untrusted-apk-inspector`，从已通过合并后 CI 与 strict HandOff 的 `main@e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030` 启动。
-- `/root` 当前仅负责 M1-01。实现顺序固定为公开模型与稳定错误码、恶意输入测试、检查器实现、冻结证据、独立只读安全复核；复核通过前不推送、不创建 PR，也不启动 M1-02/M1-03/M2。
+- M1-01 启动时 `/root` 仅负责该任务；该历史范围已由 PR #33 合并关闭，当前唯一活动任务为 M1-02。
 - 首次独立复核尝试被平台中断，未形成有效 PASS/FAIL；其终止前指出 DEX MUTF-8 声明长度可被直接用于 `StringBuilder` 容量。旧冻结目标 `4f55222fd00408f7f67b3b58a93733e9a77c23e2` 因此作废，不得作为完成证据。
 - 修正候选 `d3dbfaa8ce4317d8b394f22478ddbb185fd480cb` 改为固定 128 字符 marker 前缀的流式 descriptor 校验，增加 DEX 表顺序唯一性、拒绝非规范 `.dex` 路径，并收紧 AXML resource map、namespace 与 string-pool 验证；35 个负例、10,000 样本 fuzz 和全仓库 check 均 PASS。
 - 第二次完整独立只读复核对冻结提交 `02e6334e916581f3d49c89ec512f6e9a9ec4a245` 给出 FAIL：P0 `0`、P1 `4`、P2 `3`。旧冻结提交立即失效；结论归档于 `docs/evidence/M1-01/security-review-2.md`。
@@ -54,6 +54,21 @@ next_owner: unassigned
 - 用户已明确授权将 PR #33 转为 ready 并合并。当前 merger-ready 协调只允许更新 HandOff/证据；该协调提交通过最终 CI 后，必须以预期 HEAD 保护执行普通 merge commit，并在 `main` 无豁免运行 strict HandOff。
 - merger-ready HEAD `7a54ba7874fb47aaf749715be2ba5897ef5a6b2e` 的 Build run `30737456598` 与 Governance run `30737456604` 已在 Ubuntu/Windows 全部 PASS；两项字节一致性步骤也均命中冻结哈希。
 - PR #33 已于 `2026-08-02T15:19:49+08:00` 转为 ready，并以普通 merge commit `74c5f6252ea9b89154c285764d5f9601a0347358` 合并到 `main`；Issue #6 已自动关闭。本地 `main` 已无豁免通过 strict HandOff、Governance 与 diff check，M1-01 完成，M1-02/M1-03/M2 未启动。
+- M1-01 的 post-merge `main@aebbc441da34d2fba78648415c1d80ea844d774d` 已在 Ubuntu/Windows Build 与 Governance 全部 PASS；两平台字节一致性步骤和 `main` strict HandOff 均通过。
+- 用户已明确启动 M1-02。固定 Issue 为 #7，固定分支为 `feat/m1-02-signer-policy`，base 为 `aebbc441da34d2fba78648415c1d80ea844d774d`；远端不存在同名分支或既有 M1-02 PR。
+- `apksig 9.3.0` 已由 version catalog 和 dependency verification 固定；ADR 0002 与 ADR 0004 已覆盖 signer/未签名输出和 `SPV1` 模型合同，无需新增 ADR。独立复核者预定为 `m1_02_security_review`，只在实现与证据提交冻结后启动。
+- 首次独立 `m1_02_security_review` 对证据 HEAD `21bfd6db333767c9182c1310e6cd838a8fae49a1` 给出 FAIL：P0 `0`、P1 `1`、P2 `3`。发现无界 Signing Block materialization、公开 cause 路径泄露、magic-only unsigned 误分类和官方 cross-check/manifest 缺口；旧冻结目标立即失效并归档于 `docs/evidence/M1-02/security-review-1.md`。
+- 修复候选 `5016cd39426b2d50d1fbedfafee2f24c567e0546` 关闭四项发现：32 MiB block/连续读取上限、公开异常无 cause、完整 block envelope 分类、六个正向官方交叉验证、每个负例官方状态和完整 artifact manifest。
+- 第二次独立复核对 `8718975255cfbdab4fc2ce29eae67c18f21b62ed` 给出 FAIL：P0 `0`、P1 `0`、P2 `1`。首轮四项均确认关闭，但高位无符号 size 被 `Long` 解码为负数后误归 unsigned；结论归档于 `docs/evidence/M1-02/security-review-2.md`。
+- 最终修复候选 `61908507c741865c50aac07763d42c890bf25d4b` 将负 size 明确归为 malformed，增加 `Long.MIN_VALUE`/`-1L` 回归，并把 `input_changed` 官方状态绑定变更后 artifact。
+- 最终 Windows clean signer matrix 与 256-task 根 `clean check verifyGovernance` 已 PASS；规范 policy 和错误矩阵 SHA-256 分别为 `b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2` 与 `c33d342077c371878399c80e76ae025cd0efc56bfcca6d5bf80ffde4d75677c6`。Ubuntu 字节一致性仍须在第三次独立复核 PASS、用户授权发布后由 GitHub CI 验证。
+- 第三次独立只读复核对冻结证据 HEAD `902c20977d787ea9646078bbbe4c3c46bf0041cc` 给出 PASS：P0 `0`、P1 `0`、P2 `0`。两轮历史发现全部关闭；边界探针、十三行错误矩阵、二十六项 manifest、官方 signer 摘要、异常脱敏和无签名能力边界均通过。结论归档于 `docs/evidence/M1-02/security-review-3.md`。
+- 用户已明确授权推送 `feat/m1-02-signer-policy`、创建关联 Issue #7 的唯一草稿 PR，并运行 Ubuntu/Windows CI；该授权不包含 ready 或 merge。
+- 固定分支已推送，关联 Issue #7 的唯一草稿 PR 为 [#34](https://github.com/xiaokh31/androidAppHardening/pull/34)。首轮 Governance run `30752847768` 的 Ubuntu/Windows job 均 PASS；Build run `30752847752` 的双平台 job 在测试前因 `host:cli` 缺失 apksig 9.3.0 传递依赖锁而 FAIL。
+- 用户已明确授权修复该 CI 锁问题。自动生成的最小 diff 只为 `host/cli/gradle.lockfile` 增加 apksig 9.3.0 的 `runtimeClasspath,testRuntimeClasspath` 条目；本地 Windows 256-task 根回归随后 PASS，产品代码、版本和冻结报告哈希均未改变。
+- 锁修复 HEAD `b72ef88003c2dea993afbd7d96d502535833e450` 的替换 Build run `30753702741` 与 Governance run `30753702728` 已在 Ubuntu/Windows 四项全绿；两平台 M1-02 字节门禁均命中冻结 policy/error hashes。PR #34 保持 draft，ready/merge 尚未授权。
+- 最终证据 HEAD `2ed5f4f7973c9ff87a3e3cbbf6e4e5325a259418` 的 Build run `30753889812` 与 Governance run `30753889774` 已在 Ubuntu/Windows 四项全绿；两平台 M1-02 字节门禁再次命中冻结 hashes。
+- 用户已明确授权将 PR #34 转为 ready 并合并。当前 merger-ready 协调只允许更新 HandOff；该协调 HEAD 通过最终 CI 后，必须以 expected-head 保护执行普通 merge commit，并在 `main` 无豁免运行 strict HandOff。
 
 ## Active Workstreams
 
@@ -63,6 +78,7 @@ next_owner: unassigned
 | M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | done | M0-04 | PR #31、合并后 strict HandOff 和双平台 CI 已通过 |
 | M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | done | M0-04, M0-06 | PR #32、三环境矩阵、独立安全复核和最终 PR CI 已通过 |
 | M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | done | M0-05 | PR #33、Issue #6、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
+| M1-02 | `/root` | `feat/m1-02-signer-policy` | review | M1-01 | merger-ready 协调 HEAD 全绿后转 ready、普通合并并在 main 无豁免运行 strict HandOff |
 
 ## Decisions and Invariants
 
@@ -77,6 +93,8 @@ next_owner: unassigned
 - 冻结设备证据和提交后，由独立 `m0_05_security_review` 只读复核；P0/P1/P2 全部关闭前不完成任务。
 - x86/x86_64 结果不得冒充 ARM-only 应用兼容性；离线 Runtime 只提高提取成本，不作绝对防护声明。
 - M1-01 只使用仓库生成的合成 APK/AXML/DEX fixture；输入只读、不得解压到磁盘、不得执行输入代码、不得引入未经审计的第三方 parser。独立只读复核者预指定为 `m1_01_security_review`，仅在实现与证据提交冻结后启动。
+- M1-02 只使用固定 `apksig 9.3.0` 读取公开证书信息，最低检查平台固定为 API 29；要求唯一当前 signer，DER SHA-256 使用 32 字节原始摘要和 64 字符小写 hex，轮换 lineage 为旧到新、`1..16`、无重复且以当前摘要结束。
+- 产品仍不得接收或调用私钥、keystore、alias、密码、HSM、远程签名服务或任何签名执行器；M1-02 不序列化 `SPV1`，只提供 M1-04 可消费的防御性摘要副本与模型约束。
 
 ## Changes Since Previous Handoff
 
@@ -96,6 +114,19 @@ next_owner: unassigned
 - 用户已授权 PR #33 ready/merge；merger-ready HandOff 将 resume branch 设为 `main`，合并方式保持仓库普通 merge commit 策略，不使用 squash/rebase/force。
 - merger-ready 协调提交 `7a54ba7874fb47aaf749715be2ba5897ef5a6b2e` 的 Build #25 与 Governance #34 在 Ubuntu/Windows 全部通过，且两份规范报告逐字节命中冻结 SHA-256。
 - PR #33 已转为 ready 并以普通 merge commit `74c5f6252ea9b89154c285764d5f9601a0347358` 合并，Issue #6 已关闭；本地 `main` 随后无豁免通过 strict HandOff、Governance 和 diff check。
+- 用户明确启动 M1-02；协调者核验 Issue #7 为唯一 tracking Issue，远端无同名分支或 M1-02 PR，并从已验证 `main@aebbc441da34d2fba78648415c1d80ea844d774d` 创建固定分支 `feat/m1-02-signer-policy`。
+- `docs/evidence/M1-02/implementation-plan.md` 固定输入、输出、公开接口、稳定错误语义、`SPV1` 模型边界、跨平台报告和独立复核顺序；不扩大到 M1-04/M2-03。
+- `146aac3795a1f92adefbab376939129e55975c65` 新增 `SignerPolicyVerifier`、不可变 `SignerPolicyV1`、官方 lineage 解析、同句柄输入变更检测、v1/v2/v3/v4/rotation/multi-signer 合成矩阵、官方 `apksigner` digest 交叉验证和生产能力扫描。
+- Windows clean M1-02 矩阵与根 `clean check verifyGovernance` 均退出 `0`；根回归共 256 actionable tasks，M1-01 10,000 样本保持 PASS。本轮未启动模拟器或真机。
+- `.github/workflows/build.yml` 已增加 Ubuntu/Windows 规范 policy 与错误矩阵固定哈希门禁；分支尚未发布，故 Ubuntu 等价性未声明。
+- 首次独立复核否决 `21bfd6db333767c9182c1310e6cd838a8fae49a1`，结论为 P0 `0`、P1 `1`、P2 `3`；完整 finding、攻击路径和独立命令已归档于 `docs/evidence/M1-02/security-review-1.md`。
+- `5016cd39426b2d50d1fbedfafee2f24c567e0546` 对 Signing Block envelope 和 materialization 设置 32 MiB 上限，断开公开异常 cause，修正 magic-only unsigned，并补齐六个正向/十一行错误矩阵的官方验证和全部 artifact 哈希。
+- 修复候选的 clean signer task 在 102 秒内 PASS；根 `clean check verifyGovernance` 在 2 分 43 秒内 PASS，共 256 actionable tasks。新 error matrix SHA-256 为 `dce3c1a17647a96e93da291033e28c169ad0f5daee5d7544c6555392d66fc7eb`，official cross-check 为 `c63d706f08763819e30c1e682fff87448a999a3ce53a27c7253e35ef9f82e2ba`，artifact manifest 为 `fddc19d2a1ed3068c8ac5cdf8bc44299df0279a927a62da0af33be7cc1a0eab8`。
+- 第二次独立复核确认首轮 P1/P2 全部关闭，但以 P2 否决高位 size 语义；`61908507c741865c50aac07763d42c890bf25d4b` 修复并新增两个高位负例。最终 clean signer 与 256-task 根回归再次 PASS；error matrix SHA-256 更新为 `c33d342077c371878399c80e76ae025cd0efc56bfcca6d5bf80ffde4d75677c6`，artifact manifest 为 `d74287aec49cfd3cb18af55c6119b3ea90689d2f03bc15df8e5e8d04f43eb201`。
+- 第三次独立只读复核冻结 `902c20977d787ea9646078bbbe4c3c46bf0041cc`，专项 clean signer 103.9 秒、根 256-task check 163.6 秒均退出 `0`；P0/P1/P2 全为零。该复核未修改 tracked 文件、未联网、未启动设备或模拟器，完整结论已归档。
+- PR #34 首轮 Build run `30752847752` 在 Ubuntu/Windows 同因依赖锁缺口失败：`:host:cli:testRuntimeClasspath` 解析到固定 `apksig:9.3.0`，但 downstream lock state 未收录。用户授权后通过 Gradle `--write-locks` 仅增加该版本的两个 runtime 配置；本地 256-task 根回归退出 `0`，规范 policy/error hashes 不变。
+- 锁修复提交 `b72ef88003c2dea993afbd7d96d502535833e450` 的 Build run `30753702741` 与 Governance run `30753702728` 在 Ubuntu/Windows 全部 PASS；两个 Build job 的 M1-02 显式字节门禁均命中 `b945ede1...` policy 与 `c33d3420...` error matrix。
+- 最终证据提交 `2ed5f4f7973c9ff87a3e3cbbf6e4e5325a259418` 的 Build run `30753889812` 与 Governance run `30753889774` 在 Ubuntu/Windows 全部 PASS；PR #34 为 CLEAN/MERGEABLE。用户已授权 ready/merge，merger-ready HandOff 将恢复分支设为 `main`，合并方式保持普通 merge commit，不使用 squash、rebase、force 或分支删除。
 
 - PR #31 已合并，旧 metadata blocker 的架构依赖已解除，M0-05 从 `blocked` 恢复为 `in_progress`。
 - 既有 M0-05 分支保留四个本地历史提交和 Issue #5，不创建第二分支或第二任务。
@@ -125,9 +156,117 @@ next_owner: unassigned
 - User authorized ready/merge; PR #32 was merged as `1fe9ea9ca7ac989e2e071ccb00ae2a0c0010c463` and Issue #5 closed.
 - Post-merge Governance run `30732622423` reproduced one HandOff-only source-branch mismatch on Ubuntu and Windows; coordinator commit `d682c85125e11084cf023b5f523d715e28c74e75` changed the resume point to `main` and marked M0-05 done. The later `main@e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030` is the verified M1-01 base.
 - On `d682c85125e11084cf023b5f523d715e28c74e75`, Governance run `30732725929` and Build run `30732725931` passed on Ubuntu 24.04 and Windows 2025, including strict HandOff on `main` with no exemption.
-- Exact next action: push this post-merge coordinator HandOff and require its Ubuntu/Windows Build and Governance PASS. Then wait for an explicit user instruction before starting any new task; do not start M1-02, M1-03 or M2 implicitly.
+- 该 M1-01 post-merge 动作已完成；当前恢复点为下述 M1-02 冻结实现与本地验收。
 
 ## Verification Evidence
+
+### M1-02 start baseline
+
+- task_id: M1-02
+- git_commit: aebbc441da34d2fba78648415c1d80ea844d774d
+- command: `git fetch origin main`; compare local and remote `main`; Governance; strict HandOff without exemption; inspect Issue #7, existing PRs and remote branch; inspect pinned `apksig` catalog and verification metadata
+- exit_code: 0
+- environment: Windows 10 x64; Git 2.52.0; Node 24.12.0; no APK fixture, device, emulator or new download
+- timestamp: 2026-08-02T15:32:13+08:00
+- artifact: Issue `https://github.com/xiaokh31/androidAppHardening/issues/7`; `docs/evidence/M1-02/implementation-plan.md`; pinned `com.android.tools.build:apksig:9.3.0` JAR SHA-256 `562cd0a88890960d2ece48e116c61f12872222f1dcc306890799382bc019b201`
+- sha256: not_applicable
+- result: PASS; M1-01 dependency and post-merge main gates are closed, Issue #7 is open with no PR, the fixed branch was absent before creation, signer/container decisions are already accepted, and M1-02 may proceed without adjacent work
+
+### M1-02 frozen implementation and Windows validation
+
+- task_id: M1-02
+- git_commit: 146aac3795a1f92adefbab376939129e55975c65
+- command: project-local offline Gradle `:host:apk-inspector:clean :host:apk-inspector:signerPolicyTest`; project-local offline Gradle `clean check verifyGovernance`; governance validator; strict HandOff; diff and strict UTF-8 scans
+- exit_code: 0
+- environment: Windows 10 x64 10.0.19045; Temurin 17.0.19+10; Gradle 9.5.0; Kotlin plugin 2.4.10; apksig 9.3.0; Build Tools 36.1.0; no device or emulator
+- timestamp: 2026-08-02T16:08:29+08:00
+- artifact: `docs/evidence/M1-02/formal-host-validation.md`; ignored `host/apk-inspector/build/reports/m1-02/`; canonical policy SHA-256 `b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2`; error matrix SHA-256 `ecd2193e7ec38418715cc7ee57023d0aa9ba9923d4001fa8d6d1da71cbea3762`; artifact manifest SHA-256 `187c200809051300e028bfc5270f43fc264c1e62baa414890fa501893d0b4488`; capability scan SHA-256 `97c89653b10a7e7b2fd97b53e7ae2ccc53994d623de2fc7c56852d982adbfcfa`
+- sha256: not_applicable
+- result: PASS_WINDOWS_REVIEW_CANDIDATE; official signer digest, valid schemes and rotation, unsigned/tampered/malformed/multi-signer/invalid-lineage/input-change failures, SPV1 model constraints, production capability scan, full root regression and governance passed; independent review and published Ubuntu/Windows equivalence remain pending
+
+### M1-02 first independent security review
+
+- task_id: M1-02
+- git_commit: 21bfd6db333767c9182c1310e6cd838a8fae49a1
+- command: independent offline read-only code and apksig bytecode review; clean signer matrix; root `clean check verifyGovernance`; six-fixture `apksigner` verification; exception and magic-only probes; Governance; strict HandOff; diff and UTF-8 scans
+- exit_code: 1
+- environment: Windows 10 x64 10.0.19045; Temurin 17.0.19+10; Gradle 9.5.0; apksig 9.3.0; Build Tools 36.1.0; no network, device or emulator
+- timestamp: 2026-08-02T16:29:00+08:00
+- artifact: `docs/evidence/M1-02/security-review-1.md`
+- sha256: not_applicable
+- result: FAIL; P0 `0`, P1 `1`, P2 `3`; unbounded Signing Block materialization, raw cause path disclosure, magic-only unsigned misclassification and incomplete official/artifact evidence invalidate the target
+
+### M1-02 review-1 remediation candidate
+
+- task_id: M1-02
+- git_commit: 5016cd39426b2d50d1fbedfafee2f24c567e0546
+- command: project-local offline Gradle `:host:apk-inspector:clean :host:apk-inspector:signerPolicyTest`; project-local offline Gradle `clean check verifyGovernance`; diff and strict UTF-8 scans
+- exit_code: 0
+- environment: Windows 10 x64 10.0.19045; Temurin 17.0.19+10; Gradle 9.5.0; Kotlin plugin 2.4.10; apksig 9.3.0; Build Tools 36.1.0; no network, device or emulator
+- timestamp: 2026-08-02T16:40:07+08:00
+- artifact: `docs/evidence/M1-02/formal-host-validation.md`; ignored `host/apk-inspector/build/reports/m1-02/`; canonical policy SHA-256 `b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2`; error matrix SHA-256 `dce3c1a17647a96e93da291033e28c169ad0f5daee5d7544c6555392d66fc7eb`; official cross-check SHA-256 `c63d706f08763819e30c1e682fff87448a999a3ce53a27c7253e35ef9f82e2ba`; artifact manifest SHA-256 `fddc19d2a1ed3068c8ac5cdf8bc44299df0279a927a62da0af33be7cc1a0eab8`
+- sha256: not_applicable
+- result: PASS_WINDOWS_SECOND_REVIEW_CANDIDATE; all four review-1 findings have implementation and deterministic regression closure, 256-task root regression passes, and the exact target now requires a new independent review
+
+### M1-02 second independent security review
+
+- task_id: M1-02
+- git_commit: 8718975255cfbdab4fc2ce29eae67c18f21b62ed
+- command: independent offline read-only clean signer and root validation; review-1 closure verification; 43 Signing Block boundary/mutation probes; Governance; strict HandOff; diff and UTF-8 scans
+- exit_code: 1
+- environment: Windows 10 x64 10.0.19045; Temurin 17.0.19+10; Gradle 9.5.0; apksig 9.3.0; Build Tools 36.1.0; no network, device or emulator
+- timestamp: 2026-08-02T16:58:00+08:00
+- artifact: `docs/evidence/M1-02/security-review-2.md`
+- sha256: not_applicable
+- result: FAIL; P0 `0`, P1 `0`, P2 `1`; review-1 findings are closed, but high-bit unsigned size values decoded as negative `Long` and were misclassified as unsigned instead of malformed
+
+### M1-02 review-2 remediation candidate
+
+- task_id: M1-02
+- git_commit: 61908507c741865c50aac07763d42c890bf25d4b
+- command: project-local offline Gradle `:host:apk-inspector:clean :host:apk-inspector:signerPolicyTest`; project-local offline Gradle `clean check verifyGovernance`; diff and strict UTF-8 scans
+- exit_code: 0
+- environment: Windows 10 x64 10.0.19045; Temurin 17.0.19+10; Gradle 9.5.0; Kotlin plugin 2.4.10; apksig 9.3.0; Build Tools 36.1.0; no network, device or emulator
+- timestamp: 2026-08-02T17:04:11+08:00
+- artifact: `docs/evidence/M1-02/formal-host-validation.md`; ignored `host/apk-inspector/build/reports/m1-02/`; canonical policy SHA-256 `b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2`; error matrix SHA-256 `c33d342077c371878399c80e76ae025cd0efc56bfcca6d5bf80ffde4d75677c6`; official cross-check SHA-256 `c63d706f08763819e30c1e682fff87448a999a3ce53a27c7253e35ef9f82e2ba`; artifact manifest SHA-256 `d74287aec49cfd3cb18af55c6119b3ea90689d2f03bc15df8e5e8d04f43eb201`
+- sha256: not_applicable
+- result: PASS_WINDOWS_THIRD_REVIEW_CANDIDATE; negative decoded sizes are malformed, high-bit fixtures and actual-artifact official status are frozen, and 256-task root regression passes; a third independent review remains mandatory
+
+### M1-02 third independent security review
+
+- task_id: M1-02
+- git_commit: 902c20977d787ea9646078bbbe4c3c46bf0041cc
+- command: independent project-local offline Gradle `:host:apk-inspector:clean :host:apk-inspector:signerPolicyTest`; independent project-local offline Gradle `clean check verifyGovernance`; `-Xmx256m` ignored Signing Block boundary probes; official `apksigner` cross-check; Governance, strict HandOff, diff and UTF-8 scans
+- exit_code: 0
+- environment: Windows 10 amd64; Temurin 17.0.19+10; Gradle 9.5.0; Kotlin plugin 2.4.10; apksig 9.3.0; apksigner 0.9; Node 24.12.0; offline; no device or emulator
+- timestamp: 2026-08-02T17:17:49+08:00
+- artifact: `docs/evidence/M1-02/security-review-3.md`; canonical policy SHA-256 `b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2`; error matrix SHA-256 `c33d342077c371878399c80e76ae025cd0efc56bfcca6d5bf80ffde4d75677c6`; official cross-check SHA-256 `c63d706f08763819e30c1e682fff87448a999a3ce53a27c7253e35ef9f82e2ba`; artifact manifest SHA-256 `d74287aec49cfd3cb18af55c6119b3ea90689d2f03bc15df8e5e8d04f43eb201`; capability scan SHA-256 `97c89653b10a7e7b2fd97b53e7ae2ccc53994d623de2fc7c56852d982adbfcfa`
+- sha256: not_applicable
+- result: PASS; P0 `0`, P1 `0`, P2 `0`; both historical review rounds are closed, the frozen implementation and local independent-review gate are complete, and publication/Ubuntu-Windows CI remain pending explicit user authorization
+
+### M1-02 PR #34 dependency-lock remediation
+
+- task_id: M1-02
+- git_commit: b72ef88003c2dea993afbd7d96d502535833e450
+- command: GitHub Actions initial Build run `30752847752` and Governance run `30752847768`; project-local offline Gradle `--write-locks :host:cli:dependencies`; project-local offline Gradle `clean check verifyGovernance`; replacement Build run `30753702741` and Governance run `30753702728`
+- exit_code: 0
+- environment: GitHub Actions Ubuntu 24.04 and Windows 2025 for initial CI; local Windows 10 amd64, Temurin 17.0.19+10, Gradle 9.5.0, Android SDK 36.1.0; no device or emulator
+- timestamp: 2026-08-02T23:12:25+08:00
+- artifact: draft PR `https://github.com/xiaokh31/androidAppHardening/pull/34`; `host/cli/gradle.lockfile` SHA-256 `26d344690f11ad00b114bc559337c78b493cce94938ea7ec4f38e20f272de57c`; canonical policy SHA-256 `b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2`; error matrix SHA-256 `c33d342077c371878399c80e76ae025cd0efc56bfcca6d5bf80ffde4d75677c6`
+- sha256: 26d344690f11ad00b114bc559337c78b493cce94938ea7ec4f38e20f272de57c
+- result: PASS; the initial Build failure was limited to missing downstream lock state; the approved one-line generated lock fix passed the 256-task Windows root regression, replacement Ubuntu/Windows Build and Governance, dependency-verification tamper test, four-ABI gate, and both M1-02 byte-equivalence steps
+
+### M1-02 final PR HEAD and merge authorization
+
+- task_id: M1-02
+- git_commit: 2ed5f4f7973c9ff87a3e3cbbf6e4e5325a259418
+- command: GitHub Actions Build run `30753889812` and Governance run `30753889774`; live PR #34 head/base, draft, mergeability and check query; live Issue #7 query
+- exit_code: 0
+- environment: GitHub Actions Ubuntu 24.04 and Windows 2025; local Windows 10 amd64 coordinator; no device or emulator
+- timestamp: 2026-08-03T11:35:34+08:00
+- artifact: draft PR `https://github.com/xiaokh31/androidAppHardening/pull/34`; Issue `https://github.com/xiaokh31/androidAppHardening/issues/7`; Build `https://github.com/xiaokh31/androidAppHardening/actions/runs/30753889812`; Governance `https://github.com/xiaokh31/androidAppHardening/actions/runs/30753889774`; canonical policy SHA-256 `b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2`; error matrix SHA-256 `c33d342077c371878399c80e76ae025cd0efc56bfcca6d5bf80ffde4d75677c6`
+- sha256: not_applicable
+- result: PASS; final evidence HEAD passed Ubuntu/Windows Build and Governance, both M1-02 byte-equivalence steps passed, PR #34 is CLEAN/MERGEABLE, and the user authorized ready/merge
 
 ### M1-01 third-review remediation candidate
 
@@ -399,16 +538,18 @@ None
 
 ## Ordered Next Actions
 
-1. Commit and push this post-merge coordinator HandOff on `main`.
-2. Require the resulting `main` HEAD to pass Ubuntu/Windows Build and Governance, including strict HandOff and both byte-equivalence steps.
-3. Leave M1-01 closed and wait for the user to select the next task.
-4. Do not start M1-02, M1-03, M2 or any adjacent task implicitly.
+1. Commit and push this merger-ready HandOff to the sole fixed branch.
+2. Require the merger-ready HEAD to pass Ubuntu/Windows Build and Governance, including both M1-02 byte-equivalence steps.
+3. Mark PR #34 ready and merge it with expected-head protection using an ordinary merge commit.
+4. Fast-forward local `main`, run Governance and strict HandOff without exemption, then record the post-merge state on `main`.
+5. Do not start M1-03, M1-04, M2-03 or any adjacent task implicitly.
 
 ## Relevant Files and Artifacts
 
 - `HandOff.md`
 - `docs/tasks/M0-05-application-factory-provider-jni-poc.md`
 - `docs/tasks/M1-01-untrusted-apk-inspector.md`
+- `docs/tasks/M1-02-signer-policy.md`
 - `host/apk-inspector/`
 - `docs/adr/0003-api29-public-classloader-hook.md`
 - `docs/adr/0006-offline-key-protection-boundary.md`
@@ -420,6 +561,11 @@ None
 - `docs/evidence/M1-01/security-review-2.md`
 - `docs/evidence/M1-01/security-review-3.md`
 - `docs/evidence/M1-01/security-review-4.md`
+- `docs/evidence/M1-02/implementation-plan.md`
+- `docs/evidence/M1-02/formal-host-validation.md`
+- `docs/evidence/M1-02/security-review-1.md`
+- `docs/evidence/M1-02/security-review-2.md`
+- `docs/evidence/M1-02/security-review-3.md`
 - `runtime/bootstrap/src/main/java/ah/runtime/bootstrap/ShellAppComponentFactory.java`
 - `fixtures/android/src/androidTestCompatFixture/java/ah/fixtures/android/CompatibilityPocRunner.java`
 - `tools/validation/verify-m0-05-apks.mjs`
@@ -454,6 +600,20 @@ None
 - [x] 证据提交 `de4d69a` 的最终 Ubuntu/Windows Build、Governance 和两份报告字节一致性门禁全部 PASS；用户已授权 ready/merge。
 - [x] merger-ready HEAD `7a54ba7` 的 Ubuntu/Windows Build、Governance 和两份报告字节一致性门禁全部 PASS。
 - [x] PR #33 已转 ready，并以普通 merge commit `74c5f62` 合并；Issue #6 已关闭，本地 `main` 已无豁免通过 strict HandOff。
+- [x] M1-01 post-merge `main@aebbc44` 的 Ubuntu/Windows Build、Governance、字节一致性和 strict HandOff 全部 PASS。
+- [x] 用户明确启动 M1-02；Issue #7、固定分支、base、既有 PR/远端分支缺失状态和 `apksig 9.3.0` 来源锁均已核验。
+- [x] ADR 0002/0004 与实现计划已固定 signer policy、无签名能力和 `SPV1` 模型边界；独立复核者预定为 `m1_02_security_review`。
+- [x] 完成 M1-02 实现、完整负向矩阵、官方工具交叉验证、Windows 根回归和正式证据候选。
+- [x] 首次独立 `m1_02_security_review` FAIL 已归档，P1/P2 四项修复候选 `5016cd3` 已通过 clean signer 与 256-task 根回归。
+- [x] 第二次独立复核 FAIL 已归档；唯一高位 size P2 修复候选 `6190850` 已通过 clean signer 与 256-task 根回归。
+- [x] 冻结高位边界修复后的正式证据提交并完成第三次独立复核；`902c209` 复核为 P0/P1/P2 全零 PASS。
+- [x] 获得用户对固定分支、唯一 Issue #7 草稿 PR 和 Ubuntu/Windows CI 的明确发布授权。
+- [x] 推送固定分支并创建关联 Issue #7 的唯一草稿 PR #34；首轮 Governance 双平台 PASS，Build 双平台因 downstream lock 缺口 FAIL。
+- [x] 获得用户锁修复授权并完成一行自动生成的 `host:cli` 锁变更与 Windows 256-task 根回归。
+- [x] 推送锁修复并完成 PR #34 的替换 Ubuntu/Windows Build、Governance 和 M1-02 字节一致性 CI；四项全绿。
+- [x] 推送最终证据提交 `2ed5f4f` 并确认最终 PR HEAD 的 Ubuntu/Windows Build、Governance 与 M1-02 字节门禁全部 PASS。
+- [x] 用户已明确授权将 PR #34 转为 ready 并以普通 merge commit 合并。
+- [ ] 推送 merger-ready HandOff、确认其最终 CI、expected-head 合并，并在 main 无豁免运行 strict HandOff。
 
 ## Handoff Sign-off
 
@@ -462,4 +622,9 @@ None
 - `/root` 已核验真机为 API 29 arm64 64-bit、user/release-keys、非 root 环境，设备 runner cleanup PASS；本轮未启动任何本机模拟器。
 - GitHub KVM workflow 的既有超时与强制清理合同保持不变；M1-01 是纯 Host 任务，本轮不启动本机模拟器或真机，也不启动 M1-02/M1-03/M2。
 - `/root` 已核验 PR #33 的首轮、证据 HEAD 与 merger-ready HEAD 的 Build/Governance 四个 job 和两个字节一致性步骤均 PASS；独立复核 P0/P1/P2 全为零。
-- `/root` 已核验 PR #33 使用普通 merge commit `74c5f6252ea9b89154c285764d5f9601a0347358` 合并、Issue #6 关闭，并在本地 `main` 无豁免通过 strict HandOff；M1-01 标记 done，当前无活动任务。
+- `/root` 已核验 PR #33 使用普通 merge commit `74c5f6252ea9b89154c285764d5f9601a0347358` 合并、Issue #6 关闭，并在本地 `main` 无豁免通过 strict HandOff；M1-01 标记 done，当前活动任务已转为 M1-02。
+- `/root` 已领取 M1-02 并核验其唯一 Issue、分支、依赖、固定官方 `apksig` 与既有 ADR；当前活动范围仅为 Host signer policy，M1-03/M1-04/M2-03 未启动。
+- `/root` 已核验首个证据 HEAD 与第二个修复证据 HEAD 的独立复核均 FAIL 并废止；第三次独立只读复核已对冻结证据 `902c20977d787ea9646078bbbe4c3c46bf0041cc` 给出 P0/P1/P2 全零 PASS。clean signer、256-task 根回归、Governance、官方六 fixture/十三行错误矩阵、二十六项 artifact manifest、block 资源上界/高位边界、异常脱敏、SPV1 和无签名能力扫描均已闭环；用户已授权发布固定分支、创建唯一草稿 PR 和运行双平台 CI，但未授权 ready 或 merge。
+- `/root` 已核验 PR #34 首轮双平台 Build 的共同根因为 `host:cli` 传递依赖锁缺口；用户授权的修复仅增加现有 apksig 9.3.0 的 runtime/testRuntime 锁条目。本地 256-task 根回归和冻结报告 hashes 均 PASS；下一步只推送该最小修复并等待替换 CI，仍未授权 ready 或 merge。
+- `/root` 已核验锁修复 HEAD `b72ef88003c2dea993afbd7d96d502535833e450` 的替换 Build/Governance 四项 CI 全部 PASS，Ubuntu/Windows M1-02 显式字节门禁均命中冻结 hashes；当前仅归档最终证据并等待单独 ready/merge 授权。
+- `/root` 已核验最终证据 HEAD `2ed5f4f7973c9ff87a3e3cbbf6e4e5325a259418` 的 Build/Governance 四项 CI、两项 M1-02 字节门禁、CLEAN/MERGEABLE 状态与用户 ready/merge 授权；本协调提交只准备 post-merge `main` 恢复点，产品实现未改变。

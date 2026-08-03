@@ -1,23 +1,23 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260804-003522
-updated_at: 2026-08-04T00:35:22+08:00
+handoff_id: HO-20260804-004759
+updated_at: 2026-08-04T00:47:59+08:00
 updated_by: /root
 state: ready
 source_branch: main
 base_commit: 077e4be14865c777dbbf3c1a5a3d9609b3620868
 working_tree: clean
 current_milestone: M1
-active_task: M1-03
-next_owner: /root
+active_task: NONE
+next_owner: unassigned
 ---
 
 # Project HandOff
 
 ## Objective
 
-在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内执行 M1-03 Binary AXML 白名单变换器。只允许把 `android:appComponentFactory` 设置为固定 Shell Factory，同时证明原 `android:name`、既有 metadata、string index、资源 ID、未知 chunk 与其他 Manifest 语义保持不变；不实现 ZIP 写出、签名、DEX、M1-04 或任何 Runtime 相邻任务。
+在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内完成 M1-03 Binary AXML 白名单变换器。单属性 `android:appComponentFactory` 变换、有界 parser/writer、语义保留、独立安全复核、三套设备/CI 验收均已合并；未实现 ZIP 写出、签名、DEX、M1-04 或任何 Runtime 相邻任务，当前等待用户选择下一任务。
 
 ## Current State
 
@@ -39,6 +39,8 @@ next_owner: /root
 - 用户已授权发布固定分支、创建 Issue #8 的唯一草稿 PR 并运行 CI。草稿 PR [#35](https://github.com/xiaokh31/androidAppHardening/pull/35) 的初始 HEAD `c6ed194c2fea9672d6cdd38cf181560e8d76e87f` 已完成 API 29/36 x86_64 KVM、Ubuntu/Windows Build 与 Governance 六项 PASS；两平台四份 M1-03 规范报告 hashes 均命中冻结值。
 - 最终证据 HEAD `16ffba62df8f25d4397d771c5bdfa77f8dba78ad` 的 replacement KVM run `30790389457`、Build run `30790389453` 与 Governance run `30790389460` 六项全部 PASS；PR #35 为唯一关联 PR，状态 OPEN、draft、CLEAN、MERGEABLE，且将关闭 Issue #8。
 - 用户已明确授权将 PR #35 转为 ready 并合并。本协调提交只准备 post-merge `main` 恢复点，不改变产品实现；merger-ready HEAD 必须再次通过相同六项 CI，再以 expected-head 保护执行普通 merge commit。
+- merger-ready HEAD `07c519c73b2a48f8636eed557da463f699299f20` 的 KVM run `30832968146`、Build run `30832968383` 与 Governance run `30832968130` 六项全部 PASS。PR #35 已于 `2026-08-04T00:46:56+08:00` 转为 ready，并以 expected-head 保护的普通 merge commit `197eb45535b117e28ad1ef904993d2b54068056b` 合并到 `main`；Issue #8 已关闭。
+- 本地 `main@197eb45535b117e28ad1ef904993d2b54068056b` 已无豁免通过 strict HandOff、Governance 与 diff check；M1-03 完成，M1-04/M2 仍未启动。
 - 用户已要求完成 M0-05 剩余部分；固定 Issue 为 #5，固定分支为 `spike/m0-05-application-factory-provider-jni-poc`。
 - 旧实现提交 `d58a277681443a5e79b770a3e9162ae54006138d` 已具备 early signer、原 Factory 五类组件委托、双 DEX、JNI 和两种 Native 路径的初始 PoC，但仍依赖已废弃 metadata，必须按 ConfigV2/sourceDir 合同修订。
 - 旧 arm64 真机证据仅证明 early signer 可用并复现 metadata 缺失，不构成当前合同的设备验收。
@@ -96,7 +98,7 @@ next_owner: /root
 | M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | done | M0-04, M0-06 | PR #32、三环境矩阵、独立安全复核和最终 PR CI 已通过 |
 | M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | done | M0-05 | PR #33、Issue #6、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
 | M1-02 | `/root` | `feat/m1-02-signer-policy` | done | M1-01 | PR #34、Issue #7、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
-| M1-03 | `/root` | `feat/m1-03-binary-axml-transformer` | review | M1-01, M0-05 | merger-ready HEAD 六项 CI 全绿后转 ready、expected-head 合并并在 main 无豁免运行 strict HandOff |
+| M1-03 | `/root` | `feat/m1-03-binary-axml-transformer` | done | M1-01, M0-05 | PR #35、Issue #8、独立复核、三套设备/CI 矩阵和 main strict HandOff 均已关闭 |
 
 ## Decisions and Invariants
 
@@ -118,6 +120,8 @@ next_owner: /root
 
 ## Changes Since Previous Handoff
 
+- merger-ready HEAD `07c519c73b2a48f8636eed557da463f699299f20` 的 API 29/36 KVM、Ubuntu/Windows Build 与 Governance 六项全部 PASS；两个 Build job 再次命中四份规范报告冻结 hashes。
+- PR #35 已以 expected-head 保护的普通 merge commit `197eb45535b117e28ad1ef904993d2b54068056b` 合并，Issue #8 已关闭；本地 `main` 已无豁免通过 strict HandOff、Governance 与 diff check，M1-03 标记 done。
 - 最终证据 HEAD `16ffba62df8f25d4397d771c5bdfa77f8dba78ad` 的 API 29/36 KVM、Ubuntu/Windows Build 与 Governance 六项 replacement CI 全部 PASS；两平台四份 M1-03 规范报告 hashes 再次命中冻结值。
 - 用户已明确授权将 PR #35 转为 ready 并合并；当前只新增 merger-ready HandOff 协调，不改产品实现，并要求协调 HEAD 再次通过六项 CI 后以 expected-head 保护合并。
 - 用户明确启动 M1-03；协调者核验 Issue #8 为唯一 tracking Issue，远端无同名分支且不存在 M1-03 PR，并从已验证 `main@077e4be14865c777dbbf3c1a5a3d9609b3620868` 创建固定分支 `feat/m1-03-binary-axml-transformer`。
@@ -184,6 +188,18 @@ next_owner: /root
 - 该 M1-01 post-merge 动作已完成；当前恢复点为下述 M1-02 冻结实现与本地验收。
 
 ## Verification Evidence
+
+### M1-03 merger-ready CI and merge
+
+- task_id: M1-03
+- git_commit: 197eb45535b117e28ad1ef904993d2b54068056b
+- command: `gh pr checks 35`; `gh pr ready 35`; `gh pr merge 35 --merge --match-head-commit 07c519c73b2a48f8636eed557da463f699299f20`; fast-forward `main`; strict HandOff, Governance and `git diff --check`
+- exit_code: 0
+- environment: GitHub Actions API 29/36 x86_64 Linux/KVM; ubuntu-24.04; windows-2025; local coordinator Windows 10.0.19045; no local emulator
+- timestamp: 2026-08-04T00:47:36+08:00
+- artifact: merged PR #35; closed Issue #8; KVM run `30832968146`; Build run `30832968383`; Governance run `30832968130`
+- sha256: not_applicable
+- result: PASS; merger-ready API 29 job `91751154201` in 7m57s, API 36 job `91751154144` in 8m59s, Ubuntu/Windows Build in 1m20s/2m38s and Governance in 15s/35s all succeeded; expected-head merge produced `197eb45535b117e28ad1ef904993d2b54068056b`; post-merge main passed strict HandOff without exemption
 
 ### M1-03 final replacement PR validation
 
@@ -635,11 +651,10 @@ None
 
 ## Ordered Next Actions
 
-1. 提交并推送本 merger-ready HandOff 到唯一固定分支。
-2. 要求 merger-ready HEAD 再次通过 API 29/36 KVM、Ubuntu/Windows Build 与 Governance 六项 CI，包括四份 M1-03 规范报告字节门禁。
-3. 将 PR #35 转为 ready，并以 expected-head 保护执行普通 merge commit。
-4. 快进本地 `main`，无豁免运行 Governance、strict HandOff 与 diff check，再在 `main` 记录 post-merge 状态。
-5. 不隐式启动 M1-04、M2 或任何相邻任务。
+1. 提交并推送本 post-merge HandOff 到 `main`。
+2. 要求 post-merge `main` 通过 Ubuntu/Windows Build 与 Governance；若 KVM workflow 对 main push 触发，也必须通过 API 29/36 并完成强制清理。
+3. 等待用户明确选择并启动下一任务；按路线图候选为 M1-04，但不得隐式领取。
+4. 不启动 M2 或任何相邻任务。
 
 ## Relevant Files and Artifacts
 
@@ -731,6 +746,8 @@ None
 - [x] 固定分支已发布并创建 Issue #8 的唯一草稿 PR #35；初始 HEAD `c6ed194` 的 API 29/36 KVM、Ubuntu/Windows Build/Governance 和四报告字节一致性全部 PASS。
 - [x] 推送证据提交并完成 replacement PR HEAD `16ffba6` 的六项 CI；两平台四份规范报告 hashes 命中冻结值。
 - [x] 用户已明确授权将 PR #35 转为 ready 并以普通 merge commit 合并。
+- [x] merger-ready HEAD `07c519c` 的六项 CI 全部 PASS；API 29/36 KVM 完成强制清理。
+- [x] PR #35 已转 ready 并以 expected-head 普通 merge commit `197eb45` 合并；Issue #8 已关闭，本地 `main` 已无豁免通过 strict HandOff。
 - [x] 对当前 clean 冻结提交完成新的独立 parser/security 复核；P0/P1/P2 全零。
 
 ## Handoff Sign-off
@@ -754,3 +771,4 @@ None
 - `/root` 已核验用户允许安装后的 API 29 arm64 正式矩阵为 PASS：双变体 instrumentation、生命周期、跨 DEX、JNI、signer、metadata、各 20 次冷启动、内存、零明文 DEX、runner 与独立清理均闭环；本轮未启动模拟器。该时点的发布后 KVM/双平台 CI 与推送授权待办已由 PR #35 初始六项 PASS 关闭。
 - `/root` 已核验授权发布后的 PR #35 初始 HEAD `c6ed194c2fea9672d6cdd38cf181560e8d76e87f` 六项 CI 全部 PASS；API 29/36 KVM artifacts、四份 startup-negative 报告、20 次冷启动、no-Factory、内存、零明文 DEX、cleanup 及 Ubuntu/Windows 四份规范 hashes 均闭环。
 - `/root` 已核验最终证据 HEAD `16ffba62df8f25d4397d771c5bdfa77f8dba78ad` 的 replacement 六项 CI、两平台四份规范报告字节门禁、唯一 PR/Issue #8 关联、CLEAN/MERGEABLE 状态与用户 ready/merge 授权；本协调提交只准备 post-merge `main` 恢复点，产品实现未改变。
+- `/root` 已核验 merger-ready HEAD `07c519c73b2a48f8636eed557da463f699299f20` 的六项 CI 全部 PASS；PR #35 使用 expected-head 普通 merge commit `197eb45535b117e28ad1ef904993d2b54068056b` 合并，Issue #8 关闭，并在本地 `main` 无豁免通过 strict HandOff。M1-03 标记 done，当前无活动任务。

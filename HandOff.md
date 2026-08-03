@@ -2,12 +2,12 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260803-121343
-updated_at: 2026-08-03T13:05:43+08:00
+updated_at: 2026-08-03T13:08:00+08:00
 updated_by: /root
 state: active
 source_branch: feat/m1-03-binary-axml-transformer
 base_commit: 077e4be14865c777dbbf3c1a5a3d9609b3620868
-working_tree: dirty
+working_tree: clean
 current_milestone: M1
 active_task: M1-03
 next_owner: /root
@@ -27,6 +27,7 @@ next_owner: /root
 - M1-02 的 PR #34 已以 merge commit `d590b94f08047352d2b1f56c1c08aba4cbf079ec` 合并；post-merge `main@077e4be14865c777dbbf3c1a5a3d9609b3620868` 已通过 Ubuntu/Windows Build、Governance、M1-02 字节门禁和无豁免 strict HandOff。
 - 用户已明确启动 M1-03；唯一 tracking Issue 为 [#8](https://github.com/xiaokh31/androidAppHardening/issues/8)，固定分支为 `feat/m1-03-binary-axml-transformer`，远端无同名分支且当前没有 M1-03 PR。
 - M1-03 已完成有界 binary AXML reader/writer、固定请求/结果模型、单属性 semantic diff、自有 UTF-8/UTF-16/unknown-chunk/resource-map fixtures、13 个稳定错误负例、seed `0x4d313033` 的 5,000 样本 fuzz 与固定 `aapt2` 独立解析；Windows 四份规范报告 hashes 已冻结在 workflow 中。
+- M1-03 实现、Host/static 证据与受阻设备尝试已提交为 `352a6d15a7a7b6443123638ef8e5f4fc1aebc527`；该实现提交之后的协调提交只把 HandOff 恢复为 clean 冻结点，不改变产品实现。
 - Windows `:host:axml:test` 与 237-task 根 `check verifyGovernance` 均退出 `0`；双变体 Release/R8 测试 APK 的签名、双 DEX、JNI、ABI、R8、原 Factory 配置、metadata 与无明文 payload 静态门禁均 PASS。未下载新工具到 C 盘，也未启动本机模拟器。
 - API 29 arm64 非 root 真机被确认是 64-bit `user/release-keys` 且 shell UID 2000；本轮首个 extracted 安装在约 18 秒内因 MIUI `INSTALL_FAILED_USER_RESTRICTED: Install canceled by user` 停止。runner 已执行最终清理并确认四个目标/测试包均未安装，因此本轮不声明任何设备验收通过。
 - 用户已要求完成 M0-05 剩余部分；固定 Issue 为 #5，固定分支为 `spike/m0-05-application-factory-provider-jni-poc`。

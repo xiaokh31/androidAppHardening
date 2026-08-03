@@ -1,29 +1,31 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260803-114056
-updated_at: 2026-08-03T11:40:56+08:00
+handoff_id: HO-20260803-121343
+updated_at: 2026-08-03T12:13:43+08:00
 updated_by: /root
-state: ready
-source_branch: main
-base_commit: aebbc441da34d2fba78648415c1d80ea844d774d
+state: active
+source_branch: feat/m1-03-binary-axml-transformer
+base_commit: 077e4be14865c777dbbf3c1a5a3d9609b3620868
 working_tree: clean
 current_milestone: M1
-active_task: NONE
-next_owner: unassigned
+active_task: M1-03
+next_owner: /root
 ---
 
 # Project HandOff
 
 ## Objective
 
-在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内完成 M1-02 输入签名身份策略。Host 侧固定 `apksig` 验证、唯一当前 signer、轮换历史与不可变 `SignerPolicyV1` 已合并；未实现签名能力、M1-04 wire encoder、M2-03 Runtime 校验或任何相邻任务，当前等待用户选择下一任务。
+在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内执行 M1-03 Binary AXML 白名单变换器。只允许把 `android:appComponentFactory` 设置为固定 Shell Factory，同时证明原 `android:name`、既有 metadata、string index、资源 ID、未知 chunk 与其他 Manifest 语义保持不变；不实现 ZIP 写出、签名、DEX、M1-04 或任何 Runtime 相邻任务。
 
 ## Current State
 
 - M0-04 的 PR #29 已合并，正式 API 29/36 x86_64 设备矩阵和独立安全复核通过。
 - M0-06 的 PR #31 已合并为 `main@f1362188be5083a6d557522f0f5be1905935f6eb`；合并后的 Governance/Build 在 Ubuntu 与 Windows 通过，`main` 已无豁免通过 strict HandOff。
 - M0-06/ADR 0007 已解除旧的 `ApplicationInfo.metaData == null` 阻塞，启动配置唯一来源改为 `ApplicationInfo.sourceDir` 中的固定 ConfigV2 与 AHDC 条目。
+- M1-02 的 PR #34 已以 merge commit `d590b94f08047352d2b1f56c1c08aba4cbf079ec` 合并；post-merge `main@077e4be14865c777dbbf3c1a5a3d9609b3620868` 已通过 Ubuntu/Windows Build、Governance、M1-02 字节门禁和无豁免 strict HandOff。
+- 用户已明确启动 M1-03；唯一 tracking Issue 为 [#8](https://github.com/xiaokh31/androidAppHardening/issues/8)，固定分支为 `feat/m1-03-binary-axml-transformer`，远端无同名分支且当前没有 M1-03 PR。
 - 用户已要求完成 M0-05 剩余部分；固定 Issue 为 #5，固定分支为 `spike/m0-05-application-factory-provider-jni-poc`。
 - 旧实现提交 `d58a277681443a5e79b770a3e9162ae54006138d` 已具备 early signer、原 Factory 五类组件委托、双 DEX、JNI 和两种 Native 路径的初始 PoC，但仍依赖已废弃 metadata，必须按 ConfigV2/sourceDir 合同修订。
 - 旧 arm64 真机证据仅证明 early signer 可用并复现 metadata 缺失，不构成当前合同的设备验收。
@@ -81,6 +83,7 @@ next_owner: unassigned
 | M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | done | M0-04, M0-06 | PR #32、三环境矩阵、独立安全复核和最终 PR CI 已通过 |
 | M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | done | M0-05 | PR #33、Issue #6、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
 | M1-02 | `/root` | `feat/m1-02-signer-policy` | done | M1-01 | PR #34、Issue #7、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
+| M1-03 | `/root` | `feat/m1-03-binary-axml-transformer` | in_progress | M1-01, M0-05 | 固定公开接口、实现有界 reader/writer 与严格单属性 semantic diff |
 
 ## Decisions and Invariants
 
@@ -97,9 +100,13 @@ next_owner: unassigned
 - M1-01 只使用仓库生成的合成 APK/AXML/DEX fixture；输入只读、不得解压到磁盘、不得执行输入代码、不得引入未经审计的第三方 parser。独立只读复核者预指定为 `m1_01_security_review`，仅在实现与证据提交冻结后启动。
 - M1-02 只使用固定 `apksig 9.3.0` 读取公开证书信息，最低检查平台固定为 API 29；要求唯一当前 signer，DER SHA-256 使用 32 字节原始摘要和 64 字符小写 hex，轮换 lineage 为旧到新、`1..16`、无重复且以当前摘要结束。
 - 产品仍不得接收或调用私钥、keystore、alias、密码、HSM、远程签名服务或任何签名执行器；M1-02 不序列化 `SPV1`，只提供 M1-04 可消费的防御性摘要副本与模型约束。
+- M1-03 生产路径只处理 binary AXML；string pool 仅追加字符串并保持旧 index，未知 chunk 原 bytes/顺序保留，resource map 仅允许补入 compileSdk 36 固定 `android:appComponentFactory` ID `0x0101057a`。
+- M1-03 唯一语义白名单是 application 上的 `android:appComponentFactory=ah.runtime.bootstrap.ShellAppComponentFactory`；不得新增、删除或改写 `<meta-data>`、`android:name` 或任何其他元素/属性。
 
 ## Changes Since Previous Handoff
 
+- 用户明确启动 M1-03；协调者核验 Issue #8 为唯一 tracking Issue，远端无同名分支且不存在 M1-03 PR，并从已验证 `main@077e4be14865c777dbbf3c1a5a3d9609b3620868` 创建固定分支 `feat/m1-03-binary-axml-transformer`。
+- ADR 0003、ADR 0007 与系统架构均已固定单属性 Manifest 变换、原 Application/metadata 保留和 sourceDir 配置合同；本任务无需新增 ADR，M1-04/M2 保持未启动。
 - 用户明确要求开始 M1-01；协调者从 `main@e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030` 创建唯一固定分支 `feat/m1-01-untrusted-apk-inspector`，领取 Issue #6，并保留 M1-02/M1-03/M2 未启动。
 - 提交 `bb2a6a93b840dd0416118119b4fe4434e395be02` 新增不可变公开模型、固定限制与错误码、有界 ZIP/AXML/DEX/ABI 检查、版本化兼容 marker 表、无依赖合成 fixture 和 10,000 样本 deterministic fuzz；未新增第三方依赖。
 - Windows 正式 `:host:apk-inspector:test` 与根 `check` 均退出 `0`；根 check 共 231 actionable tasks。规范模型与 32-fixture 错误矩阵 SHA-256 分别为 `a689e24f5a0e5dd81fcfe4175cacb3566477a4a659ed3da5dd3c6a84014264d3` 与 `545aa5987cc82fc98a0f7f20dcc5492ba84d40d91431a3350da6122854f39618`。
@@ -553,10 +560,11 @@ None
 
 ## Ordered Next Actions
 
-1. Commit and push this post-merge coordinator HandOff on `main`.
-2. Require the resulting `main` HEAD to pass Ubuntu/Windows Build and Governance, including strict HandOff and both M1-02 byte-equivalence steps.
-3. Leave M1-02 closed and wait for the user to select the next task.
-4. Do not start M1-03, M1-04, M2-03 or any adjacent task implicitly.
+1. 固定 M1-03 输入、输出、错误语义、内存预算和独立复核合同。
+2. 实现 `host/axml` 有界 binary AXML reader/writer、请求/结果模型和单属性 semantic diff 白名单。
+3. 完成 UTF-8/UTF-16、resource map、未知 chunk、冲突/截断/溢出/重复 application、5,000 seeded malformed 样本与固定 `aapt2` 交叉解析。
+4. 冻结实现与本地证据提交，启动未参与实现的独立 parser/security reviewer；P0/P1/P2 全部关闭后才可请求发布授权。
+5. 未获单独授权前不推送、不创建 PR；不启动 M1-04、M2 或任何相邻任务。
 
 ## Relevant Files and Artifacts
 
@@ -564,7 +572,9 @@ None
 - `docs/tasks/M0-05-application-factory-provider-jni-poc.md`
 - `docs/tasks/M1-01-untrusted-apk-inspector.md`
 - `docs/tasks/M1-02-signer-policy.md`
+- `docs/tasks/M1-03-binary-axml-transformer.md`
 - `host/apk-inspector/`
+- `host/axml/`
 - `docs/adr/0003-api29-public-classloader-hook.md`
 - `docs/adr/0006-offline-key-protection-boundary.md`
 - `docs/adr/0007-source-dir-startup-configuration.md`
@@ -629,6 +639,9 @@ None
 - [x] 用户已明确授权将 PR #34 转为 ready 并以普通 merge commit 合并。
 - [x] merger-ready HEAD `43fd2dd` 的 Ubuntu/Windows Build、Governance 与 M1-02 字节门禁全部 PASS。
 - [x] PR #34 已转 ready 并以 expected-head 普通 merge commit `d590b94` 合并；Issue #7 已关闭，本地 `main` 已无豁免通过 strict HandOff。
+- [x] 用户明确启动 M1-03；Issue #8、固定分支、base、既有 PR/远端分支缺失状态和 ADR 0003/0007 单属性合同均已核验。
+- [ ] 完成有界 reader/writer、单属性 semantic diff、5,000 样本 fuzz、aapt2/API 29/36 解析证据和 Windows/Ubuntu 字节一致性。
+- [ ] 冻结实现与证据提交并完成独立 parser/security 复核；P0/P1/P2 全零后再请求发布权限。
 
 ## Handoff Sign-off
 

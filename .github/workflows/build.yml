@@ -68,7 +68,10 @@ jobs:
 
       - name: Run full Linux checks
         shell: bash
-        run: ./gradlew --no-daemon clean check lint verifyGovernance :runtime:native:assemble
+        run: >-
+          ./gradlew --no-daemon clean check lint verifyGovernance :runtime:native:assemble
+          -Paapt2Executable="$ANDROID_HOME/build-tools/36.1.0/aapt2"
+          -Paapt2AndroidJar="$ANDROID_HOME/platforms/android-36/android.jar"
 
       - name: Verify M1-01 byte-identical reports
         shell: bash
@@ -87,6 +90,19 @@ jobs:
           test "$(sha256sum "$policy" | awk '{print $1}')" = "b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2"
           test "$(sha256sum "$errors" | awk '{print $1}')" = "c33d342077c371878399c80e76ae025cd0efc56bfcca6d5bf80ffde4d75677c6"
           sha256sum "$policy" "$errors"
+
+      - name: Verify M1-03 byte-identical AXML reports
+        shell: bash
+        run: |
+          transforms="host/axml/build/reports/m1-03/transform-matrix.json"
+          errors="host/axml/build/reports/m1-03/error-matrix.json"
+          fuzz="host/axml/build/reports/m1-03/fuzz-summary.json"
+          aapt2="host/axml/build/reports/m1-03/aapt2-cross-check.json"
+          test "$(sha256sum "$transforms" | awk '{print $1}')" = "01757e930cd3bb0a60a9b7b2445db4fa0000f050c65f9e88dba82e1d4b3c5d63"
+          test "$(sha256sum "$errors" | awk '{print $1}')" = "54a785f3a4ccd698452fccedaec8e98d509907efcbf67578dd16d6cedcf4956b"
+          test "$(sha256sum "$fuzz" | awk '{print $1}')" = "7910c602477e7ff1b560075468468dd4ccfd9985468655ddca3a2174fdbca199"
+          test "$(sha256sum "$aapt2" | awk '{print $1}')" = "e9e3b0307b6953e5b8cc98b651925f6c6cfc5a15b081115138e225efcf69f38e"
+          sha256sum "$transforms" "$errors" "$fuzz" "$aapt2"
 
       - name: Test dependency verification failure
         shell: bash
@@ -154,7 +170,10 @@ jobs:
 
       - name: Run Windows checks
         shell: pwsh
-        run: .\gradlew.bat --no-daemon clean check verifyGovernance
+        run: |
+          .\gradlew.bat --no-daemon clean check verifyGovernance `
+            "-Paapt2Executable=$env:ANDROID_HOME\build-tools\36.1.0\aapt2.exe" `
+            "-Paapt2AndroidJar=$env:ANDROID_HOME\platforms\android-36\android.jar"
 
       - name: Verify M1-01 byte-identical reports
         shell: pwsh
@@ -179,3 +198,18 @@ jobs:
           if ($errorHash -ne "c33d342077c371878399c80e76ae025cd0efc56bfcca6d5bf80ffde4d75677c6") { exit 1 }
           Write-Output "$policyHash  $policy"
           Write-Output "$errorHash  $errors"
+
+      - name: Verify M1-03 byte-identical AXML reports
+        shell: pwsh
+        run: |
+          $expected = @{
+            "host/axml/build/reports/m1-03/transform-matrix.json" = "01757e930cd3bb0a60a9b7b2445db4fa0000f050c65f9e88dba82e1d4b3c5d63"
+            "host/axml/build/reports/m1-03/error-matrix.json" = "54a785f3a4ccd698452fccedaec8e98d509907efcbf67578dd16d6cedcf4956b"
+            "host/axml/build/reports/m1-03/fuzz-summary.json" = "7910c602477e7ff1b560075468468dd4ccfd9985468655ddca3a2174fdbca199"
+            "host/axml/build/reports/m1-03/aapt2-cross-check.json" = "e9e3b0307b6953e5b8cc98b651925f6c6cfc5a15b081115138e225efcf69f38e"
+          }
+          foreach ($entry in $expected.GetEnumerator()) {
+            $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $entry.Key).Hash.ToLowerInvariant()
+            if ($actual -ne $entry.Value) { exit 1 }
+            Write-Output "$actual  $($entry.Key)"
+          }

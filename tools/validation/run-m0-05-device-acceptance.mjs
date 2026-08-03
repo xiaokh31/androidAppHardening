@@ -50,13 +50,15 @@ const variants = [
   {
     name: "extracted",
     packageName: "ah.fixtures.android.m005.extracted",
-    targetApk: artifact("fixtures/android/build/outputs/apk/compatExtracted/release/android-compatExtracted-release.apk"),
+    targetApk: artifact(argumentsMap.get("extracted-target-apk")
+      ?? "fixtures/android/build/outputs/apk/compatExtracted/release/android-compatExtracted-release.apk"),
     testApk: artifact("fixtures/android/build/outputs/apk/androidTest/compatExtracted/debug/android-compatExtracted-debug-androidTest.apk"),
   },
   {
     name: "direct",
     packageName: "ah.fixtures.android.m005.direct",
-    targetApk: artifact("fixtures/android/build/outputs/apk/compatDirect/release/android-compatDirect-release.apk"),
+    targetApk: artifact(argumentsMap.get("direct-target-apk")
+      ?? "fixtures/android/build/outputs/apk/compatDirect/release/android-compatDirect-release.apk"),
     testApk: artifact("fixtures/android/build/outputs/apk/androidTest/compatDirect/debug/android-compatDirect-debug-androidTest.apk"),
   },
 ];

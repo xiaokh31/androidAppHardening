@@ -1,23 +1,23 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260803-113534
-updated_at: 2026-08-03T11:35:34+08:00
+handoff_id: HO-20260803-114056
+updated_at: 2026-08-03T11:40:56+08:00
 updated_by: /root
 state: ready
 source_branch: main
 base_commit: aebbc441da34d2fba78648415c1d80ea844d774d
 working_tree: clean
 current_milestone: M1
-active_task: M1-02
-next_owner: /root
+active_task: NONE
+next_owner: unassigned
 ---
 
 # Project HandOff
 
 ## Objective
 
-在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内执行 M1-02 输入签名身份策略。当前只实现 Host 侧固定 `apksig` 验证、唯一当前 signer、轮换历史与不可变 `SignerPolicyV1`，不实现签名能力、M1-04 wire encoder、M2-03 Runtime 校验或任何相邻任务。
+在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内完成 M1-02 输入签名身份策略。Host 侧固定 `apksig` 验证、唯一当前 signer、轮换历史与不可变 `SignerPolicyV1` 已合并；未实现签名能力、M1-04 wire encoder、M2-03 Runtime 校验或任何相邻任务，当前等待用户选择下一任务。
 
 ## Current State
 
@@ -69,6 +69,8 @@ next_owner: /root
 - 锁修复 HEAD `b72ef88003c2dea993afbd7d96d502535833e450` 的替换 Build run `30753702741` 与 Governance run `30753702728` 已在 Ubuntu/Windows 四项全绿；两平台 M1-02 字节门禁均命中冻结 policy/error hashes。PR #34 保持 draft，ready/merge 尚未授权。
 - 最终证据 HEAD `2ed5f4f7973c9ff87a3e3cbbf6e4e5325a259418` 的 Build run `30753889812` 与 Governance run `30753889774` 已在 Ubuntu/Windows 四项全绿；两平台 M1-02 字节门禁再次命中冻结 hashes。
 - 用户已明确授权将 PR #34 转为 ready 并合并。当前 merger-ready 协调只允许更新 HandOff；该协调 HEAD 通过最终 CI 后，必须以 expected-head 保护执行普通 merge commit，并在 `main` 无豁免运行 strict HandOff。
+- merger-ready HEAD `43fd2dd0671b90430b5f4b06f1728c563eb4c07c` 的 Build run `30782245138` 与 Governance run `30782245141` 已在 Ubuntu/Windows 全部 PASS；两项 M1-02 字节一致性步骤再次命中冻结哈希。
+- PR #34 已于 `2026-08-03T11:40:12+08:00` 转为 ready，并以 expected-head 保护的普通 merge commit `d590b94f08047352d2b1f56c1c08aba4cbf079ec` 合并到 `main`；Issue #7 已关闭。本地 `main` 已无豁免通过 strict HandOff、Governance 与 diff check，M1-02 完成，M1-03/M1-04/M2-03 未启动。
 
 ## Active Workstreams
 
@@ -78,7 +80,7 @@ next_owner: /root
 | M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | done | M0-04 | PR #31、合并后 strict HandOff 和双平台 CI 已通过 |
 | M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | done | M0-04, M0-06 | PR #32、三环境矩阵、独立安全复核和最终 PR CI 已通过 |
 | M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | done | M0-05 | PR #33、Issue #6、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
-| M1-02 | `/root` | `feat/m1-02-signer-policy` | review | M1-01 | merger-ready 协调 HEAD 全绿后转 ready、普通合并并在 main 无豁免运行 strict HandOff |
+| M1-02 | `/root` | `feat/m1-02-signer-policy` | done | M1-01 | PR #34、Issue #7、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
 
 ## Decisions and Invariants
 
@@ -127,6 +129,7 @@ next_owner: /root
 - PR #34 首轮 Build run `30752847752` 在 Ubuntu/Windows 同因依赖锁缺口失败：`:host:cli:testRuntimeClasspath` 解析到固定 `apksig:9.3.0`，但 downstream lock state 未收录。用户授权后通过 Gradle `--write-locks` 仅增加该版本的两个 runtime 配置；本地 256-task 根回归退出 `0`，规范 policy/error hashes 不变。
 - 锁修复提交 `b72ef88003c2dea993afbd7d96d502535833e450` 的 Build run `30753702741` 与 Governance run `30753702728` 在 Ubuntu/Windows 全部 PASS；两个 Build job 的 M1-02 显式字节门禁均命中 `b945ede1...` policy 与 `c33d3420...` error matrix。
 - 最终证据提交 `2ed5f4f7973c9ff87a3e3cbbf6e4e5325a259418` 的 Build run `30753889812` 与 Governance run `30753889774` 在 Ubuntu/Windows 全部 PASS；PR #34 为 CLEAN/MERGEABLE。用户已授权 ready/merge，merger-ready HandOff 将恢复分支设为 `main`，合并方式保持普通 merge commit，不使用 squash、rebase、force 或分支删除。
+- merger-ready 协调提交 `43fd2dd0671b90430b5f4b06f1728c563eb4c07c` 的 Build run `30782245138` 与 Governance run `30782245141` 在 Ubuntu/Windows 全部通过；PR #34 随后以普通 merge commit `d590b94f08047352d2b1f56c1c08aba4cbf079ec` 合并，Issue #7 关闭，本地 `main` 无豁免通过 strict HandOff、Governance 和 diff check。
 
 - PR #31 已合并，旧 metadata blocker 的架构依赖已解除，M0-05 从 `blocked` 恢复为 `in_progress`。
 - 既有 M0-05 分支保留四个本地历史提交和 Issue #5，不创建第二分支或第二任务。
@@ -267,6 +270,18 @@ next_owner: /root
 - artifact: draft PR `https://github.com/xiaokh31/androidAppHardening/pull/34`; Issue `https://github.com/xiaokh31/androidAppHardening/issues/7`; Build `https://github.com/xiaokh31/androidAppHardening/actions/runs/30753889812`; Governance `https://github.com/xiaokh31/androidAppHardening/actions/runs/30753889774`; canonical policy SHA-256 `b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2`; error matrix SHA-256 `c33d342077c371878399c80e76ae025cd0efc56bfcca6d5bf80ffde4d75677c6`
 - sha256: not_applicable
 - result: PASS; final evidence HEAD passed Ubuntu/Windows Build and Governance, both M1-02 byte-equivalence steps passed, PR #34 is CLEAN/MERGEABLE, and the user authorized ready/merge
+
+### M1-02 merger-ready HEAD and merge
+
+- task_id: M1-02
+- git_commit: d590b94f08047352d2b1f56c1c08aba4cbf079ec
+- command: GitHub Actions Build run `30782245138` and Governance run `30782245141`; mark PR #34 ready; expected-head ordinary merge commit; fast-forward local `main`; `node tools/governance/validate-project-package.mjs`; strict HandOff without exemption; `git diff --check`; live PR and Issue state query
+- exit_code: 0
+- environment: GitHub Actions Ubuntu 24.04 and Windows 2025; Build jobs `91589067454`/`91589067452`; Governance jobs `91589067571`/`91589067573`; Windows 10 amd64 local coordinator; no device or emulator
+- timestamp: 2026-08-03T11:40:56+08:00
+- artifact: merged PR `https://github.com/xiaokh31/androidAppHardening/pull/34`; closed Issue `https://github.com/xiaokh31/androidAppHardening/issues/7`; Build `https://github.com/xiaokh31/androidAppHardening/actions/runs/30782245138`; Governance `https://github.com/xiaokh31/androidAppHardening/actions/runs/30782245141`; canonical policy SHA-256 `b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2`; error matrix SHA-256 `c33d342077c371878399c80e76ae025cd0efc56bfcca6d5bf80ffde4d75677c6`
+- sha256: not_applicable
+- result: PASS; merger-ready HEAD passed all four jobs and both M1-02 byte-equivalence steps; PR #34 was merged by expected-head ordinary merge commit, Issue #7 closed, and local `main` passed strict HandOff without exemption
 
 ### M1-01 third-review remediation candidate
 
@@ -538,11 +553,10 @@ None
 
 ## Ordered Next Actions
 
-1. Commit and push this merger-ready HandOff to the sole fixed branch.
-2. Require the merger-ready HEAD to pass Ubuntu/Windows Build and Governance, including both M1-02 byte-equivalence steps.
-3. Mark PR #34 ready and merge it with expected-head protection using an ordinary merge commit.
-4. Fast-forward local `main`, run Governance and strict HandOff without exemption, then record the post-merge state on `main`.
-5. Do not start M1-03, M1-04, M2-03 or any adjacent task implicitly.
+1. Commit and push this post-merge coordinator HandOff on `main`.
+2. Require the resulting `main` HEAD to pass Ubuntu/Windows Build and Governance, including strict HandOff and both M1-02 byte-equivalence steps.
+3. Leave M1-02 closed and wait for the user to select the next task.
+4. Do not start M1-03, M1-04, M2-03 or any adjacent task implicitly.
 
 ## Relevant Files and Artifacts
 
@@ -613,7 +627,8 @@ None
 - [x] 推送锁修复并完成 PR #34 的替换 Ubuntu/Windows Build、Governance 和 M1-02 字节一致性 CI；四项全绿。
 - [x] 推送最终证据提交 `2ed5f4f` 并确认最终 PR HEAD 的 Ubuntu/Windows Build、Governance 与 M1-02 字节门禁全部 PASS。
 - [x] 用户已明确授权将 PR #34 转为 ready 并以普通 merge commit 合并。
-- [ ] 推送 merger-ready HandOff、确认其最终 CI、expected-head 合并，并在 main 无豁免运行 strict HandOff。
+- [x] merger-ready HEAD `43fd2dd` 的 Ubuntu/Windows Build、Governance 与 M1-02 字节门禁全部 PASS。
+- [x] PR #34 已转 ready 并以 expected-head 普通 merge commit `d590b94` 合并；Issue #7 已关闭，本地 `main` 已无豁免通过 strict HandOff。
 
 ## Handoff Sign-off
 
@@ -628,3 +643,4 @@ None
 - `/root` 已核验 PR #34 首轮双平台 Build 的共同根因为 `host:cli` 传递依赖锁缺口；用户授权的修复仅增加现有 apksig 9.3.0 的 runtime/testRuntime 锁条目。本地 256-task 根回归和冻结报告 hashes 均 PASS；下一步只推送该最小修复并等待替换 CI，仍未授权 ready 或 merge。
 - `/root` 已核验锁修复 HEAD `b72ef88003c2dea993afbd7d96d502535833e450` 的替换 Build/Governance 四项 CI 全部 PASS，Ubuntu/Windows M1-02 显式字节门禁均命中冻结 hashes；当前仅归档最终证据并等待单独 ready/merge 授权。
 - `/root` 已核验最终证据 HEAD `2ed5f4f7973c9ff87a3e3cbbf6e4e5325a259418` 的 Build/Governance 四项 CI、两项 M1-02 字节门禁、CLEAN/MERGEABLE 状态与用户 ready/merge 授权；本协调提交只准备 post-merge `main` 恢复点，产品实现未改变。
+- `/root` 已核验 merger-ready HEAD `43fd2dd0671b90430b5f4b06f1728c563eb4c07c` 的四项 CI 与两项字节门禁全部 PASS；PR #34 使用 expected-head 普通 merge commit `d590b94f08047352d2b1f56c1c08aba4cbf079ec` 合并，Issue #7 关闭，并在本地 `main` 无豁免通过 strict HandOff。M1-02 标记 done，当前无活动任务。

@@ -5,7 +5,7 @@
 - Task: M1-03, Issue [#8](https://github.com/xiaokh31/androidAppHardening/issues/8).
 - Branch: `feat/m1-03-binary-axml-transformer`.
 - Base: `077e4be14865c777dbbf3c1a5a3d9609b3620868`.
-- Current status: the first frozen candidate failed independent review with P0 `0`, P1 `3`, P2 `1`; the second frozen candidate closed all four findings but failed with one new P1 for quadratic element-path retention. Both targets are invalid. Frozen commit `1425f911eb48796a8e4ade9aa3c5fcec09cb1f7b` removes retained full paths, uses bounded structural role flags and adds a long-name/deep-nesting regression. Its Windows Host/root/static rerun, third independent P0/P1/P2-zero review and API 29 arm64 physical-device matrix pass.
+- Current status: the first frozen candidate failed independent review with P0 `0`, P1 `3`, P2 `1`; the second frozen candidate closed all four findings but failed with one new P1 for quadratic element-path retention. Both targets are invalid. Frozen commit `1425f911eb48796a8e4ade9aa3c5fcec09cb1f7b` removes retained full paths, uses bounded structural role flags and adds a long-name/deep-nesting regression. Its Windows Host/root/static rerun, third independent P0/P1/P2-zero review, API 29 arm64 physical-device matrix, published API 29/36 x86_64 KVM matrix and Ubuntu/Windows byte-equivalence gates pass. Draft PR [#35](https://github.com/xiaokh31/androidAppHardening/pull/35) remains unmerged.
 - Product boundary: binary Manifest bytes only. No production ZIP/APK writer, signing operation, DEX change, ConfigV2 encoder or Runtime change is present.
 
 The implementation copies the caller input, validates the supplied M1-01 summary, parses binary AXML iteratively under fixed limits, appends only missing strings/resource-map data, replaces or appends one application Factory attribute, reparses the result and enforces an ordered semantic whitelist. Public results and hashes use defensive byte-array copies; public failures do not include input paths, Manifest text or nested causes.
@@ -95,9 +95,27 @@ Both transformed Release/R8 variants passed instrumentation, lifecycle order, mu
 
 The ignored controlled evidence is `build/m1-03/device-api29-arm64-review3/`: report SHA-256 `4f563a49c76ff27bef8033401b47591d8acd45e43c70f2045adc6ff3b57de042`, JUnit SHA-256 `af4bd59eaebe4448c9512129aaf3710d1169718891e59deffdf8d5f900da9f61`, and command transcript SHA-256 `ac2521cbaa67d8865788f1125bec07477eeff3138874487dbf21f5c4e9c47ec6`. Runner cleanup and an independent post-run `pm path`/`pidof` check confirmed all four target/test package names and processes absent. The raw serial and ignored signing material are not recorded in versioned evidence.
 
+## Published PR validation
+
+The authorized branch publication created the sole Issue #8 draft PR [#35](https://github.com/xiaokh31/androidAppHardening/pull/35). Initial PR HEAD `c6ed194c2fea9672d6cdd38cf181560e8d76e87f` completed all six required jobs:
+
+| Workflow / job | Result | Duration |
+|---|---|---:|
+| [M0-05 Linux KVM run 30789605156](https://github.com/xiaokh31/androidAppHardening/actions/runs/30789605156), API 29 x86_64 job `91610180311` | PASS | 7m58s |
+| same run, API 36 x86_64 job `91610180365` | PASS | 8m54s |
+| [Build run 30789605218](https://github.com/xiaokh31/androidAppHardening/actions/runs/30789605218), Ubuntu 24.04 job `91610180655` | PASS | 3m11s |
+| same run, Windows 2025 job `91610180663` | PASS | 4m02s |
+| [Governance run 30789605187](https://github.com/xiaokh31/androidAppHardening/actions/runs/30789605187), Ubuntu 24.04 job `91610180563` | PASS | 14s |
+| same run, Windows 2025 job `91610180603` | PASS | 41s |
+
+Both Build jobs explicitly produced and matched the canonical `transform`, `error`, `fuzz` and `aapt2` SHA-256 values listed above. The ignored downloaded KVM evidence is `build/m1-03/github-run-30789605156/`.
+
+API 29 and API 36 each passed transformed extracted/direct instrumentation, lifecycle, multidex, JNI, signer/config/metadata, the integrated 18-case external negative matrix, independent 18-case startup-negative reports, 20 cold starts, no-Factory handling, zero plaintext DEX and cleanup. API 29 extracted/direct P50/P95 were `771/975 ms` and `838/953 ms`, with peak total PSS `61,904/70,665 KB`; API 36 values were `1,287/1,636 ms` and `1,241/1,512 ms`, with peak total PSS `14,691/14,730 KB`.
+
+The API 29 device report SHA-256 is `0ebd9d4cf89caaec3cfd056de34d93e2f810d6b793c0b6d0a7d6385265b05700`; API 36 is `d00b794661191fac624ffa0be44e9841966a55ba489e61b193d58c07bb36b7b3`. The PR was still draft, OPEN, CLEAN and MERGEABLE after these checks.
+
 ## Remaining gates
 
-- Run the same four canonical reports on Ubuntu and Windows CI and require exact hashes.
-- Publish only after explicit authorization, then run the existing timeout/cleanup-controlled API 29/36 x86_64 Linux/KVM workflow against the transformed APKs.
 - The local implementation and independent parser/security-review gate are closed at `1425f911eb48796a8e4ade9aa3c5fcec09cb1f7b`; do not reuse either archived FAIL target.
-- Do not publish the branch or create a PR before explicit user authorization.
+- Push this evidence-only commit and require the replacement PR HEAD to pass the same six checks; the live PR check rollup is authoritative for that documentation successor.
+- Keep PR #35 draft. Ready/merge requires separate explicit user authorization and a final expected-head check.

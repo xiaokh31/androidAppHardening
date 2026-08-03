@@ -1,29 +1,44 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260803-114056
-updated_at: 2026-08-03T11:40:56+08:00
+handoff_id: HO-20260804-003522
+updated_at: 2026-08-04T00:35:22+08:00
 updated_by: /root
 state: ready
 source_branch: main
-base_commit: aebbc441da34d2fba78648415c1d80ea844d774d
+base_commit: 077e4be14865c777dbbf3c1a5a3d9609b3620868
 working_tree: clean
 current_milestone: M1
-active_task: NONE
-next_owner: unassigned
+active_task: M1-03
+next_owner: /root
 ---
 
 # Project HandOff
 
 ## Objective
 
-在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内完成 M1-02 输入签名身份策略。Host 侧固定 `apksig` 验证、唯一当前 signer、轮换历史与不可变 `SignerPolicyV1` 已合并；未实现签名能力、M1-04 wire encoder、M2-03 Runtime 校验或任何相邻任务，当前等待用户选择下一任务。
+在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内执行 M1-03 Binary AXML 白名单变换器。只允许把 `android:appComponentFactory` 设置为固定 Shell Factory，同时证明原 `android:name`、既有 metadata、string index、资源 ID、未知 chunk 与其他 Manifest 语义保持不变；不实现 ZIP 写出、签名、DEX、M1-04 或任何 Runtime 相邻任务。
 
 ## Current State
 
 - M0-04 的 PR #29 已合并，正式 API 29/36 x86_64 设备矩阵和独立安全复核通过。
 - M0-06 的 PR #31 已合并为 `main@f1362188be5083a6d557522f0f5be1905935f6eb`；合并后的 Governance/Build 在 Ubuntu 与 Windows 通过，`main` 已无豁免通过 strict HandOff。
 - M0-06/ADR 0007 已解除旧的 `ApplicationInfo.metaData == null` 阻塞，启动配置唯一来源改为 `ApplicationInfo.sourceDir` 中的固定 ConfigV2 与 AHDC 条目。
+- M1-02 的 PR #34 已以 merge commit `d590b94f08047352d2b1f56c1c08aba4cbf079ec` 合并；post-merge `main@077e4be14865c777dbbf3c1a5a3d9609b3620868` 已通过 Ubuntu/Windows Build、Governance、M1-02 字节门禁和无豁免 strict HandOff。
+- 用户已明确启动 M1-03；唯一 tracking Issue 为 [#8](https://github.com/xiaokh31/androidAppHardening/issues/8)，固定分支为 `feat/m1-03-binary-axml-transformer`，当前唯一关联 PR 为草稿 [#35](https://github.com/xiaokh31/androidAppHardening/pull/35)。
+- M1-03 已完成有界 binary AXML reader/writer、固定请求/结果模型、单属性 semantic diff、自有 UTF-8/UTF-16/unknown-chunk/resource-map fixtures、18 个稳定错误负例、seed `0x4d313033` 的 5,000 样本 fuzz 与固定 `aapt2` 独立解析；Windows 四份规范报告 hashes 已冻结在 workflow 中。
+- M1-03 实现、Host/static 证据与受阻设备尝试已提交为 `352a6d15a7a7b6443123638ef8e5f4fc1aebc527`；该实现提交之后的协调提交只把 HandOff 恢复为 clean 冻结点，不改变产品实现。
+- Windows `:host:axml:test` 与 237-task 根 `check verifyGovernance` 均退出 `0`；双变体 Release/R8 测试 APK 的签名、双 DEX、JNI、ABI、R8、原 Factory 配置、metadata 与无明文 payload 静态门禁均 PASS。未下载新工具到 C 盘，也未启动本机模拟器。
+- API 29 arm64 非 root 真机被确认是 64-bit `user/release-keys` 且 shell UID 2000。历史首个 extracted 安装曾因 MIUI `INSTALL_FAILED_USER_RESTRICTED` 停止；用户明确允许安装后，同一有界 runner 在 57.5 秒内完成 transformed extracted/direct 双变体 instrumentation、生命周期、跨 DEX、JNI、signer、metadata、各 20 次冷启动、内存、零明文 DEX 与清理，结果 PASS。
+- 首轮独立只读 `m1_03_security_review` 对冻结 HEAD `9fee22df524f0465f5a9fc310bec153b6d37696b` 给出 FAIL：P0 `0`、P1 `3`、P2 `1`。发现既有属性扩展尾部被清零、style/namespace 超线性工作、tiny unknown chunk 堆放大及高位 unsigned/显式保留证据缺口；旧冻结点立即失效，结论归档于 `docs/evidence/M1-03/security-review-1.md`。
+- 当前修正候选保留既有 Factory 属性的非零扩展尾部，将 chunk/string/attribute/namespace 预算前置，使用常数时间 namespace 活动计数、style 全局线性工作预算与重复 offset 缓存，并把 unknown chunk 保留证明合并为带语义锚点的单一摘要；新增高位 resource/typed value 和三项放大负例。
+- 四项发现的修复、首轮 FAIL 归档和新规范 hashes 已提交为 `adbf435c5bc393f90d4358988f5ba6f9cdcd507f`；237-task 根回归、双变体 Release/R8 重建与静态 APK 验证均 PASS。后续协调提交只恢复 clean 冻结点，不改变产品实现。
+- 第二轮独立只读 `m1_03_security_review_2` 对冻结 HEAD `99877a49c9950a64941858fa3a01d51dbf8c988e` 给出 FAIL：P0 `0`、P1 `1`、P2 `0`。首轮四项均确认关闭，但完整祖先路径字符串在长元素名和深嵌套下产生二次内存放大；旧冻结点立即失效，结论归档于 `docs/evidence/M1-03/security-review-2.md`。
+- 当前修复提交 `f15088d3b811d7be3827e8abaa0286da28f42f6a` 移除持久化完整路径，改用有界 manifest/application 角色标识，并增加 32,767 字符元素名叠加深度上限的稳定失败回归。6 正例、18 负例、5,000 fuzz、237-task 根回归、Governance、四份规范报告 hashes 与双变体静态 APK 验证均 PASS；必须重新冻结并取得新的独立全零复核。
+- 第三轮独立只读复核已对 clean 冻结 HEAD `1425f911eb48796a8e4ade9aa3c5fcec09cb1f7b` 给出 PASS：P0 `0`、P1 `0`、P2 `0`。复核者实际运行长名称深嵌套负例并确认稳定有界失败，首轮四项与第二轮路径问题全部关闭；结论归档于 `docs/evidence/M1-03/security-review-3.md`。
+- 用户已授权发布固定分支、创建 Issue #8 的唯一草稿 PR 并运行 CI。草稿 PR [#35](https://github.com/xiaokh31/androidAppHardening/pull/35) 的初始 HEAD `c6ed194c2fea9672d6cdd38cf181560e8d76e87f` 已完成 API 29/36 x86_64 KVM、Ubuntu/Windows Build 与 Governance 六项 PASS；两平台四份 M1-03 规范报告 hashes 均命中冻结值。
+- 最终证据 HEAD `16ffba62df8f25d4397d771c5bdfa77f8dba78ad` 的 replacement KVM run `30790389457`、Build run `30790389453` 与 Governance run `30790389460` 六项全部 PASS；PR #35 为唯一关联 PR，状态 OPEN、draft、CLEAN、MERGEABLE，且将关闭 Issue #8。
+- 用户已明确授权将 PR #35 转为 ready 并合并。本协调提交只准备 post-merge `main` 恢复点，不改变产品实现；merger-ready HEAD 必须再次通过相同六项 CI，再以 expected-head 保护执行普通 merge commit。
 - 用户已要求完成 M0-05 剩余部分；固定 Issue 为 #5，固定分支为 `spike/m0-05-application-factory-provider-jni-poc`。
 - 旧实现提交 `d58a277681443a5e79b770a3e9162ae54006138d` 已具备 early signer、原 Factory 五类组件委托、双 DEX、JNI 和两种 Native 路径的初始 PoC，但仍依赖已废弃 metadata，必须按 ConfigV2/sourceDir 合同修订。
 - 旧 arm64 真机证据仅证明 early signer 可用并复现 metadata 缺失，不构成当前合同的设备验收。
@@ -81,6 +96,7 @@ next_owner: unassigned
 | M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | done | M0-04, M0-06 | PR #32、三环境矩阵、独立安全复核和最终 PR CI 已通过 |
 | M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | done | M0-05 | PR #33、Issue #6、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
 | M1-02 | `/root` | `feat/m1-02-signer-policy` | done | M1-01 | PR #34、Issue #7、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
+| M1-03 | `/root` | `feat/m1-03-binary-axml-transformer` | review | M1-01, M0-05 | merger-ready HEAD 六项 CI 全绿后转 ready、expected-head 合并并在 main 无豁免运行 strict HandOff |
 
 ## Decisions and Invariants
 
@@ -97,9 +113,15 @@ next_owner: unassigned
 - M1-01 只使用仓库生成的合成 APK/AXML/DEX fixture；输入只读、不得解压到磁盘、不得执行输入代码、不得引入未经审计的第三方 parser。独立只读复核者预指定为 `m1_01_security_review`，仅在实现与证据提交冻结后启动。
 - M1-02 只使用固定 `apksig 9.3.0` 读取公开证书信息，最低检查平台固定为 API 29；要求唯一当前 signer，DER SHA-256 使用 32 字节原始摘要和 64 字符小写 hex，轮换 lineage 为旧到新、`1..16`、无重复且以当前摘要结束。
 - 产品仍不得接收或调用私钥、keystore、alias、密码、HSM、远程签名服务或任何签名执行器；M1-02 不序列化 `SPV1`，只提供 M1-04 可消费的防御性摘要副本与模型约束。
+- M1-03 生产路径只处理 binary AXML；string pool 仅追加字符串并保持旧 index，未知 chunk 原 bytes/顺序保留，resource map 仅允许补入 compileSdk 36 固定 `android:appComponentFactory` ID `0x0101057a`。
+- M1-03 唯一语义白名单是 application 上的 `android:appComponentFactory=ah.runtime.bootstrap.ShellAppComponentFactory`；不得新增、删除或改写 `<meta-data>`、`android:name` 或任何其他元素/属性。
 
 ## Changes Since Previous Handoff
 
+- 最终证据 HEAD `16ffba62df8f25d4397d771c5bdfa77f8dba78ad` 的 API 29/36 KVM、Ubuntu/Windows Build 与 Governance 六项 replacement CI 全部 PASS；两平台四份 M1-03 规范报告 hashes 再次命中冻结值。
+- 用户已明确授权将 PR #35 转为 ready 并合并；当前只新增 merger-ready HandOff 协调，不改产品实现，并要求协调 HEAD 再次通过六项 CI 后以 expected-head 保护合并。
+- 用户明确启动 M1-03；协调者核验 Issue #8 为唯一 tracking Issue，远端无同名分支且不存在 M1-03 PR，并从已验证 `main@077e4be14865c777dbbf3c1a5a3d9609b3620868` 创建固定分支 `feat/m1-03-binary-axml-transformer`。
+- ADR 0003、ADR 0007 与系统架构均已固定单属性 Manifest 变换、原 Application/metadata 保留和 sourceDir 配置合同；本任务无需新增 ADR，M1-04/M2 保持未启动。
 - 用户明确要求开始 M1-01；协调者从 `main@e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030` 创建唯一固定分支 `feat/m1-01-untrusted-apk-inspector`，领取 Issue #6，并保留 M1-02/M1-03/M2 未启动。
 - 提交 `bb2a6a93b840dd0416118119b4fe4434e395be02` 新增不可变公开模型、固定限制与错误码、有界 ZIP/AXML/DEX/ABI 检查、版本化兼容 marker 表、无依赖合成 fixture 和 10,000 样本 deterministic fuzz；未新增第三方依赖。
 - Windows 正式 `:host:apk-inspector:test` 与根 `check` 均退出 `0`；根 check 共 231 actionable tasks。规范模型与 32-fixture 错误矩阵 SHA-256 分别为 `a689e24f5a0e5dd81fcfe4175cacb3566477a4a659ed3da5dd3c6a84014264d3` 与 `545aa5987cc82fc98a0f7f20dcc5492ba84d40d91431a3350da6122854f39618`。
@@ -162,6 +184,66 @@ next_owner: unassigned
 - 该 M1-01 post-merge 动作已完成；当前恢复点为下述 M1-02 冻结实现与本地验收。
 
 ## Verification Evidence
+
+### M1-03 final replacement PR validation
+
+- task_id: M1-03
+- git_commit: 16ffba62df8f25d4397d771c5bdfa77f8dba78ad
+- command: `gh pr view 35 --json ...`; inspect KVM run `30790389457`, Build run `30790389453` and Governance run `30790389460`; confirm Issue #8 closing reference and sole head PR
+- exit_code: 0
+- environment: GitHub Actions API 29/36 x86_64 Linux/KVM; ubuntu-24.04; windows-2025; local coordinator Windows 10.0.19045; no local emulator
+- timestamp: 2026-08-03T14:37:58+08:00
+- artifact: PR #35 final replacement checks and comment `https://github.com/xiaokh31/androidAppHardening/pull/35#issuecomment-5163132253`
+- sha256: not_applicable
+- result: PASS; API 29 job `91612470254`, API 36 job `91612470271`, Ubuntu/Windows Build jobs `91612470232`/`91612470258` and Governance jobs `91612470128`/`91612470156` all succeeded; both Build jobs matched all four canonical M1-03 hashes; PR was OPEN, draft, CLEAN and MERGEABLE
+
+### M1-03 second independent review and path-state remediation
+
+- task_id: M1-03
+- git_commit: f15088d3b811d7be3827e8abaa0286da28f42f6a
+- command: independent offline read-only review of `99877a49c9950a64941858fa3a01d51dbf8c988e`; project-local offline `:host:axml:test`; project-local offline `check verifyGovernance`; `node tools/validation/verify-m0-05-apks.mjs` against both transformed Release/R8 APKs; Governance, Node syntax, report-hash, diff and UTF-8 scans
+- exit_code: 0
+- environment: Windows 10 amd64; Temurin `17.0.19+10`; Gradle `9.5.0`; Kotlin plugin `2.4.10`; Node `24.12.0`; aapt2 `2.20-14042983`; offline; no emulator or device rerun
+- timestamp: 2026-08-03T13:48:56+08:00
+- artifact: `docs/evidence/M1-03/security-review-2.md`; `docs/evidence/M1-03/formal-host-validation.md`; transform SHA-256 `35bd420aa0fe05e1a5efee197bdea8d3699f5de743bf54974f13833e24ef5635`; error SHA-256 `9a60c0c9fe710798d7f458822c1f2d6ffb9a22527a43c176c6c3869fb6dcf49c`; fuzz SHA-256 `d1dbf919a489a067506ab40b629916ea66a5b8a3e3ced42e710ae8dc57f8dced`; aapt2 SHA-256 `916e2d79af152c6090fc7ba0c4b9b24f054f0eb094ff2968192b922d0d593672`
+- sha256: not_applicable
+- result: PASS_WINDOWS_THIRD_REVIEW_CANDIDATE; the second review's P1 is removed by bounded structural flags and an explicit long-name/deep-nesting regression, but this new commit still requires an independent P0/P1/P2-zero review; physical API 29, published KVM and Ubuntu equivalence remain pending
+
+### M1-03 third independent parser/security review
+
+- task_id: M1-03
+- git_commit: 1425f911eb48796a8e4ade9aa3c5fcec09cb1f7b
+- command: independent project-local offline `:host:axml:test`; independent project-local offline `check verifyGovernance`; strict HandOff; two Node syntax checks; production ZIP/signing capability scan; base-to-HEAD diff check
+- exit_code: 0
+- environment: Windows 10 amd64; Temurin `17.0.19+10`; Gradle `9.5.0`; Node `24.12.0`; aapt2 `2.20-14042983`; offline; no network, device or emulator
+- timestamp: 2026-08-03T13:54:07+08:00
+- artifact: `docs/evidence/M1-03/security-review-3.md`; transform SHA-256 `35bd420aa0fe05e1a5efee197bdea8d3699f5de743bf54974f13833e24ef5635`; error SHA-256 `9a60c0c9fe710798d7f458822c1f2d6ffb9a22527a43c176c6c3869fb6dcf49c`; fuzz SHA-256 `d1dbf919a489a067506ab40b629916ea66a5b8a3e3ced42e710ae8dc57f8dced`; aapt2 SHA-256 `916e2d79af152c6090fc7ba0c4b9b24f054f0eb094ff2968192b922d0d593672`
+- sha256: not_applicable
+- result: PASS; P0 `0`, P1 `0`, P2 `0`; the full-path memory issue and all first-review findings are closed, so the local implementation/review gate is complete; physical API 29 and publication-dependent KVM/dual-platform CI remain pending
+
+### M1-03 API 29 arm64 physical-device acceptance
+
+- task_id: M1-03
+- git_commit: df924ed9a10c29680c033d9200a7f5581fda0d1f
+- command: `node tools/validation/run-m0-05-device-acceptance.mjs --platform arm64-api29-physical-m1-03 --cold-starts 20 --command-timeout-ms 60000` against the transformed extracted/direct Release/R8 APKs; independent post-run `pm path` and `pidof` cleanup check
+- exit_code: 0
+- environment: Android API 29 arm64-v8a; 64-bit `user/release-keys`; `ro.secure=1`; `ro.debuggable=0`; adb shell uid 2000 non-root; Windows 10 host; no emulator
+- timestamp: 2026-08-03T14:08:52+08:00
+- artifact: ignored `build/m1-03/device-api29-arm64-review3/`; transformed extracted APK SHA-256 `9c31c54ad001613130b2150937f95d94a75f5bc2cf12bc2af87e8206ac381c18`; transformed direct APK SHA-256 `ece3317e12b420e7afb66ee16f08c42518772818ee6f16b97a52a3f2bb524f64`; report SHA-256 `4f563a49c76ff27bef8033401b47591d8acd45e43c70f2045adc6ff3b57de042`; JUnit SHA-256 `af4bd59eaebe4448c9512129aaf3710d1169718891e59deffdf8d5f900da9f61`; commands SHA-256 `ac2521cbaa67d8865788f1125bec07477eeff3138874487dbf21f5c4e9c47ec6`
+- sha256: 4f563a49c76ff27bef8033401b47591d8acd45e43c70f2045adc6ff3b57de042
+- result: PASS_DEVICE_EVIDENCE; both variants passed instrumentation, lifecycle, cross-DEX, JNI, signer, metadata independence, 20 cold starts, memory and zero plaintext DEX; extracted P50/P95 `269/294 ms`, peak PSS `50,382 KB`; direct P50/P95 `332/370 ms`, peak PSS `51,943 KB`; runner and independent cleanup checks passed
+
+### M1-03 initial draft PR validation
+
+- task_id: M1-03
+- git_commit: c6ed194c2fea9672d6cdd38cf181560e8d76e87f
+- command: push fixed branch; create sole Issue #8 draft PR #35; `gh pr checks 35 --watch --interval 30`; inspect runs `30789605156`, `30789605218`, `30789605187`; download KVM artifacts to ignored project-local evidence and verify report hashes
+- exit_code: 0
+- environment: GitHub Actions Ubuntu 24.04, Windows 2025 and Ubuntu Linux/KVM; API 29 r8/API 36 r2 x86_64; Emulator 37.1.11; local Windows coordinator; no local emulator
+- timestamp: 2026-08-03T14:24:35+08:00
+- artifact: draft PR `https://github.com/xiaokh31/androidAppHardening/pull/35`; KVM run `30789605156`; Build run `30789605218`; Governance run `30789605187`; ignored `build/m1-03/github-run-30789605156/`; API 29 report SHA-256 `0ebd9d4cf89caaec3cfd056de34d93e2f810d6b793c0b6d0a7d6385265b05700`; API 36 report SHA-256 `d00b794661191fac624ffa0be44e9841966a55ba489e61b193d58c07bb36b7b3`
+- sha256: not_applicable
+- result: PASS; API 29 job `91610180311` in 7m58s, API 36 job `91610180365` in 8m54s, Ubuntu/Windows Build in 3m11s/4m02s and Governance in 14s/41s all succeeded; both Build jobs matched all four canonical M1-03 hashes; PR remained draft, OPEN, CLEAN and MERGEABLE
 
 ### M1-02 start baseline
 
@@ -553,10 +635,11 @@ None
 
 ## Ordered Next Actions
 
-1. Commit and push this post-merge coordinator HandOff on `main`.
-2. Require the resulting `main` HEAD to pass Ubuntu/Windows Build and Governance, including strict HandOff and both M1-02 byte-equivalence steps.
-3. Leave M1-02 closed and wait for the user to select the next task.
-4. Do not start M1-03, M1-04, M2-03 or any adjacent task implicitly.
+1. 提交并推送本 merger-ready HandOff 到唯一固定分支。
+2. 要求 merger-ready HEAD 再次通过 API 29/36 KVM、Ubuntu/Windows Build 与 Governance 六项 CI，包括四份 M1-03 规范报告字节门禁。
+3. 将 PR #35 转为 ready，并以 expected-head 保护执行普通 merge commit。
+4. 快进本地 `main`，无豁免运行 Governance、strict HandOff 与 diff check，再在 `main` 记录 post-merge 状态。
+5. 不隐式启动 M1-04、M2 或任何相邻任务。
 
 ## Relevant Files and Artifacts
 
@@ -564,7 +647,9 @@ None
 - `docs/tasks/M0-05-application-factory-provider-jni-poc.md`
 - `docs/tasks/M1-01-untrusted-apk-inspector.md`
 - `docs/tasks/M1-02-signer-policy.md`
+- `docs/tasks/M1-03-binary-axml-transformer.md`
 - `host/apk-inspector/`
+- `host/axml/`
 - `docs/adr/0003-api29-public-classloader-hook.md`
 - `docs/adr/0006-offline-key-protection-boundary.md`
 - `docs/adr/0007-source-dir-startup-configuration.md`
@@ -580,11 +665,19 @@ None
 - `docs/evidence/M1-02/security-review-1.md`
 - `docs/evidence/M1-02/security-review-2.md`
 - `docs/evidence/M1-02/security-review-3.md`
+- `docs/evidence/M1-03/implementation-plan.md`
+- `docs/evidence/M1-03/formal-host-validation.md`
+- `docs/evidence/M1-03/security-review-1.md`
+- `docs/evidence/M1-03/security-review-2.md`
+- `docs/evidence/M1-03/security-review-3.md`
+- ignored `build/m1-03/device-api29-arm64-review3/`
+- ignored `build/m1-03/github-run-30789605156/`
 - `runtime/bootstrap/src/main/java/ah/runtime/bootstrap/ShellAppComponentFactory.java`
 - `fixtures/android/src/androidTestCompatFixture/java/ah/fixtures/android/CompatibilityPocRunner.java`
 - `tools/validation/verify-m0-05-apks.mjs`
 - `tools/validation/create-m0-05-test-apks.mjs`
 - `tools/validation/run-m0-05-device-acceptance.mjs`
+- `tools/validation/create-m1-03-device-apk.mjs`
 - `tools/validation/run-m0-05-startup-negative.mjs`
 - `tools/validation/m0-05-linux-kvm-packages.json`
 - `.github/workflows/m0-05-linux-kvm.yml`
@@ -629,6 +722,16 @@ None
 - [x] 用户已明确授权将 PR #34 转为 ready 并以普通 merge commit 合并。
 - [x] merger-ready HEAD `43fd2dd` 的 Ubuntu/Windows Build、Governance 与 M1-02 字节门禁全部 PASS。
 - [x] PR #34 已转 ready 并以 expected-head 普通 merge commit `d590b94` 合并；Issue #7 已关闭，本地 `main` 已无豁免通过 strict HandOff。
+- [x] 用户明确启动 M1-03；Issue #8、固定分支、base、既有 PR/远端分支缺失状态和 ADR 0003/0007 单属性合同均已核验。
+- [x] 完成有界 reader/writer、单属性 semantic diff、18 个稳定错误负例、5,000 样本 fuzz、固定 aapt2 解析、双变体 Release/R8 构造与 Windows 静态验证。
+- [x] 首轮独立复核 FAIL 已归档，旧冻结 HEAD `9fee22d` 已废止；P1 `3` / P2 `1` 的修正候选与 6 正例/17 负例已通过模块自测。
+- [x] 第二轮独立复核确认首轮四项关闭但以新 P1 废止 `99877a4`；`f15088d` 已移除完整路径持有并通过 6 正例/18 负例、5,000 fuzz、237-task 根回归和静态 APK 验证。
+- [x] 第三轮独立只读复核已对 `1425f911` 给出 P0/P1/P2 全零 PASS；本地实现与独立复核门禁关闭。
+- [x] 用户允许 MIUI USB 安装后，API 29 arm64 transformed extracted/direct 双变体设备矩阵在 57.5 秒内 PASS，20 次冷启动、内存、零明文 DEX 和最终清理均通过。
+- [x] 固定分支已发布并创建 Issue #8 的唯一草稿 PR #35；初始 HEAD `c6ed194` 的 API 29/36 KVM、Ubuntu/Windows Build/Governance 和四报告字节一致性全部 PASS。
+- [x] 推送证据提交并完成 replacement PR HEAD `16ffba6` 的六项 CI；两平台四份规范报告 hashes 命中冻结值。
+- [x] 用户已明确授权将 PR #35 转为 ready 并以普通 merge commit 合并。
+- [x] 对当前 clean 冻结提交完成新的独立 parser/security 复核；P0/P1/P2 全零。
 
 ## Handoff Sign-off
 
@@ -644,3 +747,10 @@ None
 - `/root` 已核验锁修复 HEAD `b72ef88003c2dea993afbd7d96d502535833e450` 的替换 Build/Governance 四项 CI 全部 PASS，Ubuntu/Windows M1-02 显式字节门禁均命中冻结 hashes；当前仅归档最终证据并等待单独 ready/merge 授权。
 - `/root` 已核验最终证据 HEAD `2ed5f4f7973c9ff87a3e3cbbf6e4e5325a259418` 的 Build/Governance 四项 CI、两项 M1-02 字节门禁、CLEAN/MERGEABLE 状态与用户 ready/merge 授权；本协调提交只准备 post-merge `main` 恢复点，产品实现未改变。
 - `/root` 已核验 merger-ready HEAD `43fd2dd0671b90430b5f4b06f1728c563eb4c07c` 的四项 CI 与两项字节门禁全部 PASS；PR #34 使用 expected-head 普通 merge commit `d590b94f08047352d2b1f56c1c08aba4cbf079ec` 合并，Issue #7 关闭，并在本地 `main` 无豁免通过 strict HandOff。M1-02 标记 done，当前无活动任务。
+- `/root` 已核验 M1-03 Windows Host/静态候选、规范报告 hashes、双变体 Release/R8 测试包和 237-task 根回归；首次 API 29 安装拒绝仅构成历史零残留证据，已由后续正式 PASS 矩阵取代；本机模拟器始终未启动。
+- `/root` 已核验首轮 M1-03 独立复核为 FAIL 并废止旧冻结点；该轮只允许关闭四项发现、重跑门禁与重新冻结，其发布限制已由后续用户授权取代。
+- `/root` 已核验第二轮 M1-03 独立复核为 P0 `0`、P1 `1`、P2 `0` FAIL 并废止 `99877a4`；修复 `f15088d` 仅保留有界结构角色状态，Windows Host/root/static 门禁通过；该时点的复核与发布待办已由后续全零复核和用户授权关闭。
+- `/root` 已核验第三轮 M1-03 独立复核对 `1425f911eb48796a8e4ade9aa3c5fcec09cb1f7b` 给出 P0/P1/P2 全零 PASS；本地实现与复核门禁关闭。该时点的 API 29 安装阻塞已由下述正式矩阵关闭；远端 KVM/双平台 CI 仍需单独发布授权，当前不得声明 M1-03 完成。
+- `/root` 已核验用户允许安装后的 API 29 arm64 正式矩阵为 PASS：双变体 instrumentation、生命周期、跨 DEX、JNI、signer、metadata、各 20 次冷启动、内存、零明文 DEX、runner 与独立清理均闭环；本轮未启动模拟器。该时点的发布后 KVM/双平台 CI 与推送授权待办已由 PR #35 初始六项 PASS 关闭。
+- `/root` 已核验授权发布后的 PR #35 初始 HEAD `c6ed194c2fea9672d6cdd38cf181560e8d76e87f` 六项 CI 全部 PASS；API 29/36 KVM artifacts、四份 startup-negative 报告、20 次冷启动、no-Factory、内存、零明文 DEX、cleanup 及 Ubuntu/Windows 四份规范 hashes 均闭环。
+- `/root` 已核验最终证据 HEAD `16ffba62df8f25d4397d771c5bdfa77f8dba78ad` 的 replacement 六项 CI、两平台四份规范报告字节门禁、唯一 PR/Issue #8 关联、CLEAN/MERGEABLE 状态与用户 ready/merge 授权；本协调提交只准备 post-merge `main` 恢复点，产品实现未改变。

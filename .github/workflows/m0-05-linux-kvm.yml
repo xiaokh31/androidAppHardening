@@ -9,6 +9,7 @@ on:
       - "fixtures/android/**"
       - "runtime/bootstrap/**"
       - "runtime/native/**"
+      - "host/axml/**"
       - "tools/validation/**"
   workflow_dispatch:
   pull_request:
@@ -19,6 +20,7 @@ on:
       - "fixtures/android/**"
       - "runtime/bootstrap/**"
       - "runtime/native/**"
+      - "host/axml/**"
       - "tools/validation/**"
 
 permissions:
@@ -180,6 +182,37 @@ jobs:
             fixtures/android/build/outputs/apk/classloaderPoc/release/android-classloaderPoc-release.apk \
             "$signer_digest" | tee build/m0-05/static-report.json
 
+          mkdir -p build/m1-03/device-apks
+          for variant in extracted direct; do
+            input_apk="fixtures/android/build/outputs/apk/compat${variant^}/release/android-compat${variant^}-release.apk"
+            transformed_apk="build/m1-03/device-apks/m1-03-${variant}.apk"
+            original_manifest="build/m1-03/device-apks/${variant}-original.bin"
+            transformed_manifest="build/m1-03/device-apks/${variant}-transformed.bin"
+            package_name="ah.fixtures.android.m005.${variant}"
+            node tools/validation/create-m1-03-device-apk.mjs \
+              prepare "$variant" "$original_manifest" \
+              | tee "build/m1-03/device-apks/${variant}-prepare-report.json"
+            ./gradlew --no-daemon --console=plain :host:axml:transformDeviceManifest \
+              "-Pm103InputManifest=$original_manifest" \
+              "-Pm103OutputManifest=$transformed_manifest" \
+              "-Pm103PackageName=$package_name"
+            node tools/validation/create-m1-03-device-apk.mjs \
+              package "$input_apk" "$variant" "$transformed_manifest" "$transformed_apk" \
+              | tee "build/m1-03/device-apks/${variant}-creation-report.json"
+          done
+
+          node tools/validation/verify-m0-05-apks.mjs \
+            build/m1-03/device-apks/m1-03-extracted.apk \
+            build/m1-03/device-apks/m1-03-direct.apk \
+            fixtures/android/build/outputs/apk/androidTest/compatExtracted/debug/android-compatExtracted-debug-androidTest.apk \
+            fixtures/android/build/outputs/apk/androidTest/compatDirect/debug/android-compatDirect-debug-androidTest.apk \
+            fixtures/android/build/outputs/mapping/compatExtractedRelease/mapping.txt \
+            fixtures/android/build/outputs/mapping/compatExtractedRelease/usage.txt \
+            fixtures/android/build/outputs/mapping/compatDirectRelease/mapping.txt \
+            fixtures/android/build/outputs/mapping/compatDirectRelease/usage.txt \
+            fixtures/android/build/outputs/apk/classloaderPoc/release/android-classloaderPoc-release.apk \
+            "$signer_digest" | tee build/m1-03/static-report.json
+
           export M005_ALT_KEYSTORE="$RUNNER_TEMP/m0-05-signing/alternate.p12"
           export M005_ALT_STORE_PASSWORD="$(openssl rand -hex 24)"
           export M005_ALT_KEY_ALIAS="alternate"
@@ -199,11 +232,7 @@ jobs:
             root="build/m0-05/test-apks/$variant"
             unsigned_dir="$root/unsigned"
             signed_dir="$root/signed"
-            if [[ "$variant" = extracted ]]; then
-              input_apk="fixtures/android/build/outputs/apk/compatExtracted/release/android-compatExtracted-release.apk"
-            else
-              input_apk="fixtures/android/build/outputs/apk/compatDirect/release/android-compatDirect-release.apk"
-            fi
+            input_apk="build/m1-03/device-apks/m1-03-${variant}.apk"
             mkdir -p "$unsigned_dir" "$signed_dir"
             node tools/validation/create-m0-05-test-apks.mjs \
               "$input_apk" "$unsigned_dir" | tee "$root/creation-report.json"
@@ -352,6 +381,8 @@ jobs:
             --platform "api${API}-x86_64-linux-kvm" \
             --cold-starts 20 \
             --command-timeout-ms 60000 \
+            --extracted-target-apk build/m1-03/device-apks/m1-03-extracted.apk \
+            --direct-target-apk build/m1-03/device-apks/m1-03-direct.apk \
             --no-factory-apk build/m0-05/test-apks/extracted/signed/m0-05-no-factory.apk \
             --extracted-negative-signed-dir build/m0-05/test-apks/extracted/signed \
             --extracted-negative-unsigned-dir build/m0-05/test-apks/extracted/unsigned \
@@ -393,6 +424,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
           path: |
+            build/m1-03/**/*.json
             build/m0-05/*.json
             build/m0-05/*.txt
             build/m0-05/test-apks/**/*.json

@@ -5,7 +5,7 @@
 - Task: M1-03, Issue [#8](https://github.com/xiaokh31/androidAppHardening/issues/8).
 - Branch: `feat/m1-03-binary-axml-transformer`.
 - Base: `077e4be14865c777dbbf3c1a5a3d9609b3620868`.
-- Current status: the first frozen candidate failed independent review with P0 `0`, P1 `3`, P2 `1`; the second frozen candidate closed all four findings but failed with one new P1 for quadratic element-path retention. Both targets are invalid. Frozen commit `1425f911eb48796a8e4ade9aa3c5fcec09cb1f7b` removes retained full paths, uses bounded structural role flags and adds a long-name/deep-nesting regression. Its Windows Host/root/static rerun and third independent review pass with P0/P1/P2 all zero.
+- Current status: the first frozen candidate failed independent review with P0 `0`, P1 `3`, P2 `1`; the second frozen candidate closed all four findings but failed with one new P1 for quadratic element-path retention. Both targets are invalid. Frozen commit `1425f911eb48796a8e4ade9aa3c5fcec09cb1f7b` removes retained full paths, uses bounded structural role flags and adds a long-name/deep-nesting regression. Its Windows Host/root/static rerun, third independent P0/P1/P2-zero review and API 29 arm64 physical-device matrix pass.
 - Product boundary: binary Manifest bytes only. No production ZIP/APK writer, signing operation, DEX change, ConfigV2 encoder or Runtime change is present.
 
 The implementation copies the caller input, validates the supplied M1-01 summary, parses binary AXML iteratively under fixed limits, appends only missing strings/resource-map data, replaces or appends one application Factory attribute, reparses the result and enforces an ordered semantic whitelist. Public results and hashes use defensive byte-array copies; public failures do not include input paths, Manifest text or nested causes.
@@ -22,7 +22,7 @@ The implementation copies the caller input, validates the supplied M1-01 summary
 | Android Build Tools | package `36.1.0`; `aapt2` reports `2.20-14042983` |
 | Fuzz | seed `1295069235` (`0x4d313033`), 5,000 samples |
 
-No emulator was started. The only physical-device command was the bounded API 29 arm64 acceptance runner described below; it stopped at the first rejected install and completed its package cleanup checks.
+No emulator was started. After the historical MIUI-rejected attempt, the user explicitly allowed USB installation and the same bounded API 29 arm64 acceptance runner completed both variants and final cleanup in 57.5 seconds.
 
 ## Commands and current results
 
@@ -31,7 +31,7 @@ No emulator was started. The only physical-device command was the bounded API 29
 | project-local JDK 17 `./gradlew :host:axml:test --offline` with pinned `aapt2` and Android 36 `android.jar` properties | 0 | six positive fixtures, eighteen stable negatives, real `aapt2 link/dump` cross-check and 5,000 malformed samples PASS |
 | project-local JDK 17 `./gradlew check verifyGovernance --offline` | 0 | 237 actionable tasks; M1-01 10,000-sample and M1-02 signer regressions PASS |
 | `node tools/validation/verify-m0-05-apks.mjs` against both transformed Release/R8 APKs | 0 | signer/config, dual DEX, JNI, ABI, R8, native extraction modes and no-plaintext-payload static gates PASS |
-| bounded API 29 arm64 runner, 20 cold starts requested per variant | 1 | stopped before execution at the first `adb install`: `INSTALL_FAILED_USER_RESTRICTED: Install canceled by user`; no target or test package remained installed |
+| bounded API 29 arm64 runner against transformed extracted/direct Release/R8 fixtures, 20 cold starts per variant | 0 | instrumentation, lifecycle, cross-DEX, JNI, signer, metadata independence, cold starts, memory, zero plaintext DEX and final cleanup PASS |
 | `git diff --check` | 0 | current implementation diff has no whitespace errors |
 
 The local Kotlin daemon could not create its marker under the user-local C-drive directory in the restricted workspace. Gradle automatically used its supported in-process fallback and every command above exited `0`; no tool or dependency was downloaded to C by these validation commands.
@@ -87,14 +87,17 @@ The ignored device harness links the original binary Manifest with pinned `aapt2
 
 Pinned `aapt2 dump xmltree` observes `ah.runtime.bootstrap.ShellAppComponentFactory`, the original `PayloadApplication`, and `ah.m103.fixture=preserved` in both APKs. The existing M0-05 static verifier independently reports `PASS` for both transformed APKs.
 
-## API 29 physical-device attempt
+## API 29 physical-device acceptance
 
-At `2026-08-03T12:56:58+08:00`, the runner verified a unique authorized device with API 29, `arm64-v8a`, 64-bit userspace, `user/release-keys`, `ro.secure=1`, `ro.debuggable=0`, and shell UID 2000. The first extracted-variant install was rejected by MIUI after about 18 seconds with `INSTALL_FAILED_USER_RESTRICTED`; therefore no instrumentation, lifecycle, cross-DEX, JNI, signer, metadata, cold-start, memory or plaintext-disk assertion is claimed for this attempt. Final `pm path` checks confirmed that all four target/test package names were absent. The serial and ignored signing material are not recorded in versioned evidence.
+The first attempt at `2026-08-03T12:56:58+08:00` was rejected by MIUI with `INSTALL_FAILED_USER_RESTRICTED` and remains historical non-pass evidence. After the user explicitly allowed installation, the bounded rerun from `2026-08-03T14:07:55+08:00` through `14:08:52+08:00` verified a unique API 29 `arm64-v8a` device with 64-bit userspace, `user/release-keys`, `ro.secure=1`, `ro.debuggable=0`, and shell UID 2000 non-root.
+
+Both transformed Release/R8 variants passed instrumentation, lifecycle order, multidex, JNI, early signer cross-check, metadata independence and zero plaintext DEX checks. Each completed 20 cold starts with the target payload Activity resumed every time. Extracted reported P50/P95 `269/294 ms` and peak total PSS `50,382 KB`; direct reported P50/P95 `332/370 ms` and peak total PSS `51,943 KB`. The shared M0-05 pre-CLI device harness intentionally reports task ID M0-05 because it owns the runtime assertions; M1-03 supplies only its transformed target APKs and does not add product ZIP/signing behavior.
+
+The ignored controlled evidence is `build/m1-03/device-api29-arm64-review3/`: report SHA-256 `4f563a49c76ff27bef8033401b47591d8acd45e43c70f2045adc6ff3b57de042`, JUnit SHA-256 `af4bd59eaebe4448c9512129aaf3710d1169718891e59deffdf8d5f900da9f61`, and command transcript SHA-256 `ac2521cbaa67d8865788f1125bec07477eeff3138874487dbf21f5c4e9c47ec6`. Runner cleanup and an independent post-run `pm path`/`pidof` check confirmed all four target/test package names and processes absent. The raw serial and ignored signing material are not recorded in versioned evidence.
 
 ## Remaining gates
 
 - Run the same four canonical reports on Ubuntu and Windows CI and require exact hashes.
-- After the user accepts MIUI's USB-install confirmation, rerun the bounded API 29 arm64 matrix once; do not treat the rejected installation as an acceptance pass.
 - Publish only after explicit authorization, then run the existing timeout/cleanup-controlled API 29/36 x86_64 Linux/KVM workflow against the transformed APKs.
 - The local implementation and independent parser/security-review gate are closed at `1425f911eb48796a8e4ade9aa3c5fcec09cb1f7b`; do not reuse either archived FAIL target.
 - Do not publish the branch or create a PR before explicit user authorization.

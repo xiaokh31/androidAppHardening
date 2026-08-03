@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260803-134856
-updated_at: 2026-08-03T13:48:56+08:00
+handoff_id: HO-20260803-135407
+updated_at: 2026-08-03T13:54:07+08:00
 updated_by: /root
 state: active
 source_branch: feat/m1-03-binary-axml-transformer
@@ -35,6 +35,7 @@ next_owner: /root
 - 四项发现的修复、首轮 FAIL 归档和新规范 hashes 已提交为 `adbf435c5bc393f90d4358988f5ba6f9cdcd507f`；237-task 根回归、双变体 Release/R8 重建与静态 APK 验证均 PASS。后续协调提交只恢复 clean 冻结点，不改变产品实现。
 - 第二轮独立只读 `m1_03_security_review_2` 对冻结 HEAD `99877a49c9950a64941858fa3a01d51dbf8c988e` 给出 FAIL：P0 `0`、P1 `1`、P2 `0`。首轮四项均确认关闭，但完整祖先路径字符串在长元素名和深嵌套下产生二次内存放大；旧冻结点立即失效，结论归档于 `docs/evidence/M1-03/security-review-2.md`。
 - 当前修复提交 `f15088d3b811d7be3827e8abaa0286da28f42f6a` 移除持久化完整路径，改用有界 manifest/application 角色标识，并增加 32,767 字符元素名叠加深度上限的稳定失败回归。6 正例、18 负例、5,000 fuzz、237-task 根回归、Governance、四份规范报告 hashes 与双变体静态 APK 验证均 PASS；必须重新冻结并取得新的独立全零复核。
+- 第三轮独立只读复核已对 clean 冻结 HEAD `1425f911eb48796a8e4ade9aa3c5fcec09cb1f7b` 给出 PASS：P0 `0`、P1 `0`、P2 `0`。复核者实际运行长名称深嵌套负例并确认稳定有界失败，首轮四项与第二轮路径问题全部关闭；结论归档于 `docs/evidence/M1-03/security-review-3.md`。
 - 用户已要求完成 M0-05 剩余部分；固定 Issue 为 #5，固定分支为 `spike/m0-05-application-factory-provider-jni-poc`。
 - 旧实现提交 `d58a277681443a5e79b770a3e9162ae54006138d` 已具备 early signer、原 Factory 五类组件委托、双 DEX、JNI 和两种 Native 路径的初始 PoC，但仍依赖已废弃 metadata，必须按 ConfigV2/sourceDir 合同修订。
 - 旧 arm64 真机证据仅证明 early signer 可用并复现 metadata 缺失，不构成当前合同的设备验收。
@@ -92,7 +93,7 @@ next_owner: /root
 | M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | done | M0-04, M0-06 | PR #32、三环境矩阵、独立安全复核和最终 PR CI 已通过 |
 | M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | done | M0-05 | PR #33、Issue #6、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
 | M1-02 | `/root` | `feat/m1-02-signer-policy` | done | M1-01 | PR #34、Issue #7、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
-| M1-03 | `/root` | `feat/m1-03-binary-axml-transformer` | in_progress | M1-01, M0-05 | 独立复核当前路径修复；重跑获准安装后的 API 29 真机；完成发布后 API 29/36 KVM/双平台 CI |
+| M1-03 | `/root` | `feat/m1-03-binary-axml-transformer` | in_progress | M1-01, M0-05 | 重跑获准安装后的 API 29 真机；取得发布授权后完成 API 29/36 KVM/双平台 CI |
 
 ## Decisions and Invariants
 
@@ -190,6 +191,18 @@ next_owner: /root
 - artifact: `docs/evidence/M1-03/security-review-2.md`; `docs/evidence/M1-03/formal-host-validation.md`; transform SHA-256 `35bd420aa0fe05e1a5efee197bdea8d3699f5de743bf54974f13833e24ef5635`; error SHA-256 `9a60c0c9fe710798d7f458822c1f2d6ffb9a22527a43c176c6c3869fb6dcf49c`; fuzz SHA-256 `d1dbf919a489a067506ab40b629916ea66a5b8a3e3ced42e710ae8dc57f8dced`; aapt2 SHA-256 `916e2d79af152c6090fc7ba0c4b9b24f054f0eb094ff2968192b922d0d593672`
 - sha256: not_applicable
 - result: PASS_WINDOWS_THIRD_REVIEW_CANDIDATE; the second review's P1 is removed by bounded structural flags and an explicit long-name/deep-nesting regression, but this new commit still requires an independent P0/P1/P2-zero review; physical API 29, published KVM and Ubuntu equivalence remain pending
+
+### M1-03 third independent parser/security review
+
+- task_id: M1-03
+- git_commit: 1425f911eb48796a8e4ade9aa3c5fcec09cb1f7b
+- command: independent project-local offline `:host:axml:test`; independent project-local offline `check verifyGovernance`; strict HandOff; two Node syntax checks; production ZIP/signing capability scan; base-to-HEAD diff check
+- exit_code: 0
+- environment: Windows 10 amd64; Temurin `17.0.19+10`; Gradle `9.5.0`; Node `24.12.0`; aapt2 `2.20-14042983`; offline; no network, device or emulator
+- timestamp: 2026-08-03T13:54:07+08:00
+- artifact: `docs/evidence/M1-03/security-review-3.md`; transform SHA-256 `35bd420aa0fe05e1a5efee197bdea8d3699f5de743bf54974f13833e24ef5635`; error SHA-256 `9a60c0c9fe710798d7f458822c1f2d6ffb9a22527a43c176c6c3869fb6dcf49c`; fuzz SHA-256 `d1dbf919a489a067506ab40b629916ea66a5b8a3e3ced42e710ae8dc57f8dced`; aapt2 SHA-256 `916e2d79af152c6090fc7ba0c4b9b24f054f0eb094ff2968192b922d0d593672`
+- sha256: not_applicable
+- result: PASS; P0 `0`, P1 `0`, P2 `0`; the full-path memory issue and all first-review findings are closed, so the local implementation/review gate is complete; physical API 29 and publication-dependent KVM/dual-platform CI remain pending
 
 ### M1-02 start baseline
 
@@ -582,11 +595,11 @@ next_owner: /root
 
 ## Ordered Next Actions
 
-1. `f15088d3b811d7be3827e8abaa0286da28f42f6a` 已冻结第二轮 P1 修复、Host/static 证据与 FAIL 归档；提交协调 HandOff 并验证 clean strict HandOff。
-2. 对新的 clean 冻结 HEAD 启动未参与实现的独立 parser/security reviewer；P0/P1/P2 全零前不得复用前两次失效结论。
-3. 用户重新允许 MIUI USB 安装后，只重跑一次有超时和最终清理的 API 29 arm64 双变体矩阵。
-4. 独立复核与 API 29 真机均通过后请求发布授权；发布后运行 API 29/36 x86_64 KVM 和 Ubuntu/Windows 四报告字节一致性 CI。
-5. 未获单独授权前不推送、不创建 PR；M1-03 全部门禁关闭前不启动 M1-04、M2 或任何相邻任务。
+1. `1425f911eb48796a8e4ade9aa3c5fcec09cb1f7b` 的第三轮独立复核已 P0/P1/P2 全零；归档结论并验证协调提交的 clean strict HandOff。
+2. 用户重新允许 MIUI USB 安装后，只重跑一次有超时和最终清理的 API 29 arm64 双变体矩阵。
+3. API 29 真机通过后请求发布授权；发布后运行 API 29/36 x86_64 KVM 和 Ubuntu/Windows 四报告字节一致性 CI。
+4. 上述发布后门禁全部通过才可创建草稿 PR 并完成 M1-03；未获单独授权前不推送、不创建 PR。
+5. M1-03 全部门禁关闭前不启动 M1-04、M2 或任何相邻任务。
 
 ## Relevant Files and Artifacts
 
@@ -616,6 +629,7 @@ next_owner: /root
 - `docs/evidence/M1-03/formal-host-validation.md`
 - `docs/evidence/M1-03/security-review-1.md`
 - `docs/evidence/M1-03/security-review-2.md`
+- `docs/evidence/M1-03/security-review-3.md`
 - `runtime/bootstrap/src/main/java/ah/runtime/bootstrap/ShellAppComponentFactory.java`
 - `fixtures/android/src/androidTestCompatFixture/java/ah/fixtures/android/CompatibilityPocRunner.java`
 - `tools/validation/verify-m0-05-apks.mjs`
@@ -670,8 +684,9 @@ next_owner: /root
 - [x] 完成有界 reader/writer、单属性 semantic diff、18 个稳定错误负例、5,000 样本 fuzz、固定 aapt2 解析、双变体 Release/R8 构造与 Windows 静态验证。
 - [x] 首轮独立复核 FAIL 已归档，旧冻结 HEAD `9fee22d` 已废止；P1 `3` / P2 `1` 的修正候选与 6 正例/17 负例已通过模块自测。
 - [x] 第二轮独立复核确认首轮四项关闭但以新 P1 废止 `99877a4`；`f15088d` 已移除完整路径持有并通过 6 正例/18 负例、5,000 fuzz、237-task 根回归和静态 APK 验证。
+- [x] 第三轮独立只读复核已对 `1425f911` 给出 P0/P1/P2 全零 PASS；本地实现与独立复核门禁关闭。
 - [ ] API 29 arm64 首次安装被 MIUI 用户限制拒绝；重新允许安装后完成双变体设备矩阵。API 29/36 x86_64 与 Ubuntu 字节一致性留给获授权发布后的 KVM/Build CI。
-- [ ] 对当前 clean 冻结提交完成新的独立 parser/security 复核；P0/P1/P2 全零后再处理真机与请求发布权限。
+- [x] 对当前 clean 冻结提交完成新的独立 parser/security 复核；P0/P1/P2 全零。
 
 ## Handoff Sign-off
 
@@ -690,3 +705,4 @@ next_owner: /root
 - `/root` 已核验 M1-03 Windows Host/静态候选、规范报告 hashes、双变体 Release/R8 测试包和 237-task 根回归；API 29 真机仅确认环境与拒绝安装后的零残留，不构成验收 PASS。当前下一步是冻结提交与独立复核，未授权发布且未启动任何本机模拟器。
 - `/root` 已核验首轮 M1-03 独立复核为 FAIL 并废止旧冻结点；当前只允许关闭四项发现、重跑门禁与重新冻结，不得发布、创建 PR 或把设备/Ubuntu/API 36 待办表述为 PASS。
 - `/root` 已核验第二轮 M1-03 独立复核为 P0 `0`、P1 `1`、P2 `0` FAIL 并废止 `99877a4`；当前修复 `f15088d` 仅保留有界结构角色状态，Windows Host/root/static 门禁通过。必须获得新的独立全零复核，且仍未授权发布或创建 PR。
+- `/root` 已核验第三轮 M1-03 独立复核对 `1425f911eb48796a8e4ade9aa3c5fcec09cb1f7b` 给出 P0/P1/P2 全零 PASS；本地实现与复核门禁关闭。API 29 真机仍因 MIUI 安装限制待重跑，远端 KVM/双平台 CI 仍需单独发布授权，当前不得声明 M1-03 完成。

@@ -5,7 +5,7 @@
 - Task: M1-03, Issue [#8](https://github.com/xiaokh31/androidAppHardening/issues/8).
 - Branch: `feat/m1-03-binary-axml-transformer`.
 - Base: `077e4be14865c777dbbf3c1a5a3d9609b3620868`.
-- Current status: the first frozen candidate failed independent review with P0 `0`, P1 `3`, P2 `1`; the second frozen candidate closed all four findings but failed with one new P1 for quadratic element-path retention. Both targets are invalid. The current Host candidate removes retained full paths, uses bounded structural role flags and adds a long-name/deep-nesting regression; the Windows Host/root/static rerun passes and a new independent review is pending.
+- Current status: the first frozen candidate failed independent review with P0 `0`, P1 `3`, P2 `1`; the second frozen candidate closed all four findings but failed with one new P1 for quadratic element-path retention. Both targets are invalid. Frozen commit `1425f911eb48796a8e4ade9aa3c5fcec09cb1f7b` removes retained full paths, uses bounded structural role flags and adds a long-name/deep-nesting regression. Its Windows Host/root/static rerun and third independent review pass with P0/P1/P2 all zero.
 - Product boundary: binary Manifest bytes only. No production ZIP/APK writer, signing operation, DEX change, ConfigV2 encoder or Runtime change is present.
 
 The implementation copies the caller input, validates the supplied M1-01 summary, parses binary AXML iteratively under fixed limits, appends only missing strings/resource-map data, replaces or appends one application Factory attribute, reparses the result and enforces an ordered semantic whitelist. Public results and hashes use defensive byte-array copies; public failures do not include input paths, Manifest text or nested causes.
@@ -96,5 +96,5 @@ At `2026-08-03T12:56:58+08:00`, the runner verified a unique authorized device w
 - Run the same four canonical reports on Ubuntu and Windows CI and require exact hashes.
 - After the user accepts MIUI's USB-install confirmation, rerun the bounded API 29 arm64 matrix once; do not treat the rejected installation as an acceptance pass.
 - Publish only after explicit authorization, then run the existing timeout/cleanup-controlled API 29/36 x86_64 Linux/KVM workflow against the transformed APKs.
-- Freeze the implementation/evidence commit and obtain a new independent parser/security review with P0/P1/P2 all zero; the two archived FAIL targets cannot be reused.
+- The local implementation and independent parser/security-review gate are closed at `1425f911eb48796a8e4ade9aa3c5fcec09cb1f7b`; do not reuse either archived FAIL target.
 - Do not publish the branch or create a PR before explicit user authorization.

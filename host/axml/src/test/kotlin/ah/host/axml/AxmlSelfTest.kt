@@ -122,6 +122,10 @@ object AxmlSelfTest {
                 ),
             "duplicate-application" to (SyntheticManifest.build(duplicateApplication = true).bytes to AxmlErrorCode.AXML_MALFORMED),
             "nesting-limit" to (SyntheticManifest.build(nestedDepth = 1_025).bytes to AxmlErrorCode.AXML_LIMIT_EXCEEDED),
+            "long-name-nesting-limit" to (
+                SyntheticManifest.build(nestedDepth = 1_025, nestedElementName = "n".repeat(0x7fff)).bytes to
+                    AxmlErrorCode.AXML_LIMIT_EXCEEDED
+                ),
             "namespace-budget" to (SyntheticManifest.build(namespaceCount = 1_025).bytes to AxmlErrorCode.AXML_LIMIT_EXCEEDED),
             "chunk-budget" to (SyntheticManifest.build(unknownChunkCount = 16_385).bytes to AxmlErrorCode.AXML_LIMIT_EXCEEDED),
             "attribute-budget" to (withFirstStartElementAttributeCount(base.bytes, 16_385) to AxmlErrorCode.AXML_LIMIT_EXCEEDED),
@@ -590,6 +594,7 @@ private object SyntheticManifest {
         reserveFactoryKey: Boolean = false,
         namespaceCount: Int = 1,
         applicationAttributeExtension: ByteArray = ByteArray(0),
+        nestedElementName: String = "nested",
     ): Fixture {
         require(namespaceCount >= 1)
         require(applicationAttributeExtension.size % 4 == 0)
@@ -603,7 +608,7 @@ private object SyntheticManifest {
         val androidName = strings.add("name")
         val factoryName = if (factoryClass != null || reserveFactoryKey) strings.add("appComponentFactory") else null
         val metadataName = strings.add("meta-data")
-        val nestedName = strings.add("nested")
+        val nestedName = strings.add(nestedElementName)
         val valueName = strings.add("value")
         val androidUri = strings.add(ANDROID_NS)
         val androidPrefix = strings.add("android")

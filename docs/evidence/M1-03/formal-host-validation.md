@@ -5,7 +5,7 @@
 - Task: M1-03, Issue [#8](https://github.com/xiaokh31/androidAppHardening/issues/8).
 - Branch: `feat/m1-03-binary-axml-transformer`.
 - Base: `077e4be14865c777dbbf3c1a5a3d9609b3620868`.
-- Current status: first frozen candidate failed independent review with P0 `0`, P1 `3`, P2 `1` and is invalid. A corrected Host candidate now preserves attribute extensions, applies bounded chunk/style/namespace budgets and emits explicit unsigned-resource and preservation evidence; rerun and second independent review are pending.
+- Current status: the first frozen candidate failed independent review with P0 `0`, P1 `3`, P2 `1`; the second frozen candidate closed all four findings but failed with one new P1 for quadratic element-path retention. Both targets are invalid. The current Host candidate removes retained full paths, uses bounded structural role flags and adds a long-name/deep-nesting regression; the Windows Host/root/static rerun passes and a new independent review is pending.
 - Product boundary: binary Manifest bytes only. No production ZIP/APK writer, signing operation, DEX change, ConfigV2 encoder or Runtime change is present.
 
 The implementation copies the caller input, validates the supplied M1-01 summary, parses binary AXML iteratively under fixed limits, appends only missing strings/resource-map data, replaces or appends one application Factory attribute, reparses the result and enforces an ordered semantic whitelist. Public results and hashes use defensive byte-array copies; public failures do not include input paths, Manifest text or nested causes.
@@ -28,7 +28,7 @@ No emulator was started. The only physical-device command was the bounded API 29
 
 | Command | Exit | Result |
 |---|---:|---|
-| project-local JDK 17 `./gradlew :host:axml:test --offline` with pinned `aapt2` and Android 36 `android.jar` properties | 0 | six positive fixtures, seventeen stable negatives, real `aapt2 link/dump` cross-check and 5,000 malformed samples PASS |
+| project-local JDK 17 `./gradlew :host:axml:test --offline` with pinned `aapt2` and Android 36 `android.jar` properties | 0 | six positive fixtures, eighteen stable negatives, real `aapt2 link/dump` cross-check and 5,000 malformed samples PASS |
 | project-local JDK 17 `./gradlew check verifyGovernance --offline` | 0 | 237 actionable tasks; M1-01 10,000-sample and M1-02 signer regressions PASS |
 | `node tools/validation/verify-m0-05-apks.mjs` against both transformed Release/R8 APKs | 0 | signer/config, dual DEX, JNI, ABI, R8, native extraction modes and no-plaintext-payload static gates PASS |
 | bounded API 29 arm64 runner, 20 cold starts requested per variant | 1 | stopped before execution at the first `adb install`: `INSTALL_FAILED_USER_RESTRICTED: Install canceled by user`; no target or test package remained installed |
@@ -52,6 +52,7 @@ The explicit negative matrix currently contains:
 | truncated resource map | `AXML_MALFORMED` |
 | duplicate application | `AXML_MALFORMED` |
 | nesting over 1,024 | `AXML_LIMIT_EXCEEDED` |
+| 32,767-character element name combined with nesting over 1,024 | `AXML_LIMIT_EXCEEDED` |
 | active namespace count over 1,024 | `AXML_LIMIT_EXCEEDED` |
 | chunk count over 16,384 | `AXML_LIMIT_EXCEEDED` |
 | attribute count over 16,384 | `AXML_LIMIT_EXCEEDED` |
@@ -69,7 +70,7 @@ The 5,000-sample deterministic corpus accepted 220 structurally valid mutations 
 | Artifact | SHA-256 |
 |---|---|
 | `transform-matrix.json` | `35bd420aa0fe05e1a5efee197bdea8d3699f5de743bf54974f13833e24ef5635` |
-| `error-matrix.json` | `8b491ed0fab772bd729274596eaa9058e747dcec9498f9d2737cf73777047240` |
+| `error-matrix.json` | `9a60c0c9fe710798d7f458822c1f2d6ffb9a22527a43c176c6c3869fb6dcf49c` |
 | `fuzz-summary.json` | `d1dbf919a489a067506ab40b629916ea66a5b8a3e3ced42e710ae8dc57f8dced` |
 | `aapt2-cross-check.json` | `916e2d79af152c6090fc7ba0c4b9b24f054f0eb094ff2968192b922d0d593672` |
 
@@ -95,5 +96,5 @@ At `2026-08-03T12:56:58+08:00`, the runner verified a unique authorized device w
 - Run the same four canonical reports on Ubuntu and Windows CI and require exact hashes.
 - After the user accepts MIUI's USB-install confirmation, rerun the bounded API 29 arm64 matrix once; do not treat the rejected installation as an acceptance pass.
 - Publish only after explicit authorization, then run the existing timeout/cleanup-controlled API 29/36 x86_64 Linux/KVM workflow against the transformed APKs.
-- Freeze the implementation/evidence commit and obtain an independent parser/security review with P0/P1/P2 all zero.
+- Freeze the implementation/evidence commit and obtain a new independent parser/security review with P0/P1/P2 all zero; the two archived FAIL targets cannot be reused.
 - Do not publish the branch or create a PR before explicit user authorization.

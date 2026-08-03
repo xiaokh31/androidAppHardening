@@ -447,8 +447,8 @@ private class AxmlParser(private val bytes: ByteArray) {
         validateSpecialAttributeIndex(u2(chunk.raw, 32), attributeCount, chunk)
         validateSpecialAttributeIndex(u2(chunk.raw, 34), attributeCount, chunk)
 
-        val parentPath = elements.lastOrNull()?.path
-        val path = if (parentPath == null) "/$name" else "$parentPath/$name"
+        val parent = elements.lastOrNull()
+        val parentIsManifest = parent?.isManifest == true
         val attributes = ArrayList<SemanticAttribute>(attributeCount)
         val seen = HashSet<Pair<String?, String>>()
         var factoryAttributeIndex: Int? = null
@@ -470,19 +470,21 @@ private class AxmlParser(private val bytes: ByteArray) {
             attributes += attribute
         }
 
-        if (parentPath == null) {
+        val isManifest = parent == null
+        val isApplication = parentIsManifest && namespace == null && name == "application"
+        if (isManifest) {
             if (manifestSeen || namespace != null || name != "manifest") fail(AxmlErrorCode.AXML_MALFORMED, chunk.offset, chunk.type)
             manifestSeen = true
             packageName = requiredStringAttribute(attributes, null, "package", chunk).also {
                 if (!PACKAGE_NAME.matches(it)) fail(AxmlErrorCode.AXML_MALFORMED, chunk.offset, chunk.type)
             }
-        } else if (parentPath == "/manifest" && namespace == null && name == "uses-sdk") {
+        } else if (parentIsManifest && namespace == null && name == "uses-sdk") {
             usesSdkCount++
             if (usesSdkCount > 1) fail(AxmlErrorCode.AXML_MALFORMED, chunk.offset, chunk.type)
             minSdk = optionalIntAttribute(attributes, ANDROID_NS, "minSdkVersion", chunk)
                 ?: fail(AxmlErrorCode.AXML_MALFORMED, chunk.offset, chunk.type)
             targetSdk = optionalIntAttribute(attributes, ANDROID_NS, "targetSdkVersion", chunk)
-        } else if (parentPath == "/manifest" && namespace == null && name == "application") {
+        } else if (isApplication) {
             applicationCount++
             if (applicationCount > 1) fail(AxmlErrorCode.AXML_MALFORMED, chunk.offset, chunk.type)
             val exactPackage = packageName ?: fail(AxmlErrorCode.AXML_MALFORMED, chunk.offset, chunk.type)
@@ -505,8 +507,8 @@ private class AxmlParser(private val bytes: ByteArray) {
                 androidNamespaceIndex = androidNamespaceIndex,
             )
         }
-        elements.addLast(ElementFrame(namespaceIndex, nameIndex, path))
-        semanticEvents += SemanticEvent("element-start", namespace, name, attributes, path)
+        elements.addLast(ElementFrame(namespaceIndex, nameIndex, isManifest))
+        semanticEvents += SemanticEvent("element-start", namespace, name, attributes, null, isApplication)
     }
 
     private fun parseEndElement(chunk: AxmlChunk) {
@@ -522,13 +524,13 @@ private class AxmlParser(private val bytes: ByteArray) {
         if (expected.namespaceIndex != namespaceIndex || expected.nameIndex != nameIndex) {
             fail(AxmlErrorCode.AXML_MALFORMED, chunk.offset, chunk.type)
         }
-        if (expected.path == "/manifest") manifestClosed = true
+        if (expected.isManifest) manifestClosed = true
         semanticEvents += SemanticEvent(
             "element-end",
             namespaceIndex?.let { pool.strings[it] },
             pool.strings[nameIndex],
             emptyList(),
-            expected.path,
+            null,
         )
     }
 
@@ -783,7 +785,7 @@ private data class ApplicationLocation(
     val androidNamespaceIndex: Int,
 )
 
-private data class ElementFrame(val namespaceIndex: Int?, val nameIndex: Int, val path: String)
+private data class ElementFrame(val namespaceIndex: Int?, val nameIndex: Int, val isManifest: Boolean)
 private data class NamespaceFrame(val prefixIndex: Int?, val uriIndex: Int, val depth: Int)
 private data class UnknownSummary(val count: Int, val sha256: String)
 
@@ -793,8 +795,9 @@ private data class SemanticEvent(
     val name: String,
     val attributes: List<SemanticAttribute>,
     val extra: String?,
+    val isApplicationElement: Boolean = false,
 ) {
-    fun withoutFactory(): SemanticEvent = if (kind == "element-start" && extra == APPLICATION_PATH) {
+    fun withoutFactory(): SemanticEvent = if (kind == "element-start" && isApplicationElement) {
         copy(attributes = attributes.filterNot { it.namespace == ANDROID_NS && it.name == APP_COMPONENT_FACTORY })
     } else {
         this

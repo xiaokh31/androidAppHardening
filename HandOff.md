@@ -1,11 +1,11 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260802-153213
-updated_at: 2026-08-02T23:13:11+08:00
+handoff_id: HO-20260803-113534
+updated_at: 2026-08-03T11:35:34+08:00
 updated_by: /root
-state: active
-source_branch: feat/m1-02-signer-policy
+state: ready
+source_branch: main
 base_commit: aebbc441da34d2fba78648415c1d80ea844d774d
 working_tree: clean
 current_milestone: M1
@@ -67,6 +67,8 @@ next_owner: /root
 - 固定分支已推送，关联 Issue #7 的唯一草稿 PR 为 [#34](https://github.com/xiaokh31/androidAppHardening/pull/34)。首轮 Governance run `30752847768` 的 Ubuntu/Windows job 均 PASS；Build run `30752847752` 的双平台 job 在测试前因 `host:cli` 缺失 apksig 9.3.0 传递依赖锁而 FAIL。
 - 用户已明确授权修复该 CI 锁问题。自动生成的最小 diff 只为 `host/cli/gradle.lockfile` 增加 apksig 9.3.0 的 `runtimeClasspath,testRuntimeClasspath` 条目；本地 Windows 256-task 根回归随后 PASS，产品代码、版本和冻结报告哈希均未改变。
 - 锁修复 HEAD `b72ef88003c2dea993afbd7d96d502535833e450` 的替换 Build run `30753702741` 与 Governance run `30753702728` 已在 Ubuntu/Windows 四项全绿；两平台 M1-02 字节门禁均命中冻结 policy/error hashes。PR #34 保持 draft，ready/merge 尚未授权。
+- 最终证据 HEAD `2ed5f4f7973c9ff87a3e3cbbf6e4e5325a259418` 的 Build run `30753889812` 与 Governance run `30753889774` 已在 Ubuntu/Windows 四项全绿；两平台 M1-02 字节门禁再次命中冻结 hashes。
+- 用户已明确授权将 PR #34 转为 ready 并合并。当前 merger-ready 协调只允许更新 HandOff；该协调 HEAD 通过最终 CI 后，必须以 expected-head 保护执行普通 merge commit，并在 `main` 无豁免运行 strict HandOff。
 
 ## Active Workstreams
 
@@ -76,7 +78,7 @@ next_owner: /root
 | M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | done | M0-04 | PR #31、合并后 strict HandOff 和双平台 CI 已通过 |
 | M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | done | M0-04, M0-06 | PR #32、三环境矩阵、独立安全复核和最终 PR CI 已通过 |
 | M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | done | M0-05 | PR #33、Issue #6、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
-| M1-02 | `/root` | `feat/m1-02-signer-policy` | review | M1-01 | 锁修复双平台 CI PASS；归档最终证据并等待单独 ready/merge 授权 |
+| M1-02 | `/root` | `feat/m1-02-signer-policy` | review | M1-01 | merger-ready 协调 HEAD 全绿后转 ready、普通合并并在 main 无豁免运行 strict HandOff |
 
 ## Decisions and Invariants
 
@@ -124,6 +126,7 @@ next_owner: /root
 - 第三次独立只读复核冻结 `902c20977d787ea9646078bbbe4c3c46bf0041cc`，专项 clean signer 103.9 秒、根 256-task check 163.6 秒均退出 `0`；P0/P1/P2 全为零。该复核未修改 tracked 文件、未联网、未启动设备或模拟器，完整结论已归档。
 - PR #34 首轮 Build run `30752847752` 在 Ubuntu/Windows 同因依赖锁缺口失败：`:host:cli:testRuntimeClasspath` 解析到固定 `apksig:9.3.0`，但 downstream lock state 未收录。用户授权后通过 Gradle `--write-locks` 仅增加该版本的两个 runtime 配置；本地 256-task 根回归退出 `0`，规范 policy/error hashes 不变。
 - 锁修复提交 `b72ef88003c2dea993afbd7d96d502535833e450` 的 Build run `30753702741` 与 Governance run `30753702728` 在 Ubuntu/Windows 全部 PASS；两个 Build job 的 M1-02 显式字节门禁均命中 `b945ede1...` policy 与 `c33d3420...` error matrix。
+- 最终证据提交 `2ed5f4f7973c9ff87a3e3cbbf6e4e5325a259418` 的 Build run `30753889812` 与 Governance run `30753889774` 在 Ubuntu/Windows 全部 PASS；PR #34 为 CLEAN/MERGEABLE。用户已授权 ready/merge，merger-ready HandOff 将恢复分支设为 `main`，合并方式保持普通 merge commit，不使用 squash、rebase、force 或分支删除。
 
 - PR #31 已合并，旧 metadata blocker 的架构依赖已解除，M0-05 从 `blocked` 恢复为 `in_progress`。
 - 既有 M0-05 分支保留四个本地历史提交和 Issue #5，不创建第二分支或第二任务。
@@ -252,6 +255,18 @@ next_owner: /root
 - artifact: draft PR `https://github.com/xiaokh31/androidAppHardening/pull/34`; `host/cli/gradle.lockfile` SHA-256 `26d344690f11ad00b114bc559337c78b493cce94938ea7ec4f38e20f272de57c`; canonical policy SHA-256 `b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2`; error matrix SHA-256 `c33d342077c371878399c80e76ae025cd0efc56bfcca6d5bf80ffde4d75677c6`
 - sha256: 26d344690f11ad00b114bc559337c78b493cce94938ea7ec4f38e20f272de57c
 - result: PASS; the initial Build failure was limited to missing downstream lock state; the approved one-line generated lock fix passed the 256-task Windows root regression, replacement Ubuntu/Windows Build and Governance, dependency-verification tamper test, four-ABI gate, and both M1-02 byte-equivalence steps
+
+### M1-02 final PR HEAD and merge authorization
+
+- task_id: M1-02
+- git_commit: 2ed5f4f7973c9ff87a3e3cbbf6e4e5325a259418
+- command: GitHub Actions Build run `30753889812` and Governance run `30753889774`; live PR #34 head/base, draft, mergeability and check query; live Issue #7 query
+- exit_code: 0
+- environment: GitHub Actions Ubuntu 24.04 and Windows 2025; local Windows 10 amd64 coordinator; no device or emulator
+- timestamp: 2026-08-03T11:35:34+08:00
+- artifact: draft PR `https://github.com/xiaokh31/androidAppHardening/pull/34`; Issue `https://github.com/xiaokh31/androidAppHardening/issues/7`; Build `https://github.com/xiaokh31/androidAppHardening/actions/runs/30753889812`; Governance `https://github.com/xiaokh31/androidAppHardening/actions/runs/30753889774`; canonical policy SHA-256 `b945ede114fd87771631b862c5f7a22120bc5aac2db6bbc836cfb608a54f52a2`; error matrix SHA-256 `c33d342077c371878399c80e76ae025cd0efc56bfcca6d5bf80ffde4d75677c6`
+- sha256: not_applicable
+- result: PASS; final evidence HEAD passed Ubuntu/Windows Build and Governance, both M1-02 byte-equivalence steps passed, PR #34 is CLEAN/MERGEABLE, and the user authorized ready/merge
 
 ### M1-01 third-review remediation candidate
 
@@ -519,13 +534,15 @@ next_owner: /root
 
 ## Blockers and Required Approvals
 
-No technical blocker. PR #34 is the sole draft, the third independent review is PASS, and the approved dependency-lock repair passed replacement Ubuntu/Windows Build, Governance and byte-equivalence gates. Converting ready or merging still requires explicit user authorization.
+None
 
 ## Ordered Next Actions
 
-1. Commit and push the final PR #34 CI evidence, then require the resulting final PR HEAD to pass Ubuntu/Windows Build and Governance.
-2. Request separate user authorization before converting PR #34 to ready or merging; do not merge implicitly.
-3. Do not start M1-03, M1-04, M2-03 or any adjacent task implicitly.
+1. Commit and push this merger-ready HandOff to the sole fixed branch.
+2. Require the merger-ready HEAD to pass Ubuntu/Windows Build and Governance, including both M1-02 byte-equivalence steps.
+3. Mark PR #34 ready and merge it with expected-head protection using an ordinary merge commit.
+4. Fast-forward local `main`, run Governance and strict HandOff without exemption, then record the post-merge state on `main`.
+5. Do not start M1-03, M1-04, M2-03 or any adjacent task implicitly.
 
 ## Relevant Files and Artifacts
 
@@ -594,7 +611,9 @@ No technical blocker. PR #34 is the sole draft, the third independent review is 
 - [x] 推送固定分支并创建关联 Issue #7 的唯一草稿 PR #34；首轮 Governance 双平台 PASS，Build 双平台因 downstream lock 缺口 FAIL。
 - [x] 获得用户锁修复授权并完成一行自动生成的 `host:cli` 锁变更与 Windows 256-task 根回归。
 - [x] 推送锁修复并完成 PR #34 的替换 Ubuntu/Windows Build、Governance 和 M1-02 字节一致性 CI；四项全绿。
-- [ ] 推送最终证据提交并确认最终 PR HEAD 四项 CI；ready/merge 另行授权。
+- [x] 推送最终证据提交 `2ed5f4f` 并确认最终 PR HEAD 的 Ubuntu/Windows Build、Governance 与 M1-02 字节门禁全部 PASS。
+- [x] 用户已明确授权将 PR #34 转为 ready 并以普通 merge commit 合并。
+- [ ] 推送 merger-ready HandOff、确认其最终 CI、expected-head 合并，并在 main 无豁免运行 strict HandOff。
 
 ## Handoff Sign-off
 
@@ -608,3 +627,4 @@ No technical blocker. PR #34 is the sole draft, the third independent review is 
 - `/root` 已核验首个证据 HEAD 与第二个修复证据 HEAD 的独立复核均 FAIL 并废止；第三次独立只读复核已对冻结证据 `902c20977d787ea9646078bbbe4c3c46bf0041cc` 给出 P0/P1/P2 全零 PASS。clean signer、256-task 根回归、Governance、官方六 fixture/十三行错误矩阵、二十六项 artifact manifest、block 资源上界/高位边界、异常脱敏、SPV1 和无签名能力扫描均已闭环；用户已授权发布固定分支、创建唯一草稿 PR 和运行双平台 CI，但未授权 ready 或 merge。
 - `/root` 已核验 PR #34 首轮双平台 Build 的共同根因为 `host:cli` 传递依赖锁缺口；用户授权的修复仅增加现有 apksig 9.3.0 的 runtime/testRuntime 锁条目。本地 256-task 根回归和冻结报告 hashes 均 PASS；下一步只推送该最小修复并等待替换 CI，仍未授权 ready 或 merge。
 - `/root` 已核验锁修复 HEAD `b72ef88003c2dea993afbd7d96d502535833e450` 的替换 Build/Governance 四项 CI 全部 PASS，Ubuntu/Windows M1-02 显式字节门禁均命中冻结 hashes；当前仅归档最终证据并等待单独 ready/merge 授权。
+- `/root` 已核验最终证据 HEAD `2ed5f4f7973c9ff87a3e3cbbf6e4e5325a259418` 的 Build/Governance 四项 CI、两项 M1-02 字节门禁、CLEAN/MERGEABLE 状态与用户 ready/merge 授权；本协调提交只准备 post-merge `main` 恢复点，产品实现未改变。

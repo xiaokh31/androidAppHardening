@@ -57,7 +57,7 @@ security_sensitive: true
 - 证书身份固定使用 DER 编码证书的 SHA-256 小写十六进制值；比较前验证为 64 个十六进制字符并使用常量时间比较。
 - M1-04 按 ADR 0008 把 M1-02 的 `SignerPolicyV1` 写入受 manifest MAC 认证的 `SPV1` block，并按 ADR 0006 写入 ConfigV2；Runtime 不接受 Manifest、调用参数、`ApplicationInfo.metaData` 或未认证预读对策略/Factory 的覆盖。
 - `ApkVerifier.Result` 必须验证成功且当前 signer 数恰好为一个；其当前摘要必须常量时间等于未认证预读的期望摘要，随后作为实测摘要传给 M2-02。Native 认证 manifest MAC 后必须再次确认已认证 `SPV1` 当前摘要相等；历史必须有序、无重复并终止于当前证书，仅匹配历史证书仍拒绝。
-- 校验顺序固定为：只读验证当前 APK并取得唯一 signer 与旧到新 lineage、从同一 Framework `ApplicationInfo.packageName` 计算精确 UTF-8 SHA-256、有界预读 ConfigV2/AHDC 且不分配 payload、预比较 signer、调用 M2-02 以 signer/package binding 恢复 CEK并认证完整容器/ConfigV2、取得内部 `LoadedPayload` 及其同 handle `AuthenticatedPayloadMetadata`（其中 provisional loader 尚未使用）、常量时间复比较 package/current signer，按旧到新顺序逐项复比较 lineage，并复比较 build/key slot/policy version、只从该 metadata 构造 `VerifiedStartupConfiguration`，再与 identity/LoadedPayload 原子封装并返回 session。任一复比较失败在第一次 payload class lookup/resolve 前关闭；未认证预读只用于早拒绝，Factory/风险配置不得由其暴露或覆盖。
+- 校验顺序固定为：只读验证当前 APK并取得唯一 signer 与旧到新 lineage、从同一 Framework `ApplicationInfo.packageName` 计算精确 UTF-8 SHA-256、有界预读 ConfigV2/AHDC 且不分配 payload、预比较 signer、调用 M2-02 以 signer/package binding 恢复 CEK并认证完整容器/ConfigV2、取得内部 `LoadedPayload` 及其同 handle `AuthenticatedPayloadMetadata`（其中 provisional loader 尚未使用）；随后 package/current signer 与 Framework/apksig 实测值常量时间比较，lineage 与 apksig 旧到新列表逐项比较，build/key slot 只与同次 `UntrustedPayloadBinding` 比较以检测 inspect/open 快照变化，container/signer/risk versions 必须为 `2.0/1/1`。原 Factory 不做双源比较，只消费 Native 严格验证且完整认证的 metadata 值。Guard 只从该 metadata 构造 `VerifiedStartupConfiguration`，再与 identity/LoadedPayload 原子封装并返回 session；任一可执行复比较失败在第一次 payload class lookup/resolve 前关闭。未认证预读只用于早拒绝/快照变化检测，绝不授权 Factory/策略。
 - `RuntimeStartupGuard` 从取得 `LoadedPayload` 起以本地唯一 owner、`committed=false` 和 `finally` 覆盖 metadata 复比较、`VerifiedSignerIdentity`、`VerifiedStartupConfiguration`、`VerifiedPayloadSession` 构造及 return 前窗口；任一异常/OOM 都恰好一次调用 `LoadedPayload.close()`、清除部分引用，cleanup error best-effort suppressed 且绝不替换主错误。完整 session 存入局部变量后才无失败地提交并 return；此窗口禁止使用 provisional loader，identity/config/session 构造器均不得注册或泄露 `this`。
 - 缓存键包含包名、版本号、APK `lastModified`、唯一当前 signer 摘要、历史摘要和进程启动标识；任一变化都重新校验。
 - 产品代码中不得调用 `apksigner`、`jarsigner` 或任何签名 API。
@@ -96,7 +96,7 @@ security_sensitive: true
 - 篡改策略、package name、容器标识、Factory slot 或 ConfigV2 摘要后，即使 APK 重新签名也不能加载 payload。
 - `VerifiedPayloadSession.close()` 重复调用只向 `LoadedPayload.close()` 转移一次；关闭后全部访问器稳定拒绝，READY 前所有失败路径均能由 M2-01 完成恰好一次关闭且不保留旧对象。
 - 在 Guard 已取得 `LoadedPayload` 后，对 identity、authenticated configuration、session 构造及 return 前注入异常/OOM，`VerifiedPayloadSession` 均未发布、`LoadedPayload.close()` 恰好一次、Native mappings 清理、部分 Guard 引用不可达，主错误保留且 cleanup error suppressed。
-- 对 metadata package/current signer/lineage/build/key slot/version/original Factory 的任一失配均在 provisional loader 首次 class/resource lookup 前失败，loader/metadata/session 不向 bootstrap 发布且 close-count 为一。
+- metadata package/current signer/lineage 对实测值失配、build/key slot 对同次预读快照变化或 versions 不等于 `2.0/1/1` 时，均在 provisional loader 首次 class/resource lookup 前失败，loader/metadata/session 不向 bootstrap 发布且 close-count 为一。原 Factory/config 字节篡改由 Native ConfigV2 digest/manifest 认证失败证明；Guard 不声称存在 Factory 第二来源。
 - 架构测试证明 `:runtime:bootstrap` 不含 `:runtime:native` compile dependency，不引用 `ah.runtime.loader`，且生产源码中 `PayloadRuntime` 的唯一调用者是 `RuntimeStartupGuard`。
 - 仓库扫描确认产品源集不存在私钥、keystore、alias、密码字段和 APK 签名调用；测试密钥目录受 `.gitignore` 约束。
 
@@ -105,7 +105,7 @@ security_sensitive: true
 - 摘要规范化、唯一 signer 常量时间比较、有序 lineage、缓存失效和错误映射单元测试。
 - 同 signer、异 signer、多个当前 signer 拒绝、轮换历史和无签名 fixture 的 instrumentation 测试。
 - ConfigV2、Factory slot、容器标识、包名绑定和摘要篡改测试。
-- `AuthenticatedPayloadMetadata` 唯一来源、同 handle 绑定、跨 handle/session 替换拒绝、package/current signer 单 bit 不同、lineage 乱序/缺项/增项拒绝、无秘密字段和未认证预读不可构造配置测试。
+- `AuthenticatedPayloadMetadata` 唯一来源、同 handle 绑定、跨 handle/session 替换拒绝、package/current signer 单 bit 不同、lineage 乱序/缺项/增项、inspect/open build/key 变化、version 常量拒绝，以及未认证预读不可授权 Factory/策略测试。
 - `VerifiedPayloadSession` 幂等 close-count、关闭后访问器拒绝、向 `LoadedPayload` 的单次委托和所有权转移边界测试。
 - Guard 在 LoadedPayload 后的 identity/config/session/return 前异常与 OOM 注入、exactly-once close、部分引用释放及 primary/suppressed error 测试。
 - 多进程并发校验与缓存一致性测试。

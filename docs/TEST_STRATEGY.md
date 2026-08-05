@@ -49,7 +49,7 @@
 - Native handle 创建前在首个/中间/末尾 chunk 注入认证、I/O、取消、OOM、zlib/摘要和 cleanup failure，证明 completed/partial DEX 映射清零并 unmap、无 handle 返回且主错误不被覆盖；
 - 正向 `openVerified` 返回后、`close` 前断言全部 key/AAD/compressed/inflater/crypto 临时状态已清零且不可达，只有 completed DEX mappings 由 handle 保持可加载；close 后才清零/unmap 映射；
 - Native handle 返回后在 `nativeAuthenticatedMetadata` bytes 获取/解析/对象构造、`nativeDexBuffers` 数组/元素、search path、ClassLoader、`LoadedPayload` 构造/return 前注入异常/OOM，断言内部交接对象/`ByteBuffer` 未发布、Native close 恰好一次、mappings/部分引用清理和 primary/suppressed error；
-- 同 handle `AuthenticatedPayloadMetadata` 来源、跨 handle 替换、不可伪造、防御性复制和无恢复秘密测试；其 `package_name_sha256`/current signer 常量时间复比较、有序 lineage 逐项等值比较及单 bit/乱序/缺项/增项失败，所有失配均断言 provisional loader 的 payload class lookup/resolve 与 Factory 调用为零；Guard 取得 `LoadedPayload` 后在 recheck/identity/config/session/return 前注入异常/OOM，断言无 loader/metadata/`VerifiedPayloadSession` 发布、close 恰好一次且部分引用清除；
+- 同 handle `AuthenticatedPayloadMetadata` 来源、跨 handle 替换、不可伪造、防御性复制和无恢复秘密测试；package/current signer 对实测值、lineage 对实测有序列表、build/key 对同次未认证预读快照、versions 对 `2.0/1/1` 的可执行比较及失败均断言 provisional loader lookup/Factory 为零；原 Factory/config 篡改在 Native 认证阶段失败，getter 编码错误在 M2-02 golden parser 覆盖，不伪造 Factory 第二来源；Guard 在 recheck/identity/config/session/return 前注入异常/OOM，断言无 loader/metadata/`VerifiedPayloadSession` 发布、close 恰好一次且部分引用清除；
 
 - 任意输入不崩溃、不越界、不无限循环；
 - 解析成功后重新序列化保持规范语义；

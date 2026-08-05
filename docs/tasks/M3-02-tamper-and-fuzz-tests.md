@@ -100,7 +100,7 @@ Host 处理器面对不可信 APK，Runtime 面对可被篡改的本地容器。
 - Runtime 首个/中间/末尾 chunk 篡改与 cleanup failure 注入，断言 Native handle 未创建、无公开 `LoadedPayload`/`ByteBuffer`、completed/partial mappings 清零/unmap、主错误保留和 cleanup error suppressed/聚合。
 - Native handle 返回后的 authenticated metadata bytes/对象、buffers array/element、search path、ClassLoader、LoadedPayload 构造/return 前异常/OOM，断言内部 handle 可被取得但不发布内部交接对象、close-count 恰为一、部分 Java 引用清除和 mappings 清理。
 - `LoadedPayload` 已返回给 Guard 后的 authenticated metadata/identity/config/session 构造和 Guard return 前异常/OOM，断言 `loadedPayloadPublished=true` 但 `verifiedPayloadSessionPublished=false`、Native close-count 恰为一、部分 Guard 引用清除、mappings 清理及主错误保留。
-- authenticated metadata 的 package/current signer/lineage/build/key slot/version/Factory 单字段失配，断言 `payloadClassLookupAttempted=false`、无 Factory 构造、无 bootstrap 发布且 exactly-once close。
+- authenticated metadata 的 package/current signer/lineage 对实测值失配、inspect/open build/key 快照变化或 version 非 `2.0/1/1`，断言 `payloadClassLookupAttempted=false`、无 Factory 构造、无 bootstrap 发布且 exactly-once close。Factory/config 篡改归入 Native ConfigV2 digest/manifest 认证用例；metadata 内部编码破坏归入 M2-02 golden parser，不伪造 Guard 第二来源。
 - 签名者策略、元数据摘要、外部重签与 Runtime payload 未加载测试。
 
 ## Required Evidence

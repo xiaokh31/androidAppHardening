@@ -34,3 +34,4 @@ M1-04 首个实现候选 `97cb9dc75f68b5ce0ddde2134e09c15ae2e798fb` 的独立只
 9. Guard 从 `LoadedPayload` 到最终 `VerifiedPayloadSession` return 的 identity/config/session 构造窗口，是否 exactly-once close、清除部分引用并保留主错误？
 10. M3 catalog 是否区分 Native handle、内部 LoadedPayload/ByteBuffer 与最终 session 发布，覆盖两段窗口的 close-count、mapping、部分引用和 primary/suppressed 断言？
 11. metadata 的全部跨模块 Java getter 是否固定名称、类型、长度/nullability/深复制语义；内部 provisional loader 在 Guard 复比较完成前是否保持零 class/resource lookup、零 Factory 调用和零 bootstrap 发布？
+12. 每个 Guard 比较是否有真实来源：package/current signer/lineage 对 Framework/apksig，build/key 对同次预读仅检测快照变化，versions 对冻结常量；Factory 是否只消费 Native 认证值并把篡改/编码错误分别归入 Native 与 M2-02 测试？

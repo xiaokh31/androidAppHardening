@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-05T14:59:44+08:00
+updated_at: 2026-08-05T15:07:24+08:00
 updated_by: /root
 state: active
 source_branch: docs/m1-07-chunk-authenticated-container-contract
@@ -43,6 +43,8 @@ next_owner: /root
 - 当前第八轮修正候选把成功 binding 的 32-byte `package_name_sha256` 加入同 handle metadata，固定 package/current signer 常量时间复比较和有序 lineage 等值比较，并扩展必需独立复核清单覆盖事务、临时秘密、双窗口与 M3 证据。
 - 第九轮独立只读全量复核对 `d5d5d292600953eb21c4422dee8038288bb19d6a` 给出 FAIL：P0 `0`、P1 `1`、P2 `1`。ADR 要求 metadata 复比较先于 loader 构造，但固定接口只能经已含 loader 的 LoadedPayload 交付 metadata；其余跨模块 getter 也未冻结精确签名。旧冻结点失效，结论归档于 `docs/evidence/M1-07/security-review-9.md`。
 - 当前第九轮修正候选明确 Native binding 是密码学门禁，metadata 先于内部 provisional loader 构造；Guard 复比较和完整 session return 前 class/resource lookup、Factory 与 bootstrap 发布均为零，并冻结全部十个 metadata getter 的类型、范围、长度、nullability 和深复制语义。
+- 第十轮独立只读全量复核对 `358a71a9478a0ccb76f71538002184a6a4ea4dc4` 给出 FAIL：P0 `0`、P1 `0`、P2 `1`。Guard 失配矩阵对 build/key/version/Factory 未逐字段冻结真实比较源，Factory 无第二可信来源。旧冻结点失效，结论归档于 `docs/evidence/M1-07/security-review-10.md`。
+- 当前第十轮修正候选固定来源表：package/signer/lineage 对 Framework/apksig，build/key 预读仅检测快照变化，versions 对 `2.0/1/1`，Factory 仅消费 Native 认证值；Native tamper 与 M2-02 parser 测试分别承担 Factory/config 和内部编码错误。
 - M0-04 的 PR #29 已合并，正式 API 29/36 x86_64 设备矩阵和独立安全复核通过。
 - M0-06 的 PR #31 已合并为 `main@f1362188be5083a6d557522f0f5be1905935f6eb`；合并后的 Governance/Build 在 Ubuntu 与 Windows 通过，`main` 已无豁免通过 strict HandOff。
 - M0-06/ADR 0007 已解除旧的 `ApplicationInfo.metaData == null` 阻塞，启动配置唯一来源改为 `ApplicationInfo.sourceDir` 中的固定 ConfigV2 与 AHDC 条目。
@@ -156,6 +158,7 @@ next_owner: /root
 - 第七轮独立复核废止 `3bea66a`；一项 P1 与两项 P2 只统一权威时序、metadata 注入和双窗口验收，wire 不变。
 - 第八轮独立复核废止 `01f76f6`；一项 P1 与一项 P2 补齐 package/lineage 可实现复比较和完整复核输入，wire 不变。
 - 第九轮独立复核废止 `d5d5d29`；一项 P1 与一项 P2 统一 loader 构造/使用边界并冻结完整 metadata API，wire 不变。
+- 第十轮独立复核废止 `358a71a`；唯一 P2 把 Guard 每个比较映射到真实来源并移除虚假 Factory 双源断言，wire 不变。
 - merger-ready HEAD `07c519c73b2a48f8636eed557da463f699299f20` 的 API 29/36 KVM、Ubuntu/Windows Build 与 Governance 六项全部 PASS；两个 Build job 再次命中四份规范报告冻结 hashes。
 - PR #35 已以 expected-head 保护的普通 merge commit `197eb45535b117e28ad1ef904993d2b54068056b` 合并，Issue #8 已关闭；本地 `main` 已无豁免通过 strict HandOff、Governance 与 diff check，M1-03 标记 done。
 - 最终证据 HEAD `16ffba62df8f25d4397d771c5bdfa77f8dba78ad` 的 API 29/36 KVM、Ubuntu/Windows Build 与 Governance 六项 replacement CI 全部 PASS；两平台四份 M1-03 规范报告 hashes 再次命中冻结值。
@@ -344,6 +347,18 @@ next_owner: /root
 - artifact: `docs/evidence/M1-07/security-review-9.md`
 - sha256: not_applicable
 - result: FAIL; P0=0, P1=1, P2=1; ADR demanded Guard rechecks before loader construction although metadata was exposed only through a LoadedPayload with a loader, and non-binding metadata getter signatures remained underspecified
+
+### M1-07 independent security review 10
+
+- task_id: M1-07
+- git_commit: 358a71a9478a0ccb76f71538002184a6a4ea4dc4
+- command: tenth independent offline read-only full review; governance/strict/node/diff/UTF-8 checks; exact arithmetic, dependency traversal, metadata getters, loader-use boundary and Guard comparison-source analysis
+- exit_code: 1
+- environment: Windows 10.0.19045; Node v24.12.0; Git 2.52.0; no network/device/emulator
+- timestamp: 2026-08-05T15:04:49+08:00
+- artifact: `docs/evidence/M1-07/security-review-10.md`
+- sha256: not_applicable
+- result: FAIL; P0=0, P1=0, P2=1; Guard mismatch tests did not map build/key/version/Factory to executable trusted sources, and Factory has no independent comparison source
 
 ### M1-03 merger-ready CI and merge
 
@@ -870,6 +885,7 @@ None
 - [x] 第七轮独立复核 FAIL 已归档，`3bea66a` 废止；权威时序、metadata 注入和双窗口验收已形成修正候选。
 - [x] 第八轮独立复核 FAIL 已归档，`01f76f6` 废止；package/lineage 复比较接口与完整独立复核输入已形成修正候选。
 - [x] 第九轮独立复核 FAIL 已归档，`d5d5d29` 废止；loader 构造/使用边界和完整 metadata getter 合同已形成修正候选。
+- [x] 第十轮独立复核 FAIL 已归档，`358a71a` 废止；Guard 比较来源表与真实 Native/parser 验收职责已形成修正候选。
 - [ ] 获得用户单独发布授权后才推送并创建唯一 PR；M1-04 在 M1-07 合并前保持 blocked。
 - [x] M1-01 从固定 base `e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030` 与唯一分支 `feat/m1-01-untrusted-apk-inspector` 启动，Issue 固定为 #6；当前恢复点为 `main`。
 - [x] M0-04 与 M0-06 已合并并完成各自门禁。
@@ -934,6 +950,7 @@ None
 - `/root` 已核验第七轮 M1-07 独立复核为 FAIL 并废止 `3bea66a`；当前只允许关闭一项时序 P1 与两项验收 P2、重新冻结并进行完整独立复核。
 - `/root` 已核验第八轮 M1-07 独立复核为 FAIL 并废止 `01f76f6`；当前只允许关闭 package metadata P1 与复核输入 P2、重新冻结并进行完整独立复核。
 - `/root` 已核验第九轮 M1-07 独立复核为 FAIL 并废止 `d5d5d29`；当前只允许关闭 loader 时序 P1 与 metadata API P2、重新冻结并进行完整独立复核。
+- `/root` 已核验第十轮 M1-07 独立复核为 FAIL 并废止 `358a71a`；当前只允许关闭 Guard 比较来源 P2、重新冻结并进行完整独立复核。
 - Coordinator `/root` 已核验首轮独立复核 FAIL、六项修复 diff、本地 Gradle/check/governance、双变体 Release/R8 和静态 APK 验证结果。
 - 当前快照声明三套 review-3 设备环境验收 PASS、第五次独立复核 P0/P1/P2 全为零、最终 PR HEAD 六项 CI 全部 PASS，PR #32 已合并，且 post-merge `main` Build/Governance 全绿并无豁免通过 strict HandOff；M0-05 标记 done。旧证据仅保留为历史回归基线。
 - `/root` 已核验真机为 API 29 arm64 64-bit、user/release-keys、非 root 环境，设备 runner cleanup PASS；本轮未启动任何本机模拟器。

@@ -117,7 +117,7 @@ Native Loader 的顺序固定为：无 payload 分配地检查容器结构边界
 
 任何强完整性失败在业务类加载前终止。错误对调试构建可分类，对发行构建只暴露稳定、非敏感原因。
 
-Guard 只能从 `LoadedPayload.authenticatedMetadata()` 构造 `VerifiedStartupConfiguration`，不重读 ConfigV2 或使用未认证预读。M2-02 内部 provisional loader 的构造发生在完整 Native 认证、metadata 对象构造之后，但 Guard 完成 package/current signer/有序 lineage 复比较并返回完整 session 前禁止任何 payload 类查找/解析、Factory 调用或 loader/metadata 发布。取得 `LoadedPayload` 后至完整 `VerifiedPayloadSession` 返回前由本地 `committed=false`/`finally` 独占；复比较、identity/config/session 构造或 return 前异常/OOM 都恰好 close 一次并清除部分引用。完整 session 才是向 bootstrap 的发布边界；其后 ADR 0007 的 READY 前所有权规则继续生效。
+Guard 只能从 `LoadedPayload.authenticatedMetadata()` 构造 `VerifiedStartupConfiguration`，不重读 ConfigV2。可信来源表固定为：package/current signer 对 Framework/apksig 实测值，lineage 对 apksig 有序列表，build/key slot 对同次未认证预读仅检测 inspect/open 快照变化，versions 对冻结常量 `2.0/1/1`；原 Factory 只消费 Native 已认证 metadata，不存在第二来源比较。M2-02 内部 provisional loader 的构造发生在完整 Native 认证、metadata 对象构造之后，但 Guard 完成可执行复比较并返回完整 session 前禁止任何 payload 类查找/解析、Factory 调用或 loader/metadata 发布。取得 `LoadedPayload` 后至完整 `VerifiedPayloadSession` 返回前由本地 `committed=false`/`finally` 独占；复比较、identity/config/session 构造或 return 前异常/OOM 都恰好 close 一次并清除部分引用。完整 session 才是向 bootstrap 的发布边界；其后 ADR 0007 的 READY 前所有权规则继续生效。
 
 ### 4.4 Environment Risk Engine
 

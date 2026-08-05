@@ -107,7 +107,7 @@ payload 不得以明文文件落盘。离线应用内密钥只能增加提取成
 - `LoadedPayload.close()` 重复调用仍只关闭一次 Native handle；关闭后访问器拒绝，仍可安全清理的 direct/key/temp buffer 已清零，自身不再强引用 loader 或 buffer；任一清理子步骤失败不妨碍其余步骤。
 - 正向 `openVerified` 返回后、调用 `close()` 前，测试 hook 证明 CEK/KEK/派生 key、AAD、压缩 chunk、inflater/crypto scratch 已清零且不可达，completed DEX 映射仍有效并仅由 handle 拥有；close 后映射才清零并 unmap。
 - `AuthenticatedPayloadMetadata` 的全部十个访问器与同 handle 已认证 ConfigV2/`SPV1` golden snapshot 及成功 package binding 逐字段一致，版本范围、Factory nullability、16/32-byte 长度和 lineage `1..16` 约束精确；篡改/跨 handle 替换失败，所有数组及嵌套 lineage 修改均不影响内部状态，扫描确认不含任何恢复秘密或原始 config bytes。
-- Guard 复比较成功前的 hook 证明 provisional loader 的 payload `loadClass`/资源查找/解析计数和 Factory 构造计数均为零；metadata 任一字段失配时无 loader/metadata/session 对 bootstrap 发布且最终 Native close-count 为一。
+- Guard 可执行复比较成功前的 hook 证明 provisional loader 的 payload `loadClass`/资源查找/解析计数和 Factory 构造计数均为零；package/current signer/lineage 实测失配、inspect/open build/key 快照变化或版本不等于 `2.0/1/1` 时无 loader/metadata/session 对 bootstrap 发布且最终 Native close-count 为一。原 Factory/config 篡改在 `nativeOpenVerifiedPayload` 的 ConfigV2 digest/manifest 认证阶段失败；getter 编码/长度/nullability 错误由本任务同 handle golden snapshot/parser 测试拒绝，不构造虚假 Guard 比较源。
 - 在 Native handle 创建前对首个、中间、末尾 chunk 分别注入认证、I/O、取消、OOM、zlib 和摘要失败时，不返回 handle，所有 completed/partial DEX 映射均已清零并 unmap；cleanup 注入失败不覆盖首个稳定错误且其余清理继续。
 - Native handle 返回后分别在 `nativeAuthenticatedMetadata` bytes 获取/解析/对象构造、`nativeDexBuffers` 数组创建/元素创建、search path、`InMemoryDexClassLoader`、`LoadedPayload` 构造和 return 前注入异常/OOM：内部 `LoadedPayload` 交接对象/`ByteBuffer` 均未发布，Native close 恰好一次，mappings 清零/unmap，部分 Java 引用清除，主错误保留且 cleanup error suppressed。
 - ASan/UBSan 主机解析测试无越界、整数溢出、use-after-free 或内存泄漏报告。
@@ -118,7 +118,7 @@ payload 不得以明文文件落盘。离线应用内密钥只能增加提取成
 - 单/多 DEX 加载、重复类优先级、父加载器委派和句柄生命周期测试。
 - `LoadedPayload` 幂等 close-count、Native handle、关闭后访问、completed DEX direct buffer 清零/unmap、无临时秘密所有权、强引用释放和多清理错误聚合测试。
 - 正向提交边界测试：`openVerified` 返回后/`close` 前临时秘密已清零、仅 completed DEX mappings 被转交且仍可加载；close 后映射清零/unmap。
-- authenticated metadata 全部精确 getter、Factory nullability、版本边界、16/32-byte 长度、同快照/跨 handle、各字段篡改、嵌套防御性复制和秘密字段缺失测试。
+- authenticated metadata 全部精确 getter、Factory nullability、版本边界、16/32-byte 长度、同快照/跨 handle、内部编码各字段破坏、嵌套防御性复制和秘密字段缺失 golden parser 测试；这些测试不冒充 Guard 双源比较。
 - Native handle 创建前事务的首个/中间/末尾 chunk 失败矩阵、completed/partial DEX mapping zeroize/unmap、无 handle 返回和 cleanup failure 聚合测试。
 - 跨 JNI 内部交接窗口失败矩阵：handle 返回后、authenticated metadata bytes/对象、buffer array/element、search path、ClassLoader、LoadedPayload 构造/return 前的异常与 OOM，验证 primitive/finally guard、close-count、mapping 清理、部分引用释放和 primary/suppressed error。
 - 截断、重叠、超大长度、未知版本、错误 tag、错误 signer/package 关联数据和随机输入测试。

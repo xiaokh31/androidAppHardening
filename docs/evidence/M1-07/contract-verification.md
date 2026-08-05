@@ -63,3 +63,4 @@ M1-07 does not depend on M1-04, and there is no edge or path from M1-04 back to 
 - exactly-once Guard ownership from `LoadedPayload` through atomic `VerifiedPayloadSession` return, including identity/config/session/return failure injection.
 - M3 publication-state, close-count, mapping cleanup, partial-reference cleanup and primary/suppressed error evidence for both ownership windows.
 - exact cross-module metadata getter signatures, ranges, lengths, nullability and deep-copy rules; zero payload class/resource lookup, Factory construction or bootstrap publication before Guard rechecks complete.
+- executable trusted-source mapping for every Guard comparison, with Factory/config tamper assigned to Native authentication and metadata encoding errors assigned to M2-02 golden parsing rather than a fabricated second source.

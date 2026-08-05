@@ -56,7 +56,7 @@ M1-04 首个冻结实现的独立复核发现：单条 DEX 使用一个 GCM tag 
 - M1-04 的 `depends_on` 增加 M1-07；在本任务合并且合同独立复核通过前，M1-04 保持 blocked，M2/M3 不得消费废止 v1。
 - M2-02 在 Native handle 创建前必须以事务 owner 持有 completed/partial DEX 映射与临时状态；任一失败无分配地清零/unmap 全部未发布映射、不返回 handle，cleanup failure 不覆盖主错误，全部 DEX 成功后才把 completed mappings 转给内部 handle。
 - `PayloadRuntime.openVerified` 返回完整 `LoadedPayload` 是 M2-02 到 M2-03 的内部模块交接边界。Native handle 返回后的 authenticated metadata bytes/对象、buffer array/element、search path、ClassLoader、LoadedPayload 构造/return 前窗口由 primitive handle + allocation-free `finally` 覆盖，失败恰好 close 一次、清映射/部分引用且不公开对象。
-- M2-02 必须在 provisional loader 前构造同 handle 已认证、无秘密、不可伪造的 `AuthenticatedPayloadMetadata`，含本次成功 binding 的 32-byte `package_name_sha256`、当前 signer 和有序 lineage，并随内部 `LoadedPayload` 交付。M2-03 常量时间复比较 package/current signer、按顺序逐项复比较 lineage，并只从该对象构造安全配置；复比较完成和完整 session return 前禁止任何 payload 类查找/解析、Factory 调用或 loader/metadata 发布。最终 bootstrap 发布边界是 Guard 返回完整 `VerifiedPayloadSession`，LoadedPayload 到 session return 的 recheck/identity/config/session 窗口同样 exactly-once close。
+- M2-02 必须在 provisional loader 前构造同 handle 已认证、无秘密、不可伪造的 `AuthenticatedPayloadMetadata` 并随内部 `LoadedPayload` 交付。M2-03 的来源表固定为 package/current signer 对实测值、lineage 对实测有序列表、build/key 对同次预读快照仅检测变化、versions 对 `2.0/1/1`；原 Factory 只消费 Native 已认证值，不做虚假双源比较。Guard 只从该对象构造安全配置；可执行复比较完成和完整 session return 前禁止任何 payload 类查找/解析、Factory 调用或 loader/metadata 发布。最终 bootstrap 发布边界是 Guard 返回完整 `VerifiedPayloadSession`，LoadedPayload 到 session return 的 recheck/identity/config/session 窗口同样 exactly-once close。
 - 本任务冻结提交后由独立只读 reviewer 检查 P0/P1/P2；任何 P0/P1 或未处置 P2 均不得推送或创建 PR。
 
 ## Public Interfaces

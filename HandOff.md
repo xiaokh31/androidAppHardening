@@ -2,25 +2,29 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-06T00:29:36+08:00
+updated_at: 2026-08-06T00:47:22+08:00
 updated_by: /root
-state: ready
-source_branch: main
-base_commit: 9ec90fca6b2b293a56a98f3d0c60190b5c0e7a20
+state: active
+source_branch: feat/m1-04-encrypted-dex-container
+base_commit: ebbe92830cd5f3a4f3c7a51f058d8d5f6f74912a
 working_tree: clean
 current_milestone: M1
-active_task: NONE
-next_owner: unassigned
+active_task: M1-04
+next_owner: /root
 ---
 
 # Project HandOff
 
 ## Objective
 
-在不改产品代码的前提下完成 M1-07 ADR/任务合同修订：以 AHDC v2 的 64 KiB 分块认证取代尚未发布且无法同时满足 512 MiB DEX、认证后解压与 1 MiB 缓冲的 AHDC v1；冻结 Host/Runtime 共用 wire contract、依赖和验收门禁，经独立只读安全复核后才允许 M1-04 重启。
+在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内执行 M1-04：从最新 `main` 重新实现 Host AHDC v2 分块认证 DEX 容器、ConfigV2、只读 verifier 与一次性密钥包装计划；保持 512 MiB 单 DEX、64 DEX、认证后解压和 1 MiB 工作缓冲合同，不实现 Runtime、APK ZIP 注入、签名或 CLI。
 
 ## Current State
 
+- 用户已明确启动 M1-04。唯一 tracking Issue 为 [#9](https://github.com/xiaokh31/androidAppHardening/issues/9)，固定分支为 `feat/m1-04-encrypted-dex-container`，base 为 clean `main@ebbe92830cd5f3a4f3c7a51f058d8d5f6f74912a`；未授权推送或创建 PR。
+- 旧本地同名分支停在失败复核提交 `ca3d14147b88991c45d539e90b1f42dc95116860`，已无损重命名为 `spike/m1-04-rejected-ahdc-v1`。新任务分支从最新 main 创建，不 merge/cherry-pick/复用废止 AHDC v1 实现。
+- M1-04 采用 `pre-cli` 验证模式，只实现 `host:container` 的 AHDC v2 builder/verifier、768-byte ConfigV2、不可变 descriptor、一次性 `KeyPackagingPlanV2`、规范向量与失败关闭测试；本轮不启动设备或模拟器。
+- 实现计划归档于 `docs/evidence/M1-04/implementation-plan.md`。固定合同来自 ADR 0008/0006；任何 wire、密钥边界或公开接口变化必须先停下并修订 ADR，不得在代码中漂移。
 - 用户已明确授权启动独立 ADR/任务合同修订。唯一 tracking Issue 为 [#36](https://github.com/xiaokh31/androidAppHardening/issues/36)，固定分支为 `docs/m1-07-chunk-authenticated-container-contract`，base 为 clean `main@225ec169661e2a366736be36b1249fb79faf3dcc`；未授权推送或创建 PR。
 - M1-04 首个实现候选 `97cb9dc75f68b5ce0ddde2134e09c15ae2e798fb` 的独立复核为 FAIL（P0 `0`、P1 `3`、P2 `2`）；该提交仅保留在本地废止分支，不属于 M1-07，也不得发布。
 - 决定性 P1 是每 DEX 单 GCM tag 在固定 SunJCE 下可能缓存至多 512 MiB ciphertext；使用其他 Provider 的 `update` plaintext 又会在 tag 成功前解压，无法同时兑现认证顺序与 1 MiB 缓冲。
@@ -130,6 +134,7 @@ next_owner: unassigned
 | M1-02 | `/root` | `feat/m1-02-signer-policy` | done | M1-01 | PR #34、Issue #7、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
 | M1-03 | `/root` | `feat/m1-03-binary-axml-transformer` | done | M1-01, M0-05 | PR #35、Issue #8、独立复核、三套设备/CI 矩阵和 main strict HandOff 均已关闭 |
 | M1-07 | `/root` | `docs/m1-07-chunk-authenticated-container-contract` | done | M1-02 | PR #37、Issue #36、独立复核、双平台 CI、README 与 main strict HandOff 均已关闭 |
+| M1-04 | `/root` | `feat/m1-04-encrypted-dex-container` | in_progress | M1-01, M1-02, M1-07 | 按 ADR 0008 从 clean main 实现 AHDC v2 Host builder/verifier 并完成独立复核 |
 
 ## Decisions and Invariants
 
@@ -153,6 +158,8 @@ next_owner: unassigned
 
 ## Changes Since Previous Handoff
 
+- 用户启动 M1-04；核验 Issue #9 OPEN、远程无关联 PR/分支、main 与 origin/main 一致且 post-M1-07 双平台 CI 全绿。
+- 旧 AHDC v1 失败分支无损归档为 `spike/m1-04-rejected-ahdc-v1`，从 `main@ebbe928` 新建固定 AHDC v2 工作分支；新增 `docs/evidence/M1-04/implementation-plan.md`，未复用废止实现。
 - 用户启动 M1-07，创建 Issue #36 和独立治理分支；该分支不包含废止的 M1-04 产品实现。
 - ADR 0008 固定 160-byte HeaderV2、128-byte RecordV2、32-byte ChunkV2、record key/nonce/AAD/manifest coverage、1 MiB 工作缓冲和 cleanup error precedence；ADR 0004 标记 superseded。
 - M1-04 依赖增加 M1-07；产品需求、架构、威胁模型、测试策略、路线图和下游任务正同步到 AHDC v2。
@@ -240,6 +247,18 @@ next_owner: unassigned
 - 该 M1-01 post-merge 动作已完成；当前恢复点为下述 M1-02 冻结实现与本地验收。
 
 ## Verification Evidence
+
+### M1-04 clean restart baseline
+
+- task_id: M1-04
+- git_commit: ebbe92830cd5f3a4f3c7a51f058d8d5f6f74912a
+- command: verify clean main/origin main; inspect old local branch ancestry and rejected review; verify Issue #9 and absence of remote head PR; archive old branch; create fixed branch from main; Governance and strict HandOff baseline
+- exit_code: 0
+- environment: Windows 10.0.19045 x64; Node v24.12.0; Git 2.52.0; no device or emulator
+- timestamp: 2026-08-06T00:47:22+08:00
+- artifact: Issue `https://github.com/xiaokh31/androidAppHardening/issues/9`; `docs/evidence/M1-04/implementation-plan.md`; rejected local branch `spike/m1-04-rejected-ahdc-v1`
+- sha256: not_applicable
+- result: PASS; M1-01/M1-02/M1-07 dependencies are merged, main is clean, the fixed branch starts exactly at current main, and no v1 implementation commit is in the new branch ancestry
 
 ### M1-07 task start and contract blocker
 
@@ -895,9 +914,10 @@ None
 
 ## Ordered Next Actions
 
-1. M1-07 已完成；等待用户明确启动下一任务，不自动领取相邻任务。
-2. 用户启动 M1-04 后，从包含 ADR 0008 的最新 clean `main` 创建固定 Issue/分支，重新实现 AHDC v2，不复用已废止的 AHDC v1 候选。
-3. M1-04 完成前不得启动 M2/M3；后续每个任务完成时继续同步根 README。
+1. 提交 M1-04 启动 HandOff/实现计划，然后只在 `host:container` 与 M1-04 证据范围内实现 AHDC v2、ConfigV2、descriptor 和一次性密钥包装计划。
+2. 完成标准向量、单/多 DEX、64 KiB 边界、篡改、输入变化、清零、无明文落盘、确定性/随机性和 1 MiB 内存门禁；运行模块与根回归。
+3. 冻结 clean 实现提交并启动独立只读密码学/二进制格式复核；P0/P1 或未处置 P2 均阻止发布。
+4. 未获单独授权前不得推送 M1-04 分支或创建 PR；不得启动 M1-05、M2 或设备/模拟器工作。
 
 ## Relevant Files and Artifacts
 
@@ -946,6 +966,10 @@ None
 
 ## Resume Checklist
 
+- [x] 用户明确启动 M1-04；Issue #9、固定分支、clean main base 与 M1-07 合并门禁已核验。
+- [x] 旧 AHDC v1 失败分支已无损归档，新分支不包含其实现提交；`pre-cli` 实现计划已归档。
+- [ ] 从零实现 AHDC v2 builder/verifier、ConfigV2、descriptor 与一次性 KeyPackagingPlanV2，并完成所有本地验收。
+- [ ] 冻结 clean 提交并取得独立只读复核 P0/P1/P2 全零；未授权发布或创建 PR。
 - [x] 用户明确启动 M1-07；Issue #36、固定治理分支和 clean main base 已核验。
 - [x] 完成 AHDC v2 全仓库合同同步、字段复算、Governance 与 strict HandOff。
 - [x] 冻结治理提交并取得独立只读复核 P0/P1/P2 全零结论。
@@ -1019,6 +1043,7 @@ None
 
 ## Handoff Sign-off
 
+- `/root` 已核验 M1-04 从 `main@ebbe928` clean 重启、Issue #9 OPEN、远程无同 head PR；废止 v1 分支仅保留为 rejected 归档。当前只实现 AHDC v2 Host 范围，不启动 Runtime、ZIP/CLI、设备或相邻任务。
 - `/root` 已核验 M1-04 单 tag 合同无法在固定 Provider、512 MiB DEX 和 1 MiB 缓冲下满足认证后解压；M1-07 只修订治理合同，不包含废止实现、不启动模拟器或设备，也未获授权推送/创建 PR。
 - `/root` 已核验首轮 M1-07 独立复核为 FAIL 并废止 `e13927a`；当前只允许关闭该轮 P1/P2、重新冻结并进行完整独立复核。
 - `/root` 已核验第二轮 M1-07 独立复核为 FAIL 并废止 `3380659`；当前只允许关闭两项 P1、重新冻结并进行完整独立复核。

@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-06T00:47:22+08:00
+updated_at: 2026-08-06T01:20:00+08:00
 updated_by: /root
 state: active
 source_branch: feat/m1-04-encrypted-dex-container
@@ -25,6 +25,10 @@ next_owner: /root
 - 旧本地同名分支停在失败复核提交 `ca3d14147b88991c45d539e90b1f42dc95116860`，已无损重命名为 `spike/m1-04-rejected-ahdc-v1`。新任务分支从最新 main 创建，不 merge/cherry-pick/复用废止 AHDC v1 实现。
 - M1-04 采用 `pre-cli` 验证模式，只实现 `host:container` 的 AHDC v2 builder/verifier、768-byte ConfigV2、不可变 descriptor、一次性 `KeyPackagingPlanV2`、规范向量与失败关闭测试；本轮不启动设备或模拟器。
 - 实现计划归档于 `docs/evidence/M1-04/implementation-plan.md`。固定合同来自 ADR 0008/0006；任何 wire、密钥边界或公开接口变化必须先停下并修订 ADR，不得在代码中漂移。
+- M1-04 AHDC v2 Host 实现已冻结为 `0ec2b5e740542f85c71e137faae042e6cdcde7f8`：包含两遍连续 zlib、64 KiB 分块 AES-256-GCM、HeaderV2/RecordV2/ChunkV2、SPV1 manifest MAC、768-byte ConfigV2、一次性 `KeyPackagingPlanV2`、只读 verifier、严格拓扑/尾随拒绝和异常清理；未实现 Runtime、APK 注入、签名或 CLI。
+- Windows `:host:container:test` 与 `:host:container:check` 均退出 `0`；11 组自测覆盖 RFC 5869、NIST AES-256-GCM、zlib、接近 512 MiB 流式输入、单/多 DEX、生产随机差异、23 个文件级篡改、ConfigV2、两遍输入变化、随机失败、取消和一次性消费。固定容器 SHA-256 为 `3764b908e534ffa5179a9519045ec74a7caa44b30c80447998c593a1ac2fa60d`，跟踪峰值 live buffer 为 `262431` bytes。
+- Ubuntu/Windows Build workflow 已增加同一固定容器哈希门禁。仓库级本地 `check` 在配置阶段因既有 `fixtures:android` 未声明固定 NDK 29、且仓库 SDK 不含 AGP 默认 NDK 28.2 而停止；未下载未固定工具或混入相邻 fixture 修复。模块门禁与 Governance 均通过。
+- 冻结实现提交已无豁免通过 strict HandOff。任务合同要求的独立密码学/二进制格式复核尚未启动；P0/P1/P2 全零前不得把 README 标记完成、推送分支或创建 PR。
 - 用户已明确授权启动独立 ADR/任务合同修订。唯一 tracking Issue 为 [#36](https://github.com/xiaokh31/androidAppHardening/issues/36)，固定分支为 `docs/m1-07-chunk-authenticated-container-contract`，base 为 clean `main@225ec169661e2a366736be36b1249fb79faf3dcc`；未授权推送或创建 PR。
 - M1-04 首个实现候选 `97cb9dc75f68b5ce0ddde2134e09c15ae2e798fb` 的独立复核为 FAIL（P0 `0`、P1 `3`、P2 `2`）；该提交仅保留在本地废止分支，不属于 M1-07，也不得发布。
 - 决定性 P1 是每 DEX 单 GCM tag 在固定 SunJCE 下可能缓存至多 512 MiB ciphertext；使用其他 Provider 的 `update` plaintext 又会在 tag 成功前解压，无法同时兑现认证顺序与 1 MiB 缓冲。
@@ -134,7 +138,7 @@ next_owner: /root
 | M1-02 | `/root` | `feat/m1-02-signer-policy` | done | M1-01 | PR #34、Issue #7、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
 | M1-03 | `/root` | `feat/m1-03-binary-axml-transformer` | done | M1-01, M0-05 | PR #35、Issue #8、独立复核、三套设备/CI 矩阵和 main strict HandOff 均已关闭 |
 | M1-07 | `/root` | `docs/m1-07-chunk-authenticated-container-contract` | done | M1-02 | PR #37、Issue #36、独立复核、双平台 CI、README 与 main strict HandOff 均已关闭 |
-| M1-04 | `/root` | `feat/m1-04-encrypted-dex-container` | in_progress | M1-01, M1-02, M1-07 | 按 ADR 0008 从 clean main 实现 AHDC v2 Host builder/verifier 并完成独立复核 |
+| M1-04 | `/root` | `feat/m1-04-encrypted-dex-container` | in_progress | M1-01, M1-02, M1-07 | 对冻结实现 `0ec2b5e740542f85c71e137faae042e6cdcde7f8` 完成独立密码学/二进制格式复核 |
 
 ## Decisions and Invariants
 
@@ -158,6 +162,9 @@ next_owner: /root
 
 ## Changes Since Previous Handoff
 
+- 冻结提交 `0ec2b5e740542f85c71e137faae042e6cdcde7f8` 新增 AHDC v2 builder/verifier、ConfigV2/密钥包装、规范、自测、证据和 Ubuntu/Windows 固定容器哈希门禁；不包含 Runtime、APK 注入、签名或 CLI。
+- Windows 模块 `test`/`check`、Governance、diff check 与 clean strict HandOff 均通过；固定容器哈希为 `3764b908e...fa60d`，23 个文件级篡改和 Config/package/signer/输入变化/随机失败/取消负例全部失败关闭。
+- 仓库级本地 `check` 仅被既有 Android fixture 的 NDK 版本声明/本地包缺口在配置阶段阻塞；未扩大 M1-04 修复范围。下一门禁是固定 SHA 的独立密码学与二进制格式只读复核，尚未授权推送或 PR。
 - 用户启动 M1-04；核验 Issue #9 OPEN、远程无关联 PR/分支、main 与 origin/main 一致且 post-M1-07 双平台 CI 全绿。
 - 旧 AHDC v1 失败分支无损归档为 `spike/m1-04-rejected-ahdc-v1`，从 `main@ebbe928` 新建固定 AHDC v2 工作分支；新增 `docs/evidence/M1-04/implementation-plan.md`，未复用废止实现。
 - 用户启动 M1-07，创建 Issue #36 和独立治理分支；该分支不包含废止的 M1-04 产品实现。

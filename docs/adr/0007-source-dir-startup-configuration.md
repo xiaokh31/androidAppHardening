@@ -23,6 +23,7 @@ M0-05 在已授权的 API 29 arm64 非 root 设备上证明：`AppComponentFacto
 9. `VerifiedPayloadSession` 在 `READY` 所有权转移前由引导调用栈独占。Factory 构造/hook、递归、重入或 final loader 验证任一失败时必须恰好一次关闭 session、清除部分初始化引用且只缓存稳定非敏感错误；清理失败不得替换原失败或允许回退。
 10. M2-02 只从同一个已认证 Native handle 的 ConfigV2/`SPV1` 快照和本次成功认证使用的 Framework package binding 构造不可变 `AuthenticatedPayloadMetadata`，随 `LoadedPayload` 交给 M2-03。它仅含可选原 Factory、container/signer/risk policy version、build/key slot、当前 signer、lineage 与 32-byte `package_name_sha256` 的防御性副本，不含 share、CEK、nonce、wrapped ciphertext/tag 或原始 config bytes。M2-03 必须把该 package digest 与同一 `ApplicationInfo.packageName` 的精确 UTF-8 SHA-256 常量时间比较，并把 metadata lineage 与实测 lineage 按旧到新顺序逐项等值比较；只能从该对象构造 `VerifiedStartupConfiguration`，不得重读 ConfigV2、使用未认证预读或接受调用方覆盖。
 11. 真正的 Guard 发布边界是 `RuntimeStartupGuard.openVerifiedPayload` 返回完整 `VerifiedPayloadSession`。Guard 取得 `LoadedPayload` 后用本地唯一 owner、`committed=false` 与 `finally` 覆盖 signer identity、authenticated configuration、session 构造和 return 前窗口；任一异常/OOM 都恰好一次 close `LoadedPayload`、清除部分引用并保留主错误。`VerifiedPayloadSession` 构造器不得注册或泄露 `this`；只有完整结果构造后才无失败地提交并返回。
+12. Framework package 与实测 current signer 在 Native 恢复 CEK、认证 manifest/chunks 前已经进入失败关闭的密码学 binding；Guard 对 metadata 的 package/current signer/lineage 复比较是同 handle 跨模块一致性门禁。M2-02 仅可在完整 Native 认证、全部 DEX 摘要成功且 metadata 对象先构造后，创建尚未使用的 provisional `InMemoryDexClassLoader` 并把它封装在内部 `LoadedPayload` 中；在 Guard 复比较成功并原子返回完整 session 前，任何代码不得调用该 loader 查找/解析 payload 类、实例化 Factory、注册引用或向 bootstrap 暴露 loader/metadata。复比较失败按第 11 条恰好一次关闭。
 
 ## Authentication Order
 
@@ -34,8 +35,8 @@ M0-05 在已授权的 API 29 arm64 非 root 设备上证明：`AppComponentFacto
 4. 验证覆盖 HeaderV2、完整 `SPV1`、record table 与 chunk table 的 manifest MAC；
 5. 从已认证 HeaderV2 取得 `config_sha256`，常量时间比较完整 768-byte ConfigV2；
 6. 交叉比较 ConfigV2、已认证 `SPV1` 与实测 signer，以及 ConfigV2/AHDC 的 build ID、key slot 和版本；
-7. 从同一 Native handle 生成无秘密、不可变的 `AuthenticatedPayloadMetadata`；常量时间比较其 `package_name_sha256` 与 Framework package 重算值、当前 signer，并将其 lineage 与实测 lineage 按旧到新顺序逐项等值比较；随后才允许创建 payload loader。
-8. M2-03 仅从该 metadata 构造 `VerifiedStartupConfiguration`，并与 signer identity、`LoadedPayload` 原子封装为 `VerifiedPayloadSession`；完整 session 返回前不得实例化原 Factory 或向 bootstrap 发布对象。
+7. 从同一 Native handle 生成无秘密、不可变的 `AuthenticatedPayloadMetadata`；M2-02 随后可以构造尚未使用、未发布的 provisional loader 并封装完整 `LoadedPayload`，但不得进行任何 payload 类查找/解析或泄露引用。
+8. M2-03 常量时间比较 metadata 的 `package_name_sha256` 与 Framework package 重算值、当前 signer，并将其 lineage 与实测 lineage 按旧到新顺序逐项等值比较；仅从该 metadata 构造 `VerifiedStartupConfiguration`，并与 signer identity、`LoadedPayload` 原子封装为 `VerifiedPayloadSession`。完整 session 返回前不得使用 provisional loader、实例化原 Factory 或向 bootstrap 发布对象。
 
 任一步失败都必须清理敏感材料、缓存同一稳定失败并禁止降级加载业务代码。
 
@@ -81,6 +82,7 @@ ConfigV1 在任何产品发布或实现冻结前被本决策替代；v0.1 reader
 - 对 ConfigV2 任一字节、CEK envelope、AHDC manifest MAC、`SPV1`、build/key slot、signer 或 package binding 的篡改均不得创建 payload loader。
 - 同一 handle/snapshot 测试证明 `AuthenticatedPayloadMetadata` 只来自已认证 ConfigV2/`SPV1` 与本次成功 package binding，`package_name_sha256`/signer/lineage 所有数组防御性复制且无恢复秘密；M2-03 常量时间比较 package/current signer、按顺序逐项比较 lineage，不重读或消费未认证预读字段。
 - Guard 在 `LoadedPayload` 返回后对 signer identity、configuration、session 构造及 return 前分别注入异常/OOM，均恰好一次 close、清除部分引用、不发布 `VerifiedPayloadSession`，cleanup error 不覆盖主错误。
+- 在 metadata package/current signer/lineage 任一复比较失败时，断言 provisional loader 的 payload class lookup/resolve 计数为零、无 Factory 调用、无 loader/metadata/session 发布，`LoadedPayload` 恰好关闭一次。
 - M1-03 semantic diff 只允许 `android:appComponentFactory` 变化，并证明原 `android:name` 与所有既有 metadata 逐字节语义保持。
 - 自定义 Factory fixture 证明其 `instantiateClassLoader` 只调用一次、返回 loader 是 Framework/组件使用的 final loader；null/异常不回退。
 - 所有 `READY` 前 Factory 失败路径证明 session 只 close 一次、Native handle 与可清零 buffer 已清理、部分 loader/Factory 引用不可达；close 自身失败不覆盖原错误。

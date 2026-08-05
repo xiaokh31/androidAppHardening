@@ -104,6 +104,13 @@ jobs:
           test "$(sha256sum "$aapt2" | awk '{print $1}')" = "916e2d79af152c6090fc7ba0c4b9b24f054f0eb094ff2968192b922d0d593672"
           sha256sum "$transforms" "$errors" "$fuzz" "$aapt2"
 
+      - name: Verify M1-04 byte-identical AHDC v2 container
+        shell: bash
+        run: |
+          container="host/container/build/reports/m1-04/work/deterministic-a.ahdc"
+          test "$(sha256sum "$container" | awk '{print $1}')" = "3764b908e534ffa5179a9519045ec74a7caa44b30c80447998c593a1ac2fa60d"
+          sha256sum "$container"
+
       - name: Test dependency verification failure
         shell: bash
         run: node tools/validation/test-dependency-verification.mjs
@@ -213,3 +220,11 @@ jobs:
             if ($actual -ne $entry.Value) { exit 1 }
             Write-Output "$actual  $($entry.Key)"
           }
+
+      - name: Verify M1-04 byte-identical AHDC v2 container
+        shell: pwsh
+        run: |
+          $container = "host/container/build/reports/m1-04/work/deterministic-a.ahdc"
+          $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $container).Hash.ToLowerInvariant()
+          if ($actual -ne "3764b908e534ffa5179a9519045ec74a7caa44b30c80447998c593a1ac2fa60d") { exit 1 }
+          Write-Output "$actual  $container"

@@ -72,7 +72,7 @@ payload 不得以明文文件落盘。离线应用内密钥只能增加提取成
 
 - 低层 facade 固定为 `public final class ah.runtime.loader.PayloadRuntime`，提供 `public static UntrustedPayloadBinding inspectBinding(ApplicationInfo applicationInfo)` 与 `public static LoadedPayload openVerified(ClassLoader shellLoader, ApplicationInfo applicationInfo, byte[] installedSignerSha256)`；facade 拒绝空/非绝对 `sourceDir` 或空 `packageName`，并只把 Framework 的 source/package 字段传入 Native。名称和文档必须明确前者未认证、后者仍要求调用者先完成安装 APK signer 验证。
 - 所有权对象固定为 `public final class ah.runtime.loader.LoadedPayload implements AutoCloseable`；只公开 `public ClassLoader classLoader()`、`public AuthenticatedPayloadMetadata authenticatedMetadata()` 与幂等 `public void close()`，这里的 loader 是供 M2-01 原 Factory ClassLoader hook 消费的 provisional loader。对象内部强拥有 Native 句柄、completed DEX direct buffers、同 handle metadata 和该 loader，不拥有 CEK/KEK/派生 key、AAD、压缩 chunk 或 inflater/crypto scratch；M2-03 的 `VerifiedPayloadSession` 必须保留该对象，不得只保存裸 `ClassLoader`。
-- `public final class ah.runtime.loader.AuthenticatedPayloadMetadata` 只能由 `PayloadRuntime` 从同 handle 已认证快照构造，公开可选原 Factory、container/signer/risk policy version、build/key slot、当前 signer 与旧到新 lineage 的防御性副本；所有数组/列表不可变复制，不含 `R/R_java/R_native`、CEK/KEK、nonce、wrapped CEK ciphertext/tag 或原始 ConfigV2 bytes。构造器不公开，调用方不能伪造；M2-03 不得从 `UntrustedPayloadBinding` 构造安全配置。
+- `public final class ah.runtime.loader.AuthenticatedPayloadMetadata` 只能由 `PayloadRuntime` 从同 handle 已认证快照和本次成功 package binding 构造，公开可选原 Factory、container/signer/risk policy version、build/key slot、当前 signer、旧到新 lineage 与 32-byte `package_name_sha256` 的防御性副本；安全绑定访问器固定为 `public byte[] packageNameSha256()`、`public byte[] currentSignerSha256()` 和 `public byte[][] signerLineageSha256()`，每次均返回深副本，lineage 每项恰为 32 bytes。所有数组/列表不可变复制，不含 `R/R_java/R_native`、CEK/KEK、nonce、wrapped CEK ciphertext/tag 或原始 ConfigV2 bytes。构造器不公开，调用方不能伪造；M2-03 不得从 `UntrustedPayloadBinding` 构造安全配置。
 - `LoadedPayload.close()` 必须幂等且可计数验证：先阻止新访问，再关闭 Native handle、清零/unmap completed DEX direct buffers，最后清除自身强引用；实现断言没有提交边界前应销毁的临时秘密。清理子步骤失败时继续其余清理并返回稳定 cleanup failure，不得恢复已关闭句柄。
 - `public final class ah.runtime.loader.UntrustedPayloadBinding` 只公开复制后的预读字段，类型名和访问器文档不得将其描述为已认证。
 - `NativePayloadBridge`、`PayloadMemoryHandle` 与 `PayloadClassLoaders` 均位于 `ah.runtime.loader` 且为 package-private；它们只分别承担 JNI、Native 句柄所有权和 loader 构造，不构成跨模块 API。
@@ -105,7 +105,7 @@ payload 不得以明文文件落盘。离线应用内密钥只能增加提取成
 - `extractNativeLibs=true/false` fixture 均能由 payload 类加载业务 JNI；无匹配 ABI、重复 ABI 目录和路径篡改均在组件实例化前失败。
 - `LoadedPayload.close()` 重复调用仍只关闭一次 Native handle；关闭后访问器拒绝，仍可安全清理的 direct/key/temp buffer 已清零，自身不再强引用 loader 或 buffer；任一清理子步骤失败不妨碍其余步骤。
 - 正向 `openVerified` 返回后、调用 `close()` 前，测试 hook 证明 CEK/KEK/派生 key、AAD、压缩 chunk、inflater/crypto scratch 已清零且不可达，completed DEX 映射仍有效并仅由 handle 拥有；close 后映射才清零并 unmap。
-- `AuthenticatedPayloadMetadata` 与同 handle 的已认证 ConfigV2/`SPV1` golden snapshot 逐字段一致，篡改/跨 handle 替换失败；防御性副本修改不影响内部状态，扫描确认不含任何恢复秘密或原始 config bytes。
+- `AuthenticatedPayloadMetadata` 与同 handle 的已认证 ConfigV2/`SPV1` golden snapshot 及成功 package binding 逐字段一致，`package_name_sha256` 恰为 Framework package 精确 UTF-8 SHA-256；篡改/跨 handle 替换失败，三类安全绑定访问器返回值及嵌套 lineage 修改均不影响内部状态，扫描确认不含任何恢复秘密或原始 config bytes。
 - 在 Native handle 创建前对首个、中间、末尾 chunk 分别注入认证、I/O、取消、OOM、zlib 和摘要失败时，不返回 handle，所有 completed/partial DEX 映射均已清零并 unmap；cleanup 注入失败不覆盖首个稳定错误且其余清理继续。
 - Native handle 返回后分别在 `nativeAuthenticatedMetadata` bytes 获取/解析/对象构造、`nativeDexBuffers` 数组创建/元素创建、search path、`InMemoryDexClassLoader`、`LoadedPayload` 构造和 return 前注入异常/OOM：内部 `LoadedPayload` 交接对象/`ByteBuffer` 均未发布，Native close 恰好一次，mappings 清零/unmap，部分 Java 引用清除，主错误保留且 cleanup error suppressed。
 - ASan/UBSan 主机解析测试无越界、整数溢出、use-after-free 或内存泄漏报告。
@@ -116,7 +116,7 @@ payload 不得以明文文件落盘。离线应用内密钥只能增加提取成
 - 单/多 DEX 加载、重复类优先级、父加载器委派和句柄生命周期测试。
 - `LoadedPayload` 幂等 close-count、Native handle、关闭后访问、completed DEX direct buffer 清零/unmap、无临时秘密所有权、强引用释放和多清理错误聚合测试。
 - 正向提交边界测试：`openVerified` 返回后/`close` 前临时秘密已清零、仅 completed DEX mappings 被转交且仍可加载；close 后映射清零/unmap。
-- authenticated metadata 同快照、跨 handle 替换、Factory/版本/build/key slot/signer/lineage 篡改、防御性复制和秘密字段缺失测试。
+- authenticated metadata 同快照、跨 handle 替换、Factory/版本/build/key slot/package/current signer/lineage 篡改、防御性复制和秘密字段缺失测试。
 - Native handle 创建前事务的首个/中间/末尾 chunk 失败矩阵、completed/partial DEX mapping zeroize/unmap、无 handle 返回和 cleanup failure 聚合测试。
 - 跨 JNI 内部交接窗口失败矩阵：handle 返回后、authenticated metadata bytes/对象、buffer array/element、search path、ClassLoader、LoadedPayload 构造/return 前的异常与 OOM，验证 primitive/finally guard、close-count、mapping 清理、部分引用释放和 primary/suppressed error。
 - 截断、重叠、超大长度、未知版本、错误 tag、错误 signer/package 关联数据和随机输入测试。

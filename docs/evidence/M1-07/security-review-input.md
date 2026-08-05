@@ -28,3 +28,8 @@ M1-04 首个实现候选 `97cb9dc75f68b5ce0ddde2134e09c15ae2e798fb` 的独立只
 3. 64 KiB chunk 是否足以把固定 JCA/Native API 的认证前缓冲限制在 1 MiB 内，并阻止未认证数据进入 zlib？
 4. 最大 count/length/offset、canonical chunk size 和完整消费规则是否排除 overflow、overlap、hole、chunk explosion 与 trailing bytes？
 5. 任务依赖是否确保 M1-04/M2/M3 不会实现或接受废止 v1？
+6. Native handle 创建前任一失败是否事务清理 completed/partial mappings，且成功提交是否在返回 handle 前清零全部临时秘密而保留 mappings 到生命周期 close？
+7. Native handle 到同快照 `AuthenticatedPayloadMetadata`/内部 `LoadedPayload` 的构造窗口，是否由 primitive owner 与 allocation-free `finally` 覆盖 metadata/buffers/loader/return 的异常和 OOM？
+8. metadata 是否机械携带并复比较已认证 package/current signer/有序 lineage，且不含恢复秘密、不可跨 handle/session 替换？
+9. Guard 从 `LoadedPayload` 到最终 `VerifiedPayloadSession` return 的 identity/config/session 构造窗口，是否 exactly-once close、清除部分引用并保留主错误？
+10. M3 catalog 是否区分 Native handle、内部 LoadedPayload/ByteBuffer 与最终 session 发布，覆盖两段窗口的 close-count、mapping、部分引用和 primary/suppressed 断言？

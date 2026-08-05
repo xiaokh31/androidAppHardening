@@ -57,7 +57,7 @@ security_sensitive: true
 - 证书身份固定使用 DER 编码证书的 SHA-256 小写十六进制值；比较前验证为 64 个十六进制字符并使用常量时间比较。
 - M1-04 按 ADR 0008 把 M1-02 的 `SignerPolicyV1` 写入受 manifest MAC 认证的 `SPV1` block，并按 ADR 0006 写入 ConfigV2；Runtime 不接受 Manifest、调用参数、`ApplicationInfo.metaData` 或未认证预读对策略/Factory 的覆盖。
 - `ApkVerifier.Result` 必须验证成功且当前 signer 数恰好为一个；其当前摘要必须常量时间等于未认证预读的期望摘要，随后作为实测摘要传给 M2-02。Native 认证 manifest MAC 后必须再次确认已认证 `SPV1` 当前摘要相等；历史必须有序、无重复并终止于当前证书，仅匹配历史证书仍拒绝。
-- 校验顺序固定为：只读验证当前 APK并取得唯一 signer、从同一 Framework `ApplicationInfo.packageName` 计算精确 UTF-8 SHA-256、有界预读 ConfigV2/AHDC 且不分配 payload、预比较 signer、调用 M2-02 以 signer/package binding 恢复 CEK并认证完整容器/ConfigV2、取得 `LoadedPayload` 及其同 handle `AuthenticatedPayloadMetadata`、复比较 signer/build/key slot/policy version、只从该 metadata 构造 `VerifiedStartupConfiguration`，再与 identity/LoadedPayload 原子封装并返回 session。未认证预读只用于早拒绝，Factory/风险配置不得由其暴露或覆盖。
+- 校验顺序固定为：只读验证当前 APK并取得唯一 signer 与旧到新 lineage、从同一 Framework `ApplicationInfo.packageName` 计算精确 UTF-8 SHA-256、有界预读 ConfigV2/AHDC 且不分配 payload、预比较 signer、调用 M2-02 以 signer/package binding 恢复 CEK并认证完整容器/ConfigV2、取得 `LoadedPayload` 及其同 handle `AuthenticatedPayloadMetadata`、常量时间复比较 package/current signer，按旧到新顺序逐项复比较 lineage，并复比较 build/key slot/policy version、只从该 metadata 构造 `VerifiedStartupConfiguration`，再与 identity/LoadedPayload 原子封装并返回 session。未认证预读只用于早拒绝，Factory/风险配置不得由其暴露或覆盖。
 - `RuntimeStartupGuard` 从取得 `LoadedPayload` 起以本地唯一 owner、`committed=false` 和 `finally` 覆盖 `VerifiedSignerIdentity`、`VerifiedStartupConfiguration`、`VerifiedPayloadSession` 构造及 return 前窗口；任一异常/OOM 都恰好一次调用 `LoadedPayload.close()`、清除部分引用，cleanup error best-effort suppressed 且绝不替换主错误。完整 session 存入局部变量后才无失败地提交并 return；identity/config/session 构造器均不得注册或泄露 `this`。
 - 缓存键包含包名、版本号、APK `lastModified`、唯一当前 signer 摘要、历史摘要和进程启动标识；任一变化都重新校验。
 - 产品代码中不得调用 `apksigner`、`jarsigner` 或任何签名 API。
@@ -76,7 +76,7 @@ security_sensitive: true
 
 - 无签名、多个当前 signer、签名 API 异常、策略缺失、摘要格式错误、当前 signer 不匹配、lineage 异常和 ConfigV2 摘要/绑定不匹配均须 fail closed。
 - 不得接受调用方 APK 路径、包名或 Manifest 明文摘要；已安装 APK 路径与包名只取 Framework `ApplicationInfo.sourceDir`/`packageName`，安全策略只取 Native 认证后的容器元数据。
-- `AuthenticatedPayloadMetadata` 必须与实测 signer、package 和 `LoadedPayload` 同一 handle 绑定；禁止缓存后跨 handle/session 复用或从未认证预读重建。
+- `AuthenticatedPayloadMetadata` 必须与实测 signer、Framework package digest、有序 lineage 和 `LoadedPayload` 同一 handle 绑定；package/current signer 使用常量时间比较，lineage 要求数量相同且按旧到新顺序逐项等值；禁止缓存后跨 handle/session 复用或从未认证预读重建。
 - 不记录完整证书、完整摘要、签名块、设备路径或容器内容。
 - 测试可在被忽略的构建输出目录生成一次性非生产证书，并由测试夹具在产品外部签名；证书及私钥不得提交，产品自身永不签名。
 
@@ -104,7 +104,7 @@ security_sensitive: true
 - 摘要规范化、唯一 signer 常量时间比较、有序 lineage、缓存失效和错误映射单元测试。
 - 同 signer、异 signer、多个当前 signer 拒绝、轮换历史和无签名 fixture 的 instrumentation 测试。
 - ConfigV2、Factory slot、容器标识、包名绑定和摘要篡改测试。
-- `AuthenticatedPayloadMetadata` 唯一来源、同 handle 绑定、跨 handle/session 替换拒绝、无秘密字段和未认证预读不可构造配置测试。
+- `AuthenticatedPayloadMetadata` 唯一来源、同 handle 绑定、跨 handle/session 替换拒绝、package/current signer 单 bit 不同、lineage 乱序/缺项/增项拒绝、无秘密字段和未认证预读不可构造配置测试。
 - `VerifiedPayloadSession` 幂等 close-count、关闭后访问器拒绝、向 `LoadedPayload` 的单次委托和所有权转移边界测试。
 - Guard 在 LoadedPayload 后的 identity/config/session/return 前异常与 OOM 注入、exactly-once close、部分引用释放及 primary/suppressed error 测试。
 - 多进程并发校验与缓存一致性测试。

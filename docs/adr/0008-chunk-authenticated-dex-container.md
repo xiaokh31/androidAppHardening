@@ -156,4 +156,5 @@ v0.1 reader 只接受 AHDC major `2`、minor `0`、flags `0` 和 ConfigV2 `conta
 - 覆盖 1 byte、65535、65536、65537、多个 chunk 和接近 512 MiB DEX 的流式内存测试，peak 工作缓冲不超过 1 MiB。
 - 对 header、SPV1、record、chunk table、nonce prefix、chunk ordinal、ciphertext、tag、config digest、signer 和 package 的单 bit 篡改均在向 inflater 提交受影响 chunk 前失败。
 - 覆盖截断、尾随、乱序、重复、空洞、重叠、算术溢出、chunk explosion、错误 zlib wrapper/dictionary/checksum/尾随和声明摘要不符。
-- 测试 hook 证明全部敏感数组/direct buffer 以及 handle 发布前的 completed/partial DEX 匿名映射在成功、首个/中间/末尾 chunk 认证失败、I/O、取消、OOM、zlib 失败及 cleanup failure 路径清零并 unmap；失败不发布 handle/`ByteBuffer`，首个错误不被清理错误覆盖。
+- 成功提交测试证明 CEK/KEK/派生 key、AAD、认证后压缩 chunk、inflater scratch 等临时敏感状态立即清零；completed DEX 映射不在提交时清零或 unmap，而是原子转交已发布 handle，保持到 payload ClassLoader 生命周期结束，再由 handle close 安全清零并 unmap。
+- 发布前失败测试证明首个/中间/末尾 chunk 的认证、I/O、取消、OOM、zlib、长度/摘要及 cleanup failure 均会清零并 unmap 全部 completed/partial DEX 映射、销毁临时状态且不发布 handle/`ByteBuffer`；清理不依赖新分配，继续 best-effort，首个错误不被清理错误覆盖。

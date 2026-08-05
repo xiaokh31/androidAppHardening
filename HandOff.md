@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-05T23:41:39+08:00
+updated_at: 2026-08-05T23:44:34+08:00
 updated_by: /root
 state: active
 source_branch: docs/m1-07-chunk-authenticated-container-contract
@@ -46,7 +46,7 @@ next_owner: /root
 - 第十轮独立只读全量复核对 `358a71a9478a0ccb76f71538002184a6a4ea4dc4` 给出 FAIL：P0 `0`、P1 `0`、P2 `1`。Guard 失配矩阵对 build/key/version/Factory 未逐字段冻结真实比较源，Factory 无第二可信来源。旧冻结点失效，结论归档于 `docs/evidence/M1-07/security-review-10.md`。
 - 当前第十轮修正候选固定来源表：package/signer/lineage 对 Framework/apksig，build/key 预读仅检测快照变化，versions 对 `2.0/1/1`，Factory 仅消费 Native 认证值；Native tamper 与 M2-02 parser 测试分别承担 Factory/config 和内部编码错误。
 - 第十一次独立只读全量复核对 `9dec7603a860c33ab6bb91f37221e2e81d6011bf` 给出 PASS：P0 `0`、P1 `0`、P2 `0`。wire/算术/密码链、事务与成功清理、两段所有权、十个 getter、真实比较来源、零 lookup/Factory/bootstrap 发布、M3 证据和依赖图全部闭环，结论归档于 `docs/evidence/M1-07/security-review-11.md`。
-- 用户已授权继续执行 M1-07；当前发布范围为同步根 README 真实进度、推送固定分支并创建关联 Issue #36 的唯一草稿 PR。M1-04 在 M1-07 合并前仍保持 blocked。
+- 用户已授权继续执行 M1-07；根 README 已同步真实进度，固定分支已推送并创建关联 Issue #36 的唯一草稿 PR #37。M1-04 在 M1-07 合并前仍保持 blocked。
 - 用户新增持续规则：每个任务只有在 PR 合并及合并后门禁完成后才算完成，并必须在收尾协调提交中同步根 `README.md` 的公开进度表；`HandOff.md` 继续作为详细证据源。
 - M0-04 的 PR #29 已合并，正式 API 29/36 x86_64 设备矩阵和独立安全复核通过。
 - M0-06 的 PR #31 已合并为 `main@f1362188be5083a6d557522f0f5be1905935f6eb`；合并后的 Governance/Build 在 Ubuntu 与 Windows 通过，`main` 已无豁免通过 strict HandOff。
@@ -126,7 +126,7 @@ next_owner: /root
 | M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | done | M0-05 | PR #33、Issue #6、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
 | M1-02 | `/root` | `feat/m1-02-signer-policy` | done | M1-01 | PR #34、Issue #7、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
 | M1-03 | `/root` | `feat/m1-03-binary-axml-transformer` | done | M1-01, M0-05 | PR #35、Issue #8、独立复核、三套设备/CI 矩阵和 main strict HandOff 均已关闭 |
-| M1-07 | `/root` | `docs/m1-07-chunk-authenticated-container-contract` | in_progress | M1-02 | 同步 README、推送固定分支并创建 Issue #36 的唯一草稿 PR |
+| M1-07 | `/root` | `docs/m1-07-chunk-authenticated-container-contract` | review | M1-02 | 草稿 PR #37 运行治理/文档 CI；全绿后等待 ready/merge 授权 |
 
 ## Decisions and Invariants
 
@@ -164,7 +164,8 @@ next_owner: /root
 - 第九轮独立复核废止 `d5d5d29`；一项 P1 与一项 P2 统一 loader 构造/使用边界并冻结完整 metadata API，wire 不变。
 - 第十轮独立复核废止 `358a71a`；唯一 P2 把 Guard 每个比较映射到真实来源并移除虚假 Factory 双源断言，wire 不变。
 - 第十一次独立复核通过 `9dec760`，P0/P1/P2 全零；该 SHA 成为 M1-07 当前 merger-review 候选，发布仍需用户单独授权。
-- 用户已授权发布 M1-07，并要求今后每个任务完成时同步根 README；本次 README 从停留在 M0 的旧描述更新为 M0 完成、M1-01/02/03 已完成、M1-07 待发布/合并及 M1-04 为下一开发任务。
+- 用户已授权发布 M1-07，并要求今后每个任务完成时同步根 README；本次 README 从停留在 M0 的旧描述更新为 M0 完成、M1-01/02/03 已完成、M1-07 待合并及 M1-04 为下一开发任务。
+- 发布提交 `b094119a33e2fe4b69e23f03a0c7ae05080f3834` 已推送到固定分支，并创建关联 Issue #36 的唯一草稿 PR #37；GitHub App 写入因 integration 权限返回 403 后，使用已验证登录的 `gh` CLI 回退完成创建，未产生重复 PR。
 - merger-ready HEAD `07c519c73b2a48f8636eed557da463f699299f20` 的 API 29/36 KVM、Ubuntu/Windows Build 与 Governance 六项全部 PASS；两个 Build job 再次命中四份规范报告冻结 hashes。
 - PR #35 已以 expected-head 保护的普通 merge commit `197eb45535b117e28ad1ef904993d2b54068056b` 合并，Issue #8 已关闭；本地 `main` 已无豁免通过 strict HandOff、Governance 与 diff check，M1-03 标记 done。
 - 最终证据 HEAD `16ffba62df8f25d4397d771c5bdfa77f8dba78ad` 的 API 29/36 KVM、Ubuntu/Windows Build 与 Governance 六项 replacement CI 全部 PASS；两平台四份 M1-03 规范报告 hashes 再次命中冻结值。
@@ -377,6 +378,18 @@ next_owner: /root
 - artifact: `docs/evidence/M1-07/security-review-11.md`
 - sha256: not_applicable
 - result: PASS; P0=0, P1=0, P2=0; timestamp is the coordinator receipt time because reviewer completion time was not preserved
+
+### M1-07 draft PR publication
+
+- task_id: M1-07
+- git_commit: b094119a33e2fe4b69e23f03a0c7ae05080f3834
+- command: validate Governance and strict HandOff; explicit README/HandOff commit; push fixed branch; verify no existing head PR; create the sole Issue #36 draft PR #37
+- exit_code: 0
+- environment: Windows 10.0.19045 x64; Node v24.12.0; Git 2.52.0; GitHub CLI 2.96.0; no device or emulator
+- timestamp: 2026-08-05T23:44:34+08:00
+- artifact: draft PR `https://github.com/xiaokh31/androidAppHardening/pull/37`; Issue `https://github.com/xiaokh31/androidAppHardening/issues/36`; branch `docs/m1-07-chunk-authenticated-container-contract`
+- sha256: not_applicable
+- result: PASS; the branch was published exactly once, PR #37 is draft and uniquely targets main, and the root README now carries the public milestone/task progress rule
 
 ### M1-03 merger-ready CI and merge
 
@@ -840,9 +853,9 @@ None
 
 ## Ordered Next Actions
 
-1. 验证 README/HandOff、提交进度同步、推送 `docs/m1-07-chunk-authenticated-container-contract` 并创建关联 Issue #36 的唯一草稿 PR。
-2. 只运行治理/文档 CI，并核对远程 HEAD 只比 `9dec760` 多独立 PASS 归档与 README/HandOff 协调提交；任何新的合同承载变更都必须重新复核。
-3. CI 全绿后等待用户授权转为 ready 并合并；合并及 main strict HandOff 无豁免通过后，才从新 main 重启 M1-04。M2/M3 实现继续停止。
+1. 等待草稿 PR #37 的治理/文档 CI，并核对远程 HEAD 只比 `9dec760` 多独立 PASS 归档与 README/HandOff 协调提交；任何新的合同承载变更都必须重新复核。
+2. CI 全绿后等待用户授权转为 ready 并合并；不得自行转换或合并。
+3. 合并及 main strict HandOff 无豁免通过后，才从新 main 重启 M1-04。M2/M3 实现继续停止。
 
 ## Relevant Files and Artifacts
 
@@ -892,8 +905,8 @@ None
 ## Resume Checklist
 
 - [x] 用户明确启动 M1-07；Issue #36、固定治理分支和 clean main base 已核验。
-- [ ] 完成 AHDC v2 全仓库合同同步、字段复算、Governance 与 strict HandOff。
-- [ ] 冻结治理提交并取得独立只读复核 P0/P1/P2 全零结论。
+- [x] 完成 AHDC v2 全仓库合同同步、字段复算、Governance 与 strict HandOff。
+- [x] 冻结治理提交并取得独立只读复核 P0/P1/P2 全零结论。
 - [x] 首轮独立复核 FAIL 已归档，`e13927a` 废止；P1 whole-record 措辞和 P2 依赖证明方向已形成修正候选。
 - [x] 第二轮独立复核 FAIL 已归档，`3380659` 废止；M2-02 Goal 和未发布 DEX 事务清理两项 P1 已形成修正候选。
 - [x] 第三轮独立复核 FAIL 已归档，`e355438` 废止；成功提交与发布前失败的映射清理验收已拆分为互斥路径。
@@ -906,7 +919,8 @@ None
 - [x] 第十轮独立复核 FAIL 已归档，`358a71a` 废止；Guard 比较来源表与真实 Native/parser 验收职责已形成修正候选。
 - [x] 第十一次独立复核 PASS 已归档，`9dec760` 的 P0/P1/P2 全零；M1-07 本地合同修订 ready。
 - [x] 用户已授权发布 M1-07，并要求每个任务完成时同步根 README 进度。
-- [ ] 提交 README/HandOff 同步、推送固定分支并创建 Issue #36 的唯一草稿 PR；M1-04 在 M1-07 合并前保持 blocked。
+- [x] 提交 README/HandOff 同步、推送固定分支并创建 Issue #36 的唯一草稿 PR #37；M1-04 在 M1-07 合并前保持 blocked。
+- [ ] PR #37 治理/文档 CI 全绿；未获 ready/merge 授权。
 - [x] M1-01 从固定 base `e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030` 与唯一分支 `feat/m1-01-untrusted-apk-inspector` 启动，Issue 固定为 #6；当前恢复点为 `main`。
 - [x] M0-04 与 M0-06 已合并并完成各自门禁。
 - [x] 完成最新 main 合并并无豁免运行 strict HandOff。
@@ -971,7 +985,7 @@ None
 - `/root` 已核验第八轮 M1-07 独立复核为 FAIL 并废止 `01f76f6`；当前只允许关闭 package metadata P1 与复核输入 P2、重新冻结并进行完整独立复核。
 - `/root` 已核验第九轮 M1-07 独立复核为 FAIL 并废止 `d5d5d29`；当前只允许关闭 loader 时序 P1 与 metadata API P2、重新冻结并进行完整独立复核。
 - `/root` 已核验第十轮 M1-07 独立复核为 FAIL 并废止 `358a71a`；当前只允许关闭 Guard 比较来源 P2、重新冻结并进行完整独立复核。
-- `/root` 已核验第十一次 M1-07 独立复核为 PASS，`9dec760` 的 P0/P1/P2 全零；用户已授权发布并要求持续同步 README，当前只执行 M1-07 发布，不得提前重启 M1-04。
+- `/root` 已核验第十一次 M1-07 独立复核为 PASS，`9dec760` 的 P0/P1/P2 全零；用户已授权发布并要求持续同步 README，唯一草稿 PR #37 已创建，当前只等待治理/文档 CI，不得提前重启 M1-04。
 - Coordinator `/root` 已核验首轮独立复核 FAIL、六项修复 diff、本地 Gradle/check/governance、双变体 Release/R8 和静态 APK 验证结果。
 - 当前快照声明三套 review-3 设备环境验收 PASS、第五次独立复核 P0/P1/P2 全为零、最终 PR HEAD 六项 CI 全部 PASS，PR #32 已合并，且 post-merge `main` Build/Governance 全绿并无豁免通过 strict HandOff；M0-05 标记 done。旧证据仅保留为历史回归基线。
 - `/root` 已核验真机为 API 29 arm64 64-bit、user/release-keys、非 root 环境，设备 runner cleanup PASS；本轮未启动任何本机模拟器。

@@ -10,9 +10,11 @@ import ah.host.inspector.SignerPolicyV1
 import ah.host.inspector.VerifiedScheme
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.IOException
 import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
+import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
@@ -41,8 +43,8 @@ object ContainerSelfTest {
         Files.createDirectories(work)
 
         runCase("rfc5869_hkdf") { verifyRfc5869() }
-        runCase("chunk_boundaries") { verifyChunkBoundaries() }
-        runCase("near_limit_streaming") { verifyNearLimitStreaming() }
+        runCase("chunk_boundaries") { verifyChunkBoundaries(work) }
+        runCase("near_limit_streaming") { verifyNearLimitStreaming(work) }
         runCase("config_v2_round_trip") { verifyConfigRoundTrip() }
         runCase("deterministic_multi_dex_round_trip") { verifyDeterministicRoundTrip(work) }
         runCase("production_randomness") { verifyProductionRandomness(work) }
@@ -50,6 +52,7 @@ object ContainerSelfTest {
         runCase("input_changed_between_passes") { verifyInputChanged(work) }
         runCase("one_shot_key_plan") { verifyOneShotPlan(work) }
         runCase("random_failure_cleanup") { verifyRandomFailureCleanup(work) }
+        runCase("io_atomic_cleanup_failures") { verifyIoAtomicAndCleanupFailures(work) }
         runCase("cancellation_cleanup") { verifyCancellationCleanup(work) }
 
         val report = buildString {
@@ -105,13 +108,19 @@ object ContainerSelfTest {
             cek, build, manifest, record0, record1, nonce0, nonce1).forEach(ByteArray::fillZero)
 
         val zlibOutput = ByteArrayOutputStream()
-        val zlibObservation = compressInto(ByteArrayInputStream("hello".toByteArray()), zlibOutput, NO_CONTAINER_OBSERVER)
+        val zlibObservation = compressInto(
+            ByteArrayInputStream("hello".toByteArray()),
+            zlibOutput,
+            NO_CONTAINER_OBSERVER,
+            5,
+            13,
+        )
         check(zlibOutput.toByteArray().contentEquals(hex("78dacb48cdc9c90700062c0215")))
         check(zlibObservation.compressedLength == 13L)
         zlibObservation.originalSha256.fill(0)
     }
 
-    private fun verifyChunkBoundaries() {
+    private fun verifyChunkBoundaries(work: Path) {
         val lengths = longArrayOf(1, 65_535, 65_536, 65_537, 65_536L * 9 + 7)
         val expected = intArrayOf(1, 1, 1, 2, 10)
         lengths.indices.forEach { index -> check(chunksForLength(lengths[index]) == expected[index]) }
@@ -119,17 +128,36 @@ object ContainerSelfTest {
         check(expectedChunk(record, 0).plaintextLength == 65_536)
         check(expectedChunk(record, 1).plaintextLength == 1)
         check(expectedChunk(record, 1).payloadOffset == 65_552L)
+        expectCode(ContainerErrorCode.CONTAINER_LIMIT_EXCEEDED) { checkedAdd(Long.MAX_VALUE, 1, "overflow") }
+        expectCode(ContainerErrorCode.CONTAINER_LIMIT_EXCEEDED) { checkedAddInt(Int.MAX_VALUE, 1, "overflow") }
+
+        val fixture = fixture(work.resolve("boundaries.apk"), intArrayOf(1, 65_535, 65_536, 65_537), seed = 5)
+        val output = work.resolve("boundaries.ahdc")
+        val result = DexContainerBuilder(fixture.path, FixedRandom(), RecordingObserver(), null)
+            .build(fixture.inspection, fixture.signer, output)
+        result.keyPackagingPlan.consume { material ->
+            material.expectedBinding(fixture.inspection, fixture.signer).use { binding ->
+                val verified = DexContainerVerifier().verify(output, binding)
+                check(verified.records.map(DexRecordDescriptor::originalLength) ==
+                    listOf(1L, 65_535L, 65_536L, 65_537L))
+            }
+        }
     }
 
-    private fun verifyNearLimitStreaming() {
+    private fun verifyNearLimitStreaming(work: Path) {
         val observer = RecordingObserver()
-        val observation = LimitedZeroInputStream(InspectionLimits.MAX_DEX_BYTES).use { input ->
-            observeCompression(input, observer)
+        val fixture = zeroFixture(work.resolve("near-limit.apk"), InspectionLimits.MAX_DEX_BYTES)
+        val output = work.resolve("near-limit.ahdc")
+        val result = DexContainerBuilder(fixture.path, FixedRandom(), observer, null)
+            .build(fixture.inspection, fixture.signer, output)
+        result.keyPackagingPlan.consume { material ->
+            material.expectedBinding(fixture.inspection, fixture.signer).use { binding ->
+                val verified = DexContainerVerifier(observer).verify(output, binding)
+                check(verified.records.single().originalLength == InspectionLimits.MAX_DEX_BYTES)
+            }
         }
-        check(observation.originalLength == InspectionLimits.MAX_DEX_BYTES)
-        check(observation.compressedLength > 0)
-        check(observer.maxAllocation <= 65_536)
-        observation.originalSha256.fill(0)
+        check(observer.maxAllocation <= 65_552)
+        check(TestMetrics.peakLiveAllocation < 1_048_576)
     }
 
     private fun verifyConfigRoundTrip() {
@@ -182,6 +210,7 @@ object ContainerSelfTest {
         val resultA = DexContainerBuilder(fixture.path, FixedRandom(), observerA, null)
             .build(fixture.inspection, fixture.signer, outputA)
         val descriptorA = resultA.keyPackagingPlan.consume { material ->
+            writeCrossLanguageVector(work.parent, outputA, fixture, material)
             material.expectedBinding(fixture.inspection, fixture.signer).use { binding ->
                 DexContainerVerifier(observerA).verify(outputA, binding)
             }
@@ -202,22 +231,94 @@ object ContainerSelfTest {
         check(resultA.descriptor.containerSha256Hex == descriptorA.containerSha256Hex)
     }
 
+    private fun writeCrossLanguageVector(
+        reportDir: Path,
+        container: Path,
+        fixture: Fixture,
+        material: KeyPackagingMaterialV2,
+    ) {
+        val config = material.configV2().copyRemaining()
+        val nativeShare = material.rNative().copyRemaining()
+        val buildId = material.buildId().copyRemaining()
+        val keySlotId = material.keySlotId().copyRemaining()
+        try {
+            val bytes = Files.readAllBytes(container)
+            val header = AhdcV2Codec.parseHeader(bytes.copyOfRange(0, AhConstants.HEADER_BYTES))
+            val recordOffset = AhConstants.HEADER_BYTES + header.signerPolicySize
+            val records = (0 until header.dexCount).map { index ->
+                AhdcV2Codec.parseRecord(bytes.copyOfRange(
+                    recordOffset + index * AhConstants.RECORD_BYTES,
+                    recordOffset + (index + 1) * AhConstants.RECORD_BYTES,
+                ))
+            }
+            val json = buildString {
+                append("{\n")
+                append("  \"schema\": \"ahdc-v2-cross-language-vector-v1\",\n")
+                append("  \"container_sha256\": \"").append(ContainerCrypto.sha256(bytes).toHex()).append("\",\n")
+                append("  \"config_v2_hex\": \"").append(config.toHex()).append("\",\n")
+                append("  \"r_native_hex\": \"").append(nativeShare.toHex()).append("\",\n")
+                append("  \"build_id_hex\": \"").append(buildId.toHex()).append("\",\n")
+                append("  \"key_slot_id_hex\": \"").append(keySlotId.toHex()).append("\",\n")
+                append("  \"package_name\": \"").append(fixture.inspection.packageName).append("\",\n")
+                append("  \"package_name_sha256\": \"").append(fixture.inspection.packageNameSha256.toHex()).append("\",\n")
+                append("  \"current_signer_sha256\": \"").append(fixture.signer.currentCertificateSha256.toHex()).append("\",\n")
+                append("  \"expected_original_factory\": \"ah.fixtures.OriginalFactory\",\n")
+                append("  \"records\": [\n")
+                records.forEachIndexed { index, record ->
+                    append("    {\"ordinal\": ").append(record.ordinal)
+                        .append(", \"name\": \"").append(record.name)
+                        .append("\", \"original_length\": ").append(record.originalLength)
+                        .append(", \"compressed_length\": ").append(record.compressedLength)
+                        .append(", \"chunk_count\": ").append(record.chunkCount)
+                        .append(", \"nonce_prefix_hex\": \"").append(record.noncePrefix.toHex())
+                        .append("\", \"original_sha256\": \"").append(record.originalSha256.toHex()).append("\"}")
+                    if (index != records.lastIndex) append(',')
+                    append('\n')
+                }
+                append("  ]\n}\n")
+            }
+            Files.writeString(reportDir.resolve("cross-language-vector.json"), json)
+            bytes.fill(0)
+        } finally {
+            listOf(config, nativeShare, buildId, keySlotId).forEach(ByteArray::fillZero)
+        }
+    }
+
     private fun verifyProductionRandomness(work: Path) {
         val fixture = fixture(work.resolve("random.apk"), intArrayOf(8_192), seed = 19)
         val outputA = work.resolve("random-a.ahdc")
         val outputB = work.resolve("random-b.ahdc")
         val first = DexContainerBuilder(fixture.path).build(fixture.inspection, fixture.signer, outputA)
         val second = DexContainerBuilder(fixture.path).build(fixture.inspection, fixture.signer, outputB)
-        val firstMaterial = first.keyPackagingPlan.consume { material ->
-            listOf(material.configV2().copyRemaining(), material.rNative().copyRemaining(),
-                material.buildId().copyRemaining(), material.keySlotId().copyRemaining())
-        }
-        val secondMaterial = second.keyPackagingPlan.consume { material ->
-            listOf(material.configV2().copyRemaining(), material.rNative().copyRemaining(),
-                material.buildId().copyRemaining(), material.keySlotId().copyRemaining())
-        }
+        fun consume(result: ContainerBuildResult, output: Path): Pair<DexContainerDescriptor, List<ByteArray>> =
+            result.keyPackagingPlan.consume { material ->
+                val config = material.configV2().copyRemaining()
+                val nativeShare = material.rNative().copyRemaining()
+                val buildId = material.buildId().copyRemaining()
+                val keySlotId = material.keySlotId().copyRemaining()
+                val signer = fixture.signer.currentCertificateSha256
+                val packageDigest = fixture.inspection.packageNameSha256
+                val cek = ConfigV2Codec.recoverCek(config, nativeShare, buildId, keySlotId, signer, packageDigest)
+                val rJava = slice(config, 88, 32)
+                val root = ByteArray(32) { index -> (rJava[index].toInt() xor nativeShare[index].toInt()).toByte() }
+                val wrapNonce = slice(config, 120, 12)
+                val header = AhdcV2Codec.parseHeader(Files.readAllBytes(output).copyOfRange(0, AhConstants.HEADER_BYTES))
+                val recordOffset = AhConstants.HEADER_BYTES.toLong() + header.signerPolicySize
+                val noncePrefix = FileChannel.open(output, StandardOpenOption.READ).use { channel ->
+                    AhdcV2Codec.parseRecord(channel.readExact(recordOffset, AhConstants.RECORD_BYTES)).noncePrefix
+                }
+                val verified = material.expectedBinding(fixture.inspection, fixture.signer).use { binding ->
+                    DexContainerVerifier().verify(output, binding)
+                }
+                Pair(verified, listOf(config, nativeShare, buildId, keySlotId, cek, root, rJava, wrapNonce, noncePrefix))
+            }
+        val (verifiedFirst, firstMaterial) = consume(first, outputA)
+        val (verifiedSecond, secondMaterial) = consume(second, outputB)
         check(first.descriptor.containerSha256Hex != second.descriptor.containerSha256Hex)
         firstMaterial.indices.forEach { index -> check(!firstMaterial[index].contentEquals(secondMaterial[index])) }
+        assertDescriptorSemanticsEqual(verifiedFirst, verifiedSecond, ignoreContainerHash = true)
+        assertDescriptorSemanticsEqual(first.descriptor, verifiedFirst, ignoreContainerHash = false)
+        assertDescriptorSemanticsEqual(second.descriptor, verifiedSecond, ignoreContainerHash = false)
         (firstMaterial + secondMaterial).forEach(ByteArray::fillZero)
     }
 
@@ -265,6 +366,30 @@ object ContainerSelfTest {
                     ContainerErrorCode.CONTAINER_AUTH_FAILED)
                 verifyFileTamper(fixture, clean, config, nativeShare, work.resolve("tamper-tag.ahdc"),
                     payloadBase + minOf(65_536L, firstRecord.compressedLength), ContainerErrorCode.CONTAINER_AUTH_FAILED)
+                verifyAuthenticatedZlibTamper(
+                    fixture,
+                    clean,
+                    config,
+                    nativeShare,
+                    work.resolve("tamper-authenticated-zlib.ahdc"),
+                    "checksum",
+                )
+                verifyAuthenticatedZlibTamper(
+                    fixture,
+                    clean,
+                    config,
+                    nativeShare,
+                    work.resolve("tamper-authenticated-dictionary.ahdc"),
+                    "dictionary",
+                )
+                verifyAuthenticatedZlibTamper(
+                    fixture,
+                    clean,
+                    config,
+                    nativeShare,
+                    work.resolve("tamper-authenticated-concatenated.ahdc"),
+                    "concatenated",
+                )
 
                 val truncated = work.resolve("tamper-truncated.ahdc")
                 Files.copy(clean, truncated, StandardCopyOption.REPLACE_EXISTING)
@@ -357,6 +482,70 @@ object ContainerSelfTest {
             DexContainerBuilder(fixture.path, zeros, observer, null)
                 .build(fixture.inspection, fixture.signer, work.resolve("random-zero.ahdc"))
         }
+
+        val collidingShares = ContainerRandom { label, size ->
+            if (label == "root" || label == "rJava") ByteArray(size) { 7 }
+            else MessageDigest.getInstance("SHA-256").digest("collision:$label".toByteArray()).copyOf(size)
+        }
+        expectCode(ContainerErrorCode.CONTAINER_RANDOM_FAILED) {
+            DexContainerBuilder(fixture.path, collidingShares, observer, null)
+                .build(fixture.inspection, fixture.signer, work.resolve("random-collision.ahdc"))
+        }
+        check(!Files.exists(work.resolve("random-collision.ahdc")))
+    }
+
+    private fun verifyIoAtomicAndCleanupFailures(work: Path) {
+        val fixture = fixture(work.resolve("failure-injection.apk"), intArrayOf(70_000), seed = 47)
+
+        val ioOutput = work.resolve("io-failure.ahdc")
+        expectCode(ContainerErrorCode.CONTAINER_FORMAT) {
+            DexContainerBuilder(fixture.path, FixedRandom(), RecordingObserver(), { throw IOException("injected") })
+                .build(fixture.inspection, fixture.signer, ioOutput)
+        }
+        check(!Files.exists(ioOutput))
+
+        val atomicOutput = work.resolve("atomic-failure.ahdc")
+        expectCode(ContainerErrorCode.CONTAINER_FORMAT) {
+            DexContainerBuilder(fixture.path, FixedRandom(), RecordingObserver(), null) { source, target ->
+                throw AtomicMoveNotSupportedException(source.toString(), target.toString(), "injected")
+            }.build(fixture.inspection, fixture.signer, atomicOutput)
+        }
+        check(!Files.exists(atomicOutput))
+
+        val earlyObserver = ThrowingCleanupObserver(setOf("manifest.key"))
+        val cleanupOutput = work.resolve("cleanup-failure.ahdc")
+        expectCode(ContainerErrorCode.CONTAINER_KEY_MATERIAL) {
+            DexContainerBuilder(fixture.path, FixedRandom(), earlyObserver, null)
+                .build(fixture.inspection, fixture.signer, cleanupOutput)
+        }
+        check(!Files.exists(cleanupOutput))
+        check(earlyObserver.labels.containsAll(listOf("manifest.key", "config", "rNative", "cek", "noncePrefix.0")))
+        check(earlyObserver.allZero)
+
+        val middleObserver = ThrowingCleanupObserver(setOf("record.key.0"))
+        val middleOutput = work.resolve("cleanup-middle-failure.ahdc")
+        expectCode(ContainerErrorCode.CONTAINER_KEY_MATERIAL) {
+            DexContainerBuilder(fixture.path, FixedRandom(), middleObserver, null)
+                .build(fixture.inspection, fixture.signer, middleOutput)
+        }
+        check(!Files.exists(middleOutput))
+        check(middleObserver.labels.containsAll(listOf("record.key.0", "config", "rNative", "cek", "noncePrefix.0")))
+        check(middleObserver.allZero)
+
+        val planObserver = ThrowingCleanupObserver(setOf("plan.config", "plan.rNative", "plan.keySlotId"))
+        val planOutput = work.resolve("cleanup-primary.ahdc")
+        val result = DexContainerBuilder(fixture.path, FixedRandom(), planObserver, null)
+            .build(fixture.inspection, fixture.signer, planOutput)
+        val primary = try {
+            result.keyPackagingPlan.consume<Unit> { throw IllegalStateException("primary-action") }
+            error("expected primary action failure")
+        } catch (failure: IllegalStateException) {
+            failure
+        }
+        check(primary.message == "primary-action")
+        check(primary.suppressed.isNotEmpty())
+        check(planObserver.labels.containsAll(listOf("plan.config", "plan.rNative", "plan.buildId", "plan.keySlotId")))
+        check(planObserver.allZero)
     }
 
     private fun verifyCancellationCleanup(work: Path) {
@@ -397,6 +586,76 @@ object ContainerSelfTest {
         verifyWithCopies(fixture, tampered, config, nativeShare, expectedCode)
     }
 
+    private fun verifyAuthenticatedZlibTamper(
+        fixture: Fixture,
+        clean: Path,
+        config: ByteArray,
+        nativeShare: ByteArray,
+        tampered: Path,
+        mutation: String,
+    ) {
+        Files.copy(clean, tampered, StandardCopyOption.REPLACE_EXISTING)
+        val headerBytes = FileChannel.open(clean, StandardOpenOption.READ).use { channel ->
+            channel.readExact(0, AhConstants.HEADER_BYTES)
+        }
+        val header = AhdcV2Codec.parseHeader(headerBytes)
+        val recordOffset = AhConstants.HEADER_BYTES.toLong() + header.signerPolicySize
+        val recordBytes = FileChannel.open(clean, StandardOpenOption.READ).use { channel ->
+            channel.readExact(recordOffset, AhConstants.RECORD_BYTES)
+        }
+        val record = AhdcV2Codec.parseRecord(recordBytes)
+        val chunkOrdinal = if (mutation == "checksum") record.chunkCount - 1 else 0
+        val chunk = expectedChunk(record, chunkOrdinal)
+        val chunkBytes = AhdcV2Codec.chunk(chunk)
+        val payloadBase = AhConstants.HEADER_BYTES.toLong() + header.signerPolicySize +
+            header.recordTableSize + header.chunkTableSize
+        val ciphertextOffset = payloadBase + chunk.payloadOffset
+        val ciphertext = FileChannel.open(clean, StandardOpenOption.READ).use { channel ->
+            channel.readExact(ciphertextOffset, chunk.plaintextLength + AhConstants.GCM_TAG_BYTES)
+        }
+        val cek = ConfigV2Codec.recoverCek(
+            config,
+            nativeShare,
+            header.buildId,
+            header.keySlotId,
+            fixture.signer.currentCertificateSha256,
+            fixture.inspection.packageNameSha256,
+        )
+        val key = ContainerCrypto.recordKey(cek, header.buildId, record.ordinal)
+        val nonce = ContainerCrypto.chunkNonce(record.noncePrefix, chunkOrdinal)
+        val aad = ContainerCrypto.chunkAad(
+            headerBytes.headerVersionBytes(),
+            header.buildId,
+            header.keySlotId,
+            fixture.signer.currentCertificateSha256,
+            fixture.inspection.packageNameSha256,
+            recordBytes,
+            chunkBytes,
+        )
+        val compressed = ContainerCrypto.aesGcmDecrypt(key, nonce, aad, ciphertext)
+        when (mutation) {
+            "checksum" -> compressed[compressed.lastIndex] = (compressed.last().toInt() xor 1).toByte()
+            "dictionary" -> {
+                val cmf = compressed[0].toInt() and 0xff
+                val high = (compressed[1].toInt() and 0xc0) or 0x20
+                compressed[1] = (0..31).first { low -> ((cmf shl 8) or high or low) % 31 == 0 }.let { (high or it).toByte() }
+            }
+            "concatenated" -> hex("78da030000000001").copyInto(compressed)
+            else -> error("unknown mutation: $mutation")
+        }
+        val replacement = ContainerCrypto.aesGcmEncrypt(key, nonce, aad, compressed)
+        FileChannel.open(tampered, StandardOpenOption.WRITE).use { channel ->
+            check(channel.write(ByteBuffer.wrap(replacement), ciphertextOffset) == replacement.size)
+        }
+        val observer = RecordingObserver()
+        ExpectedBinding.from(fixture.inspection, fixture.signer, config, nativeShare, NO_CONTAINER_OBSERVER).use { binding ->
+            expectCode(ContainerErrorCode.CONTAINER_FORMAT) { DexContainerVerifier(observer).verify(tampered, binding) }
+        }
+        check(observer.authenticated.get() == if (mutation == "checksum") record.chunkCount else 1)
+        listOf(headerBytes, recordBytes, chunkBytes, ciphertext, cek, key, nonce, aad, compressed, replacement)
+            .forEach(ByteArray::fillZero)
+    }
+
     private fun verifyWithCopies(
         fixture: Fixture,
         container: Path,
@@ -404,9 +663,34 @@ object ContainerSelfTest {
         nativeShare: ByteArray,
         expectedCode: ContainerErrorCode,
     ) {
+        val observer = RecordingObserver()
         ExpectedBinding.from(fixture.inspection, fixture.signer, config, nativeShare, NO_CONTAINER_OBSERVER).use { binding ->
-            expectCode(expectedCode) { DexContainerVerifier().verify(container, binding) }
+            expectCode(expectedCode) { DexContainerVerifier(observer).verify(container, binding) }
         }
+        check(observer.authenticated.get() == 0) { "tamper reached inflater: ${container.fileName}" }
+    }
+
+    private fun assertDescriptorSemanticsEqual(
+        first: DexContainerDescriptor,
+        second: DexContainerDescriptor,
+        ignoreContainerHash: Boolean,
+    ) {
+        check(first.major == second.major && first.minor == second.minor && first.packageName == second.packageName)
+        check(first.currentSignerSha256.contentEquals(second.currentSignerSha256))
+        check(first.signerLineageSha256.size == second.signerLineageSha256.size)
+        first.signerLineageSha256.indices.forEach { index ->
+            check(first.signerLineageSha256[index].contentEquals(second.signerLineageSha256[index]))
+        }
+        check(first.records.size == second.records.size)
+        first.records.indices.forEach { index ->
+            val left = first.records[index]
+            val right = second.records[index]
+            check(left.ordinal == right.ordinal && left.name == right.name &&
+                left.originalLength == right.originalLength && left.compressedLength == right.compressedLength &&
+                left.chunkCount == right.chunkCount && left.firstChunkIndex == right.firstChunkIndex &&
+                left.payloadOffset == right.payloadOffset && left.originalSha256.contentEquals(right.originalSha256))
+        }
+        if (!ignoreContainerHash) check(first.containerSha256.contentEquals(second.containerSha256))
     }
 
     private fun fixture(path: Path, sizes: IntArray, seed: Int): Fixture {
@@ -445,6 +729,43 @@ object ContainerSelfTest {
         inputHash.fill(0)
         signerDigest.fill(0)
         return Fixture(path, inspection, signer, dex.map { it.copyOfRange(0, minOf(16, it.size)) })
+    }
+
+    private fun zeroFixture(path: Path, size: Long): Fixture {
+        val digest = MessageDigest.getInstance("SHA-256")
+        val buffer = ByteArray(AhConstants.CHUNK_PLAINTEXT_MAX)
+        Files.newOutputStream(path, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING).use { file ->
+            ZipOutputStream(file).use { zip ->
+                zip.putNextEntry(ZipEntry("classes.dex").also { it.time = 0 })
+                var remaining = size
+                while (remaining > 0) {
+                    val count = minOf(remaining, buffer.size.toLong()).toInt()
+                    zip.write(buffer, 0, count)
+                    digest.update(buffer, 0, count)
+                    remaining -= count
+                }
+                zip.closeEntry()
+            }
+        }
+        val packageName = "ah.fixtures.container.limit"
+        val inputHash = ContainerCrypto.sha256(path)
+        val signerDigest = ByteArray(32) { index -> (index * 11 + 3).toByte() }
+        val inspection = ApkInspection(
+            inputHash,
+            ManifestSummary(packageName, ContainerCrypto.sha256(packageName.toByteArray()), 29, 36, null,
+                "ah.fixtures.OriginalFactory", null),
+            emptyList(),
+            listOf(DexSummary("classes.dex", 0, size, 1, digest.digest())),
+            NativeAbiSummary(emptyList()),
+            emptyList(),
+            "test",
+            LimitsApplied(emptyMap()),
+        )
+        val signer = SignerPolicyV1(signerDigest, listOf(signerDigest), setOf(VerifiedScheme.V2))
+        buffer.fill(0)
+        inputHash.fill(0)
+        signerDigest.fill(0)
+        return Fixture(path, inspection, signer, listOf(ByteArray(16)))
     }
 
     private fun writeApk(path: Path, dex: List<ByteArray>) {
@@ -532,6 +853,18 @@ private class RecordingObserver : ContainerObserver {
     override fun authenticatedBeforeInflate(record: Int, chunk: Int) {
         check(record >= 0 && chunk >= 0)
         authenticated.incrementAndGet()
+    }
+}
+
+private class ThrowingCleanupObserver(private val throwingLabels: Set<String>) : ContainerObserver {
+    val labels = ArrayList<String>()
+    var allZero = true
+        private set
+
+    override fun cleared(label: String, allZero: Boolean) {
+        labels += label
+        this.allZero = this.allZero && allZero
+        if (label in throwingLabels) throw IllegalStateException("cleanup:$label")
     }
 }
 

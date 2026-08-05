@@ -1,6 +1,6 @@
 # M1-04 local security scan
 
-Timestamp: `2026-08-06T01:16:29+08:00`
+Timestamp: `2026-08-06T06:03:17+08:00`
 
 Scope:
 
@@ -8,6 +8,7 @@ Scope:
 - `host/container/src/test/kotlin/`
 - `docs/specs/AHDC_V2.md`
 - `.github/workflows/build.yml`
+- `tools/validation/verify-ahdc-v2-vector.mjs`
 
 Results:
 
@@ -23,12 +24,14 @@ Results:
   table exists in product code;
 - exception messages expose only stable error codes and field labels, not paths,
   package contents, DEX bytes, key material, shares, or nonces.
+- the checked-in Node consumer contains no key literal; it consumes only the
+  generated deterministic synthetic vector under ignored `build/` output.
 
 Review of the cryptographic sequence confirmed standard JCA AES-256-GCM and
 HMAC-SHA-256, RFC 5869 extract/expand, independent manifest/record domains,
 canonical 96-bit chunk nonces, complete metadata MAC coverage, complete ConfigV2
 digest binding, and authenticate-before-inflate ordering.
 
-This is the implementer's local review, not the task's required independent
-cryptographic/binary-format approval. Independent review must target the frozen
-implementation commit before publication.
+The first independent review is archived as `security-review-1.md` with result
+`FAIL`; its six findings drove this remediation. A second independent review must
+target the new frozen commit before publication.

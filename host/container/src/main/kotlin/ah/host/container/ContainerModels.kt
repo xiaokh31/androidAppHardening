@@ -108,9 +108,10 @@ class KeyPackagingPlanV2 internal constructor(
     buildId: ByteArray,
     keySlotId: ByteArray,
     targetAbis: Set<RuntimeAbi>,
-    private val observer: ContainerObserver,
+    observer: ContainerObserver,
 ) : AutoCloseable {
     private val consumed = AtomicBoolean(false)
+    private val observer = cleanupTrackingObserver(observer)
     private val material = KeyPackagingMaterialV2(
         configV2.copyOf(),
         rNative.copyOf(),
@@ -123,15 +124,23 @@ class KeyPackagingPlanV2 internal constructor(
         if (!consumed.compareAndSet(false, true)) {
             throw ContainerException(ContainerErrorCode.CONTAINER_KEY_MATERIAL, "planConsumed")
         }
+        var primaryFailure: Throwable? = null
         return try {
             action(material)
+        } catch (failure: Throwable) {
+            primaryFailure = failure
+            throw failure
         } finally {
             material.clear(observer)
+            observer.finish(primaryFailure)
         }
     }
 
     override fun close() {
-        if (consumed.compareAndSet(false, true)) material.clear(observer)
+        if (consumed.compareAndSet(false, true)) {
+            material.clear(observer)
+            observer.finish(null)
+        }
     }
 }
 
@@ -143,8 +152,9 @@ class ExpectedBinding internal constructor(
     expectedDex: List<DexSummary>,
     configV2: ByteArray,
     rNative: ByteArray,
-    private val observer: ContainerObserver,
+    observer: ContainerObserver,
 ) : AutoCloseable {
+    private val observer = cleanupTrackingObserver(observer)
     private val packageDigest = requireDigest(packageNameSha256)
     private val signerDigest = requireDigest(currentSignerSha256)
     private val lineageDigests = signerLineageSha256.map(::requireDigest)
@@ -167,6 +177,7 @@ class ExpectedBinding internal constructor(
             lineageDigests.forEachIndexed { index, bytes -> wipe("binding.lineage.$index", bytes, observer) }
             wipe("binding.config", config, observer)
             wipe("binding.rNative", nativeShare, observer)
+            observer.finish(null)
         }
     }
 
@@ -198,6 +209,46 @@ internal interface ContainerObserver {
 
 internal object NO_CONTAINER_OBSERVER : ContainerObserver
 
+internal class CleanupTrackingObserver(private val delegate: ContainerObserver) : ContainerObserver {
+    private val failures = ArrayList<Throwable>()
+
+    override fun cleared(label: String, allZero: Boolean) {
+        try {
+            delegate.cleared(label, allZero)
+        } catch (failure: Throwable) {
+            failures += failure
+        }
+    }
+
+    override fun allocated(label: String, bytes: Int) = delegate.allocated(label, bytes)
+
+    override fun authenticatedBeforeInflate(record: Int, chunk: Int) =
+        delegate.authenticatedBeforeInflate(record, chunk)
+
+    fun finish(primaryFailure: Throwable?) {
+        if (failures.isEmpty()) return
+        val first = failures.removeAt(0)
+        failures.forEach { failure -> suppressCleanup(first, failure) }
+        failures.clear()
+        if (primaryFailure != null) {
+            suppressCleanup(primaryFailure, first)
+        } else {
+            throw ContainerException(ContainerErrorCode.CONTAINER_KEY_MATERIAL, "cleanupObserver", first)
+        }
+    }
+}
+
+internal fun cleanupTrackingObserver(observer: ContainerObserver): CleanupTrackingObserver =
+    observer as? CleanupTrackingObserver ?: CleanupTrackingObserver(observer)
+
+internal fun suppressCleanup(primary: Throwable, cleanup: Throwable) {
+    try {
+        primary.addSuppressed(cleanup)
+    } catch (_: Throwable) {
+        // Cleanup diagnostics are best-effort and never replace the primary failure.
+    }
+}
+
 internal fun wipe(label: String, bytes: ByteArray, observer: ContainerObserver) {
     bytes.fill(0)
     observer.cleared(label, bytes.all { it == 0.toByte() })
@@ -225,13 +276,20 @@ internal fun interface ContainerRandom {
     fun bytes(label: String, size: Int): ByteArray
 }
 
-internal class SecureContainerRandom : ContainerRandom {
-    private val random = SecureRandom()
+internal class SecureContainerRandom private constructor(private val random: SecureRandom) : ContainerRandom {
 
     override fun bytes(label: String, size: Int): ByteArray = try {
         if (label.isEmpty() || size <= 0) format("randomRequest")
         ByteArray(size).also(random::nextBytes)
     } catch (exception: RuntimeException) {
         throw ContainerException(ContainerErrorCode.CONTAINER_RANDOM_FAILED, "random", exception)
+    }
+
+    companion object {
+        fun create(): SecureContainerRandom = try {
+            SecureContainerRandom(SecureRandom())
+        } catch (failure: RuntimeException) {
+            throw ContainerException(ContainerErrorCode.CONTAINER_RANDOM_FAILED, "randomInit", failure)
+        }
     }
 }

@@ -6,7 +6,6 @@ import ah.host.inspector.InspectionLimits
 import ah.host.inspector.SignerPolicyV1
 import java.io.IOException
 import java.io.OutputStream
-import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
@@ -17,48 +16,77 @@ import java.util.zip.ZipFile
 class DexContainerBuilder internal constructor(
     private val inputApk: Path,
     private val random: ContainerRandom,
-    private val observer: ContainerObserver,
+    observer: ContainerObserver,
     private val betweenPasses: (() -> Unit)?,
+    private val atomicMove: ((Path, Path) -> Unit)?,
 ) {
-    constructor(inputApk: Path) : this(inputApk, SecureContainerRandom(), NO_CONTAINER_OBSERVER, null)
+    private val observer = cleanupTrackingObserver(observer)
+
+    internal constructor(
+        inputApk: Path,
+        random: ContainerRandom,
+        observer: ContainerObserver,
+        betweenPasses: (() -> Unit)?,
+    ) : this(inputApk, random, observer, betweenPasses, null)
+
+    constructor(inputApk: Path) : this(inputApk, SecureContainerRandom.create(), NO_CONTAINER_OBSERVER, null, null)
 
     fun build(inspection: ApkInspection, signer: SignerPolicyV1, encryptedTemp: Path): ContainerBuildResult {
         val dex = validateInspection(inspection, signer)
+        val targetAbis = targetAbis(inspection)
+        val destination = encryptedTemp.toAbsolutePath().normalize()
+        if (Files.exists(destination)) format("outputExists")
+        val parent = destination.parent ?: format("outputParent")
         val initialInputHash = hashInput()
-        if (!initialInputHash.constantTimeEquals(inspection.inputSha256)) inputChanged("inputSha256")
-        val observations = observeDex(dex)
-        val secrets = BuildSecrets.create(random, dex.size, observer)
+        var observations: List<CompressionObservation> = emptyList()
+        var secrets: BuildSecrets? = null
         var config: ConfigV2Material? = null
         var outputPart: Path? = null
+        var unpublishedPlan: KeyPackagingPlanV2? = null
+        var sensitiveCleared = false
         var primaryFailure: Throwable? = null
+
+        fun clearSensitive(primary: Throwable?) {
+            if (sensitiveCleared) return
+            config?.let { material ->
+                wipe("config", material.bytes, observer)
+                wipe("rNative", material.rNative, observer)
+            }
+            secrets?.clear(observer)
+            observations.forEachIndexed { index, value -> wipe("pass1.digest.$index", value.originalSha256, observer) }
+            sensitiveCleared = true
+            observer.finish(primary)
+        }
+
         try {
+            if (!initialInputHash.constantTimeEquals(inspection.inputSha256)) inputChanged("inputSha256")
+            observations = observeDex(dex)
+            val buildSecrets = BuildSecrets.create(random, dex.size, observer)
+            secrets = buildSecrets
             config = ConfigV2Codec.build(
                 inspection.appComponentFactoryClass,
-                secrets.buildId,
-                secrets.keySlotId,
+                buildSecrets.buildId,
+                buildSecrets.keySlotId,
                 signer.currentCertificateSha256,
                 inspection.packageNameSha256,
-                secrets.cek,
-                secrets.root,
-                secrets.rJava,
-                secrets.wrapNonce,
+                buildSecrets.cek,
+                buildSecrets.root,
+                buildSecrets.rJava,
+                buildSecrets.wrapNonce,
             )
-            val records = buildRecords(observations, secrets.noncePrefixes)
+            val records = buildRecords(observations, buildSecrets.noncePrefixes)
             val signerBytes = AhdcV2Codec.spv1(signer)
             val recordBytes = records.map(AhdcV2Codec::record)
-            val headerWithoutMac = buildHeader(records, signerBytes, config.bytes, secrets, ByteArray(32))
-            val manifestKey = ContainerCrypto.manifestKey(secrets.cek, secrets.buildId)
+            val headerWithoutMac = buildHeader(records, signerBytes, config.bytes, buildSecrets, ByteArray(32))
+            val manifestKey = ContainerCrypto.manifestKey(buildSecrets.cek, buildSecrets.buildId)
             val manifestMac = try {
                 manifestMac(manifestKey, headerWithoutMac, signerBytes, recordBytes, records)
             } finally {
                 wipe("manifest.key", manifestKey, observer)
             }
-            val header = buildHeader(records, signerBytes, config.bytes, secrets, manifestMac)
+            val header = buildHeader(records, signerBytes, config.bytes, buildSecrets, manifestMac)
             wipe("manifest.mac", manifestMac, observer)
-
-            val destination = encryptedTemp.toAbsolutePath().normalize()
-            if (Files.exists(destination)) format("outputExists")
-            val parent = destination.parent ?: format("outputParent")
+            val expectedSize = expectedFileSize(header, signerBytes.size, records)
             Files.createDirectories(parent)
             outputPart = Files.createTempFile(parent, ".ahdc-v2-", ".part")
             Files.newOutputStream(outputPart, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING).use { output ->
@@ -69,24 +97,27 @@ class DexContainerBuilder internal constructor(
                     repeat(record.chunkCount) { chunkOrdinal -> output.write(AhdcV2Codec.chunk(expectedChunk(record, chunkOrdinal))) }
                 }
                 betweenPasses?.invoke()
-                writePayload(output, header, inspection, signer, dex, observations, records, recordBytes, secrets)
+                writePayload(output, header, inspection, signer, dex, observations, records, recordBytes, buildSecrets)
             }
             if (!hashInput().constantTimeEquals(initialInputHash)) inputChanged("inputFinalHash")
-            val expectedSize = expectedFileSize(header, signerBytes.size, records)
             if (Files.size(outputPart) != expectedSize) format("outputSize")
             val containerHash = ContainerCrypto.sha256(outputPart)
-            moveAtomically(outputPart, destination)
-            outputPart = null
             val descriptor = descriptor(inspection, signer, records, containerHash)
             val plan = KeyPackagingPlanV2(
                 config.bytes,
                 config.rNative,
-                secrets.buildId,
-                secrets.keySlotId,
-                targetAbis(inspection),
+                buildSecrets.buildId,
+                buildSecrets.keySlotId,
+                targetAbis,
                 observer,
             )
-            return ContainerBuildResult(descriptor, plan)
+            unpublishedPlan = plan
+            val result = ContainerBuildResult(descriptor, plan)
+            clearSensitive(null)
+            moveAtomically(outputPart, destination)
+            outputPart = null
+            unpublishedPlan = null
+            return result
         } catch (exception: ContainerException) {
             primaryFailure = exception
             throw exception
@@ -106,24 +137,31 @@ class DexContainerBuilder internal constructor(
             primaryFailure = failure
             throw failure
         } finally {
+            val failureWasInFlight = primaryFailure != null
+            unpublishedPlan?.let { plan ->
+                try {
+                    plan.close()
+                } catch (cleanup: Throwable) {
+                    primaryFailure?.let { failure -> suppressCleanup(failure, cleanup) } ?: run { primaryFailure = cleanup }
+                }
+            }
             outputPart?.let { part ->
                 try {
                     Files.deleteIfExists(part)
                 } catch (cleanup: IOException) {
-                    if (primaryFailure != null) {
-                        primaryFailure.addSuppressed(cleanup)
-                    } else {
-                        throw ContainerException(ContainerErrorCode.CONTAINER_FORMAT, "outputCleanup", cleanup)
-                    }
+                    val mapped = ContainerException(ContainerErrorCode.CONTAINER_FORMAT, "outputCleanup", cleanup)
+                    primaryFailure?.let { failure -> suppressCleanup(failure, mapped) } ?: run { primaryFailure = mapped }
                 }
             }
-            config?.let { material ->
-                wipe("config", material.bytes, observer)
-                wipe("rNative", material.rNative, observer)
+            if (!sensitiveCleared) {
+                try {
+                    clearSensitive(primaryFailure)
+                } catch (cleanup: Throwable) {
+                    primaryFailure?.let { failure -> suppressCleanup(failure, cleanup) } ?: run { primaryFailure = cleanup }
+                }
             }
-            secrets.clear(observer)
             initialInputHash.fill(0)
-            observations.forEachIndexed { index, value -> wipe("pass1.digest.$index", value.originalSha256, observer) }
+            if (!failureWasInFlight) primaryFailure?.let { failure -> throw failure }
         }
     }
 
@@ -246,7 +284,15 @@ class DexContainerBuilder internal constructor(
                     observer,
                 )
                 try {
-                    val observation = zip.getInputStream(entry).use { input -> compressInto(input, encrypted, observer) }
+                    val observation = zip.getInputStream(entry).use { input ->
+                        compressInto(
+                            input,
+                            encrypted,
+                            observer,
+                            pass1[index].originalLength,
+                            pass1[index].compressedLength,
+                        )
+                    }
                     if (observation.originalLength != pass1[index].originalLength ||
                         observation.compressedLength != pass1[index].compressedLength ||
                         !observation.originalSha256.constantTimeEquals(pass1[index].originalSha256) ||
@@ -311,11 +357,8 @@ class DexContainerBuilder internal constructor(
     }
 
     private fun moveAtomically(source: Path, destination: Path) {
-        try {
-            Files.move(source, destination, StandardCopyOption.ATOMIC_MOVE)
-        } catch (_: AtomicMoveNotSupportedException) {
-            Files.move(source, destination)
-        }
+        atomicMove?.invoke(source, destination)
+            ?: Files.move(source, destination, StandardCopyOption.ATOMIC_MOVE)
     }
 }
 
@@ -453,7 +496,7 @@ private class BuildSecrets(
                 val buildId = take("buildId", 16)
                 val keySlotId = take("keySlotId", 16)
                 val noncePrefixes = (0 until dexCount).map { index -> take("noncePrefix.$index", 8) }
-                if (buildId.contentEquals(keySlotId) ||
+                if (root.contentEquals(rJava) || buildId.contentEquals(keySlotId) ||
                     noncePrefixes.map(ByteArray::toHex).distinct().size != noncePrefixes.size
                 ) throw ContainerException(ContainerErrorCode.CONTAINER_RANDOM_FAILED, "randomCollision")
                 return BuildSecrets(cek, root, rJava, wrapNonce, buildId, keySlotId, noncePrefixes)

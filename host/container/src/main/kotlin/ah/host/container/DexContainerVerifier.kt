@@ -10,7 +10,9 @@ import java.security.MessageDigest
 import java.util.zip.DataFormatException
 import java.util.zip.Inflater
 
-class DexContainerVerifier internal constructor(private val observer: ContainerObserver) {
+class DexContainerVerifier internal constructor(observer: ContainerObserver) {
+    private val observer = cleanupTrackingObserver(observer)
+
     constructor() : this(NO_CONTAINER_OBSERVER)
 
     fun verify(container: Path, expected: ExpectedBinding): DexContainerDescriptor {
@@ -18,6 +20,7 @@ class DexContainerVerifier internal constructor(private val observer: ContainerO
         val config = expected.config()
         val nativeShare = expected.nativeShare()
         var cek: ByteArray? = null
+        var primaryFailure: Throwable? = null
         try {
             FileChannel.open(container, StandardOpenOption.READ).use { channel ->
                 val size = channel.size()
@@ -88,14 +91,21 @@ class DexContainerVerifier internal constructor(private val observer: ContainerO
                 return descriptor(expected, signer.first, signer.second, records, finalHash)
             }
         } catch (exception: ContainerException) {
+            primaryFailure = exception
             throw exception
         } catch (exception: IOException) {
-            throw ContainerException(ContainerErrorCode.CONTAINER_FORMAT, "io", exception)
+            val mapped = ContainerException(ContainerErrorCode.CONTAINER_FORMAT, "io", exception)
+            primaryFailure = mapped
+            throw mapped
+        } catch (failure: Throwable) {
+            primaryFailure = failure
+            throw failure
         } finally {
             wipe("verify.config", config, observer)
             wipe("verify.rNative", nativeShare, observer)
             cek?.let { wipe("verify.cek", it, observer) }
             initialHash.fill(0)
+            observer.finish(primaryFailure)
         }
     }
 

@@ -59,14 +59,14 @@ Host 处理器面对不可信 APK，Runtime 面对可被篡改的本地容器。
 - JVM/Kotlin 的 APK inspector 与 AXML target 固定使用 Jazzer；Native `ContainerV2` target 固定使用 libFuzzer 并启用 ASan/UBSan。
 - PR CI 每个 target 运行固定回归语料并 fuzz 10 分钟；nightly 每个 target 运行 60 分钟。任何 crash、sanitizer 报告、未捕获异常、超时或超出内存上限均失败。
 - 所有变异在 `build/fuzz-work/` 的输入副本执行；原始 fixture 在运行前后必须保持相同 SHA-256。
-- tamper catalog 为每个变异固定记录目标字节域、预期 Host/Runtime 阶段、错误码和“payload 未加载”断言。
+- tamper catalog 为每个变异固定记录目标字节域、预期 Host/Runtime 阶段、错误码、payload/handle/`ByteBuffer` 是否暴露、completed/partial mapping 清理、primary error 保留和 cleanup error 聚合断言。Host-only 用例对 Runtime 清理字段明确写 `not_applicable`，不得省略。
 - 外部安装验证只能使用 M3-01 的一次性非生产证书流程；产品永不签名，测试密钥不进入 corpus。
 - crash 输入经自动最小化后进入 `fuzz-regressions/`，只允许合成无敏感数据的最小字节样本。
 
 ## Public Interfaces
 
 - 既有 `:tools:validation` 模块内的 Gradle 入口 `regressionFuzz`、`prFuzz`、`nightlyFuzz` 和 `tamperTest`；不得创建额外 `fuzz-tests` 或 `tamper-tests` 模块。
-- `tools/validation/src/tamper/resources/catalog.yaml`，字段为 `id`、`target`、`mutation`、`expectedStage`、`expectedCode` 和 `payloadLoaded`。
+- `tools/validation/src/tamper/resources/catalog.yaml`，字段为 `id`、`target`、`mutation`、`expectedStage`、`expectedCode`、`payloadLoaded`、`handlePublished`、`byteBuffersPublished`、`completedMappingsZeroizedUnmapped`、`partialMappingZeroizedUnmapped`、`primaryCodePreserved` 和 `cleanupFailureSuppressed`；不适用字段取字符串 `not_applicable`。
 - 统一结果 `build/reports/security/fuzz-summary.json`。
 - corpus 目录 `tools/validation/src/fuzz/resources/corpus/` 与回归目录 `tools/validation/src/fuzz/resources/regressions/`。
 
@@ -88,7 +88,7 @@ Host 处理器面对不可信 APK，Runtime 面对可被篡改的本地容器。
 
 - `./gradlew :tools:validation:regressionFuzz :tools:validation:tamperTest` 退出码为 `0`。
 - 每个 JVM/Native target 完成 10 分钟 PR fuzz，无 crash、sanitizer、超时、OOM 或未捕获异常。
-- tamper catalog 的全部案例均在预期阶段返回预期错误码，且 `payloadLoaded` 全为 `false`。
+- tamper catalog 的全部案例均在预期阶段返回预期错误码，且 `payloadLoaded` 全为 `false`。Runtime 首个/中间/末尾 chunk 及 cleanup 注入用例还必须满足 `handlePublished=false`、`byteBuffersPublished=false`、completed/partial mappings 对适用项均已清零/unmap、`primaryCodePreserved=true`，cleanup 注入时 `cleanupFailureSuppressed=true`。
 - 原始 fixture 前后 SHA-256 完全一致，构建输出中不存在落盘明文 payload。
 - 所有已发现 crash 都有最小回归样本；修复后连续两次回归执行结果一致。
 
@@ -97,12 +97,13 @@ Host 处理器面对不可信 APK，Runtime 面对可被篡改的本地容器。
 - 每个 parser 的固定语料回归、随机变异和结构感知变异测试。
 - ZIP path traversal、重复条目、压缩比上限与解压大小上限测试。
 - AXML chunk/字符串池/资源引用和容器整数溢出/重叠/chunk explosion/tag 篡改测试，并断言受影响 chunk 在认证前未进入 inflater。
+- Runtime 首个/中间/末尾 chunk 篡改与 cleanup failure 注入，断言无 handle/`ByteBuffer` 发布、completed/partial mappings 清零/unmap、主错误保留和 cleanup error suppressed/聚合。
 - 签名者策略、元数据摘要、外部重签与 Runtime payload 未加载测试。
 
 ## Required Evidence
 
 - 每个 target 的命令、退出码、版本、时长、执行次数和 corpus SHA-256。
-- sanitizer 配置、资源上限、tamper 结果表和 payload 未加载证据。
+- sanitizer 配置、资源上限、tamper 结果表，以及 payload/handle/`ByteBuffer` 未暴露、completed/partial mapping 清理和 primary/suppressed error 证据。
 - 原始 fixture 前后哈希与明文扫描结果。
 - 失败样本最小化记录和独立安全复核结论。
 

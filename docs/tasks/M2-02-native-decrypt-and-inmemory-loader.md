@@ -61,7 +61,7 @@ payload 不得以明文文件落盘。离线应用内密钥只能增加提取成
 - AHDC v2 只接受 zlib-wrapped DEFLATE，不接受 raw DEFLATE、gzip wrapper、preset dictionary、多拼接流或流结束后的尾随字节。每个 canonical chunk 以一次性 GCM API 验证成功后才进入该 record 的唯一连续 inflater；不得接受 AHDC v1 或消费 tag 验证前的 plaintext。解压输出上限同时受 record 原始长度和项目冻结的单 DEX/总 DEX 上限约束。
 - 解压必须恰好得到 record 声明的原始长度并命中原始 DEX SHA-256；提前结束、超长、zlib checksum 错误、要求 dictionary 或仍有未消费输入均 fail closed。
 - 每个恢复后的原始 DEX 使用独立匿名映射，按 M1-04 索引升序形成 `ByteBuffer[]`；父加载器固定为传入的壳 `ClassLoader`。Java facade 必须逐字复用 M0-05 的 `NativeLibrarySearchPathResolver`，再调用 API 29 三参数 `InMemoryDexClassLoader`；不得使用空 search path、反射复制 parent path list 或假设 parent 能为 payload 类查找业务 SO。
-- 内容密钥、派生材料和 tag 比较只存在于 Native；Java 层不得接触内容密钥。句柄关闭时立即清零可释放的密钥和临时缓冲。
+- 内容密钥、派生材料和 tag 比较只存在于 Native；Java 层不得接触内容密钥。全部 DEX 成功后、`nativeOpenVerifiedPayload` 返回 handle 前，CEK/KEK/派生 key、AAD、认证后压缩 chunk、inflater/crypto scratch 全部清零销毁；只把 completed DEX 映射和最小生命周期状态转交 handle，不得把可重建临时秘密延长到 handle/ClassLoader 生命周期。handle close 时才清零并 unmap 成功映射。
 - `nativeOpenVerifiedPayload` 在返回 handle 前是 completed/partial DEX 匿名映射、inflater、crypto buffer 和临时状态的唯一事务 owner。首个/中间/末尾 chunk 的认证、I/O、取消、OOM、zlib、长度或摘要失败均须通过不依赖新内存分配的路径清零并 unmap 全部未发布 DEX，继续其余 best-effort cleanup，不返回 handle/`ByteBuffer`；cleanup failure 只聚合或 suppressed，不得替换首个错误。全部 DEX 成功后才原子提交并由 `LoadedPayload`/Native handle 接管。
 - payload 映射的生命周期与返回的 payload `ClassLoader` 绑定，不在 ART 仍可能读取时提前擦除；M2-06 在此所有权模型上增加 dump 成本控制。
 - 所有整数运算使用显式溢出检查，压缩输入、原始输出、单 DEX 和总 payload 大小上限采用 M1-04 的冻结常量；禁止根据未认证或未验证长度分配内存。
@@ -69,8 +69,8 @@ payload 不得以明文文件落盘。离线应用内密钥只能增加提取成
 ## Public Interfaces
 
 - 低层 facade 固定为 `public final class ah.runtime.loader.PayloadRuntime`，提供 `public static UntrustedPayloadBinding inspectBinding(ApplicationInfo applicationInfo)` 与 `public static LoadedPayload openVerified(ClassLoader shellLoader, ApplicationInfo applicationInfo, byte[] installedSignerSha256)`；facade 拒绝空/非绝对 `sourceDir` 或空 `packageName`，并只把 Framework 的 source/package 字段传入 Native。名称和文档必须明确前者未认证、后者仍要求调用者先完成安装 APK signer 验证。
-- 所有权对象固定为 `public final class ah.runtime.loader.LoadedPayload implements AutoCloseable`；只公开 `public ClassLoader classLoader()` 与幂等 `public void close()`，这里的 loader 是供 M2-01 原 Factory ClassLoader hook 消费的 provisional loader。对象内部强拥有 Native 句柄、direct buffers 和该 loader；M2-03 的 `VerifiedPayloadSession` 必须保留该对象，不得只保存裸 `ClassLoader`。
-- `LoadedPayload.close()` 必须幂等且可计数验证：先阻止新访问，再关闭 Native handle、清零仍可安全清理的密钥/临时/direct buffer，最后清除自身强引用。清理子步骤失败时继续其余清理并返回稳定 cleanup failure，不得恢复已关闭句柄。
+- 所有权对象固定为 `public final class ah.runtime.loader.LoadedPayload implements AutoCloseable`；只公开 `public ClassLoader classLoader()` 与幂等 `public void close()`，这里的 loader 是供 M2-01 原 Factory ClassLoader hook 消费的 provisional loader。对象内部强拥有 Native 句柄、completed DEX direct buffers 和该 loader，不拥有 CEK/KEK/派生 key、AAD、压缩 chunk 或 inflater/crypto scratch；M2-03 的 `VerifiedPayloadSession` 必须保留该对象，不得只保存裸 `ClassLoader`。
+- `LoadedPayload.close()` 必须幂等且可计数验证：先阻止新访问，再关闭 Native handle、清零/unmap completed DEX direct buffers，最后清除自身强引用；实现断言没有提交边界前应销毁的临时秘密。清理子步骤失败时继续其余清理并返回稳定 cleanup failure，不得恢复已关闭句柄。
 - `public final class ah.runtime.loader.UntrustedPayloadBinding` 只公开复制后的预读字段，类型名和访问器文档不得将其描述为已认证。
 - `NativePayloadBridge`、`PayloadMemoryHandle` 与 `PayloadClassLoaders` 均位于 `ah.runtime.loader` 且为 package-private；它们只分别承担 JNI、Native 句柄所有权和 loader 构造，不构成跨模块 API。
 - `:runtime:policy` 以 Gradle `implementation(project(":runtime:native"))` 消费本 facade，不能把它传递到 `:runtime:bootstrap` compile classpath；唯一生产调用者由 M2-03 的架构测试锁定为 `RuntimeStartupGuard`。
@@ -101,6 +101,7 @@ payload 不得以明文文件落盘。离线应用内密钥只能增加提取成
 - instrumentation 运行期间扫描应用私有目录，不存在 DEX magic 开头的新增明文文件。
 - `extractNativeLibs=true/false` fixture 均能由 payload 类加载业务 JNI；无匹配 ABI、重复 ABI 目录和路径篡改均在组件实例化前失败。
 - `LoadedPayload.close()` 重复调用仍只关闭一次 Native handle；关闭后访问器拒绝，仍可安全清理的 direct/key/temp buffer 已清零，自身不再强引用 loader 或 buffer；任一清理子步骤失败不妨碍其余步骤。
+- 正向 `openVerified` 返回后、调用 `close()` 前，测试 hook 证明 CEK/KEK/派生 key、AAD、压缩 chunk、inflater/crypto scratch 已清零且不可达，completed DEX 映射仍有效并仅由 handle 拥有；close 后映射才清零并 unmap。
 - 在 handle 发布前对首个、中间、末尾 chunk 分别注入认证、I/O、取消、OOM、zlib 和摘要失败时，不返回 handle/`ByteBuffer`，所有 completed/partial DEX 映射均已清零并 unmap；cleanup 注入失败不覆盖首个稳定错误且其余清理继续。
 - ASan/UBSan 主机解析测试无越界、整数溢出、use-after-free 或内存泄漏报告。
 
@@ -108,7 +109,8 @@ payload 不得以明文文件落盘。离线应用内密钥只能增加提取成
 
 - 共享测试向量的 Native 单元测试和 JVM/JNI 集成测试。
 - 单/多 DEX 加载、重复类优先级、父加载器委派和句柄生命周期测试。
-- `LoadedPayload` 幂等 close-count、Native handle、关闭后访问、direct/key/temp buffer 清零、强引用释放和多清理错误聚合测试。
+- `LoadedPayload` 幂等 close-count、Native handle、关闭后访问、completed DEX direct buffer 清零/unmap、无临时秘密所有权、强引用释放和多清理错误聚合测试。
+- 正向提交边界测试：`openVerified` 返回后/`close` 前临时秘密已清零、仅 completed DEX mappings 被转交且仍可加载；close 后映射清零/unmap。
 - 未发布事务的首个/中间/末尾 chunk 失败矩阵、completed/partial DEX mapping zeroize/unmap、无 handle/`ByteBuffer` 发布和 cleanup failure 聚合测试。
 - 截断、重叠、超大长度、未知版本、错误 tag、错误 signer/package 关联数据和随机输入测试。
 - zlib wrapper、checksum、dictionary、尾随/拼接流、提前结束、声明长度不符、SHA-256 不符和解压炸弹测试。

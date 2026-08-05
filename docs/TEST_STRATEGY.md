@@ -47,6 +47,7 @@
 - 每 chunk 一次性 GCM tag 验证成功后才进入连续 zlib inflater 的顺序断言；
 - 1/65535/65536/65537 bytes 与接近 512 MiB DEX 的不超过 1 MiB 工作缓冲测试；
 - handle 发布前在首个/中间/末尾 chunk 注入认证、I/O、取消、OOM、zlib/摘要和 cleanup failure，证明 completed/partial DEX 映射清零并 unmap、无 handle/`ByteBuffer` 暴露且主错误不被覆盖；
+- 正向 `openVerified` 返回后、`close` 前断言全部 key/AAD/compressed/inflater/crypto 临时状态已清零且不可达，只有 completed DEX mappings 由 handle 保持可加载；close 后才清零/unmap 映射；
 
 - 任意输入不崩溃、不越界、不无限循环；
 - 解析成功后重新序列化保持规范语义；

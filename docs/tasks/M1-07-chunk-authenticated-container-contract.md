@@ -89,6 +89,7 @@ M1-04 首个冻结实现的独立复核发现：单条 DEX 使用一个 GCM tag 
 - 手工/脚本复算 HeaderV2 160 bytes、RecordV2 128 bytes、ChunkV2 32 bytes 和 ConfigV2 768 bytes。
 - 边界推演：1/65535/65536/65537 bytes、最大 DEX、最大 APK、chunk/count/offset 溢出与尾随数据。
 - 首个/中间/末尾 chunk 的认证、I/O、取消、OOM、zlib/摘要和 cleanup failure 推演，证明未发布 DEX 映射全部清零/unmap、无 handle/`ByteBuffer` 暴露且主错误保留。
+- 成功提交推演：handle 返回后、close 前所有 key/AAD/compressed/inflater/crypto 临时状态已清零且不可达，只有 completed DEX mappings 转交 handle 并保持可用；生命周期 close 才清零/unmap 映射。
 - 独立 reviewer 检查 JCA Provider 语义、认证顺序、domain separation、nonce 重用和 cleanup/error precedence。
 
 ## Required Evidence

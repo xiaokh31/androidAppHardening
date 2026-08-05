@@ -249,17 +249,32 @@ class ExpectedBinding internal constructor(
 
     internal fun <T> withVerificationMaterial(
         cleanupObserver: ContainerObserver,
-        action: (config: ByteArray, nativeShare: ByteArray) -> T,
+        action: (
+            config: ByteArray,
+            nativeShare: ByteArray,
+            packageDigest: ByteArray,
+            signerDigest: ByteArray,
+            lineageDigests: List<ByteArray>,
+        ) -> T,
     ): T {
+        val lineageCopies = ArrayList<ByteArray>(lineageDigests.size)
         var configCopy: ByteArray? = null
         var nativeCopy: ByteArray? = null
+        var packageCopy: ByteArray? = null
+        var signerCopy: ByteArray? = null
         try {
             configCopy = copier.copy(config)
             nativeCopy = copier.copy(nativeShare)
-            return action(configCopy, nativeCopy)
+            packageCopy = copier.copy(packageDigest)
+            signerCopy = copier.copy(signerDigest)
+            lineageDigests.forEach { digest -> lineageCopies.add(copier.copy(digest)) }
+            return action(configCopy, nativeCopy, packageCopy, signerCopy, lineageCopies)
         } finally {
             configCopy?.let { wipe("verify.config", it, cleanupObserver) }
             nativeCopy?.let { wipe("verify.rNative", it, cleanupObserver) }
+            packageCopy?.let { wipe("verify.package", it, cleanupObserver) }
+            signerCopy?.let { wipe("verify.signer", it, cleanupObserver) }
+            lineageCopies.forEach { wipe("verify.lineage", it, cleanupObserver) }
         }
     }
 

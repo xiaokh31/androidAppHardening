@@ -1,8 +1,8 @@
 # M1-04 local Windows validation
 
-- Timestamp: `2026-08-06T06:40:13+08:00`
+- Timestamp: `2026-08-06T06:59:21+08:00`
 - Branch: `feat/m1-04-encrypted-dex-container`
-- Remediation base commit: `ee5553ba0318f3b6560858f15549b556e767bbce`
+- Remediation base commit: `25d12336f912a14d889eb594a089cfe6178047fb`
 - OS: Windows 10 `10.0` x64
 - Java: Eclipse Temurin `17.0.19`
 - Gradle: `9.5.0`
@@ -52,6 +52,14 @@ Instrumented arrays observed:
 - ConfigV2 recovery allocation OOM cleared `R_java`, root and nonce; HKDF output
   allocation OOM cleared the owned zero salt and extracted PRK; late cleanup OOM
   preserved the original action error;
+- ConfigV2 construction prefix-allocation OOM cleared the partially populated
+  config and derived `R_native` before either value escaped;
+- record-stream construction OOM cleared its already-derived record key; chunk
+  allocation-observer OOM cleared the exact compressed plaintext, AAD, record key
+  and pass-1 digest; verifier manifest-copy/AAD allocation OOM cleared manifest
+  key, ciphertext and nonce;
+- pass-1 and pass-2 mismatch paths plus `CompressionObservation` construction OOM
+  clear every digest already returned by the provider;
 - no Java process remained after each bounded single-use Gradle run.
 
 The temporary work tree contains only authorized synthetic input APKs, encrypted
@@ -65,9 +73,9 @@ never writes original DEX or compressed plaintext to a standalone file.
 | fixed-RNG AHDC v2 | `3764b908e534ffa5179a9519045ec74a7caa44b30c80447998c593a1ac2fa60d` |
 | cross-language vector JSON | `3b2421fcc91234333d13545826b51fbf0de25c5fa26b39aa17d90a9ff2133afc` |
 | independent Node consumer report | `542ba9db02b643f445fc9194220e7fac6debb28e45089de38403843c78be2b1a` |
-| local self-test report | `c5904404ad732872a7bf6d3511cf68dd54212924ece7daf430e11f37091d717a` |
-| production build A | `f7e1ddc8ea3bc21d22ca038252212b9dcbc732cf865bf46c946fa397455c18ce` |
-| production build B | `a44111dba5e50aecbdd53cc9a3ed446d19635f5ab968839c802748148154de25` |
+| local self-test report | `3b122877a0008226e274a737c6ff5cb38d988a86c2d880a59be8538d1a649b15` |
+| production build A | `36c6e86dd0c5853081713a7a05228cbb0e65d782986c24169ea84a7a0b7210b2` |
+| production build B | `27a37b7fbd3427073cfd1ccdcbd37176e3f744be9cf3a4d92c263da7609f50b6` |
 
 Both production outputs were independently verified. Their CEK, root material,
 Java/native shares, wrapping nonce, build ID, key-slot ID, record nonce prefix,

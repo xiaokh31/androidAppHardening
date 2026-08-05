@@ -10,7 +10,11 @@ import java.security.MessageDigest
 import java.util.zip.DataFormatException
 import java.util.zip.Inflater
 
-class DexContainerVerifier internal constructor(observer: ContainerObserver) {
+class DexContainerVerifier internal constructor(
+    observer: ContainerObserver,
+    private val allocator: SensitiveArrayAllocator = DEFAULT_SENSITIVE_ARRAY_ALLOCATOR,
+    private val copier: SensitiveArrayCopier = DEFAULT_SENSITIVE_ARRAY_COPIER,
+) {
     private val observer = cleanupTrackingObserver(observer)
 
     constructor() : this(NO_CONTAINER_OBSERVER)
@@ -20,7 +24,8 @@ class DexContainerVerifier internal constructor(observer: ContainerObserver) {
         var cek: ByteArray? = null
         var primaryFailure: Throwable? = null
         try {
-            return expected.withVerificationMaterial(observer) { config, nativeShare ->
+            return expected.withVerificationMaterial(observer) {
+                    config, nativeShare, packageDigest, signerDigest, expectedLineage ->
                 FileChannel.open(container, StandardOpenOption.READ).use { channel ->
                 val size = channel.size()
                 if (size <= AhConstants.HEADER_BYTES || size > InspectionLimits.MAX_APK_BYTES) limit("containerSize")
@@ -32,7 +37,14 @@ class DexContainerVerifier internal constructor(observer: ContainerObserver) {
                 val signerOffset = AhConstants.HEADER_BYTES.toLong()
                 val signerBytes = channel.readExact(signerOffset, header.signerPolicySize)
                 val signer = AhdcV2Codec.parseSpv1(signerBytes)
-                validateExpectedPublicBinding(expected, signer.first, signer.second)
+                validateExpectedPublicBinding(
+                    expected.packageName,
+                    signer.first,
+                    signer.second,
+                    packageDigest,
+                    signerDigest,
+                    expectedLineage,
+                )
 
                 val recordOffset = checkedAdd(signerOffset, header.signerPolicySize.toLong(), "recordOffset")
                 val recordBytes = ArrayList<ByteArray>(header.dexCount)
@@ -55,32 +67,25 @@ class DexContainerVerifier internal constructor(observer: ContainerObserver) {
                 } finally {
                     actualConfigHash.fill(0)
                 }
-                val packageDigest = expected.packageDigest()
-                val signerDigest = expected.signerDigest()
-                try {
-                    cek = ConfigV2Codec.recoverCek(
-                        config,
-                        nativeShare,
-                        header.buildId,
-                        header.keySlotId,
-                        signerDigest,
-                        packageDigest,
-                    )
-                    verifyManifest(channel, chunkTableOffset, header, headerBytes, signerBytes, recordBytes, cek)
-                    verifyPayload(
-                        channel,
-                        metadataSize,
-                        headerBytes,
-                        records,
-                        recordBytes,
-                        packageDigest,
-                        signerDigest,
-                        cek,
-                    )
-                } finally {
-                    packageDigest.fill(0)
-                    signerDigest.fill(0)
-                }
+                cek = ConfigV2Codec.recoverCek(
+                    config,
+                    nativeShare,
+                    header.buildId,
+                    header.keySlotId,
+                    signerDigest,
+                    packageDigest,
+                )
+                verifyManifest(channel, chunkTableOffset, header, headerBytes, signerBytes, recordBytes, cek)
+                verifyPayload(
+                    channel,
+                    metadataSize,
+                    headerBytes,
+                    records,
+                    recordBytes,
+                    packageDigest,
+                    signerDigest,
+                    cek,
+                )
 
                 val finalHash = hashContainer(container)
                 if (!finalHash.constantTimeEquals(initialHash)) {
@@ -108,14 +113,14 @@ class DexContainerVerifier internal constructor(observer: ContainerObserver) {
     }
 
     private fun validateExpectedPublicBinding(
-        expected: ExpectedBinding,
+        packageName: String,
         actualSigner: ByteArray,
         actualLineage: List<ByteArray>,
+        expectedPackageDigest: ByteArray,
+        expectedSigner: ByteArray,
+        expectedLineage: List<ByteArray>,
     ) {
-        val packageDigest = ContainerCrypto.sha256(expected.packageName.toByteArray(Charsets.UTF_8))
-        val expectedPackageDigest = expected.packageDigest()
-        val expectedSigner = expected.signerDigest()
-        val expectedLineage = expected.lineageDigests()
+        val packageDigest = ContainerCrypto.sha256(packageName.toByteArray(Charsets.UTF_8))
         try {
             if (!packageDigest.constantTimeEquals(expectedPackageDigest)) format("expectedPackage")
             if (!actualSigner.constantTimeEquals(expectedSigner) || actualLineage.size != expectedLineage.size ||
@@ -123,9 +128,6 @@ class DexContainerVerifier internal constructor(observer: ContainerObserver) {
             ) throw ContainerException(ContainerErrorCode.CONTAINER_AUTH_FAILED, "signerPolicy")
         } finally {
             packageDigest.fill(0)
-            expectedPackageDigest.fill(0)
-            expectedSigner.fill(0)
-            expectedLineage.forEach(ByteArray::fillZero)
         }
     }
 
@@ -179,11 +181,16 @@ class DexContainerVerifier internal constructor(observer: ContainerObserver) {
         recordBytes: List<ByteArray>,
         cek: ByteArray,
     ) {
-        val key = ContainerCrypto.manifestKey(cek, header.buildId)
-        val zeroHeader = headerBytes.copyOf().also { bytes -> bytes.fill(0, 104, 136) }
+        var key: ByteArray? = null
+        var zeroHeader: ByteArray? = null
         try {
-            val mac = ContainerCrypto.newHmacSha256(key)
-            mac.update(zeroHeader)
+            val manifestKey = ContainerCrypto.manifestKey(cek, header.buildId)
+            key = manifestKey
+            val headerCopy = copier.copy(headerBytes)
+            zeroHeader = headerCopy
+            headerCopy.fill(0, 104, 136)
+            val mac = ContainerCrypto.newHmacSha256(manifestKey)
+            mac.update(headerCopy)
             mac.update(signerBytes)
             recordBytes.forEach(mac::update)
             repeat(header.chunkCount) { index ->
@@ -198,8 +205,8 @@ class DexContainerVerifier internal constructor(observer: ContainerObserver) {
                 actual.fill(0)
             }
         } finally {
-            wipe("verify.manifestKey", key, observer)
-            zeroHeader.fill(0)
+            key?.let { wipe("verify.manifestKey", it, observer) }
+            zeroHeader?.fill(0)
         }
     }
 
@@ -263,26 +270,35 @@ class DexContainerVerifier internal constructor(observer: ContainerObserver) {
         try {
             repeat(record.chunkCount) { chunkOrdinal ->
                 val chunk = expectedChunk(record, chunkOrdinal)
-                val chunkBytes = AhdcV2Codec.chunk(chunk)
-                val ciphertext = channel.readExact(
-                    checkedAdd(payloadBase, chunk.payloadOffset, "payloadOffset"),
-                    checkedAddInt(chunk.plaintextLength, AhConstants.GCM_TAG_BYTES, "ciphertextLength"),
-                )
-                observer.allocated("verify.ciphertext", ciphertext.size)
-                val nonce = ContainerCrypto.chunkNonce(record.noncePrefix, chunkOrdinal)
-                val aad = ContainerCrypto.chunkAad(
-                    headerVersion,
-                    buildId,
-                    keySlotId,
-                    signerDigest,
-                    packageDigest,
-                    recordBytes,
-                    chunkBytes,
-                )
-                observer.allocated("verify.aad", aad.size)
+                var chunkBytes: ByteArray? = null
+                var ciphertext: ByteArray? = null
+                var nonce: ByteArray? = null
+                var aad: ByteArray? = null
                 var compressed: ByteArray? = null
                 try {
-                    compressed = ContainerCrypto.aesGcmDecrypt(key, nonce, aad, ciphertext)
+                    val encodedChunk = AhdcV2Codec.chunk(chunk)
+                    chunkBytes = encodedChunk
+                    val encryptedChunk = channel.readExact(
+                        checkedAdd(payloadBase, chunk.payloadOffset, "payloadOffset"),
+                        checkedAddInt(chunk.plaintextLength, AhConstants.GCM_TAG_BYTES, "ciphertextLength"),
+                    )
+                    ciphertext = encryptedChunk
+                    observer.allocated("verify.ciphertext", encryptedChunk.size)
+                    val chunkNonce = ContainerCrypto.chunkNonce(record.noncePrefix, chunkOrdinal, allocator)
+                    nonce = chunkNonce
+                    val chunkAad = ContainerCrypto.chunkAad(
+                        headerVersion,
+                        buildId,
+                        keySlotId,
+                        signerDigest,
+                        packageDigest,
+                        recordBytes,
+                        encodedChunk,
+                        allocator,
+                    )
+                    aad = chunkAad
+                    observer.allocated("verify.aad", chunkAad.size)
+                    compressed = ContainerCrypto.aesGcmDecrypt(key, chunkNonce, chunkAad, encryptedChunk)
                     observer.allocated("verify.compressed", compressed.size)
                     if (compressed.size != chunk.plaintextLength) format("chunkPlaintextLength")
                     observer.authenticatedBeforeInflate(record.ordinal, chunkOrdinal)
@@ -292,11 +308,11 @@ class DexContainerVerifier internal constructor(observer: ContainerObserver) {
                         (chunkOrdinal != record.chunkCount - 1 || inflater.remaining != 0)
                     ) format("zlibTrailing")
                 } finally {
-                    wipe("verify.ciphertext", ciphertext, observer)
+                    ciphertext?.let { wipe("verify.ciphertext", it, observer) }
                     compressed?.let { wipe("verify.compressed", it, observer) }
-                    nonce.fill(0)
-                    wipe("verify.aad", aad, observer)
-                    chunkBytes.fill(0)
+                    nonce?.fill(0)
+                    aad?.let { wipe("verify.aad", it, observer) }
+                    chunkBytes?.fill(0)
                 }
             }
             if (!inflater.finished() || inflater.needsDictionary() || inflater.remaining != 0) format("zlibEnd")

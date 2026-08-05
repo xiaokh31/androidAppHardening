@@ -25,43 +25,51 @@ internal object ConfigV2Codec {
         rootMaterial: ByteArray,
         rJava: ByteArray,
         wrapNonce: ByteArray,
+        allocator: SensitiveArrayAllocator = DEFAULT_SENSITIVE_ARRAY_ALLOCATOR,
     ): ConfigV2Material {
         validateFixedInputs(buildId, keySlotId, signerSha256, packageNameSha256, cek, rootMaterial, rJava, wrapNonce)
         val factoryBytes = originalFactory?.toByteArray(Charsets.UTF_8) ?: ByteArray(0)
         validateFactory(originalFactory, factoryBytes)
-        val config = ByteArray(AhConstants.CONFIG_BYTES)
-        val rNative = ByteArray(AhConstants.KEY_BYTES) { index ->
-            (rootMaterial[index].toInt() xor rJava[index].toInt()).toByte()
-        }
+        var config: ByteArray? = null
+        var rNative: ByteArray? = null
         var kek: ByteArray? = null
         var envelope: ByteArray? = null
         var prefix: ByteArray? = null
         try {
-            putBytes(config, 0, AhConstants.CONFIG_MAGIC)
-            putU2(config, 4, AhConstants.MAJOR)
-            putU2(config, 6, AhConstants.MINOR)
-            putU2(config, 8, if (factoryBytes.isEmpty()) 0 else 1)
-            putU4(config, 12, AhConstants.CONFIG_BYTES.toLong())
-            putU2(config, 16, AhConstants.MAJOR)
-            putU2(config, 18, 1)
-            putU2(config, 20, 1)
-            putU2(config, 22, factoryBytes.size)
-            putBytes(config, 24, buildId)
-            putBytes(config, 40, keySlotId)
-            putBytes(config, 56, signerSha256)
-            putBytes(config, 88, rJava)
-            putBytes(config, 120, wrapNonce)
-            if (factoryBytes.isNotEmpty()) putBytes(config, FACTORY_OFFSET, factoryBytes)
-            prefix = slice(config, 0, PREFIX_BYTES)
+            val configBytes = allocator.allocate(AhConstants.CONFIG_BYTES)
+            config = configBytes
+            val nativeBytes = allocator.allocate(AhConstants.KEY_BYTES)
+            rNative = nativeBytes
+            for (index in nativeBytes.indices) {
+                nativeBytes[index] = (rootMaterial[index].toInt() xor rJava[index].toInt()).toByte()
+            }
+            putBytes(configBytes, 0, AhConstants.CONFIG_MAGIC)
+            putU2(configBytes, 4, AhConstants.MAJOR)
+            putU2(configBytes, 6, AhConstants.MINOR)
+            putU2(configBytes, 8, if (factoryBytes.isEmpty()) 0 else 1)
+            putU4(configBytes, 12, AhConstants.CONFIG_BYTES.toLong())
+            putU2(configBytes, 16, AhConstants.MAJOR)
+            putU2(configBytes, 18, 1)
+            putU2(configBytes, 20, 1)
+            putU2(configBytes, 22, factoryBytes.size)
+            putBytes(configBytes, 24, buildId)
+            putBytes(configBytes, 40, keySlotId)
+            putBytes(configBytes, 56, signerSha256)
+            putBytes(configBytes, 88, rJava)
+            putBytes(configBytes, 120, wrapNonce)
+            if (factoryBytes.isNotEmpty()) putBytes(configBytes, FACTORY_OFFSET, factoryBytes)
+            val prefixBytes = allocator.allocate(PREFIX_BYTES)
+            prefix = prefixBytes
+            configBytes.copyInto(prefixBytes, 0, 0, PREFIX_BYTES)
             kek = ContainerCrypto.offlineKek(rootMaterial, buildId, signerSha256, packageNameSha256)
-            envelope = ContainerCrypto.aesGcmEncrypt(kek, wrapNonce, prefix, cek)
+            envelope = ContainerCrypto.aesGcmEncrypt(kek, wrapNonce, prefixBytes, cek)
             if (envelope.size != AhConstants.KEY_BYTES + AhConstants.GCM_TAG_BYTES) format("wrappedCek")
-            envelope.copyInto(config, 132, 0, AhConstants.KEY_BYTES)
-            envelope.copyInto(config, 164, AhConstants.KEY_BYTES, envelope.size)
-            return ConfigV2Material(config, rNative)
+            envelope.copyInto(configBytes, 132, 0, AhConstants.KEY_BYTES)
+            envelope.copyInto(configBytes, 164, AhConstants.KEY_BYTES, envelope.size)
+            return ConfigV2Material(configBytes, nativeBytes)
         } catch (failure: Throwable) {
-            config.fill(0)
-            rNative.fill(0)
+            config?.fill(0)
+            rNative?.fill(0)
             throw failure
         } finally {
             factoryBytes.fill(0)

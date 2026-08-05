@@ -1,6 +1,6 @@
 # M1-04 local security scan
 
-Timestamp: `2026-08-06T06:40:13+08:00`
+Timestamp: `2026-08-06T06:59:21+08:00`
 
 Scope:
 
@@ -32,10 +32,12 @@ HMAC-SHA-256, RFC 5869 extract/expand, independent manifest/record domains,
 canonical 96-bit chunk nonces, complete metadata MAC coverage, complete ConfigV2
 digest binding, and authenticate-before-inflate ordering.
 
-The first three independent reviews are archived as `security-review-1.md`,
-`security-review-2.md`, and `security-review-3.md`, all `FAIL`. Review 3 confirmed
-all dynamic checks but found four remaining pre-owner OOM windows. The remediation
-makes verifier copies transactional, registers each ConfigV2/HKDF derivation
-buffer before the next fallible allocation, and makes the builder own random
-destinations before provider fill. A new independent review must target the next
-frozen commit before publication.
+The first four independent reviews are archived as `security-review-1.md` through
+`security-review-4.md`, all `FAIL`. Review 4 confirmed review 3's direct findings
+closed, then found the same ownership-before-try pattern in record/manifest keys,
+chunk plaintext/crypto inputs, and pass digests. The remediation now establishes
+fixed owners before every subsequent fallible allocation or callback and adds
+precise OOM, observer-failure, construction-failure, and mismatch injections. A
+new independent review must target the next frozen commit before publication.
+The same audit also moved ConfigV2/`R_native` construction under transactional
+ownership before the next prefix allocation.

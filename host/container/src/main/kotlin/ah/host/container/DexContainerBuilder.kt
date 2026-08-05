@@ -18,6 +18,7 @@ class DexContainerBuilder internal constructor(
     private val random: ContainerRandom,
     observer: ContainerObserver,
     private val betweenPasses: (() -> Unit)?,
+    private val allocator: SensitiveArrayAllocator,
     private val atomicMove: ((Path, Path) -> Unit)?,
 ) {
     private val observer = cleanupTrackingObserver(observer)
@@ -27,9 +28,24 @@ class DexContainerBuilder internal constructor(
         random: ContainerRandom,
         observer: ContainerObserver,
         betweenPasses: (() -> Unit)?,
-    ) : this(inputApk, random, observer, betweenPasses, null)
+    ) : this(inputApk, random, observer, betweenPasses, DEFAULT_SENSITIVE_ARRAY_ALLOCATOR, null)
 
-    constructor(inputApk: Path) : this(inputApk, SecureContainerRandom.create(), NO_CONTAINER_OBSERVER, null, null)
+    internal constructor(
+        inputApk: Path,
+        random: ContainerRandom,
+        observer: ContainerObserver,
+        betweenPasses: (() -> Unit)?,
+        atomicMove: ((Path, Path) -> Unit)?,
+    ) : this(inputApk, random, observer, betweenPasses, DEFAULT_SENSITIVE_ARRAY_ALLOCATOR, atomicMove)
+
+    constructor(inputApk: Path) : this(
+        inputApk,
+        SecureContainerRandom.create(),
+        NO_CONTAINER_OBSERVER,
+        null,
+        DEFAULT_SENSITIVE_ARRAY_ALLOCATOR,
+        null,
+    )
 
     fun build(inspection: ApkInspection, signer: SignerPolicyV1, encryptedTemp: Path): ContainerBuildResult {
         val dex = validateInspection(inspection, signer)
@@ -178,14 +194,31 @@ class DexContainerBuilder internal constructor(
         return inspection.dexEntries
     }
 
-    private fun observeDex(dex: List<DexSummary>): List<CompressionObservation> = ZipFile(inputApk.toFile()).use { zip ->
-        dex.map { summary ->
-            val entry = zip.getEntry(summary.entryName) ?: inputChanged("dexMissing")
-            val observation = zip.getInputStream(entry).use { input -> observeCompression(input, observer) }
-            if (observation.originalLength != summary.fileSize ||
-                !observation.originalSha256.constantTimeEquals(summary.sha256)
-            ) inputChanged("dexPass1")
-            observation
+    private fun observeDex(dex: List<DexSummary>): List<CompressionObservation> {
+        val observations = ArrayList<CompressionObservation>(dex.size)
+        try {
+            ZipFile(inputApk.toFile()).use { zip ->
+                dex.forEach { summary ->
+                    val entry = zip.getEntry(summary.entryName) ?: inputChanged("dexMissing")
+                    var pending: CompressionObservation? = null
+                    try {
+                        val observation = zip.getInputStream(entry).use { input -> observeCompression(input, observer) }
+                        pending = observation
+                        if (observation.originalLength != summary.fileSize ||
+                            !observation.originalSha256.constantTimeEquals(summary.sha256)
+                        ) inputChanged("dexPass1")
+                        observations.add(observation)
+                        pending = null
+                    } finally {
+                        pending?.clear("pass1.pendingDigest", observer)
+                    }
+                }
+            }
+            return observations
+        } catch (failure: Throwable) {
+            observations.forEach { value -> value.clear("pass1.partialListDigest", observer) }
+            observer.finish(failure)
+            throw failure
         }
     }
 
@@ -272,36 +305,39 @@ class DexContainerBuilder internal constructor(
         ZipFile(inputApk.toFile()).use { zip ->
             records.forEachIndexed { index, record ->
                 val entry = zip.getEntry(dex[index].entryName) ?: inputChanged("dexMissingPass2")
-                val key = ContainerCrypto.recordKey(secrets.cek, secrets.buildId, record.ordinal)
-                val encrypted = ChunkEncryptingOutputStream(
-                    output,
-                    header,
-                    inspection.packageNameSha256,
-                    signer.currentCertificateSha256,
-                    record,
-                    recordBytes[index],
-                    key,
-                    observer,
-                )
+                var key: ByteArray? = null
+                var encrypted: ChunkEncryptingOutputStream? = null
+                var observation: CompressionObservation? = null
                 try {
-                    val observation = zip.getInputStream(entry).use { input ->
+                    val recordKey = ContainerCrypto.recordKey(secrets.cek, secrets.buildId, record.ordinal)
+                    key = recordKey
+                    val stream = ChunkEncryptingOutputStream(
+                        output,
+                        header,
+                        inspection.packageNameSha256,
+                        signer.currentCertificateSha256,
+                        record,
+                        recordBytes[index],
+                        recordKey,
+                        observer,
+                        allocator,
+                    )
+                    encrypted = stream
+                    val pass2Observation = zip.getInputStream(entry).use { input ->
                         compressInto(
                             input,
-                            encrypted,
+                            stream,
                             observer,
                             pass1[index].originalLength,
                             pass1[index].compressedLength,
                         )
                     }
-                    if (observation.originalLength != pass1[index].originalLength ||
-                        observation.compressedLength != pass1[index].compressedLength ||
-                        !observation.originalSha256.constantTimeEquals(pass1[index].originalSha256) ||
-                        encrypted.chunkCount != record.chunkCount
-                    ) inputChanged("dexPass2")
-                    wipe("pass2.digest", observation.originalSha256, observer)
+                    observation = pass2Observation
+                    validatePass2Observation(pass2Observation, pass1[index], stream.chunkCount, record.chunkCount)
                 } finally {
-                    encrypted.clear()
-                    wipe("record.key", key, observer)
+                    observation?.clear("pass2.digest", observer)
+                    encrypted?.clear()
+                    key?.let { wipe("record.key", it, observer) }
                 }
             }
         }
@@ -362,6 +398,19 @@ class DexContainerBuilder internal constructor(
     }
 }
 
+internal fun validatePass2Observation(
+    actual: CompressionObservation,
+    expected: CompressionObservation,
+    actualChunkCount: Int,
+    expectedChunkCount: Int,
+) {
+    if (actual.originalLength != expected.originalLength ||
+        actual.compressedLength != expected.compressedLength ||
+        !actual.originalSha256.constantTimeEquals(expected.originalSha256) ||
+        actualChunkCount != expectedChunkCount
+    ) inputChanged("dexPass2")
+}
+
 private class ChunkEncryptingOutputStream(
     private val output: OutputStream,
     header: ByteArray,
@@ -371,11 +420,12 @@ private class ChunkEncryptingOutputStream(
     private val recordBytes: ByteArray,
     private val key: ByteArray,
     private val observer: ContainerObserver,
+    private val allocator: SensitiveArrayAllocator,
 ) : OutputStream() {
     private val headerVersion = header.headerVersionBytes()
     private val buildId = slice(header, 40, 16)
     private val keySlotId = slice(header, 56, 16)
-    private val buffer = ByteArray(AhConstants.CHUNK_PLAINTEXT_MAX)
+    private val buffer = allocator.allocate(AhConstants.CHUNK_PLAINTEXT_MAX)
     private var used = 0
     var chunkCount: Int = 0
         private set
@@ -418,32 +468,42 @@ private class ChunkEncryptingOutputStream(
     private fun emitChunk() {
         checkCancellation()
         if (chunkCount >= record.chunkCount || used <= 0) inputChanged("chunkTopology")
-        val chunkBytes = AhdcV2Codec.chunk(expectedChunk(record, chunkCount))
-        if (u4Int(chunkBytes, 24, "chunkLength") != used) inputChanged("chunkLength")
-        val nonce = ContainerCrypto.chunkNonce(record.noncePrefix, chunkCount)
-        val aad = ContainerCrypto.chunkAad(
-            headerVersion,
-            buildId,
-            keySlotId,
-            signerDigest,
-            packageDigest,
-            recordBytes,
-            chunkBytes,
-        )
-        observer.allocated("chunk.aad", aad.size)
-        val plaintext = buffer.copyOf(used)
-        observer.allocated("chunk.exact", plaintext.size)
+        var chunkBytes: ByteArray? = null
+        var nonce: ByteArray? = null
+        var aad: ByteArray? = null
+        var plaintext: ByteArray? = null
         var ciphertext: ByteArray? = null
         try {
-            ciphertext = ContainerCrypto.aesGcmEncrypt(key, nonce, aad, plaintext)
+            val encodedChunk = AhdcV2Codec.chunk(expectedChunk(record, chunkCount))
+            chunkBytes = encodedChunk
+            if (u4Int(encodedChunk, 24, "chunkLength") != used) inputChanged("chunkLength")
+            val chunkNonce = ContainerCrypto.chunkNonce(record.noncePrefix, chunkCount, allocator)
+            nonce = chunkNonce
+            val chunkAad = ContainerCrypto.chunkAad(
+                headerVersion,
+                buildId,
+                keySlotId,
+                signerDigest,
+                packageDigest,
+                recordBytes,
+                encodedChunk,
+                allocator,
+            )
+            aad = chunkAad
+            observer.allocated("chunk.aad", chunkAad.size)
+            val exactPlaintext = allocator.allocate(used)
+            plaintext = exactPlaintext
+            buffer.copyInto(exactPlaintext, endIndex = used)
+            observer.allocated("chunk.exact", exactPlaintext.size)
+            ciphertext = ContainerCrypto.aesGcmEncrypt(key, chunkNonce, chunkAad, exactPlaintext)
             observer.allocated("chunk.ciphertext", ciphertext.size)
             output.write(ciphertext)
         } finally {
-            wipe("chunk.exact", plaintext, observer)
+            plaintext?.let { wipe("chunk.exact", it, observer) }
             ciphertext?.let { wipe("chunk.ciphertext", it, observer) }
-            nonce.fill(0)
-            wipe("chunk.aad", aad, observer)
-            chunkBytes.fill(0)
+            nonce?.fill(0)
+            aad?.let { wipe("chunk.aad", it, observer) }
+            chunkBytes?.fill(0)
             buffer.fill(0, 0, used)
         }
         used = 0

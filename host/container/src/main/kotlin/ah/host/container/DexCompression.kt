@@ -11,15 +11,29 @@ internal data class CompressionObservation(
     val originalLength: Long,
     val compressedLength: Long,
     val originalSha256: ByteArray,
-)
+) {
+    fun clear(label: String, observer: ContainerObserver) = wipe(label, originalSha256, observer)
+}
 
-internal fun observeCompression(input: InputStream, observer: ContainerObserver): CompressionObservation {
+internal fun interface CompressionObservationFactory {
+    fun create(originalLength: Long, compressedLength: Long, originalSha256: ByteArray): CompressionObservation
+}
+
+internal val DEFAULT_COMPRESSION_OBSERVATION_FACTORY = CompressionObservationFactory(::CompressionObservation)
+
+internal fun observeCompression(
+    input: InputStream,
+    observer: ContainerObserver,
+    factory: CompressionObservationFactory = DEFAULT_COMPRESSION_OBSERVATION_FACTORY,
+): CompressionObservation {
     val originalDigest = MessageDigest.getInstance("SHA-256")
     val copyBuffer = ByteArray(AhConstants.CHUNK_PLAINTEXT_MAX)
     observer.allocated("compress.copy", copyBuffer.size)
     val counter = CountingOutputStream(InspectionLimits.MAX_APK_BYTES)
     val deflater = Deflater(Deflater.BEST_COMPRESSION, false)
     var originalLength = 0L
+    var resultDigest: ByteArray? = null
+    var transferred = false
     try {
         DeflaterOutputStream(counter, deflater, AhConstants.CHUNK_PLAINTEXT_MAX, true).use { compressed ->
             while (true) {
@@ -34,8 +48,14 @@ internal fun observeCompression(input: InputStream, observer: ContainerObserver)
             }
             compressed.finish()
         }
-        return CompressionObservation(originalLength, counter.count, originalDigest.digest())
+        val digestBytes = originalDigest.digest()
+        resultDigest = digestBytes
+        val observation = factory.create(originalLength, counter.count, digestBytes)
+        transferred = true
+        return observation
     } finally {
+        if (!transferred) resultDigest?.let { wipe("pass1.partialDigest", it, observer) }
+        originalDigest.reset()
         deflater.end()
         wipe("compress.copy", copyBuffer, observer)
     }
@@ -47,6 +67,7 @@ internal fun compressInto(
     observer: ContainerObserver,
     expectedOriginalLength: Long,
     expectedCompressedLength: Long,
+    factory: CompressionObservationFactory = DEFAULT_COMPRESSION_OBSERVATION_FACTORY,
 ): CompressionObservation {
     val originalDigest = MessageDigest.getInstance("SHA-256")
     val copyBuffer = ByteArray(AhConstants.CHUNK_PLAINTEXT_MAX)
@@ -54,6 +75,8 @@ internal fun compressInto(
     val counting = CountingForwardingOutputStream(output, expectedCompressedLength)
     val deflater = Deflater(Deflater.BEST_COMPRESSION, false)
     var originalLength = 0L
+    var resultDigest: ByteArray? = null
+    var transferred = false
     try {
         DeflaterOutputStream(counting, deflater, AhConstants.CHUNK_PLAINTEXT_MAX, true).use { compressed ->
             while (true) {
@@ -68,8 +91,14 @@ internal fun compressInto(
             }
             compressed.finish()
         }
-        return CompressionObservation(originalLength, counting.count, originalDigest.digest())
+        val digestBytes = originalDigest.digest()
+        resultDigest = digestBytes
+        val observation = factory.create(originalLength, counting.count, digestBytes)
+        transferred = true
+        return observation
     } finally {
+        if (!transferred) resultDigest?.let { wipe("pass2.partialDigest", it, observer) }
+        originalDigest.reset()
         deflater.end()
         wipe("compress.copy", copyBuffer, observer)
     }

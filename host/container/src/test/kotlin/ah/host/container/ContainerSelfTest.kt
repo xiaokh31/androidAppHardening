@@ -438,13 +438,57 @@ object ContainerSelfTest {
         val path = work.resolve("changed.apk")
         val fixture = fixture(path, intArrayOf(4_096), seed = 31)
         val output = work.resolve("changed.ahdc")
-        val builder = DexContainerBuilder(path, FixedRandom(), RecordingObserver()) {
+        val observer = RecordingObserver()
+        val builder = DexContainerBuilder(path, FixedRandom(), observer) {
             writeApk(path, listOf(ByteArray(4_096) { 7 }))
         }
         expectCode(ContainerErrorCode.CONTAINER_INPUT_CHANGED) {
             builder.build(fixture.inspection, fixture.signer, output)
         }
         check(!Files.exists(output)) { "failed build left a successful-looking output" }
+
+        val mismatchObserver = RecordingObserver()
+        val expectedObservation = CompressionObservation(10, 20, ByteArray(32) { 1 })
+        val actualObservation = CompressionObservation(10, 20, ByteArray(32) { 2 })
+        try {
+            expectCode(ContainerErrorCode.CONTAINER_INPUT_CHANGED) {
+                try {
+                    validatePass2Observation(actualObservation, expectedObservation, 1, 1)
+                } finally {
+                    actualObservation.clear("pass2.digest", mismatchObserver)
+                }
+            }
+        } finally {
+            expectedObservation.clear("pass1.digest", mismatchObserver)
+        }
+        check("pass2.digest" in mismatchObserver.clearedLabels)
+
+        val pass1Fixture = fixture(work.resolve("changed-pass1.apk"), intArrayOf(2_048), seed = 32)
+        val original = pass1Fixture.inspection
+        val summaries = original.dexEntries.mapIndexed { index, summary ->
+            if (index == 0) {
+                DexSummary(summary.entryName, summary.ordinal, summary.fileSize, summary.classCount,
+                    summary.sha256.also { it[0] = (it[0].toInt() xor 1).toByte() })
+            } else {
+                summary
+            }
+        }
+        val mismatched = ApkInspection(
+            original.inputSha256,
+            original.manifest,
+            original.zipEntries,
+            summaries,
+            original.nativeAbis,
+            original.findings,
+            original.compatibilityRulesVersion,
+            original.limitsApplied,
+        )
+        val pass1Observer = RecordingObserver()
+        expectCode(ContainerErrorCode.CONTAINER_INPUT_CHANGED) {
+            DexContainerBuilder(pass1Fixture.path, FixedRandom(), pass1Observer, null)
+                .build(mismatched, pass1Fixture.signer, work.resolve("changed-pass1.ahdc"))
+        }
+        check("pass1.pendingDigest" in pass1Observer.clearedLabels)
     }
 
     private fun verifyOneShotPlan(work: Path) {
@@ -628,6 +672,62 @@ object ContainerSelfTest {
         check(bindingObserver.clearFailures == 0)
         check(bindingObserver.clearCount >= 3)
 
+        var orphanDigest: ByteArray? = null
+        val observationFactory = CompressionObservationFactory { _, _, digest ->
+            orphanDigest = digest
+            throw OutOfMemoryError("observation-construction-injected")
+        }
+        expectFailure<OutOfMemoryError> {
+            observeCompression(ByteArrayInputStream(ByteArray(128) { 3 }), RecordingObserver(), observationFactory)
+        }
+        check(requireNotNull(orphanDigest).all { it == 0.toByte() })
+
+        val configBuildArrays = ArrayList<ByteArray>()
+        val configBuildAllocator = SensitiveArrayAllocator { size ->
+            if (configBuildArrays.size == 2) throw OutOfMemoryError("config-prefix-injected")
+            ByteArray(size).also(configBuildArrays::add)
+        }
+        expectFailure<OutOfMemoryError> {
+            ConfigV2Codec.build(
+                null,
+                ByteArray(16) { 1 },
+                ByteArray(16) { 2 },
+                ByteArray(32) { 3 },
+                ByteArray(32) { 4 },
+                ByteArray(32) { 5 },
+                ByteArray(32) { 6 },
+                ByteArray(32) { 7 },
+                ByteArray(12) { 8 },
+                configBuildAllocator,
+            )
+        }
+        check(configBuildArrays.size == 2)
+        check(configBuildArrays.all { bytes -> bytes.all { it == 0.toByte() } })
+
+        val keyObserver = RecordingObserver()
+        val streamAllocator = SensitiveArrayAllocator { throw OutOfMemoryError("stream-construction-injected") }
+        expectFailure<OutOfMemoryError> {
+            DexContainerBuilder(
+                fixture.path,
+                FixedRandom(),
+                keyObserver,
+                null,
+                streamAllocator,
+                null,
+            ).build(fixture.inspection, fixture.signer, work.resolve("oom-record-stream.ahdc"))
+        }
+        check(!Files.exists(work.resolve("oom-record-stream.ahdc")))
+        check("record.key" in keyObserver.clearedLabels)
+
+        val exactObserver = ThrowingAllocationObserver("chunk.exact")
+        expectFailure<OutOfMemoryError> {
+            DexContainerBuilder(fixture.path, FixedRandom(), exactObserver, null)
+                .build(fixture.inspection, fixture.signer, work.resolve("oom-chunk-exact.ahdc"))
+        }
+        check(!Files.exists(work.resolve("oom-chunk-exact.ahdc")))
+        check(exactObserver.clearedLabels.containsAll(listOf("chunk.exact", "record.key", "pass1.digest")))
+        check(exactObserver.allZero)
+
         val ownershipOutput = work.resolve("oom-consumption.ahdc")
         val ownershipResult = DexContainerBuilder(fixture.path, FixedRandom(), RecordingObserver(), null)
             .build(fixture.inspection, fixture.signer, ownershipOutput)
@@ -704,6 +804,44 @@ object ContainerSelfTest {
                     }
                 }
                 check(requireNotNull(verifierConfigCopy).all { it == 0.toByte() })
+
+                val manifestObserver = RecordingObserver()
+                ExpectedBinding.from(
+                    fixture.inspection,
+                    fixture.signer,
+                    config,
+                    nativeShare,
+                    NO_CONTAINER_OBSERVER,
+                ).use { binding ->
+                    expectFailure<OutOfMemoryError> {
+                        DexContainerVerifier(
+                            manifestObserver,
+                            DEFAULT_SENSITIVE_ARRAY_ALLOCATOR,
+                            SensitiveArrayCopier { throw OutOfMemoryError("manifest-header-copy-injected") },
+                        ).verify(ownershipOutput, binding)
+                    }
+                }
+                check("verify.manifestKey" in manifestObserver.clearedLabels)
+
+                val verifierObserver = RecordingObserver()
+                val verifierArrays = ArrayList<ByteArray>()
+                val verifierAllocator = SensitiveArrayAllocator { size ->
+                    if (verifierArrays.isNotEmpty()) throw OutOfMemoryError("verifier-aad-injected")
+                    ByteArray(size).also(verifierArrays::add)
+                }
+                ExpectedBinding.from(
+                    fixture.inspection,
+                    fixture.signer,
+                    config,
+                    nativeShare,
+                    NO_CONTAINER_OBSERVER,
+                ).use { binding ->
+                    expectFailure<OutOfMemoryError> {
+                        DexContainerVerifier(verifierObserver, verifierAllocator).verify(ownershipOutput, binding)
+                    }
+                }
+                check("verify.ciphertext" in verifierObserver.clearedLabels)
+                check(verifierArrays.size == 1 && verifierArrays.single().all { it == 0.toByte() })
             } finally {
                 config.fill(0)
                 nativeShare.fill(0)
@@ -1020,10 +1158,12 @@ private class RecordingObserver : ContainerObserver {
         private set
     var clearCount = 0
         private set
+    val clearedLabels = ArrayList<String>()
     val authenticated = AtomicInteger()
 
     override fun cleared(label: String, allZero: Boolean) {
         check(label.isNotEmpty())
+        clearedLabels += label
         clearCount++
         if (!allZero) clearFailures++
         live.remove(label)?.let { bytes -> liveBytes -= bytes }
@@ -1041,6 +1181,21 @@ private class RecordingObserver : ContainerObserver {
     override fun authenticatedBeforeInflate(record: Int, chunk: Int) {
         check(record >= 0 && chunk >= 0)
         authenticated.incrementAndGet()
+    }
+}
+
+private class ThrowingAllocationObserver(private val throwingLabel: String) : ContainerObserver {
+    val clearedLabels = ArrayList<String>()
+    var allZero = true
+        private set
+
+    override fun allocated(label: String, bytes: Int) {
+        if (label == throwingLabel) throw OutOfMemoryError("allocation:$label")
+    }
+
+    override fun cleared(label: String, allZero: Boolean) {
+        clearedLabels += label
+        this.allZero = this.allZero && allZero
     }
 }
 

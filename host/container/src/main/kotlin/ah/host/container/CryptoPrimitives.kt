@@ -143,9 +143,13 @@ internal object ContainerCrypto {
         }
     }
 
-    fun chunkNonce(prefix: ByteArray, chunkOrdinal: Int): ByteArray {
+    fun chunkNonce(
+        prefix: ByteArray,
+        chunkOrdinal: Int,
+        allocator: SensitiveArrayAllocator = DEFAULT_SENSITIVE_ARRAY_ALLOCATOR,
+    ): ByteArray {
         if (prefix.size != AhConstants.NONCE_PREFIX_BYTES || chunkOrdinal < 0) format("chunkNonce")
-        return ByteArray(AhConstants.GCM_NONCE_BYTES).also { nonce ->
+        return allocator.allocate(AhConstants.GCM_NONCE_BYTES).also { nonce ->
             prefix.copyInto(nonce)
             putU4(nonce, AhConstants.NONCE_PREFIX_BYTES, chunkOrdinal.toLong())
         }
@@ -159,8 +163,27 @@ internal object ContainerCrypto {
         packageNameSha256: ByteArray,
         recordBytes: ByteArray,
         chunkBytes: ByteArray,
-    ): ByteArray = AhConstants.CHUNK_AAD_DOMAIN + headerVersion + buildId + keySlotId +
-        signerSha256 + packageNameSha256 + recordBytes + chunkBytes
+        allocator: SensitiveArrayAllocator = DEFAULT_SENSITIVE_ARRAY_ALLOCATOR,
+    ): ByteArray {
+        val values = arrayOf(
+            AhConstants.CHUNK_AAD_DOMAIN,
+            headerVersion,
+            buildId,
+            keySlotId,
+            signerSha256,
+            packageNameSha256,
+            recordBytes,
+            chunkBytes,
+        )
+        val total = values.fold(0) { size, value -> checkedAddInt(size, value.size, "chunkAad") }
+        val aad = allocator.allocate(total)
+        var offset = 0
+        values.forEach { value ->
+            value.copyInto(aad, offset)
+            offset += value.size
+        }
+        return aad
+    }
 
     private fun aesGcm(
         mode: Int,

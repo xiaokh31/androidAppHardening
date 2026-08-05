@@ -83,7 +83,7 @@ Host 生成的 bootstrap、容器与元数据汇合。输出验证器必须独�
 | T-09 | 调试或 Hook 绕过检查 | 多源信号、校验分散、策略版本化、关键结果交叉验证 | 高权限攻击者可以补丁 Runtime |
 | T-10 | 环境误报阻止合法用户 | 低置信信号只触发 `degrade`，矩阵与真实设备测试 | 新设备或 ROM 仍可能误报 |
 | T-11 | 自定义组件初始化次序改变 | API 29 公开 ClassLoader hook、原 Factory 委托、启动 fixture | 特殊框架不在支持范围 |
-| T-12 | 临时文件、未发布映射或日志泄露 | 不落盘明文 DEX、handle 发布前事务 owner 对 completed/partial DEX 清零并 unmap、最小日志、报告字段白名单 | 崩溃转储或恶意 Host 进程 |
+| T-12 | 临时文件、未发布映射或日志泄露 | 不落盘明文 DEX；Native handle 创建前事务清理 completed/partial mappings；handle 到公开 `LoadedPayload` return 窗口由 exactly-once finally close；最小日志与报告字段白名单 | 崩溃转储或恶意 Host 进程 |
 | T-13 | 依赖或 CI Action 被替换 | 固定版本/commit、校验和、依赖验证、SBOM、许可证审查 | 上游已固定版本本身可能含漏洞 |
 | T-14 | 输入被处理器意外覆盖 | 双哈希、只读句柄、独立输出、原子发布 | Host 文件系统或用户并发替换 |
 | T-15 | Manifest 过度修改引入后门或兼容问题 | 只替换 `appComponentFactory`、转换后语义 diff、fixture | 未覆盖的厂商扩展 |

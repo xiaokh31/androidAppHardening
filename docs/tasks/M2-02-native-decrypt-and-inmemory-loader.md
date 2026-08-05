@@ -63,6 +63,7 @@ payload 不得以明文文件落盘。离线应用内密钥只能增加提取成
 - 每个恢复后的原始 DEX 使用独立匿名映射，按 M1-04 索引升序形成 `ByteBuffer[]`；父加载器固定为传入的壳 `ClassLoader`。Java facade 必须逐字复用 M0-05 的 `NativeLibrarySearchPathResolver`，再调用 API 29 三参数 `InMemoryDexClassLoader`；不得使用空 search path、反射复制 parent path list 或假设 parent 能为 payload 类查找业务 SO。
 - 内容密钥、派生材料和 tag 比较只存在于 Native；Java 层不得接触内容密钥。全部 DEX 成功后、`nativeOpenVerifiedPayload` 返回 handle 前，CEK/KEK/派生 key、AAD、认证后压缩 chunk、inflater/crypto scratch 全部清零销毁；只把 completed DEX 映射和最小生命周期状态转交 handle，不得把可重建临时秘密延长到 handle/ClassLoader 生命周期。handle close 时才清零并 unmap 成功映射。
 - `nativeOpenVerifiedPayload` 在返回 handle 前是 completed/partial DEX 匿名映射、inflater、crypto buffer 和临时状态的唯一事务 owner。首个/中间/末尾 chunk 的认证、I/O、取消、OOM、zlib、长度或摘要失败均须通过不依赖新内存分配的路径清零并 unmap 全部未发布 DEX，继续其余 best-effort cleanup，不返回 handle/`ByteBuffer`；cleanup failure 只聚合或 suppressed，不得替换首个错误。全部 DEX 成功后才原子提交并由 `LoadedPayload`/Native handle 接管。
+- Native `long` 是内部阶段边界，不是产品发布边界。`PayloadRuntime.openVerified` 用初始化为 `0` 的 primitive handle local、`committed=false` 与 `finally` 覆盖从 `nativeOpenVerifiedPayload` 返回到完整 `LoadedPayload` return 的窗口；不得依赖另一个 guard 对象成功分配。`nativeDexBuffers` 数组/元素、search path、`InMemoryDexClassLoader`、`LoadedPayload` 构造或 return 前失败时，`finally` 恰好一次调用不得分配内存的 `nativeClosePayload`，清零/unmap mappings、清除部分 buffers/loader 引用，不暴露 `LoadedPayload`/`ByteBuffer`。cleanup error 只在不替换主错误的前提下 best-effort suppressed/聚合；即使 OOM 导致无法附加 suppressed，主错误也必须原样保留。完整对象先存入局部变量，随后无失败地设置 `committed=true` 再 return；构造器不得注册或泄露 `this`。
 - payload 映射的生命周期与返回的 payload `ClassLoader` 绑定，不在 ART 仍可能读取时提前擦除；M2-06 在此所有权模型上增加 dump 成本控制。
 - 所有整数运算使用显式溢出检查，压缩输入、原始输出、单 DEX 和总 payload 大小上限采用 M1-04 的冻结常量；禁止根据未认证或未验证长度分配内存。
 
@@ -102,7 +103,8 @@ payload 不得以明文文件落盘。离线应用内密钥只能增加提取成
 - `extractNativeLibs=true/false` fixture 均能由 payload 类加载业务 JNI；无匹配 ABI、重复 ABI 目录和路径篡改均在组件实例化前失败。
 - `LoadedPayload.close()` 重复调用仍只关闭一次 Native handle；关闭后访问器拒绝，仍可安全清理的 direct/key/temp buffer 已清零，自身不再强引用 loader 或 buffer；任一清理子步骤失败不妨碍其余步骤。
 - 正向 `openVerified` 返回后、调用 `close()` 前，测试 hook 证明 CEK/KEK/派生 key、AAD、压缩 chunk、inflater/crypto scratch 已清零且不可达，completed DEX 映射仍有效并仅由 handle 拥有；close 后映射才清零并 unmap。
-- 在 handle 发布前对首个、中间、末尾 chunk 分别注入认证、I/O、取消、OOM、zlib 和摘要失败时，不返回 handle/`ByteBuffer`，所有 completed/partial DEX 映射均已清零并 unmap；cleanup 注入失败不覆盖首个稳定错误且其余清理继续。
+- 在 Native handle 创建前对首个、中间、末尾 chunk 分别注入认证、I/O、取消、OOM、zlib 和摘要失败时，不返回 handle，所有 completed/partial DEX 映射均已清零并 unmap；cleanup 注入失败不覆盖首个稳定错误且其余清理继续。
+- Native handle 返回后分别在 `nativeDexBuffers` 数组创建、元素创建、search path、`InMemoryDexClassLoader`、`LoadedPayload` 构造和 return 前注入异常/OOM：公开 `LoadedPayload`/`ByteBuffer` 均未发布，Native close 恰好一次，mappings 清零/unmap，部分 Java 引用清除，主错误保留且 cleanup error suppressed。
 - ASan/UBSan 主机解析测试无越界、整数溢出、use-after-free 或内存泄漏报告。
 
 ## Required Tests
@@ -111,7 +113,8 @@ payload 不得以明文文件落盘。离线应用内密钥只能增加提取成
 - 单/多 DEX 加载、重复类优先级、父加载器委派和句柄生命周期测试。
 - `LoadedPayload` 幂等 close-count、Native handle、关闭后访问、completed DEX direct buffer 清零/unmap、无临时秘密所有权、强引用释放和多清理错误聚合测试。
 - 正向提交边界测试：`openVerified` 返回后/`close` 前临时秘密已清零、仅 completed DEX mappings 被转交且仍可加载；close 后映射清零/unmap。
-- 未发布事务的首个/中间/末尾 chunk 失败矩阵、completed/partial DEX mapping zeroize/unmap、无 handle/`ByteBuffer` 发布和 cleanup failure 聚合测试。
+- Native handle 创建前事务的首个/中间/末尾 chunk 失败矩阵、completed/partial DEX mapping zeroize/unmap、无 handle 返回和 cleanup failure 聚合测试。
+- 跨 JNI 发布窗口失败矩阵：handle 返回后、buffer array/element、search path、ClassLoader、LoadedPayload 构造/return 前的异常与 OOM，验证 primitive/finally guard、close-count、mapping 清理、部分引用释放和 primary/suppressed error。
 - 截断、重叠、超大长度、未知版本、错误 tag、错误 signer/package 关联数据和随机输入测试。
 - zlib wrapper、checksum、dictionary、尾随/拼接流、提前结束、声明长度不符、SHA-256 不符和解压炸弹测试。
 - APK ZIP locator 的重复 asset、压缩 method、encryption、data descriptor、CRC/长度、local/central header 不一致、ZIP64 边界和截断测试。

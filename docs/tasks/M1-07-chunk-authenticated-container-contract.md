@@ -54,7 +54,8 @@ M1-04 首个冻结实现的独立复核发现：单条 DEX 使用一个 GCM tag 
 - 每个 chunk 必须通过一次性标准 GCM API 完成 tag 验证后才向 inflater 提交；禁止依赖 Provider 从 `update` 返回未认证 plaintext。
 - ConfigV2 保持 768 bytes，但 `container_major=2`；AHDC v1/ConfigV1 无兼容回退。
 - M1-04 的 `depends_on` 增加 M1-07；在本任务合并且合同独立复核通过前，M1-04 保持 blocked，M2/M3 不得消费废止 v1。
-- M2-02 在 handle 发布前必须以事务 owner 持有 completed/partial DEX 映射与临时状态；任一失败无分配地清零/unmap 全部未发布映射、不暴露 handle/`ByteBuffer`，cleanup failure 不覆盖主错误，全部 DEX 成功后才原子提交。
+- M2-02 在 Native handle 创建前必须以事务 owner 持有 completed/partial DEX 映射与临时状态；任一失败无分配地清零/unmap 全部未发布映射、不返回 handle，cleanup failure 不覆盖主错误，全部 DEX 成功后才把 completed mappings 转给内部 handle。
+- 产品发布边界固定为 `PayloadRuntime.openVerified` 返回完整 `LoadedPayload`。Native handle 返回后的 buffer array/element、search path、ClassLoader、LoadedPayload 构造/return 前窗口由 primitive handle + allocation-free `finally` 覆盖，失败恰好 close 一次、清映射/部分引用且不公开对象。
 - 本任务冻结提交后由独立只读 reviewer 检查 P0/P1/P2；任何 P0/P1 或未处置 P2 均不得推送或创建 PR。
 
 ## Public Interfaces
@@ -78,7 +79,7 @@ M1-04 首个冻结实现的独立复核发现：单条 DEX 使用一个 GCM tag 
 
 1. ADR 0008 对每个字段给出唯一 offset/size/rule，且 table/payload 算术、nonce 唯一性、AAD 和 MAC coverage 可机械实现。
 2. 合同明确覆盖 512 MiB 单 DEX、64 DEX、2 GiB APK 上限和不超过 1 MiB 的实现工作缓冲，不要求按 record 长度分配。
-3. M1-04、M2-02、M3-02 及架构/威胁/测试文档统一使用 AHDC v2，并明确每 chunk 认证后才解压、v1 无回退，以及 handle 发布前 completed/partial DEX 的事务清理与无暴露合同。
+3. M1-04、M2-02、M3-02 及架构/威胁/测试文档统一使用 AHDC v2，并明确每 chunk 认证后才解压、v1 无回退、Native handle 创建前事务清理，以及 handle 到公开 `LoadedPayload` return 窗口的 exactly-once close 与无暴露合同。
 4. 任务索引和路线图无依赖环：M1-07 依赖 M1-02，M1-04 依赖 M1-01、M1-02、M1-07。
 5. `node tools/governance/validate-project-package.mjs` 与 strict HandOff 校验退出 `0`。
 6. 独立只读复核对冻结提交给出 P0=0、P1=0、P2=0，且结论、提交 SHA 和检查范围归档。
@@ -88,8 +89,9 @@ M1-04 首个冻结实现的独立复核发现：单条 DEX 使用一个 GCM tag 
 - 文档链接、任务 ID/Issue/branch/依赖图和 UTF-8 治理校验。
 - 手工/脚本复算 HeaderV2 160 bytes、RecordV2 128 bytes、ChunkV2 32 bytes 和 ConfigV2 768 bytes。
 - 边界推演：1/65535/65536/65537 bytes、最大 DEX、最大 APK、chunk/count/offset 溢出与尾随数据。
-- 首个/中间/末尾 chunk 的认证、I/O、取消、OOM、zlib/摘要和 cleanup failure 推演，证明未发布 DEX 映射全部清零/unmap、无 handle/`ByteBuffer` 暴露且主错误保留。
+- Native handle 创建前的首个/中间/末尾 chunk 认证、I/O、取消、OOM、zlib/摘要和 cleanup failure 推演，证明未发布 DEX 映射全部清零/unmap、不返回 handle 且主错误保留。
 - 成功提交推演：handle 返回后、close 前所有 key/AAD/compressed/inflater/crypto 临时状态已清零且不可达，只有 completed DEX mappings 转交 handle 并保持可用；生命周期 close 才清零/unmap 映射。
+- 跨 JNI 发布窗口推演：Native handle 返回后在 buffers array/element、search path、ClassLoader、LoadedPayload 构造/return 前注入异常/OOM，证明公开对象未返回、Native close 恰好一次、mappings/部分引用清理且主错误保留。
 - 独立 reviewer 检查 JCA Provider 语义、认证顺序、domain separation、nonce 重用和 cleanup/error precedence。
 
 ## Required Evidence

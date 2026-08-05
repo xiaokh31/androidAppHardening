@@ -46,8 +46,9 @@
 - AHDC v2 HeaderV2/RecordV2/ChunkV2 的 checked arithmetic、canonical 64 KiB chunk、完整消费和 v1 拒绝测试；
 - 每 chunk 一次性 GCM tag 验证成功后才进入连续 zlib inflater 的顺序断言；
 - 1/65535/65536/65537 bytes 与接近 512 MiB DEX 的不超过 1 MiB 工作缓冲测试；
-- handle 发布前在首个/中间/末尾 chunk 注入认证、I/O、取消、OOM、zlib/摘要和 cleanup failure，证明 completed/partial DEX 映射清零并 unmap、无 handle/`ByteBuffer` 暴露且主错误不被覆盖；
+- Native handle 创建前在首个/中间/末尾 chunk 注入认证、I/O、取消、OOM、zlib/摘要和 cleanup failure，证明 completed/partial DEX 映射清零并 unmap、无 handle 返回且主错误不被覆盖；
 - 正向 `openVerified` 返回后、`close` 前断言全部 key/AAD/compressed/inflater/crypto 临时状态已清零且不可达，只有 completed DEX mappings 由 handle 保持可加载；close 后才清零/unmap 映射；
+- Native handle 返回后在 `nativeDexBuffers` 数组/元素、search path、ClassLoader、`LoadedPayload` 构造/return 前注入异常/OOM，断言公开对象/`ByteBuffer` 未暴露、Native close 恰好一次、mappings/部分引用清理和 primary/suppressed error；
 
 - 任意输入不崩溃、不越界、不无限循环；
 - 解析成功后重新序列化保持规范语义；

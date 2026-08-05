@@ -14,7 +14,7 @@ security_sensitive: true
 
 ## Goal
 
-在 Native 层解析并认证版本化加密 DEX 容器，对每条已认证的压缩记录执行有界 zlib 解压，将恢复出的多 DEX 按原始顺序放入匿名内存，并通过 API 29 公共 `InMemoryDexClassLoader` 接口交给后继 M2-03 的唯一启动 Guard；M2-01 不得直接调用本任务的低层 facade。
+在 Native 层解析并认证 AHDC v2，对每个 canonical chunk 使用一次性 GCM 验证 tag，成功后立即送入所属 record 的唯一连续有界 zlib inflater；不存在 record-level 认证或完整 record 缓冲。将全部验证成功的多 DEX 按原始顺序从未发布事务原子转移到匿名内存 handle，并通过 API 29 公共 `InMemoryDexClassLoader` 接口交给后继 M2-03 的唯一启动 Guard；M2-01 不得直接调用本任务的低层 facade。
 
 ## Background
 
@@ -62,6 +62,7 @@ payload 不得以明文文件落盘。离线应用内密钥只能增加提取成
 - 解压必须恰好得到 record 声明的原始长度并命中原始 DEX SHA-256；提前结束、超长、zlib checksum 错误、要求 dictionary 或仍有未消费输入均 fail closed。
 - 每个恢复后的原始 DEX 使用独立匿名映射，按 M1-04 索引升序形成 `ByteBuffer[]`；父加载器固定为传入的壳 `ClassLoader`。Java facade 必须逐字复用 M0-05 的 `NativeLibrarySearchPathResolver`，再调用 API 29 三参数 `InMemoryDexClassLoader`；不得使用空 search path、反射复制 parent path list 或假设 parent 能为 payload 类查找业务 SO。
 - 内容密钥、派生材料和 tag 比较只存在于 Native；Java 层不得接触内容密钥。句柄关闭时立即清零可释放的密钥和临时缓冲。
+- `nativeOpenVerifiedPayload` 在返回 handle 前是 completed/partial DEX 匿名映射、inflater、crypto buffer 和临时状态的唯一事务 owner。首个/中间/末尾 chunk 的认证、I/O、取消、OOM、zlib、长度或摘要失败均须通过不依赖新内存分配的路径清零并 unmap 全部未发布 DEX，继续其余 best-effort cleanup，不返回 handle/`ByteBuffer`；cleanup failure 只聚合或 suppressed，不得替换首个错误。全部 DEX 成功后才原子提交并由 `LoadedPayload`/Native handle 接管。
 - payload 映射的生命周期与返回的 payload `ClassLoader` 绑定，不在 ART 仍可能读取时提前擦除；M2-06 在此所有权模型上增加 dump 成本控制。
 - 所有整数运算使用显式溢出检查，压缩输入、原始输出、单 DEX 和总 payload 大小上限采用 M1-04 的冻结常量；禁止根据未认证或未验证长度分配内存。
 
@@ -100,6 +101,7 @@ payload 不得以明文文件落盘。离线应用内密钥只能增加提取成
 - instrumentation 运行期间扫描应用私有目录，不存在 DEX magic 开头的新增明文文件。
 - `extractNativeLibs=true/false` fixture 均能由 payload 类加载业务 JNI；无匹配 ABI、重复 ABI 目录和路径篡改均在组件实例化前失败。
 - `LoadedPayload.close()` 重复调用仍只关闭一次 Native handle；关闭后访问器拒绝，仍可安全清理的 direct/key/temp buffer 已清零，自身不再强引用 loader 或 buffer；任一清理子步骤失败不妨碍其余步骤。
+- 在 handle 发布前对首个、中间、末尾 chunk 分别注入认证、I/O、取消、OOM、zlib 和摘要失败时，不返回 handle/`ByteBuffer`，所有 completed/partial DEX 映射均已清零并 unmap；cleanup 注入失败不覆盖首个稳定错误且其余清理继续。
 - ASan/UBSan 主机解析测试无越界、整数溢出、use-after-free 或内存泄漏报告。
 
 ## Required Tests
@@ -107,6 +109,7 @@ payload 不得以明文文件落盘。离线应用内密钥只能增加提取成
 - 共享测试向量的 Native 单元测试和 JVM/JNI 集成测试。
 - 单/多 DEX 加载、重复类优先级、父加载器委派和句柄生命周期测试。
 - `LoadedPayload` 幂等 close-count、Native handle、关闭后访问、direct/key/temp buffer 清零、强引用释放和多清理错误聚合测试。
+- 未发布事务的首个/中间/末尾 chunk 失败矩阵、completed/partial DEX mapping zeroize/unmap、无 handle/`ByteBuffer` 发布和 cleanup failure 聚合测试。
 - 截断、重叠、超大长度、未知版本、错误 tag、错误 signer/package 关联数据和随机输入测试。
 - zlib wrapper、checksum、dictionary、尾随/拼接流、提前结束、声明长度不符、SHA-256 不符和解压炸弹测试。
 - APK ZIP locator 的重复 asset、压缩 method、encryption、data descriptor、CRC/长度、local/central header 不一致、ZIP64 边界和截断测试。

@@ -120,7 +120,9 @@ ADR 0006 的 ConfigV2 保持 768 bytes，offset `16` 的 `container_major` 固�
 3. 对每个 chunk 只读取至多 `65536 + 16` bytes，使用标准 AES-GCM 一次性 `doFinal(ciphertext || tag)` 或等价 Native API；失败时不向 zlib 提交任何该 chunk 数据。
 4. tag 成功后，把该 chunk 的已认证压缩 bytes 提交给该 record 唯一的连续 zlib inflater。
 5. 流结束必须恰好命中 record 的原始长度和 SHA-256，且无 dictionary 请求、拼接流、尾随压缩数据或未消费 chunk。
-6. 全部 DEX 成功后才交给内存 ClassLoader。
+6. `nativeOpenVerifiedPayload` 在返回 handle 前以单一事务 owner 持有全部已完成 DEX 映射、当前 partial DEX 映射、inflater 和 crypto 临时状态；只有全部 DEX 成功后才原子提交给已发布 handle 和内存 ClassLoader。
+
+在 handle/`ByteBuffer` 发布前，首个/中间/末尾 chunk 的认证、I/O、取消、OOM、zlib、长度或摘要失败都必须以不依赖新内存分配的清理路径清零并 unmap 全部已完成及 partial DEX 映射，销毁 inflater/crypto 状态，且不得返回 handle、映射或任何 DEX。清理子步骤继续 best-effort 执行；其错误作为 suppressed/聚合错误保留，不得替换首个安全失败。成功提交后，已发布 handle 才取得映射所有权并按其生命周期关闭。
 
 crypto 输入、认证后压缩 chunk、zlib scratch 和结构解析的实现总临时缓冲必须不超过 1 MiB；不得按 `compressed_length`、`chunk_count` 或 `payload_size` 分配连续缓冲，也不得把完整 chunk table 物化为对象/数组。Host 按 canonical 公式流式生成表；Runtime 第一遍流式验证 manifest/table，成功后从同一已验证容器按序重读 chunk entry。CEK、KEK、派生 key、AAD 临时数组和认证后压缩缓冲在正常、认证失败、I/O 失败与取消路径均须显式清零。清理失败作为 suppressed failure 保留，不得替换首个安全失败。
 
@@ -154,4 +156,4 @@ v0.1 reader 只接受 AHDC major `2`、minor `0`、flags `0` 和 ConfigV2 `conta
 - 覆盖 1 byte、65535、65536、65537、多个 chunk 和接近 512 MiB DEX 的流式内存测试，peak 工作缓冲不超过 1 MiB。
 - 对 header、SPV1、record、chunk table、nonce prefix、chunk ordinal、ciphertext、tag、config digest、signer 和 package 的单 bit 篡改均在向 inflater 提交受影响 chunk 前失败。
 - 覆盖截断、尾随、乱序、重复、空洞、重叠、算术溢出、chunk explosion、错误 zlib wrapper/dictionary/checksum/尾随和声明摘要不符。
-- 测试 hook 证明全部敏感数组和 direct buffer 在成功、认证失败、I/O 失败、取消及 cleanup failure 路径清零，首个错误不被清理错误覆盖。
+- 测试 hook 证明全部敏感数组/direct buffer 以及 handle 发布前的 completed/partial DEX 匿名映射在成功、首个/中间/末尾 chunk 认证失败、I/O、取消、OOM、zlib 失败及 cleanup failure 路径清零并 unmap；失败不发布 handle/`ByteBuffer`，首个错误不被清理错误覆盖。

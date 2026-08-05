@@ -107,7 +107,7 @@ payload 不得以明文文件落盘。离线应用内密钥只能增加提取成
 - 正向 `openVerified` 返回后、调用 `close()` 前，测试 hook 证明 CEK/KEK/派生 key、AAD、压缩 chunk、inflater/crypto scratch 已清零且不可达，completed DEX 映射仍有效并仅由 handle 拥有；close 后映射才清零并 unmap。
 - `AuthenticatedPayloadMetadata` 与同 handle 的已认证 ConfigV2/`SPV1` golden snapshot 逐字段一致，篡改/跨 handle 替换失败；防御性副本修改不影响内部状态，扫描确认不含任何恢复秘密或原始 config bytes。
 - 在 Native handle 创建前对首个、中间、末尾 chunk 分别注入认证、I/O、取消、OOM、zlib 和摘要失败时，不返回 handle，所有 completed/partial DEX 映射均已清零并 unmap；cleanup 注入失败不覆盖首个稳定错误且其余清理继续。
-- Native handle 返回后分别在 `nativeDexBuffers` 数组创建、元素创建、search path、`InMemoryDexClassLoader`、`LoadedPayload` 构造和 return 前注入异常/OOM：公开 `LoadedPayload`/`ByteBuffer` 均未发布，Native close 恰好一次，mappings 清零/unmap，部分 Java 引用清除，主错误保留且 cleanup error suppressed。
+- Native handle 返回后分别在 `nativeAuthenticatedMetadata` bytes 获取/解析/对象构造、`nativeDexBuffers` 数组创建/元素创建、search path、`InMemoryDexClassLoader`、`LoadedPayload` 构造和 return 前注入异常/OOM：内部 `LoadedPayload` 交接对象/`ByteBuffer` 均未发布，Native close 恰好一次，mappings 清零/unmap，部分 Java 引用清除，主错误保留且 cleanup error suppressed。
 - ASan/UBSan 主机解析测试无越界、整数溢出、use-after-free 或内存泄漏报告。
 
 ## Required Tests

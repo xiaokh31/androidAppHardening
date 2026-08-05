@@ -80,7 +80,7 @@ M1-04 首个冻结实现的独立复核发现：单条 DEX 使用一个 GCM tag 
 
 1. ADR 0008 对每个字段给出唯一 offset/size/rule，且 table/payload 算术、nonce 唯一性、AAD 和 MAC coverage 可机械实现。
 2. 合同明确覆盖 512 MiB 单 DEX、64 DEX、2 GiB APK 上限和不超过 1 MiB 的实现工作缓冲，不要求按 record 长度分配。
-3. M1-04、M2-02、M3-02 及架构/威胁/测试文档统一使用 AHDC v2，并明确每 chunk 认证后才解压、v1 无回退、Native handle 创建前事务清理，以及 handle 到公开 `LoadedPayload` return 窗口的 exactly-once close 与无暴露合同。
+3. M1-04、M2-02、M2-03、M3-02 及架构/威胁/测试文档统一使用 AHDC v2，并明确每 chunk 认证后才解压、v1 无回退、Native handle 创建前事务清理，以及 Native handle 到内部 `LoadedPayload` 交接、再到 Guard 返回最终 bootstrap `VerifiedPayloadSession` 的两个 exactly-once close 与无暴露窗口。
 4. 任务索引和路线图无依赖环：M1-07 依赖 M1-02，M1-04 依赖 M1-01、M1-02、M1-07。
 5. `node tools/governance/validate-project-package.mjs` 与 strict HandOff 校验退出 `0`。
 6. 独立只读复核对冻结提交给出 P0=0、P1=0、P2=0，且结论、提交 SHA 和检查范围归档。

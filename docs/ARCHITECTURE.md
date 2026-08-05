@@ -222,14 +222,14 @@ Android process creation
 -> verify manifest MAC over HeaderV2, SPV1, record table and chunk table
 -> compare full ConfigV2 digest from authenticated header
 -> compare authenticated SPV1 signer with measured installed signer
--> expose authenticated Factory and policy configuration
 -> verify each canonical chunk with one-shot GCM
 -> feed only the authenticated chunk into its record's continuous bounded zlib inflater
 -> verify original DEX length and SHA-256
--> build provisional InMemoryDexClassLoader chain
--> create authenticated metadata from the same Native handle snapshot
--> construct signer identity and verified startup configuration from authenticated inputs only
+-> create the Native handle and authenticated metadata from the same verified snapshot
+-> build LoadedPayload with its provisional InMemoryDexClassLoader chain
+-> Guard constructs signer identity and verified startup configuration only from measured identity and LoadedPayload metadata
 -> atomically return VerifiedPayloadSession or close LoadedPayload exactly once
+-> expose authenticated Factory and policy configuration through that complete session
 -> instantiate original AppComponentFactory when declared
 -> delegate original Factory instantiateClassLoader exactly once
 -> select and return final payload ClassLoader

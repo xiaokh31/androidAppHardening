@@ -102,7 +102,7 @@ Bootstrap Runtime -> verified in-memory business DEX -> original app components
 
 ### 4.2 Native Loader
 
-Native Loader 的顺序固定为：无 payload 分配地检查容器结构边界，恢复每包内容密钥，验证 manifest MAC，再逐 record 验证 AES-GCM tag。只有 tag 通过后的压缩明文才允许进入有界 zlib-wrapped DEFLATE 解压器；解压必须恰好命中 record 的原始 DEX 长度和 SHA-256，拒绝 dictionary、尾随/拼接流、checksum 错误和超过单 DEX/总 payload 上限的输出。恢复出的原始 DEX 保留在最短生命周期的直接匿名内存中，再使用 API 29 三参数 `InMemoryDexClassLoader` 构建 loader；Native 搜索路径按 M0-05 合同从 `ApplicationInfo`、公开进程 ABI 与当前 APK 清单派生，同时覆盖 extracted 和 APK 内直接加载 SO。不得将明文 DEX 写入 code cache、临时目录或外部存储，也不得反射复制 parent loader 的 path list。
+Native Loader 的顺序固定为：无 payload 分配地检查容器结构边界，恢复每包内容密钥，验证覆盖 HeaderV2、`SPV1`、record table 与 chunk table 的 manifest MAC，再逐 chunk 使用一次性 AES-GCM API 验证 tag。不存在 record-level tag；只有当前 chunk 的 tag 成功后，该 chunk 的已认证压缩明文才允许进入所属 record 的唯一连续 zlib-wrapped DEFLATE 解压器，任何 Provider 在最终 tag 前返回的 plaintext 均不得消费。解压必须恰好命中 record 的原始 DEX 长度和 SHA-256，拒绝 dictionary、尾随/拼接流、checksum 错误和超过单 DEX/总 payload 上限的输出。恢复出的原始 DEX 保留在最短生命周期的直接匿名内存中，再使用 API 29 三参数 `InMemoryDexClassLoader` 构建 loader；Native 搜索路径按 M0-05 合同从 `ApplicationInfo`、公开进程 ABI 与当前 APK 清单派生，同时覆盖 extracted 和 APK 内直接加载 SO。不得将明文 DEX 写入 code cache、临时目录或外部存储，也不得反射复制 parent loader 的 path list。
 
 多 DEX 的类查找顺序必须与输入的 `classes.dex`、`classes2.dex` 顺序一致。
 
@@ -112,7 +112,7 @@ Native Loader 的顺序固定为：无 payload 分配地检查容器结构边界
 
 - 容器 magic、版本、长度和记录边界；
 - header 认证信息；
-- 每条 DEX 的 GCM tag、序号和声明大小；
+- 每个 canonical chunk 的 GCM tag、record/chunk 序号、声明大小和连续 offset；不存在每 DEX/record tag；
 - bootstrap/Native 配置的一致性。
 
 任何强完整性失败在业务类加载前终止。错误对调试构建可分类，对发行构建只暴露稳定、非敏感原因。
@@ -217,12 +217,12 @@ Android process creation
 -> locate and bounded-parse fixed ConfigV2 and AHDC entries
 -> compare exactly one installed signer with pre-read binding
 -> recover protected content key
--> verify manifest MAC over SPV1 and record table
+-> verify manifest MAC over HeaderV2, SPV1, record table and chunk table
 -> compare full ConfigV2 digest from authenticated header
 -> compare authenticated SPV1 signer with measured installed signer
 -> expose authenticated Factory and policy configuration
--> verify each record GCM tag
--> bounded zlib inflate of authenticated compressed bytes
+-> verify each canonical chunk with one-shot GCM
+-> feed only the authenticated chunk into its record's continuous bounded zlib inflater
 -> verify original DEX length and SHA-256
 -> build provisional InMemoryDexClassLoader chain
 -> instantiate original AppComponentFactory when declared

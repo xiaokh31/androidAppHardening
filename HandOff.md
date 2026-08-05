@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-05T13:15:00+08:00
+updated_at: 2026-08-05T13:28:00+08:00
 updated_by: /root
 state: active
 source_branch: docs/m1-07-chunk-authenticated-container-contract
@@ -25,6 +25,8 @@ next_owner: /root
 - M1-04 首个实现候选 `97cb9dc75f68b5ce0ddde2134e09c15ae2e798fb` 的独立复核为 FAIL（P0 `0`、P1 `3`、P2 `2`）；该提交仅保留在本地废止分支，不属于 M1-07，也不得发布。
 - 决定性 P1 是每 DEX 单 GCM tag 在固定 SunJCE 下可能缓存至多 512 MiB ciphertext；使用其他 Provider 的 `update` plaintext 又会在 tag 成功前解压，无法同时兑现认证顺序与 1 MiB 缓冲。
 - 当前治理 diff 新增 ADR 0008、M1-07 任务卡与复核输入，定义 AHDC v2 HeaderV2/RecordV2/ChunkV2、64 KiB canonical chunk、每 chunk 一次性 GCM、连续每 DEX zlib 流和 v1 无回退；M1-04 新增对 M1-07 的硬依赖。
+- 首轮独立只读复核对冻结提交 `e13927a22f8b008ab6bc419b26b53044a847ef4a` 给出 FAIL：P0 `0`、P1 `1`、P2 `1`。P1 是架构/M2-02 残留 record/DEX-level tag 措辞及启动序列漏写 chunk table；P2 是依赖无环证明把边方向写反。旧冻结点立即失效，结论归档于 `docs/evidence/M1-07/security-review-1.md`。
+- 当前修正候选统一规定不存在 record-level tag、manifest 覆盖 HeaderV2/`SPV1`/record/chunk table、每 chunk 一次性 GCM 成功后才进入所属 record 的连续 inflater，并纠正无环证明；必须重新校验、冻结并取得新的独立全零复核。
 - M0-04 的 PR #29 已合并，正式 API 29/36 x86_64 设备矩阵和独立安全复核通过。
 - M0-06 的 PR #31 已合并为 `main@f1362188be5083a6d557522f0f5be1905935f6eb`；合并后的 Governance/Build 在 Ubuntu 与 Windows 通过，`main` 已无豁免通过 strict HandOff。
 - M0-06/ADR 0007 已解除旧的 `ApplicationInfo.metaData == null` 阻塞，启动配置唯一来源改为 `ApplicationInfo.sourceDir` 中的固定 ConfigV2 与 AHDC 条目。
@@ -129,6 +131,7 @@ next_owner: /root
 - 用户启动 M1-07，创建 Issue #36 和独立治理分支；该分支不包含废止的 M1-04 产品实现。
 - ADR 0008 固定 160-byte HeaderV2、128-byte RecordV2、32-byte ChunkV2、record key/nonce/AAD/manifest coverage、1 MiB 工作缓冲和 cleanup error precedence；ADR 0004 标记 superseded。
 - M1-04 依赖增加 M1-07；产品需求、架构、威胁模型、测试策略、路线图和下游任务正同步到 AHDC v2。
+- 首轮独立复核废止 `e13927a`；P1/P2 修复只更正权威 Runtime chunk 语义和依赖证明，不改变 ADR 0008 wire layout。
 - merger-ready HEAD `07c519c73b2a48f8636eed557da463f699299f20` 的 API 29/36 KVM、Ubuntu/Windows Build 与 Governance 六项全部 PASS；两个 Build job 再次命中四份规范报告冻结 hashes。
 - PR #35 已以 expected-head 保护的普通 merge commit `197eb45535b117e28ad1ef904993d2b54068056b` 合并，Issue #8 已关闭；本地 `main` 已无豁免通过 strict HandOff、Governance 与 diff check，M1-03 标记 done。
 - 最终证据 HEAD `16ffba62df8f25d4397d771c5bdfa77f8dba78ad` 的 API 29/36 KVM、Ubuntu/Windows Build 与 Governance 六项 replacement CI 全部 PASS；两平台四份 M1-03 规范报告 hashes 再次命中冻结值。
@@ -209,6 +212,18 @@ next_owner: /root
 - artifact: `docs/adr/0008-chunk-authenticated-dex-container.md`; `docs/tasks/M1-07-chunk-authenticated-container-contract.md`; `docs/evidence/M1-07/security-review-input.md`
 - sha256: not_applicable
 - result: IN_PROGRESS; independent governance task is isolated from the rejected M1-04 implementation, and the AHDC v2 contract is being reconciled before validation and review
+
+### M1-07 independent security review 1
+
+- task_id: M1-07
+- git_commit: e13927a22f8b008ab6bc419b26b53044a847ef4a
+- command: independent offline read-only review; governance validator; strict HandOff; structure/boundary calculations; v1/record-tag and UTF-8 scans; final clean status
+- exit_code: 1
+- environment: Windows 10.0.19045 x64; PowerShell 5.1; Node v24.12.0; Git 2.52.0; no network/device/emulator
+- timestamp: 2026-08-05T13:17:49+08:00
+- artifact: `docs/evidence/M1-07/security-review-1.md`
+- sha256: not_applicable
+- result: FAIL; P0=0, P1=1, P2=1; authoritative Runtime text retained whole-record tag semantics and the dependency proof reversed one edge; frozen SHA invalidated pending remediation and full re-review
 
 ### M1-03 merger-ready CI and merge
 
@@ -726,6 +741,7 @@ None
 - [x] 用户明确启动 M1-07；Issue #36、固定治理分支和 clean main base 已核验。
 - [ ] 完成 AHDC v2 全仓库合同同步、字段复算、Governance 与 strict HandOff。
 - [ ] 冻结治理提交并取得独立只读复核 P0/P1/P2 全零结论。
+- [x] 首轮独立复核 FAIL 已归档，`e13927a` 废止；P1 whole-record 措辞和 P2 依赖证明方向已形成修正候选。
 - [ ] 获得用户单独发布授权后才推送并创建唯一 PR；M1-04 在 M1-07 合并前保持 blocked。
 - [x] M1-01 从固定 base `e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030` 与唯一分支 `feat/m1-01-untrusted-apk-inspector` 启动，Issue 固定为 #6；当前恢复点为 `main`。
 - [x] M0-04 与 M0-06 已合并并完成各自门禁。
@@ -781,6 +797,7 @@ None
 ## Handoff Sign-off
 
 - `/root` 已核验 M1-04 单 tag 合同无法在固定 Provider、512 MiB DEX 和 1 MiB 缓冲下满足认证后解压；M1-07 只修订治理合同，不包含废止实现、不启动模拟器或设备，也未获授权推送/创建 PR。
+- `/root` 已核验首轮 M1-07 独立复核为 FAIL 并废止 `e13927a`；当前只允许关闭该轮 P1/P2、重新冻结并进行完整独立复核。
 - Coordinator `/root` 已核验首轮独立复核 FAIL、六项修复 diff、本地 Gradle/check/governance、双变体 Release/R8 和静态 APK 验证结果。
 - 当前快照声明三套 review-3 设备环境验收 PASS、第五次独立复核 P0/P1/P2 全为零、最终 PR HEAD 六项 CI 全部 PASS，PR #32 已合并，且 post-merge `main` Build/Governance 全绿并无豁免通过 strict HandOff；M0-05 标记 done。旧证据仅保留为历史回归基线。
 - `/root` 已核验真机为 API 29 arm64 64-bit、user/release-keys、非 root 环境，设备 runner cleanup PASS；本轮未启动任何本机模拟器。

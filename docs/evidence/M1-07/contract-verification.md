@@ -48,7 +48,7 @@ M1-01 + M1-02 + M1-07 -> M1-04
 M1-04 -> M2-02 -> M2-03
 ```
 
-There is no edge from M1-07 to M1-04, so the new dependency does not create a cycle. AHDC v1 remains historical only and cannot be selected by ConfigV2 or any current task contract.
+M1-07 does not depend on M1-04, and there is no edge or path from M1-04 back to M1-07, so the new dependency creates no cycle. AHDC v1 remains historical only and cannot be selected by ConfigV2 or any current task contract.
 
 ## Required review focus
 

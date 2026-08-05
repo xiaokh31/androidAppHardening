@@ -33,7 +33,8 @@ M0 门禁：API 29 公共加载链、原 Application/factory 代理、Provider�
 | M1-01 | [#6](https://github.com/xiaokh31/androidAppHardening/issues/6) | [Untrusted APK inspector](M1-01-untrusted-apk-inspector.md) | `host-pipeline-agent` | M0-05 |
 | M1-02 | [#7](https://github.com/xiaokh31/androidAppHardening/issues/7) | [Signer policy](M1-02-signer-policy.md) | `host-pipeline-agent` | M1-01 |
 | M1-03 | [#8](https://github.com/xiaokh31/androidAppHardening/issues/8) | [Binary AXML transformer](M1-03-binary-axml-transformer.md) | `host-pipeline-agent` | M1-01, M0-05 |
-| M1-04 | [#9](https://github.com/xiaokh31/androidAppHardening/issues/9) | [Encrypted DEX container](M1-04-encrypted-dex-container.md) | `host-pipeline-agent` | M1-01, M1-02 |
+| M1-07 | [#36](https://github.com/xiaokh31/androidAppHardening/issues/36) | [Chunk-authenticated DEX container contract](M1-07-chunk-authenticated-container-contract.md) | `host-pipeline-agent` | M1-02 |
+| M1-04 | [#9](https://github.com/xiaokh31/androidAppHardening/issues/9) | [Encrypted DEX container](M1-04-encrypted-dex-container.md) | `host-pipeline-agent` | M1-01, M1-02, M1-07 |
 | M1-05 | [#10](https://github.com/xiaokh31/androidAppHardening/issues/10) | [APK repacker and alignment](M1-05-apk-repacker-and-alignment.md) | `host-pipeline-agent` | M1-02, M1-03, M1-04 |
 | M1-06 | [#11](https://github.com/xiaokh31/androidAppHardening/issues/11) | [CLI and JSON report](M1-06-cli-and-json-report.md) | `host-pipeline-agent` | M1-01, M1-02, M1-03, M1-04, M1-05 |
 
@@ -48,7 +49,7 @@ M0 门禁：API 29 公共加载链、原 Application/factory 代理、Provider�
 | M2-05 | [#16](https://github.com/xiaokh31/androidAppHardening/issues/16) | [Environment risk engine](M2-05-environment-risk-engine.md) | `runtime-security-agent` | M2-01, M2-03, M2-04 |
 | M2-06 | [#17](https://github.com/xiaokh31/androidAppHardening/issues/17) | [Memory-dump cost controls](M2-06-memory-dump-cost-controls.md) | `runtime-security-agent` | M2-02, M2-04, M2-05 |
 
-M1 与 M2 只有在 M1-04 容器格式和黄金向量冻结后才能并行。共享格式变化必须新增 ADR，不能在单侧实现中隐式改变。
+M1-07 的 AHDC v2 合同必须先经独立安全复核并合并；随后 M1 与 M2 只有在 M1-04 容器格式和黄金向量冻结后才能并行。共享格式变化必须新增 ADR，不能在单侧实现中隐式改变或回退 AHDC v1。
 
 ## M3 Validation
 
@@ -72,7 +73,7 @@ M1 与 M2 只有在 M1-04 容器格式和黄金向量冻结后才能并行。共
 
 ```text
 M0-01 → M0-02 → M0-03 → M0-04 → M0-06 → M0-05
-M0-05 → M1-01 → M1-02 → M1-04
+M0-05 → M1-01 → M1-02 → M1-07 → M1-04
 M1-01 → M1-03
 M1-04 → M2-02 → M2-03
 M1-03 + M1-04 + M2-03 → M2-01 → M2-04 → M2-05 → M2-06

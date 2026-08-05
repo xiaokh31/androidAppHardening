@@ -22,8 +22,8 @@ payload 不得以明文文件落盘。离线应用内密钥只能增加提取成
 
 ## Inputs
 
-- M1-04 的 `ContainerV1` 二进制规范、测试向量和顺序索引。
-- ADR 0004 与 ADR 0006 规定的 AEAD、密钥封装和域分离参数。
+- M1-04 的 `ContainerV2` 二进制规范、测试向量和顺序索引。
+- ADR 0008 与 ADR 0006 规定的 AEAD、密钥封装和域分离参数。
 - M0-04 的 `InMemoryDexClassLoader` 可行性结果。
 - ADR 0003 冻结的 `ApplicationInfo.sourceDir` 早期只读输入与固定 asset 名称。
 
@@ -56,9 +56,9 @@ payload 不得以明文文件落盘。离线应用内密钥只能增加提取成
 - Java bridge 固定调用 `System.loadLibrary("ah_runtime")`，APK 内 Native 库名固定为 `libah_runtime.so`。
 - 容器必须先完整校验头、边界、manifest MAC 和对应 record 的 AEAD tag，再将该 record 的已认证压缩字节交给 zlib；认证失败不允许解压或部分加载。
 - `nativeInspectBinding` 只解析固定 ConfigV2、AHDC header 与 `SPV1` 的长度/格式上限，返回明确标记为未认证的当前 signer 摘要、build ID 和 key slot ID，不恢复 CEK、不暴露 Factory/策略、不分配 payload buffer。`nativeOpenVerifiedPayload` 使用实测安装 signer 与 Framework package name 恢复 CEK，认证覆盖 `SPV1` 的 manifest MAC，并再次比较已认证当前摘要；任一失配均在 record 解密前失败。
-- Native 以只读方式打开 `ApplicationInfo.sourceDir` 指向的当前 APK，使用有界 ZIP central-directory/local-header locator 查找唯一规范条目 `assets/ah/runtime/payload.ahdc` 和 768-byte `assets/ah/runtime/config.bin`；条目必须为 `STORED`、无 encryption、无 data descriptor、CRC/长度一致且不存在重复名称。不得解压、复制到临时文件或接受调用方任意路径/asset 名；package name 只能取同一 Framework `ApplicationInfo.packageName` 并以精确 UTF-8 SHA-256 参与 ADR 0006 KEK 和 ADR 0004 record AAD。
+- Native 以只读方式打开 `ApplicationInfo.sourceDir` 指向的当前 APK，使用有界 ZIP central-directory/local-header locator 查找唯一规范条目 `assets/ah/runtime/payload.ahdc` 和 768-byte `assets/ah/runtime/config.bin`；条目必须为 `STORED`、无 encryption、无 data descriptor、CRC/长度一致且不存在重复名称。不得解压、复制到临时文件或接受调用方任意路径/asset 名；package name 只能取同一 Framework `ApplicationInfo.packageName` 并以精确 UTF-8 SHA-256 参与 ADR 0006 KEK 和 ADR 0008 chunk AAD。
 - 恢复流程严格解析 ADR 0006 `ConfigV2` 和当前 ABI 的 104-byte `NativeShareSlotV1`，先验证结构、`slot_sha256`/ABI/build/key slot，以实测 signer/package binding 重组 `R` 并验证 CEK envelope，再用 CEK 验证 AHDC manifest MAC，随后从已认证 header 常量时间比较完整 config SHA-256，最后交叉比较 signer、版本和 build/key slot；任一步失败都不得暴露 Factory/策略或解密 record。
-- AHDC v1 只接受 zlib-wrapped DEFLATE，不接受 raw DEFLATE、gzip wrapper、preset dictionary、多拼接流或流结束后的尾随字节。解压输出上限同时受 record 原始长度和项目冻结的单 DEX/总 DEX 上限约束。
+- AHDC v2 只接受 zlib-wrapped DEFLATE，不接受 raw DEFLATE、gzip wrapper、preset dictionary、多拼接流或流结束后的尾随字节。每个 canonical chunk 以一次性 GCM API 验证成功后才进入该 record 的唯一连续 inflater；不得接受 AHDC v1 或消费 tag 验证前的 plaintext。解压输出上限同时受 record 原始长度和项目冻结的单 DEX/总 DEX 上限约束。
 - 解压必须恰好得到 record 声明的原始长度并命中原始 DEX SHA-256；提前结束、超长、zlib checksum 错误、要求 dictionary 或仍有未消费输入均 fail closed。
 - 每个恢复后的原始 DEX 使用独立匿名映射，按 M1-04 索引升序形成 `ByteBuffer[]`；父加载器固定为传入的壳 `ClassLoader`。Java facade 必须逐字复用 M0-05 的 `NativeLibrarySearchPathResolver`，再调用 API 29 三参数 `InMemoryDexClassLoader`；不得使用空 search path、反射复制 parent path list 或假设 parent 能为 payload 类查找业务 SO。
 - 内容密钥、派生材料和 tag 比较只存在于 Native；Java 层不得接触内容密钥。句柄关闭时立即清零可释放的密钥和临时缓冲。

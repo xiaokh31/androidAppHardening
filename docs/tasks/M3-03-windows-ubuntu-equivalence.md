@@ -21,13 +21,13 @@ security_sensitive: false
 
 ## Background
 
-Host 后处理器是跨平台离线工具。路径分隔符、文件排序、ZIP 时间戳、区域设置和换行差异不得改变非随机结构与产品语义；产品在两个平台上都只输出未签名 APK。根据 ADR-0004，每次运行都会生成新的 CEK、build ID、key slot ID 和 nonce，因此完整 APK、容器密文及其 SHA-256 必须允许不同，不能把位级相同作为跨平台门禁。
+Host 后处理器是跨平台离线工具。路径分隔符、文件排序、ZIP 时间戳、区域设置和换行差异不得改变非随机结构与产品语义；产品在两个平台上都只输出未签名 APK。根据 ADR-0008，每次运行都会生成新的 CEK、build ID、key slot ID 和 nonce prefix，因此完整 APK、容器密文及其 SHA-256 必须允许不同，不能把位级相同作为跨平台门禁。
 
 ## Inputs
 
 - M1-06 CLI、JSON schema 和退出码。
 - M1-05 的确定性 ZIP/对齐规则。
-- ADR-0004 的随机字段、认证容器和解密后验证合同。
+- ADR-0008 的随机字段、分块认证容器和解密后验证合同。
 - M2-06 已完成的最终 Runtime Native、policy 与 bootstrap 测试产物。
 - M3-01 的九个合成 fixture。
 - M0-03 锁定的 JDK、Gradle、Android build-tools 与依赖版本。
@@ -62,7 +62,7 @@ Host 后处理器是跨平台离线工具。路径分隔符、文件排序、ZIP
 - 文件遍历、DEX 顺序和 ZIP entry 固定按 UTF-8 字节序排序，不依赖文件系统枚举顺序。
 - JSON 使用 UTF-8、LF、排序键、稳定数组顺序和 `/` 路径分隔符；耗时、主机名、进程 ID 与绝对路径不得进入规范结果。
 - 比较器固定把字段分为 deterministic、randomized 和 run-metadata 三类；分类表是版本化接口，禁止临时忽略出现差异的未知字段。
-- 每个平台输出都必须独立通过签名缺失、ZIP/对齐、Manifest、Runtime ABI、AHDC 认证和解密后 DEX hash 验证。等价性门禁比较 entry 结构、保留 entry hash、bootstrap/Runtime 字节、Manifest 字节、AHDC 版本/record 顺序/名称/原始长度/原始 DEX SHA-256/压缩后长度及规范报告非随机字段。
+- 每个平台输出都必须独立通过签名缺失、ZIP/对齐、Manifest、Runtime ABI、AHDC 认证和解密后 DEX hash 验证。等价性门禁比较 entry 结构、保留 entry hash、bootstrap/Runtime 字节、Manifest 字节、AHDC v2 版本/record 顺序/名称/原始长度/原始 DEX SHA-256/压缩后长度/canonical chunk topology 及规范报告非随机字段。
 - CEK、build ID、key slot ID、nonce、manifest MAC、GCM tag、ciphertext、容器/output SHA-256、时间与耗时只按固定分类归一化；两平台及同平台重复运行的 output SHA-256 必须不同，且 nonce 与标识符不得复用。
 - JSON 先按 schema 拒绝未知字段，再对固定的非随机投影做字节级比较；不能通过删除整个 container、output 或 signing 对象获得通过。
 - 命令分别使用 `gradlew.bat` 与 `./gradlew`，业务参数和相对 fixture 路径保持一致。
@@ -123,7 +123,7 @@ Host 后处理器是跨平台离线工具。路径分隔符、文件排序、ZIP
 
 ## Dependencies and Blockers
 
-M1-05 的结构规则、ADR-0004 随机字段合同、M1-06 的 JSON schema 或 M2-06 的最终 Runtime 控制未冻结时不得设为发布门禁。证据必须来自包含 M2-06 的同一 Release Candidate commit；后续任何 Runtime Native、policy 或 bootstrap 字节变化都会使本任务证据失效并要求重跑。任一 fixture 出现非随机语义差异、相同随机标识符、认证失败或输出 hash 意外相同时任务保持 blocked；不得把平台名加入密钥派生、加密或 ZIP 输入来伪造差异或等价性。
+M1-05 的结构规则、ADR-0008 随机字段合同、M1-06 的 JSON schema 或 M2-06 的最终 Runtime 控制未冻结时不得设为发布门禁。证据必须来自包含 M2-06 的同一 Release Candidate commit；后续任何 Runtime Native、policy 或 bootstrap 字节变化都会使本任务证据失效并要求重跑。任一 fixture 出现非随机语义差异、相同随机标识符、认证失败或输出 hash 意外相同时任务保持 blocked；不得把平台名加入密钥派生、加密或 ZIP 输入来伪造差异或等价性。
 
 ## Agent Handoff Requirements
 

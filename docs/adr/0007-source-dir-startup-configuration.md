@@ -29,8 +29,8 @@ M0-05 在已授权的 API 29 arm64 非 root 设备上证明：`AppComponentFacto
 1. 用固定 `apksig` 从 `sourceDir` 验证安装 APK并取得唯一当前 signer；
 2. 有界定位并解析 ConfigV2 与 AHDC 固定头/`SPV1`；
 3. 结合当前 ABI share、Framework package name 和实测 signer 验证 CEK envelope；
-4. 验证覆盖 HeaderV1、完整 `SPV1` 与 record table 的 manifest MAC；
-5. 从已认证 HeaderV1 取得 `config_sha256`，常量时间比较完整 768-byte ConfigV2；
+4. 验证覆盖 HeaderV2、完整 `SPV1`、record table 与 chunk table 的 manifest MAC；
+5. 从已认证 HeaderV2 取得 `config_sha256`，常量时间比较完整 768-byte ConfigV2；
 6. 交叉比较 ConfigV2、已认证 `SPV1` 与实测 signer，以及 ConfigV2/AHDC 的 build ID、key slot 和版本；
 7. 标记启动配置为 authenticated，随后才允许创建 payload loader或实例化原始 Factory。
 

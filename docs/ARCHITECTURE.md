@@ -53,7 +53,7 @@ Bootstrap Runtime -> verified in-memory business DEX -> original app components
 
 ### 3.3 Signer Policy
 
-使用固定 Android `apksig` 验证输入，并输出唯一当前 signer 的证书 SHA-256 和可验证轮换历史。安全字段按 [ADR-0004](adr/0004-versioned-encrypted-dex-container.md) 的 `SPV1` wire layout 写入容器并受 manifest MAC 认证；Host 报告 JSON 不是 Runtime 信任输入。v0.1 要求输出由相同当前 signer 在产品外签名；多当前 signer、无签名或无效签名均拒绝。
+使用固定 Android `apksig` 验证输入，并输出唯一当前 signer 的证书 SHA-256 和可验证轮换历史。安全字段按 [ADR-0008](adr/0008-chunk-authenticated-dex-container.md) 沿用的 `SPV1` wire layout 写入容器并受 manifest MAC 认证；Host 报告 JSON 不是 Runtime 信任输入。v0.1 要求输出由相同当前 signer 在产品外签名；多当前 signer、无签名或无效签名均拒绝。
 
 ### 3.4 Binary AXML Transformer
 
@@ -65,7 +65,7 @@ Bootstrap Runtime -> verified in-memory business DEX -> original app components
 
 ### 3.5 DEX Container Builder
 
-按原 DEX 序号稳定排序，为每个 DEX 派生独立子密钥并生成唯一 nonce，使用 AES-256-GCM 加密，将 128-byte header、`SPV1`、104-byte records 和 payload 写入 `assets/ah/runtime/payload.ahdc`；同时生成 ADR 0006 的 768-byte ConfigV2 `config.bin`，其 SHA-256 受容器 manifest MAC 绑定。M1-01 对输入 package name 的精确 UTF-8 bytes 计算 SHA-256，并把规范化原 Factory 交给 ConfigV2 builder；package 摘要参与 KEK 与每条 DEX 的 GCM AAD，Runtime 只从 Framework `ApplicationInfo.packageName` 重算。容器格式见 [ADR-0004](adr/0004-versioned-encrypted-dex-container.md)。
+按原 DEX 序号稳定排序，为每个 DEX 派生独立 record key 和随机 nonce prefix，把连续 zlib 流按 64 KiB chunk 使用 AES-256-GCM 独立认证加密，将 160-byte HeaderV2、`SPV1`、128-byte records、32-byte chunk table 和 payload 写入 `assets/ah/runtime/payload.ahdc`；同时生成 ADR 0006 的 768-byte ConfigV2 `config.bin`，其 SHA-256 受容器 manifest MAC 绑定。M1-01 对输入 package name 的精确 UTF-8 bytes 计算 SHA-256，并把规范化原 Factory 交给 ConfigV2 builder；builder 重算并交叉核对 package 摘要，该摘要参与 KEK 与每个 chunk 的 GCM AAD，Runtime 只从 Framework `ApplicationInfo.packageName` 重算。容器格式见 [ADR-0008](adr/0008-chunk-authenticated-dex-container.md)。
 
 ### 3.6 Runtime Assembler
 
@@ -170,7 +170,7 @@ lib/x86_64/libah_runtime.so
 
 ### 6.1 Container Contract
 
-容器以 ASCII magic `AHDC` 开始，使用 little-endian 固定宽度整数，当前格式版本为 `1`。逐字节 layout 以 ADR 0004 为唯一来源：128-byte `HeaderV1`、可变长 `SPV1`、`dex_count * 104` record table 和无空洞 Payload。header 后、record table 前固定放置 `SPV1` signer policy block；manifest MAC 覆盖 header、完整 `SPV1` 与 record table。记录按原 DEX 序号递增。未知 major/version/flags、非法 signer policy、重复 lineage 或末项不等于当前摘要必须拒绝。
+容器以 ASCII magic `AHDC` 开始，使用 little-endian 固定宽度整数，当前格式版本为 `2`。逐字节 layout 以 ADR 0008 为唯一来源：160-byte `HeaderV2`、可变长 `SPV1`、`dex_count * 128` record table、`chunk_count * 32` chunk table 和无空洞 Payload。manifest MAC 覆盖 HeaderV2、完整 `SPV1`、record table 与 chunk table；每个 canonical 64 KiB 压缩 chunk 由独立 GCM tag 认证，tag 成功后才进入该 DEX 的连续 zlib inflater。未知 major/version/flags、AHDC v1、非法 signer policy、乱序/重叠 chunk 或尾随数据必须拒绝。
 
 离线恢复材料以 ADR 0006 为唯一来源：`config.bin` 固定 768 bytes，四 ABI template 各有一个 104-byte `.ah_share_v1` slot。M1-05 只 materialize 选中 ABI 的 slot，不 patch bootstrap DEX；Runtime 必须把 config SHA-256、build ID、key slot、signer、Framework package name、ABI ID、CEK envelope 与 AHDC manifest 串成同一失败关闭链。
 
@@ -179,7 +179,7 @@ lib/x86_64/libah_runtime.so
 启动只从同一 `ApplicationInfo.sourceDir` 读取两个固定 ZIP 条目：
 
 - `assets/ah/runtime/config.bin`：ADR 0006 的 768-byte ConfigV2；
-- `assets/ah/runtime/payload.ahdc`：ADR 0004 的 AHDC v1。
+- `assets/ah/runtime/payload.ahdc`：ADR 0008 的 AHDC v2。
 
 二者必须是唯一规范 `STORED` 条目，且无 encryption/data descriptor、CRC/长度一致。路径和名称是编译期常量，生产接口不接受调用方覆盖。ConfigV2 的 Factory/策略字段只有在 ADR 0007 的完整认证顺序结束后才可使用。
 

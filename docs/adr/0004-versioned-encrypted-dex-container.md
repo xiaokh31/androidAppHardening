@@ -2,11 +2,13 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR 0008](0008-chunk-authenticated-dex-container.md)
 
 ## Context
 
 Host 与 Android Runtime 需要一个稳定、可演进且能安全解析的二进制合同来承载单个或多个业务 DEX。简单拼接无法可靠表达长度、顺序和版本；只加密不认证会允许攻击者修改密文或元数据；使用 ZIP 内多个自定义密文条目会分散版本与完整性边界。
+
+本 ADR 保留 AHDC v1 的历史决策，不再授权产品实现。独立复核确认“每个 DEX 一个 GCM tag”、512 MiB 单 DEX 上限、认证后才解压和 1 MiB 工作缓冲在固定 JCA Provider 上不能同时成立；尚未发布的 v1 由 ADR 0008 的 AHDC v2 取代，reader 不得回退接受 v1。
 
 容器 parser 同时运行在 Host 验证器和 Android Native Runtime 中，所有字段都必须能进行有界、溢出安全的解析。
 

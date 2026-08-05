@@ -55,9 +55,9 @@ security_sensitive: true
 - 模块路径固定为 `runtime/policy`，Android Runtime 源码位于 `src/main/java` 并使用 Java 17；不得应用 Kotlin Android plugin。
 - 运行时签名验证使用与 M1-02 同一固定版本、同一来源校验的 Android `apksig`，最低检查平台固定为 29；`ApplicationInfo.sourceDir` 只能来自 Framework 参数并以只读方式打开。
 - 证书身份固定使用 DER 编码证书的 SHA-256 小写十六进制值；比较前验证为 64 个十六进制字符并使用常量时间比较。
-- M1-04 按 ADR 0004 把 M1-02 的 `SignerPolicyV1` 写入受 manifest MAC 认证的 `SPV1` block，并按 ADR 0006 写入 ConfigV2；Runtime 不接受 Manifest、调用参数、`ApplicationInfo.metaData` 或未认证预读对策略/Factory 的覆盖。
+- M1-04 按 ADR 0008 把 M1-02 的 `SignerPolicyV1` 写入受 manifest MAC 认证的 `SPV1` block，并按 ADR 0006 写入 ConfigV2；Runtime 不接受 Manifest、调用参数、`ApplicationInfo.metaData` 或未认证预读对策略/Factory 的覆盖。
 - `ApkVerifier.Result` 必须验证成功且当前 signer 数恰好为一个；其当前摘要必须常量时间等于未认证预读的期望摘要，随后作为实测摘要传给 M2-02。Native 认证 manifest MAC 后必须再次确认已认证 `SPV1` 当前摘要相等；历史必须有序、无重复并终止于当前证书，仅匹配历史证书仍拒绝。
-- 校验顺序固定为：只读验证当前 APK并取得唯一 signer、从同一 Framework `ApplicationInfo.packageName` 计算精确 UTF-8 SHA-256、有界预读 ConfigV2/AHDC 且不分配 payload、预比较 signer、调用 Native 以 signer/package binding 恢复 CEK、认证 `SPV1`/record table、从已认证 header 常量时间比较完整 ConfigV2、复比较 signer/build/key slot/policy version、逐 record 鉴权/解压、再返回 session。Factory/风险配置在完整 ConfigV2 认证前不得暴露。
+- 校验顺序固定为：只读验证当前 APK并取得唯一 signer、从同一 Framework `ApplicationInfo.packageName` 计算精确 UTF-8 SHA-256、有界预读 ConfigV2/AHDC 且不分配 payload、预比较 signer、调用 Native 以 signer/package binding 恢复 CEK、认证 `SPV1`/record/chunk table、从已认证 header 常量时间比较完整 ConfigV2、复比较 signer/build/key slot/policy version、逐 chunk 鉴权后送入每 record 的连续 inflater、再返回 session。Factory/风险配置在完整 ConfigV2 认证前不得暴露。
 - 缓存键包含包名、版本号、APK `lastModified`、唯一当前 signer 摘要、历史摘要和进程启动标识；任一变化都重新校验。
 - 产品代码中不得调用 `apksigner`、`jarsigner` 或任何签名 API。
 

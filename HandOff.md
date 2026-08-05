@@ -1,26 +1,30 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260804-004759
-updated_at: 2026-08-04T00:47:59+08:00
+handoff_id: HO-20260805-130636
+updated_at: 2026-08-05T13:15:00+08:00
 updated_by: /root
-state: ready
-source_branch: main
-base_commit: 077e4be14865c777dbbf3c1a5a3d9609b3620868
+state: active
+source_branch: docs/m1-07-chunk-authenticated-container-contract
+base_commit: 225ec169661e2a366736be36b1249fb79faf3dcc
 working_tree: clean
 current_milestone: M1
-active_task: NONE
-next_owner: unassigned
+active_task: M1-07
+next_owner: /root
 ---
 
 # Project HandOff
 
 ## Objective
 
-在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内完成 M1-03 Binary AXML 白名单变换器。单属性 `android:appComponentFactory` 变换、有界 parser/writer、语义保留、独立安全复核、三套设备/CI 验收均已合并；未实现 ZIP 写出、签名、DEX、M1-04 或任何 Runtime 相邻任务，当前等待用户选择下一任务。
+在不改产品代码的前提下完成 M1-07 ADR/任务合同修订：以 AHDC v2 的 64 KiB 分块认证取代尚未发布且无法同时满足 512 MiB DEX、认证后解压与 1 MiB 缓冲的 AHDC v1；冻结 Host/Runtime 共用 wire contract、依赖和验收门禁，经独立只读安全复核后才允许 M1-04 重启。
 
 ## Current State
 
+- 用户已明确授权启动独立 ADR/任务合同修订。唯一 tracking Issue 为 [#36](https://github.com/xiaokh31/androidAppHardening/issues/36)，固定分支为 `docs/m1-07-chunk-authenticated-container-contract`，base 为 clean `main@225ec169661e2a366736be36b1249fb79faf3dcc`；未授权推送或创建 PR。
+- M1-04 首个实现候选 `97cb9dc75f68b5ce0ddde2134e09c15ae2e798fb` 的独立复核为 FAIL（P0 `0`、P1 `3`、P2 `2`）；该提交仅保留在本地废止分支，不属于 M1-07，也不得发布。
+- 决定性 P1 是每 DEX 单 GCM tag 在固定 SunJCE 下可能缓存至多 512 MiB ciphertext；使用其他 Provider 的 `update` plaintext 又会在 tag 成功前解压，无法同时兑现认证顺序与 1 MiB 缓冲。
+- 当前治理 diff 新增 ADR 0008、M1-07 任务卡与复核输入，定义 AHDC v2 HeaderV2/RecordV2/ChunkV2、64 KiB canonical chunk、每 chunk 一次性 GCM、连续每 DEX zlib 流和 v1 无回退；M1-04 新增对 M1-07 的硬依赖。
 - M0-04 的 PR #29 已合并，正式 API 29/36 x86_64 设备矩阵和独立安全复核通过。
 - M0-06 的 PR #31 已合并为 `main@f1362188be5083a6d557522f0f5be1905935f6eb`；合并后的 Governance/Build 在 Ubuntu 与 Windows 通过，`main` 已无豁免通过 strict HandOff。
 - M0-06/ADR 0007 已解除旧的 `ApplicationInfo.metaData == null` 阻塞，启动配置唯一来源改为 `ApplicationInfo.sourceDir` 中的固定 ConfigV2 与 AHDC 条目。
@@ -99,10 +103,12 @@ next_owner: unassigned
 | M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | done | M0-05 | PR #33、Issue #6、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
 | M1-02 | `/root` | `feat/m1-02-signer-policy` | done | M1-01 | PR #34、Issue #7、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
 | M1-03 | `/root` | `feat/m1-03-binary-axml-transformer` | done | M1-01, M0-05 | PR #35、Issue #8、独立复核、三套设备/CI 矩阵和 main strict HandOff 均已关闭 |
+| M1-07 | `/root` | `docs/m1-07-chunk-authenticated-container-contract` | in_progress | M1-02 | 完成全仓库合同同步、治理/strict 校验并冻结提交后启动独立只读安全复核 |
 
 ## Decisions and Invariants
 
-- 继续遵守 ADR 0001 至 ADR 0007；ADR 0007 固定 sourceDir 配置通道，ADR 0006 固定 768-byte ConfigV2 wire layout。
+- 继续遵守 ADR 0001 至 ADR 0003、ADR 0005 至 ADR 0008；ADR 0004 已被 ADR 0008 supersede。ADR 0007 固定 sourceDir 配置通道，ADR 0006 保持 768-byte ConfigV2 且 `container_major=2`。
+- AHDC v2 是 v0.1 唯一容器 major：64 KiB canonical compressed-plaintext chunk，每 chunk 独立 AES-256-GCM tag；tag 成功后才进入每 DEX 唯一连续 zlib inflater，AHDC v1 不得回退接受。
 - 输入 APK 只读；产品输出必须为新的未签名 APK；生产模块不得读取、传递或使用签名凭据。
 - M0-05 使用 `pre-cli` 验证模式，只处理仓库生成的合成 fixture 和被忽略的一次性测试签名产物。
 - API 29+ 只使用公开 `AppComponentFactory.instantiateClassLoader()`、Framework `ApplicationInfo` 和只读文件 API；不使用 Context、PackageManager、Framework 私有对象、反射或 hidden API 回退。
@@ -120,6 +126,9 @@ next_owner: unassigned
 
 ## Changes Since Previous Handoff
 
+- 用户启动 M1-07，创建 Issue #36 和独立治理分支；该分支不包含废止的 M1-04 产品实现。
+- ADR 0008 固定 160-byte HeaderV2、128-byte RecordV2、32-byte ChunkV2、record key/nonce/AAD/manifest coverage、1 MiB 工作缓冲和 cleanup error precedence；ADR 0004 标记 superseded。
+- M1-04 依赖增加 M1-07；产品需求、架构、威胁模型、测试策略、路线图和下游任务正同步到 AHDC v2。
 - merger-ready HEAD `07c519c73b2a48f8636eed557da463f699299f20` 的 API 29/36 KVM、Ubuntu/Windows Build 与 Governance 六项全部 PASS；两个 Build job 再次命中四份规范报告冻结 hashes。
 - PR #35 已以 expected-head 保护的普通 merge commit `197eb45535b117e28ad1ef904993d2b54068056b` 合并，Issue #8 已关闭；本地 `main` 已无豁免通过 strict HandOff、Governance 与 diff check，M1-03 标记 done。
 - 最终证据 HEAD `16ffba62df8f25d4397d771c5bdfa77f8dba78ad` 的 API 29/36 KVM、Ubuntu/Windows Build 与 Governance 六项 replacement CI 全部 PASS；两平台四份 M1-03 规范报告 hashes 再次命中冻结值。
@@ -188,6 +197,18 @@ next_owner: unassigned
 - 该 M1-01 post-merge 动作已完成；当前恢复点为下述 M1-02 冻结实现与本地验收。
 
 ## Verification Evidence
+
+### M1-07 task start and contract blocker
+
+- task_id: M1-07
+- git_commit: 225ec169661e2a366736be36b1249fb79faf3dcc
+- command: verify clean main/base/remote/branch; create Issue #36; switch to `docs/m1-07-chunk-authenticated-container-contract`; inspect M1-01 limits, ADR 0004/0006/0007 and M1-04 review blocker
+- exit_code: 0
+- environment: Windows 10.0.19045; PowerShell; GitHub Issue #36; no emulator/device/download
+- timestamp: 2026-08-05T13:06:36+08:00
+- artifact: `docs/adr/0008-chunk-authenticated-dex-container.md`; `docs/tasks/M1-07-chunk-authenticated-container-contract.md`; `docs/evidence/M1-07/security-review-input.md`
+- sha256: not_applicable
+- result: IN_PROGRESS; independent governance task is isolated from the rejected M1-04 implementation, and the AHDC v2 contract is being reconciled before validation and review
 
 ### M1-03 merger-ready CI and merge
 
@@ -651,10 +672,10 @@ None
 
 ## Ordered Next Actions
 
-1. 提交并推送本 post-merge HandOff 到 `main`。
-2. 要求 post-merge `main` 通过 Ubuntu/Windows Build 与 Governance；若 KVM workflow 对 main push 触发，也必须通过 API 29/36 并完成强制清理。
-3. 等待用户明确选择并启动下一任务；按路线图候选为 M1-04，但不得隐式领取。
-4. 不启动 M2 或任何相邻任务。
+1. 完成 M1-07 全仓库 ADR/任务/架构/测试合同同步并复算字段尺寸与依赖图。
+2. 运行 project-package Governance、strict HandOff、diff/UTF-8/link 检查并修复全部问题。
+3. 冻结治理提交，启动独立只读安全复核；P0/P1/P2 未全零前不得发布。
+4. 独立复核通过后更新证据与 clean HandOff；等待用户单独授权推送/PR。M1-04、M2/M3 实现保持停止。
 
 ## Relevant Files and Artifacts
 
@@ -668,6 +689,9 @@ None
 - `docs/adr/0003-api29-public-classloader-hook.md`
 - `docs/adr/0006-offline-key-protection-boundary.md`
 - `docs/adr/0007-source-dir-startup-configuration.md`
+- `docs/adr/0008-chunk-authenticated-dex-container.md`
+- `docs/tasks/M1-07-chunk-authenticated-container-contract.md`
+- `docs/evidence/M1-07/security-review-input.md`
 - `docs/evidence/M0-05/implementation-snapshot.md`
 - `docs/evidence/M0-05/arm64-api29-metadata-blocker.md`
 - `docs/evidence/M0-05/formal-compatibility.md`
@@ -699,6 +723,10 @@ None
 
 ## Resume Checklist
 
+- [x] 用户明确启动 M1-07；Issue #36、固定治理分支和 clean main base 已核验。
+- [ ] 完成 AHDC v2 全仓库合同同步、字段复算、Governance 与 strict HandOff。
+- [ ] 冻结治理提交并取得独立只读复核 P0/P1/P2 全零结论。
+- [ ] 获得用户单独发布授权后才推送并创建唯一 PR；M1-04 在 M1-07 合并前保持 blocked。
 - [x] M1-01 从固定 base `e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030` 与唯一分支 `feat/m1-01-untrusted-apk-inspector` 启动，Issue 固定为 #6；当前恢复点为 `main`。
 - [x] M0-04 与 M0-06 已合并并完成各自门禁。
 - [x] 完成最新 main 合并并无豁免运行 strict HandOff。
@@ -752,6 +780,7 @@ None
 
 ## Handoff Sign-off
 
+- `/root` 已核验 M1-04 单 tag 合同无法在固定 Provider、512 MiB DEX 和 1 MiB 缓冲下满足认证后解压；M1-07 只修订治理合同，不包含废止实现、不启动模拟器或设备，也未获授权推送/创建 PR。
 - Coordinator `/root` 已核验首轮独立复核 FAIL、六项修复 diff、本地 Gradle/check/governance、双变体 Release/R8 和静态 APK 验证结果。
 - 当前快照声明三套 review-3 设备环境验收 PASS、第五次独立复核 P0/P1/P2 全为零、最终 PR HEAD 六项 CI 全部 PASS，PR #32 已合并，且 post-merge `main` Build/Governance 全绿并无豁免通过 strict HandOff；M0-05 标记 done。旧证据仅保留为历史回归基线。
 - `/root` 已核验真机为 API 29 arm64 64-bit、user/release-keys、非 root 环境，设备 runner cleanup PASS；本轮未启动任何本机模拟器。

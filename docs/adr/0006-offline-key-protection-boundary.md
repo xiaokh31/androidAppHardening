@@ -30,7 +30,7 @@ KEK = HKDF-SHA-256(
 
 5. CEK 使用 KEK 和 AES-256-GCM 封装，采用独立随机 96-bit nonce；AAD 为下面 `ConfigV2` 的精确 132-byte prefix。
 6. Runtime 先通过 Framework 传入的公开 `ApplicationInfo.sourceDir` 与固定 `apksig` 验证安装 signer，并只从同一 `ApplicationInfo.packageName` 计算 package 摘要，再把两项实测绑定交给 Native；Native 短暂重组 `R`、派生 KEK、认证并恢复 CEK，验证覆盖 `SPV1` 的 manifest MAC 后再次比较已认证 signer。
-7. CEK 只用于 [ADR-0004](0004-versioned-encrypted-dex-container.md) 的子密钥派生；临时 `R`、KEK、CEK 和明文缓冲在使用后以不会被编译器省略的方式清零。
+7. CEK 只用于 [ADR-0008](0008-chunk-authenticated-dex-container.md) 的子密钥派生；临时 `R`、KEK、CEK 和明文缓冲在使用后以不会被编译器省略的方式清零。
 
 ### ConfigV2 wire layout
 
@@ -44,7 +44,7 @@ KEK = HKDF-SHA-256(
 | 8 | 2 | flags | bit 0=`HAS_ORIGINAL_FACTORY`；其余位必须为 `0` |
 | 10 | 2 | reserved | `0` |
 | 12 | 4 | total_size | `768` |
-| 16 | 2 | container_major | `1` |
+| 16 | 2 | container_major | `2` |
 | 18 | 2 | signer_policy_version | `1`，必须等于已认证 `SPV1.schema_version` |
 | 20 | 2 | risk_policy_version | `1` |
 | 22 | 2 | original_factory_length | 无 Factory 时为 `0`；有 Factory 时为 `1..512` |
@@ -60,7 +60,7 @@ KEK = HKDF-SHA-256(
 
 `HAS_ORIGINAL_FACTORY=0` 时 `original_factory_length` 必须为 `0` 且 512-byte slot 全零；flag 为 `1` 时长度必须为 `1..512`，前 `length` 字节是完整、最短编码的严格 UTF-8，剩余 slot 全零。解码结果不得含 NUL，必须通过 Java 全限定类名语法校验，且不得等于 Shell Factory。Host 使用 M1-01 已按 Manifest package 规则规范化的原 `android:appComponentFactory` 字符串，不做 Unicode NFC、大小写或额外别名变换。原 Application 名称不存入 config；Framework 的 `instantiateApplication` `className` 是唯一来源。
 
-CEK envelope 的 AAD 精确为 `config.bin[0,132)`；该 prefix 包含 header、版本、Factory 长度、build/key slot、signer、`R_java` 和 nonce，但不包含 ciphertext、tag 或 Factory slot。package 绑定由 KEK `info` 中的 `package_name_sha256` 提供。完整 768-byte config 的 SHA-256 必须写入 ADR 0004 `HeaderV1.config_sha256`；Runtime 在恢复 CEK 后验证 manifest MAC，从已认证 header 取得期望 config SHA-256，再常量时间比较实际 config。Factory 名称与风险策略在该比较和所有 binding 交叉验证完成前仍是不可信数据，不得暴露或使用。修改 ConfigV2 任一 byte、signer/package public binding、`R_java`、nonce、ciphertext 或 tag 均必须导致 envelope 或后续 manifest 认证失败。
+CEK envelope 的 AAD 精确为 `config.bin[0,132)`；该 prefix 包含 header、版本、Factory 长度、build/key slot、signer、`R_java` 和 nonce，但不包含 ciphertext、tag 或 Factory slot。package 绑定由 KEK `info` 中的 `package_name_sha256` 提供。完整 768-byte config 的 SHA-256 必须写入 ADR 0008 `HeaderV2.config_sha256`；Runtime 在恢复 CEK 后验证 manifest MAC，从已认证 header 取得期望 config SHA-256，再常量时间比较实际 config。Factory 名称与风险策略在该比较和所有 binding 交叉验证完成前仍是不可信数据，不得暴露或使用。修改 ConfigV2 任一 byte、signer/package public binding、`R_java`、nonce、ciphertext 或 tag 均必须导致 envelope 或后续 manifest 认证失败。
 
 预发布 `ConfigV1` 在任何生产实现和发布前被 ConfigV2 替代。v0.1 reader 只接受 major `2`；不得兼容或回退 176-byte ConfigV1。
 

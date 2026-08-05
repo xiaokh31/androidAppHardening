@@ -104,7 +104,7 @@ v0.1 接受标准 Java/Kotlin 应用的单 DEX 或多 DEX 结构，并允许自�
 
 ### FR-004 DEX 认证加密
 
-按 [ADR-0004](adr/0004-versioned-encrypted-dex-container.md) 将每个业务 DEX 独立加密。每次运行生成新的每包密钥和 nonce，使用认证加密验证密文与元数据。任何认证失败必须在业务类加载前终止。
+按 [ADR-0008](adr/0008-chunk-authenticated-dex-container.md) 将每个业务 DEX 的连续压缩流分成规范 64 KiB chunk 独立认证加密。每次运行生成新的每包密钥和 record nonce prefix；每个 chunk 的认证成功后才可进入 inflater，任何认证失败必须在业务类加载前终止。AHDC v1 不得回退接受。
 
 ### FR-005 公开 ClassLoader 接入
 

@@ -28,7 +28,7 @@ Host 处理器面对不可信 APK，Runtime 面对可被篡改的本地容器。
 ## Inputs
 
 - M1-03 Binary AXML 解析与改写入口。
-- M1-04 `ContainerV1` 解析器和共享测试向量。
+- M1-04 `ContainerV2` 解析器和共享测试向量。
 - M1-06 CLI、错误码与 JSON 报告。
 - M2-02/M2-03/M2-06 的 Runtime 负向接口。
 - M3-01 合成 fixture。
@@ -43,7 +43,7 @@ Host 处理器面对不可信 APK，Runtime 面对可被篡改的本地容器。
 ## In Scope
 
 - ZIP 中央目录、重复条目、路径穿越、压缩炸弹、Manifest AXML 和 DEX/container 元数据。
-- header、版本、长度、偏移、条目重叠、nonce、tag、ciphertext、签名者策略和元数据摘要篡改。
+- header、版本、长度、offset、record/chunk table 重叠或乱序、nonce prefix/ordinal、tag、ciphertext、签名者策略和元数据摘要篡改。
 - Host 解析器与 Native 容器解析器的内存安全、超时和资源上限。
 - 最小化 crash corpus 与已修复回归语料。
 
@@ -56,7 +56,7 @@ Host 处理器面对不可信 APK，Runtime 面对可被篡改的本地容器。
 
 ## Implementation Decisions
 
-- JVM/Kotlin 的 APK inspector 与 AXML target 固定使用 Jazzer；Native `ContainerV1` target 固定使用 libFuzzer 并启用 ASan/UBSan。
+- JVM/Kotlin 的 APK inspector 与 AXML target 固定使用 Jazzer；Native `ContainerV2` target 固定使用 libFuzzer 并启用 ASan/UBSan。
 - PR CI 每个 target 运行固定回归语料并 fuzz 10 分钟；nightly 每个 target 运行 60 分钟。任何 crash、sanitizer 报告、未捕获异常、超时或超出内存上限均失败。
 - 所有变异在 `build/fuzz-work/` 的输入副本执行；原始 fixture 在运行前后必须保持相同 SHA-256。
 - tamper catalog 为每个变异固定记录目标字节域、预期 Host/Runtime 阶段、错误码和“payload 未加载”断言。
@@ -96,7 +96,7 @@ Host 处理器面对不可信 APK，Runtime 面对可被篡改的本地容器。
 
 - 每个 parser 的固定语料回归、随机变异和结构感知变异测试。
 - ZIP path traversal、重复条目、压缩比上限与解压大小上限测试。
-- AXML chunk/字符串池/资源引用和容器整数溢出/重叠/tag 篡改测试。
+- AXML chunk/字符串池/资源引用和容器整数溢出/重叠/chunk explosion/tag 篡改测试，并断言受影响 chunk 在认证前未进入 inflater。
 - 签名者策略、元数据摘要、外部重签与 Runtime payload 未加载测试。
 
 ## Required Evidence

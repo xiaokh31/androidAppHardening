@@ -53,7 +53,7 @@ Bootstrap Runtime -> verified in-memory business DEX -> original app components
 
 ### 3.3 Signer Policy
 
-使用固定 Android `apksig` 验证输入，并输出唯一当前 signer 的证书 SHA-256 和可验证轮换历史。安全字段按 [ADR-0004](adr/0004-versioned-encrypted-dex-container.md) 的 `SPV1` wire layout 写入容器并受 manifest MAC 认证；Host 报告 JSON 不是 Runtime 信任输入。v0.1 要求输出由相同当前 signer 在产品外签名；多当前 signer、无签名或无效签名均拒绝。
+使用固定 Android `apksig` 验证输入，并输出唯一当前 signer 的证书 SHA-256 和可验证轮换历史。安全字段按 [ADR-0008](adr/0008-chunk-authenticated-dex-container.md) 沿用的 `SPV1` wire layout 写入容器并受 manifest MAC 认证；Host 报告 JSON 不是 Runtime 信任输入。v0.1 要求输出由相同当前 signer 在产品外签名；多当前 signer、无签名或无效签名均拒绝。
 
 ### 3.4 Binary AXML Transformer
 
@@ -65,7 +65,7 @@ Bootstrap Runtime -> verified in-memory business DEX -> original app components
 
 ### 3.5 DEX Container Builder
 
-按原 DEX 序号稳定排序，为每个 DEX 派生独立子密钥并生成唯一 nonce，使用 AES-256-GCM 加密，将 128-byte header、`SPV1`、104-byte records 和 payload 写入 `assets/ah/runtime/payload.ahdc`；同时生成 ADR 0006 的 768-byte ConfigV2 `config.bin`，其 SHA-256 受容器 manifest MAC 绑定。M1-01 对输入 package name 的精确 UTF-8 bytes 计算 SHA-256，并把规范化原 Factory 交给 ConfigV2 builder；package 摘要参与 KEK 与每条 DEX 的 GCM AAD，Runtime 只从 Framework `ApplicationInfo.packageName` 重算。容器格式见 [ADR-0004](adr/0004-versioned-encrypted-dex-container.md)。
+按原 DEX 序号稳定排序，为每个 DEX 派生独立 record key 和随机 nonce prefix，把连续 zlib 流按 64 KiB chunk 使用 AES-256-GCM 独立认证加密，将 160-byte HeaderV2、`SPV1`、128-byte records、32-byte chunk table 和 payload 写入 `assets/ah/runtime/payload.ahdc`；同时生成 ADR 0006 的 768-byte ConfigV2 `config.bin`，其 SHA-256 受容器 manifest MAC 绑定。M1-01 对输入 package name 的精确 UTF-8 bytes 计算 SHA-256，并把规范化原 Factory 交给 ConfigV2 builder；builder 重算并交叉核对 package 摘要，该摘要参与 KEK 与每个 chunk 的 GCM AAD，Runtime 只从 Framework `ApplicationInfo.packageName` 重算。容器格式见 [ADR-0008](adr/0008-chunk-authenticated-dex-container.md)。
 
 ### 3.6 Runtime Assembler
 
@@ -102,7 +102,7 @@ Bootstrap Runtime -> verified in-memory business DEX -> original app components
 
 ### 4.2 Native Loader
 
-Native Loader 的顺序固定为：无 payload 分配地检查容器结构边界，恢复每包内容密钥，验证 manifest MAC，再逐 record 验证 AES-GCM tag。只有 tag 通过后的压缩明文才允许进入有界 zlib-wrapped DEFLATE 解压器；解压必须恰好命中 record 的原始 DEX 长度和 SHA-256，拒绝 dictionary、尾随/拼接流、checksum 错误和超过单 DEX/总 payload 上限的输出。恢复出的原始 DEX 保留在最短生命周期的直接匿名内存中，再使用 API 29 三参数 `InMemoryDexClassLoader` 构建 loader；Native 搜索路径按 M0-05 合同从 `ApplicationInfo`、公开进程 ABI 与当前 APK 清单派生，同时覆盖 extracted 和 APK 内直接加载 SO。不得将明文 DEX 写入 code cache、临时目录或外部存储，也不得反射复制 parent loader 的 path list。
+Native Loader 的顺序固定为：无 payload 分配地检查容器结构边界，恢复每包内容密钥，验证覆盖 HeaderV2、`SPV1`、record table 与 chunk table 的 manifest MAC，再逐 chunk 使用一次性 AES-GCM API 验证 tag。不存在 record-level tag；只有当前 chunk 的 tag 成功后，该 chunk 的已认证压缩明文才允许进入所属 record 的唯一连续 zlib-wrapped DEFLATE 解压器，任何 Provider 在最终 tag 前返回的 plaintext 均不得消费。解压必须恰好命中 record 的原始 DEX 长度和 SHA-256，拒绝 dictionary、尾随/拼接流、checksum 错误和超过单 DEX/总 payload 上限的输出。Native handle 创建前以事务 owner 持有 completed/partial mappings，任何失败都全量清理。全部 DEX 成功后、内部 handle 返回前，CEK/KEK/派生 key、AAD、认证后压缩 chunk、inflater/crypto scratch 全部清零销毁，只有 completed mappings 和同一认证快照及成功 package binding 派生的无秘密 `AuthenticatedPayloadMetadata` 进入 handle；该 metadata 含 32-byte `package_name_sha256`、当前 signer 和有序 lineage 的防御性副本。`PayloadRuntime.openVerified` 用 primitive handle 和 allocation-free `finally` 覆盖 native metadata bytes/对象、buffers、search path、`InMemoryDexClassLoader` 与 `LoadedPayload` 构造；提交前失败恰好 close handle 一次、清除部分引用、保留主错误且不暴露对象。它返回的 `LoadedPayload` 是 M2-02 到 M2-03 的内部模块交接对象，只公开 loader、authenticated metadata 与 close；Guard 必须常量时间复比较 package/current signer 并按顺序逐项复比较 lineage，最终 bootstrap 发布边界才是完整 `VerifiedPayloadSession`。成功后 DEX mappings 保持到 ClassLoader 生命周期结束时清零/unmap。Native 搜索路径按 M0-05 合同从 `ApplicationInfo`、公开进程 ABI 与当前 APK 清单派生，同时覆盖 extracted 和 APK 内直接加载 SO。不得将明文 DEX 写入 code cache、临时目录或外部存储，也不得反射复制 parent loader 的 path list。
 
 多 DEX 的类查找顺序必须与输入的 `classes.dex`、`classes2.dex` 顺序一致。
 
@@ -112,10 +112,12 @@ Native Loader 的顺序固定为：无 payload 分配地检查容器结构边界
 
 - 容器 magic、版本、长度和记录边界；
 - header 认证信息；
-- 每条 DEX 的 GCM tag、序号和声明大小；
+- 每个 canonical chunk 的 GCM tag、record/chunk 序号、声明大小和连续 offset；不存在每 DEX/record tag；
 - bootstrap/Native 配置的一致性。
 
 任何强完整性失败在业务类加载前终止。错误对调试构建可分类，对发行构建只暴露稳定、非敏感原因。
+
+Guard 只能从 `LoadedPayload.authenticatedMetadata()` 构造 `VerifiedStartupConfiguration`，不重读 ConfigV2。可信来源表固定为：package/current signer 对 Framework/apksig 实测值，lineage 对 apksig 有序列表，build/key slot 对同次未认证预读仅检测 inspect/open 快照变化，versions 对冻结常量 `2.0/1/1`；原 Factory 只消费 Native 已认证 metadata，不存在第二来源比较。M2-02 内部 provisional loader 的构造发生在完整 Native 认证、metadata 对象构造之后，但 Guard 完成可执行复比较并返回完整 session 前禁止任何 payload 类查找/解析、Factory 调用或 loader/metadata 发布。取得 `LoadedPayload` 后至完整 `VerifiedPayloadSession` 返回前由本地 `committed=false`/`finally` 独占；复比较、identity/config/session 构造或 return 前异常/OOM 都恰好 close 一次并清除部分引用。完整 session 才是向 bootstrap 的发布边界；其后 ADR 0007 的 READY 前所有权规则继续生效。
 
 ### 4.4 Environment Risk Engine
 
@@ -170,7 +172,7 @@ lib/x86_64/libah_runtime.so
 
 ### 6.1 Container Contract
 
-容器以 ASCII magic `AHDC` 开始，使用 little-endian 固定宽度整数，当前格式版本为 `1`。逐字节 layout 以 ADR 0004 为唯一来源：128-byte `HeaderV1`、可变长 `SPV1`、`dex_count * 104` record table 和无空洞 Payload。header 后、record table 前固定放置 `SPV1` signer policy block；manifest MAC 覆盖 header、完整 `SPV1` 与 record table。记录按原 DEX 序号递增。未知 major/version/flags、非法 signer policy、重复 lineage 或末项不等于当前摘要必须拒绝。
+容器以 ASCII magic `AHDC` 开始，使用 little-endian 固定宽度整数，当前格式版本为 `2`。逐字节 layout 以 ADR 0008 为唯一来源：160-byte `HeaderV2`、可变长 `SPV1`、`dex_count * 128` record table、`chunk_count * 32` chunk table 和无空洞 Payload。manifest MAC 覆盖 HeaderV2、完整 `SPV1`、record table 与 chunk table；每个 canonical 64 KiB 压缩 chunk 由独立 GCM tag 认证，tag 成功后才进入该 DEX 的连续 zlib inflater。未知 major/version/flags、AHDC v1、非法 signer policy、乱序/重叠 chunk 或尾随数据必须拒绝。
 
 离线恢复材料以 ADR 0006 为唯一来源：`config.bin` 固定 768 bytes，四 ABI template 各有一个 104-byte `.ah_share_v1` slot。M1-05 只 materialize 选中 ABI 的 slot，不 patch bootstrap DEX；Runtime 必须把 config SHA-256、build ID、key slot、signer、Framework package name、ABI ID、CEK envelope 与 AHDC manifest 串成同一失败关闭链。
 
@@ -179,7 +181,7 @@ lib/x86_64/libah_runtime.so
 启动只从同一 `ApplicationInfo.sourceDir` 读取两个固定 ZIP 条目：
 
 - `assets/ah/runtime/config.bin`：ADR 0006 的 768-byte ConfigV2；
-- `assets/ah/runtime/payload.ahdc`：ADR 0004 的 AHDC v1。
+- `assets/ah/runtime/payload.ahdc`：ADR 0008 的 AHDC v2。
 
 二者必须是唯一规范 `STORED` 条目，且无 encryption/data descriptor、CRC/长度一致。路径和名称是编译期常量，生产接口不接受调用方覆盖。ConfigV2 的 Factory/策略字段只有在 ADR 0007 的完整认证顺序结束后才可使用。
 
@@ -217,14 +219,18 @@ Android process creation
 -> locate and bounded-parse fixed ConfigV2 and AHDC entries
 -> compare exactly one installed signer with pre-read binding
 -> recover protected content key
--> verify manifest MAC over SPV1 and record table
+-> verify manifest MAC over HeaderV2, SPV1, record table and chunk table
 -> compare full ConfigV2 digest from authenticated header
 -> compare authenticated SPV1 signer with measured installed signer
--> expose authenticated Factory and policy configuration
--> verify each record GCM tag
--> bounded zlib inflate of authenticated compressed bytes
+-> verify each canonical chunk with one-shot GCM
+-> feed only the authenticated chunk into its record's continuous bounded zlib inflater
 -> verify original DEX length and SHA-256
--> build provisional InMemoryDexClassLoader chain
+-> create the Native handle and authenticated metadata from the same verified snapshot
+-> build LoadedPayload with its provisional InMemoryDexClassLoader chain
+-> Guard rechecks package/current signer/ordered lineage without using the provisional loader
+-> Guard constructs signer identity and verified startup configuration only from measured identity and LoadedPayload metadata
+-> atomically return VerifiedPayloadSession or close LoadedPayload exactly once
+-> expose authenticated Factory and policy configuration through that complete session
 -> instantiate original AppComponentFactory when declared
 -> delegate original Factory instantiateClassLoader exactly once
 -> select and return final payload ClassLoader

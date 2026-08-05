@@ -77,13 +77,13 @@ Host 生成的 bootstrap、容器与元数据汇合。输出验证器必须独�
 | T-03 | 整数溢出绕过容器边界 | 固定宽度无符号解析、checked arithmetic、消费长度一致性 | Native parser 缺陷 |
 | T-04 | 重打包后仍携带失效签名材料 | 显式移除 META-INF 签名文件与 APK Signing Block，验证为未签名 | 非标准工具可能误解状态 |
 | T-05 | 攻击者以其他证书重签 | 嵌入输入当前 signer SHA-256，运行时在业务加载前验证 | 攻击者修改并重新构建 Runtime |
-| T-06 | 密文或索引被篡改 | AES-256-GCM、认证元数据、严格版本和长度校验 | 拒绝服务仍然可能 |
+| T-06 | 密文、record 或 chunk 索引被篡改 | HeaderV2 table manifest MAC、每个 64 KiB chunk 的 AES-256-GCM、严格版本/长度/完整消费；tag 成功后才进入 inflater | 拒绝服务仍然可能 |
 | T-07 | 静态恢复内容密钥 | 每包随机密钥、分片、Native/Java 分离、signer 绑定 | 离线 Runtime 必须能恢复密钥，确定性逆向最终可行 |
 | T-08 | 运行时抓取明文 DEX | 内存 ClassLoader、短生命周期缓冲、清零、避免落盘和副本 | 进程控制、Hook 或内核能力可观察明文 |
 | T-09 | 调试或 Hook 绕过检查 | 多源信号、校验分散、策略版本化、关键结果交叉验证 | 高权限攻击者可以补丁 Runtime |
 | T-10 | 环境误报阻止合法用户 | 低置信信号只触发 `degrade`，矩阵与真实设备测试 | 新设备或 ROM 仍可能误报 |
 | T-11 | 自定义组件初始化次序改变 | API 29 公开 ClassLoader hook、原 Factory 委托、启动 fixture | 特殊框架不在支持范围 |
-| T-12 | 临时文件或日志泄露 | 不落盘明文 DEX、最小日志、清理、报告字段白名单 | 崩溃转储或恶意 Host 进程 |
+| T-12 | 临时文件、未发布映射或日志泄露 | 不落盘明文 DEX；Native handle 创建前事务清理 completed/partial mappings；handle 到内部 `LoadedPayload` 交接、再到最终 `VerifiedPayloadSession` 发布的两个窗口均由 exactly-once finally close；最小日志与报告字段白名单 | 崩溃转储或恶意 Host 进程 |
 | T-13 | 依赖或 CI Action 被替换 | 固定版本/commit、校验和、依赖验证、SBOM、许可证审查 | 上游已固定版本本身可能含漏洞 |
 | T-14 | 输入被处理器意外覆盖 | 双哈希、只读句柄、独立输出、原子发布 | Host 文件系统或用户并发替换 |
 | T-15 | Manifest 过度修改引入后门或兼容问题 | 只替换 `appComponentFactory`、转换后语义 diff、fixture | 未覆盖的厂商扩展 |
@@ -120,7 +120,7 @@ Host 生成的 bootstrap、容器与元数据汇合。输出验证器必须独�
 
 - ZIP、AXML、container 和报告 parser 均执行覆盖引导模糊测试。
 - 每个边界字段具有截断、溢出、重复、乱序和未知版本用例。
-- 修改 signer digest、header、nonce、ciphertext、tag、DEX 次序和 ConfigV2 任一字段时均应在业务代码前失败。
+- 修改 signer digest、HeaderV2、record/chunk table、nonce prefix/ordinal、ciphertext、tag、DEX 次序和 ConfigV2 任一字段时均应在业务代码前失败；受影响 chunk 的认证失败不得向 inflater 提交该 chunk。
 - 日志和报告接受敏感词、DEX magic 与路径泄露扫描。
 - 处理成功、失败和强制终止后检查临时目录与明文残留。
 - 安全敏感变更由未参与实现的复核者给出书面结论。

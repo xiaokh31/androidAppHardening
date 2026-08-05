@@ -43,6 +43,14 @@
 
 目标 parser 为 ZIP metadata、二进制 AXML、ConfigV2、AHDC container 和 JSON report reader。必须具备：
 
+- AHDC v2 HeaderV2/RecordV2/ChunkV2 的 checked arithmetic、canonical 64 KiB chunk、完整消费和 v1 拒绝测试；
+- 每 chunk 一次性 GCM tag 验证成功后才进入连续 zlib inflater 的顺序断言；
+- 1/65535/65536/65537 bytes 与接近 512 MiB DEX 的不超过 1 MiB 工作缓冲测试；
+- Native handle 创建前在首个/中间/末尾 chunk 注入认证、I/O、取消、OOM、zlib/摘要和 cleanup failure，证明 completed/partial DEX 映射清零并 unmap、无 handle 返回且主错误不被覆盖；
+- 正向 `openVerified` 返回后、`close` 前断言全部 key/AAD/compressed/inflater/crypto 临时状态已清零且不可达，只有 completed DEX mappings 由 handle 保持可加载；close 后才清零/unmap 映射；
+- Native handle 返回后在 `nativeAuthenticatedMetadata` bytes 获取/解析/对象构造、`nativeDexBuffers` 数组/元素、search path、ClassLoader、`LoadedPayload` 构造/return 前注入异常/OOM，断言内部交接对象/`ByteBuffer` 未发布、Native close 恰好一次、mappings/部分引用清理和 primary/suppressed error；
+- 同 handle `AuthenticatedPayloadMetadata` 来源、跨 handle 替换、不可伪造、防御性复制和无恢复秘密测试；package/current signer 对实测值、lineage 对实测有序列表、build/key 对同次未认证预读快照、versions 对 `2.0/1/1` 的可执行比较及失败均断言 provisional loader lookup/Factory 为零；原 Factory/config 篡改在 Native 认证阶段失败，getter 编码错误在 M2-02 golden parser 覆盖，不伪造 Factory 第二来源；Guard 在 recheck/identity/config/session/return 前注入异常/OOM，断言无 loader/metadata/`VerifiedPayloadSession` 发布、close 恰好一次且部分引用清除；
+
 - 任意输入不崩溃、不越界、不无限循环；
 - 解析成功后重新序列化保持规范语义；
 - 任一截断点均失败关闭；
@@ -154,12 +162,12 @@ Windows 与 Ubuntu 使用同一 Git commit、锁定 JDK、Gradle wrapper、Andro
 - 结果状态和稳定错误码；
 - 输入分析模型；
 - Manifest 语义 diff；
-- 容器记录清单与非随机字段；
+- 容器 record/chunk 清单与非随机字段；
 - 输出 ZIP 条目名、压缩方式、权限和排序；
 - 报告字段类型与非环境字段；
 - 输入不变性。
 
-每次保护使用随机密钥和 nonce，因此密文、输出 APK SHA-256 和相应大小细节可不同；等价性比较必须排除明确列出的随机字段，不能通过忽略整个容器来通过。
+每次保护使用随机密钥和 record nonce prefix，因此密文、输出 APK SHA-256 和相应大小细节可不同；等价性比较必须排除明确列出的随机字段，不能通过忽略整个容器来通过。固定测试 RNG 下，Windows/Ubuntu 的 HeaderV2、record/chunk table、AAD、tag 和 payload 必须逐字节一致。
 
 ## 7. 性能与大小
 

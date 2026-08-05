@@ -58,14 +58,14 @@ API 29 arm64 非 root 设备的真实 `instantiateClassLoader` 回调中，`Appl
 ## Public Interfaces
 
 - `assets/ah/runtime/config.bin`：固定 768-byte `ConfigV2`。
-- `assets/ah/runtime/payload.ahdc`：固定 AHDC v1 条目。
+- `assets/ah/runtime/payload.ahdc`：固定 AHDC v2 条目。
 - `KeyPackagingPlanV2`：Host 内存一次性所有权对象。
 - PoC 启动事件：`EARLY_CONFIG_PARSED`、`EARLY_CONFIG_APK_AUTHENTICATED`；后者只表示固定测试 signer 的 APK 签名覆盖。生产 `VerifiedStartupConfiguration` 必须等待 ADR 0007 全链认证。
 - PoC 失败语义：配置定位/结构失败 `AAH-P009`，配置认证/绑定失败 `AAH-P010`。
 
 ## Security Constraints
 
-- ConfigV2 在完整 digest 被已认证 AHDC HeaderV1 绑定前不得作为可信策略或类名使用。
+- ConfigV2 在完整 digest 被已认证 AHDC HeaderV2 绑定前不得作为可信策略或类名使用。
 - Runtime 不接受调用方路径、asset 名、Factory 名称、版本或 signer binding。
 - 不用 metadata、Context、PackageManager、Framework 私有对象或 hidden API 解锁 payload。
 - 所有长度、offset、UTF-8、flag、reserved、ZIP 字段和认证值均视为不可信输入并有界验证。

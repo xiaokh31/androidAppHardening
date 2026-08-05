@@ -1,26 +1,55 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260804-004759
-updated_at: 2026-08-04T00:47:59+08:00
+handoff_id: HO-20260805-130636
+updated_at: 2026-08-06T00:23:15+08:00
 updated_by: /root
 state: ready
 source_branch: main
-base_commit: 077e4be14865c777dbbf3c1a5a3d9609b3620868
+base_commit: 225ec169661e2a366736be36b1249fb79faf3dcc
 working_tree: clean
 current_milestone: M1
-active_task: NONE
-next_owner: unassigned
+active_task: M1-07
+next_owner: /root
 ---
 
 # Project HandOff
 
 ## Objective
 
-在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内完成 M1-03 Binary AXML 白名单变换器。单属性 `android:appComponentFactory` 变换、有界 parser/writer、语义保留、独立安全复核、三套设备/CI 验收均已合并；未实现 ZIP 写出、签名、DEX、M1-04 或任何 Runtime 相邻任务，当前等待用户选择下一任务。
+在不改产品代码的前提下完成 M1-07 ADR/任务合同修订：以 AHDC v2 的 64 KiB 分块认证取代尚未发布且无法同时满足 512 MiB DEX、认证后解压与 1 MiB 缓冲的 AHDC v1；冻结 Host/Runtime 共用 wire contract、依赖和验收门禁，经独立只读安全复核后才允许 M1-04 重启。
 
 ## Current State
 
+- 用户已明确授权启动独立 ADR/任务合同修订。唯一 tracking Issue 为 [#36](https://github.com/xiaokh31/androidAppHardening/issues/36)，固定分支为 `docs/m1-07-chunk-authenticated-container-contract`，base 为 clean `main@225ec169661e2a366736be36b1249fb79faf3dcc`；未授权推送或创建 PR。
+- M1-04 首个实现候选 `97cb9dc75f68b5ce0ddde2134e09c15ae2e798fb` 的独立复核为 FAIL（P0 `0`、P1 `3`、P2 `2`）；该提交仅保留在本地废止分支，不属于 M1-07，也不得发布。
+- 决定性 P1 是每 DEX 单 GCM tag 在固定 SunJCE 下可能缓存至多 512 MiB ciphertext；使用其他 Provider 的 `update` plaintext 又会在 tag 成功前解压，无法同时兑现认证顺序与 1 MiB 缓冲。
+- 当前治理 diff 新增 ADR 0008、M1-07 任务卡与复核输入，定义 AHDC v2 HeaderV2/RecordV2/ChunkV2、64 KiB canonical chunk、每 chunk 一次性 GCM、连续每 DEX zlib 流和 v1 无回退；M1-04 新增对 M1-07 的硬依赖。
+- 首轮独立只读复核对冻结提交 `e13927a22f8b008ab6bc419b26b53044a847ef4a` 给出 FAIL：P0 `0`、P1 `1`、P2 `1`。P1 是架构/M2-02 残留 record/DEX-level tag 措辞及启动序列漏写 chunk table；P2 是依赖无环证明把边方向写反。旧冻结点立即失效，结论归档于 `docs/evidence/M1-07/security-review-1.md`。
+- 当前修正候选统一规定不存在 record-level tag、manifest 覆盖 HeaderV2/`SPV1`/record/chunk table、每 chunk 一次性 GCM 成功后才进入所属 record 的连续 inflater，并纠正无环证明；必须重新校验、冻结并取得新的独立全零复核。
+- 第二轮独立只读全量复核对 `3380659355981738998d32a3b0f1dabb70a2067d` 给出 FAIL：P0 `0`、P1 `2`、P2 `0`。一项是 M2-02 Goal 仍残留“已认证 record”措辞；另一项是 handle 发布前的 completed/partial DEX 映射没有事务 owner 和失败清理验收。旧冻结点立即失效，结论归档于 `docs/evidence/M1-07/security-review-2.md`。
+- 当前第二轮修正候选把 per-chunk/no-whole-record 语义写入 M2-02 Goal，并在 ADR/架构/M2-02/威胁/测试中固定未发布事务所有权、全映射清零/unmap、原子提交、无 handle/`ByteBuffer` 暴露和主错误优先；必须再次冻结并全量复核。
+- 第三轮独立只读全量复核对 `e35543804905df0045d22c1d6a06e903384afd93` 给出 FAIL：P0 `0`、P1 `1`、P2 `0`。ADR 验证条款误把成功路径的已提交 DEX 映射也要求清零/unmap，与 handle 原子接管和 ClassLoader 生命周期冲突。旧冻结点立即失效，结论归档于 `docs/evidence/M1-07/security-review-3.md`。
+- 当前第三轮修正候选把成功提交与发布前失败分开：成功只清临时敏感状态、映射转交 handle 并在生命周期结束清理；发布前失败才全量清零/unmap completed/partial 映射且不暴露 handle。
+- 第四轮独立只读全量复核对 `dd0c4c0811557be09ce2ac2b11afde5d7794b337` 给出 FAIL：P0 `0`、P1 `2`、P2 `1`。P1 要求成功返回前即清理所有临时秘密并补正向 hook，以及让 M3-02 实际证明失败事务映射清理；P2 指出 review-2/3 手工时间顺序不可信。旧冻结点失效，结论归档于 `docs/evidence/M1-07/security-review-4.md`。
+- 当前第四轮修正候选把成功提交清理同步到架构/M2-02/M1-07/测试，把 M3-02 catalog 扩展为 handle/ByteBuffer/mapping/primary/suppressed 断言，并以可核验的归档提交时间替换无法恢复的 review-2 完成时间声明。
+- 第五轮独立只读全量复核对 `340b6ae83f05d89fb20d2d2d7d32ad1b55d65404` 给出 FAIL：P0 `0`、P1 `1`、P2 `0`。Native long 已返回但公开 `LoadedPayload` 尚未构造完成的跨 JNI 窗口缺少 owner/finally/注入验收。旧冻结点失效，结论归档于 `docs/evidence/M1-07/security-review-5.md`。
+- 第五轮修正候选曾把 M2-02 内部交接边界提升为 `PayloadRuntime.openVerified` 返回完整对象，用 primitive handle + allocation-free finally 覆盖 buffers/search path/ClassLoader/LoadedPayload 构造窗口，并扩展 M3-02 内部 handle、交接对象、close-count 和部分引用清理字段；第六轮已进一步确认最终 bootstrap 发布边界必须是 Guard 返回完整 session。
+- 第六轮独立只读全量复核对 `bb2e744fce0f64c7f0effd59c99f5bb2882b834c` 给出 FAIL：P0 `0`、P1 `2`、P2 `0`。M2-02 缺少已认证 ConfigV2/`SPV1` 元数据交给 M2-03 的可实现接口，且 LoadedPayload 到最终 VerifiedPayloadSession return 仍有 Guard 所有权窗口。旧冻结点失效，结论归档于 `docs/evidence/M1-07/security-review-6.md`。
+- 当前第六轮修正候选新增同 handle、不可变、无秘密 `AuthenticatedPayloadMetadata`，禁止 M2-03 使用未认证预读；并把 committed/finally exactly-once close 延伸到 Guard 返回完整 session，M3-02 增加 session 发布和 Guard 部分引用清理字段。
+- 第七轮独立只读全量复核对 `3bea66ad1aa89a6cbc97ba093b71235561481d38` 给出 FAIL：P0 `0`、P1 `1`、P2 `2`。权威架构时序仍在同 handle metadata 前暴露配置/创建 loader，共享测试策略、M2-02 和 M1-07 验收摘要未完整同步 metadata 注入与双窗口。旧冻结点失效，结论归档于 `docs/evidence/M1-07/security-review-7.md`。
+- 当前第七轮修正候选统一为完整 DEX 验证后创建 handle/metadata/LoadedPayload，再由 Guard 原子构造 session 后暴露配置；共享验收明确 metadata bytes/object 注入和两段 exactly-once owner 窗口。
+- 第八轮独立只读全量复核对 `01f76f6c7dfa3a0fad999016c54351329bc56e29` 给出 FAIL：P0 `0`、P1 `1`、P2 `1`。Native package 密码学绑定成立，但固定 authenticated metadata 缺少 package digest，导致下游复比较不可机械实现；必需复核输入也未同步后续所有权门禁。旧冻结点失效，结论归档于 `docs/evidence/M1-07/security-review-8.md`。
+- 当前第八轮修正候选把成功 binding 的 32-byte `package_name_sha256` 加入同 handle metadata，固定 package/current signer 常量时间复比较和有序 lineage 等值比较，并扩展必需独立复核清单覆盖事务、临时秘密、双窗口与 M3 证据。
+- 第九轮独立只读全量复核对 `d5d5d292600953eb21c4422dee8038288bb19d6a` 给出 FAIL：P0 `0`、P1 `1`、P2 `1`。ADR 要求 metadata 复比较先于 loader 构造，但固定接口只能经已含 loader 的 LoadedPayload 交付 metadata；其余跨模块 getter 也未冻结精确签名。旧冻结点失效，结论归档于 `docs/evidence/M1-07/security-review-9.md`。
+- 当前第九轮修正候选明确 Native binding 是密码学门禁，metadata 先于内部 provisional loader 构造；Guard 复比较和完整 session return 前 class/resource lookup、Factory 与 bootstrap 发布均为零，并冻结全部十个 metadata getter 的类型、范围、长度、nullability 和深复制语义。
+- 第十轮独立只读全量复核对 `358a71a9478a0ccb76f71538002184a6a4ea4dc4` 给出 FAIL：P0 `0`、P1 `0`、P2 `1`。Guard 失配矩阵对 build/key/version/Factory 未逐字段冻结真实比较源，Factory 无第二可信来源。旧冻结点失效，结论归档于 `docs/evidence/M1-07/security-review-10.md`。
+- 当前第十轮修正候选固定来源表：package/signer/lineage 对 Framework/apksig，build/key 预读仅检测快照变化，versions 对 `2.0/1/1`，Factory 仅消费 Native 认证值；Native tamper 与 M2-02 parser 测试分别承担 Factory/config 和内部编码错误。
+- 第十一次独立只读全量复核对 `9dec7603a860c33ab6bb91f37221e2e81d6011bf` 给出 PASS：P0 `0`、P1 `0`、P2 `0`。wire/算术/密码链、事务与成功清理、两段所有权、十个 getter、真实比较来源、零 lookup/Factory/bootstrap 发布、M3 证据和依赖图全部闭环，结论归档于 `docs/evidence/M1-07/security-review-11.md`。
+- 用户已授权继续执行 M1-07；根 README 已同步真实进度，固定分支已推送并创建关联 Issue #36 的唯一草稿 PR #37。M1-04 在 M1-07 合并前仍保持 blocked。
+- PR #37 的最终草稿 HEAD `2c13ecc8521f269e6f02fdace77f7f14f546c9cc` 已通过 Ubuntu/Windows Build 与 Governance 四项 CI；PR 保持 OPEN、draft、CLEAN、MERGEABLE，并正确关联关闭 Issue #36。
+- 用户已明确授权将 PR #37 转为 ready 并合并。本协调提交只准备 post-merge `main` 恢复点，不改变合同；merger-ready HEAD 必须再次通过相同四项 CI，再以 expected-head 保护执行普通 merge commit。
+- 用户新增持续规则：每个任务只有在 PR 合并及合并后门禁完成后才算完成，并必须在收尾协调提交中同步根 `README.md` 的公开进度表；`HandOff.md` 继续作为详细证据源。
 - M0-04 的 PR #29 已合并，正式 API 29/36 x86_64 设备矩阵和独立安全复核通过。
 - M0-06 的 PR #31 已合并为 `main@f1362188be5083a6d557522f0f5be1905935f6eb`；合并后的 Governance/Build 在 Ubuntu 与 Windows 通过，`main` 已无豁免通过 strict HandOff。
 - M0-06/ADR 0007 已解除旧的 `ApplicationInfo.metaData == null` 阻塞，启动配置唯一来源改为 `ApplicationInfo.sourceDir` 中的固定 ConfigV2 与 AHDC 条目。
@@ -99,10 +128,12 @@ next_owner: unassigned
 | M1-01 | `/root` | `feat/m1-01-untrusted-apk-inspector` | done | M0-05 | PR #33、Issue #6、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
 | M1-02 | `/root` | `feat/m1-02-signer-policy` | done | M1-01 | PR #34、Issue #7、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
 | M1-03 | `/root` | `feat/m1-03-binary-axml-transformer` | done | M1-01, M0-05 | PR #35、Issue #8、独立复核、三套设备/CI 矩阵和 main strict HandOff 均已关闭 |
+| M1-07 | `/root` | `docs/m1-07-chunk-authenticated-container-contract` | review | M1-02 | merger-ready HEAD 四项 CI 全绿后转 ready、expected-head 合并并在 main 无豁免运行 strict HandOff |
 
 ## Decisions and Invariants
 
-- 继续遵守 ADR 0001 至 ADR 0007；ADR 0007 固定 sourceDir 配置通道，ADR 0006 固定 768-byte ConfigV2 wire layout。
+- 继续遵守 ADR 0001 至 ADR 0003、ADR 0005 至 ADR 0008；ADR 0004 已被 ADR 0008 supersede。ADR 0007 固定 sourceDir 配置通道，ADR 0006 保持 768-byte ConfigV2 且 `container_major=2`。
+- AHDC v2 是 v0.1 唯一容器 major：64 KiB canonical compressed-plaintext chunk，每 chunk 独立 AES-256-GCM tag；tag 成功后才进入每 DEX 唯一连续 zlib inflater，AHDC v1 不得回退接受。
 - 输入 APK 只读；产品输出必须为新的未签名 APK；生产模块不得读取、传递或使用签名凭据。
 - M0-05 使用 `pre-cli` 验证模式，只处理仓库生成的合成 fixture 和被忽略的一次性测试签名产物。
 - API 29+ 只使用公开 `AppComponentFactory.instantiateClassLoader()`、Framework `ApplicationInfo` 和只读文件 API；不使用 Context、PackageManager、Framework 私有对象、反射或 hidden API 回退。
@@ -117,9 +148,28 @@ next_owner: unassigned
 - 产品仍不得接收或调用私钥、keystore、alias、密码、HSM、远程签名服务或任何签名执行器；M1-02 不序列化 `SPV1`，只提供 M1-04 可消费的防御性摘要副本与模型约束。
 - M1-03 生产路径只处理 binary AXML；string pool 仅追加字符串并保持旧 index，未知 chunk 原 bytes/顺序保留，resource map 仅允许补入 compileSdk 36 固定 `android:appComponentFactory` ID `0x0101057a`。
 - M1-03 唯一语义白名单是 application 上的 `android:appComponentFactory=ah.runtime.bootstrap.ShellAppComponentFactory`；不得新增、删除或改写 `<meta-data>`、`android:name` 或任何其他元素/属性。
+- 根 `README.md` 必须维护公开任务进度表；任务仅在合并后门禁完成时标记“已完成”，每个任务的收尾协调提交必须同步该表，不能以 README 替代 `HandOff.md` 的证据。
 
 ## Changes Since Previous Handoff
 
+- 用户启动 M1-07，创建 Issue #36 和独立治理分支；该分支不包含废止的 M1-04 产品实现。
+- ADR 0008 固定 160-byte HeaderV2、128-byte RecordV2、32-byte ChunkV2、record key/nonce/AAD/manifest coverage、1 MiB 工作缓冲和 cleanup error precedence；ADR 0004 标记 superseded。
+- M1-04 依赖增加 M1-07；产品需求、架构、威胁模型、测试策略、路线图和下游任务正同步到 AHDC v2。
+- 首轮独立复核废止 `e13927a`；P1/P2 修复只更正权威 Runtime chunk 语义和依赖证明，不改变 ADR 0008 wire layout。
+- 第二轮独立复核废止 `3380659`；两项 P1 修复增加 Goal 的无 whole-record 约束和 handle 发布前事务清理合同，wire layout、KDF、nonce、AAD 与 manifest bytes 不变。
+- 第三轮独立复核废止 `e355438`；唯一 P1 只纠正成功/失败清理验收的互斥语义，不改变 wire 或事务所有权模型。
+- 第四轮独立复核废止 `dd0c4c0`；两项 P1 补齐成功提交临时秘密清理和 M3-02 事务清理证据，P2 纠正复核时间证据语义，wire 不变。
+- 第五轮独立复核废止 `340b6ae`；唯一 P1 补齐 Native handle 到公开 `LoadedPayload` 之间的跨 JNI 所有权窗口，wire 不变。
+- 第六轮独立复核废止 `bb2e744`；两项 P1 补齐 authenticated metadata 跨模块接口和 LoadedPayload 到 VerifiedPayloadSession 的 Guard 所有权窗口，wire 不变。
+- 第七轮独立复核废止 `3bea66a`；一项 P1 与两项 P2 只统一权威时序、metadata 注入和双窗口验收，wire 不变。
+- 第八轮独立复核废止 `01f76f6`；一项 P1 与一项 P2 补齐 package/lineage 可实现复比较和完整复核输入，wire 不变。
+- 第九轮独立复核废止 `d5d5d29`；一项 P1 与一项 P2 统一 loader 构造/使用边界并冻结完整 metadata API，wire 不变。
+- 第十轮独立复核废止 `358a71a`；唯一 P2 把 Guard 每个比较映射到真实来源并移除虚假 Factory 双源断言，wire 不变。
+- 第十一次独立复核通过 `9dec760`，P0/P1/P2 全零；该 SHA 成为 M1-07 当前 merger-review 候选，发布仍需用户单独授权。
+- 用户已授权发布 M1-07，并要求今后每个任务完成时同步根 README；本次 README 从停留在 M0 的旧描述更新为 M0 完成、M1-01/02/03 已完成、M1-07 待合并及 M1-04 为下一开发任务。
+- 发布提交 `b094119a33e2fe4b69e23f03a0c7ae05080f3834` 已推送到固定分支，并创建关联 Issue #36 的唯一草稿 PR #37；GitHub App 写入因 integration 权限返回 403 后，使用已验证登录的 `gh` CLI 回退完成创建，未产生重复 PR。
+- 证据 HEAD `ceeae8a4a0828b97ad45196d3727fca460c59f91` 的 Build run `31021991586` 与 Governance run `31021992020` 在 Ubuntu/Windows 四项全部 PASS；PR #37 保持 draft，未获 ready/merge 授权。
+- 最终草稿 HEAD `2c13ecc8521f269e6f02fdace77f7f14f546c9cc` 的 Build run `31022701793` 与 Governance run `31022701584` 在 Ubuntu/Windows 四项全部 PASS；用户已授权 ready/merge，当前只新增 merger-ready HandOff 协调并把合并后恢复分支设为 `main`。
 - merger-ready HEAD `07c519c73b2a48f8636eed557da463f699299f20` 的 API 29/36 KVM、Ubuntu/Windows Build 与 Governance 六项全部 PASS；两个 Build job 再次命中四份规范报告冻结 hashes。
 - PR #35 已以 expected-head 保护的普通 merge commit `197eb45535b117e28ad1ef904993d2b54068056b` 合并，Issue #8 已关闭；本地 `main` 已无豁免通过 strict HandOff、Governance 与 diff check，M1-03 标记 done。
 - 最终证据 HEAD `16ffba62df8f25d4397d771c5bdfa77f8dba78ad` 的 API 29/36 KVM、Ubuntu/Windows Build 与 Governance 六项 replacement CI 全部 PASS；两平台四份 M1-03 规范报告 hashes 再次命中冻结值。
@@ -188,6 +238,186 @@ next_owner: unassigned
 - 该 M1-01 post-merge 动作已完成；当前恢复点为下述 M1-02 冻结实现与本地验收。
 
 ## Verification Evidence
+
+### M1-07 task start and contract blocker
+
+- task_id: M1-07
+- git_commit: 225ec169661e2a366736be36b1249fb79faf3dcc
+- command: verify clean main/base/remote/branch; create Issue #36; switch to `docs/m1-07-chunk-authenticated-container-contract`; inspect M1-01 limits, ADR 0004/0006/0007 and M1-04 review blocker
+- exit_code: 0
+- environment: Windows 10.0.19045; PowerShell; GitHub Issue #36; no emulator/device/download
+- timestamp: 2026-08-05T13:06:36+08:00
+- artifact: `docs/adr/0008-chunk-authenticated-dex-container.md`; `docs/tasks/M1-07-chunk-authenticated-container-contract.md`; `docs/evidence/M1-07/security-review-input.md`
+- sha256: not_applicable
+- result: IN_PROGRESS; independent governance task is isolated from the rejected M1-04 implementation, and the AHDC v2 contract is being reconciled before validation and review
+
+### M1-07 independent security review 1
+
+- task_id: M1-07
+- git_commit: e13927a22f8b008ab6bc419b26b53044a847ef4a
+- command: independent offline read-only review; governance validator; strict HandOff; structure/boundary calculations; v1/record-tag and UTF-8 scans; final clean status
+- exit_code: 1
+- environment: Windows 10.0.19045 x64; PowerShell 5.1; Node v24.12.0; Git 2.52.0; no network/device/emulator
+- timestamp: 2026-08-05T13:17:49+08:00
+- artifact: `docs/evidence/M1-07/security-review-1.md`
+- sha256: not_applicable
+- result: FAIL; P0=0, P1=1, P2=1; authoritative Runtime text retained whole-record tag semantics and the dependency proof reversed one edge; frozen SHA invalidated pending remediation and full re-review
+
+### M1-07 independent security review 2
+
+- task_id: M1-07
+- git_commit: 3380659355981738998d32a3b0f1dabb70a2067d
+- command: second independent offline read-only full review; governance/strict/diff/UTF-8 checks; structure, maximum-container, ownership and failure-path analysis
+- exit_code: 1
+- environment: Windows 10.0.19045 x64; Node v24.12.0; Git 2.52.0; no network/device/emulator
+- timestamp: 2026-08-05T13:29:52+08:00
+- artifact: `docs/evidence/M1-07/security-review-2.md`
+- sha256: not_applicable
+- result: FAIL; P0=0, P1=2, P2=0; M2-02 Goal retained whole-record wording and unpublished completed/partial DEX mappings lacked transactional cleanup ownership and failure-injection acceptance; timestamp is the verifiable remediation archive commit time, because the original review-completion clock was not preserved
+
+### M1-07 independent security review 3
+
+- task_id: M1-07
+- git_commit: e35543804905df0045d22c1d6a06e903384afd93
+- command: third independent offline read-only full review; governance/strict/diff/UTF-8 checks; structure, compress-bound, ownership and success/failure lifecycle analysis
+- exit_code: 1
+- environment: Windows 10.0.19045 x64; Node v24.12.0; Git 2.52.0; no network/device/emulator
+- timestamp: 2026-08-05T13:36:03+08:00
+- artifact: `docs/evidence/M1-07/security-review-3.md`
+- sha256: not_applicable
+- result: FAIL; P0=0, P1=1, P2=0; ADR verification incorrectly required successful committed DEX mappings to be zeroized/unmapped before their handle/ClassLoader lifecycle ended
+
+### M1-07 independent security review 4
+
+- task_id: M1-07
+- git_commit: dd0c4c0811557be09ce2ac2b11afde5d7794b337
+- command: fourth independent offline read-only full review; governance/strict/node/diff/UTF-8/whole-record checks; structure, compress-bound, success lifecycle, M3 cleanup evidence and timeline analysis
+- exit_code: 1
+- environment: Windows 10.0.19045 x64; PowerShell 5.1; Node v24.12.0; Git 2.52.0; no network/device/emulator
+- timestamp: 2026-08-05T13:38:26+08:00
+- artifact: `docs/evidence/M1-07/security-review-4.md`
+- sha256: not_applicable
+- result: FAIL; P0=0, P1=2, P2=1; success temporary-secret cleanup was not enforceable downstream, M3-02 lacked transaction-cleanup assertions, and review-2/3 timestamp evidence was inconsistent; timestamp is the target archival commit time because the reviewer completion clock was not preserved
+
+### M1-07 independent security review 5
+
+- task_id: M1-07
+- git_commit: 340b6ae83f05d89fb20d2d2d7d32ad1b55d65404
+- command: fifth independent offline read-only full review; governance/strict/node/diff/UTF-8/whole-record checks; wire, provider, lifecycle, M3 schema and cross-JNI publication-window analysis
+- exit_code: 1
+- environment: Windows 10.0.19045 x64; Node v24.12.0; Git 2.52.0; no network/device/emulator
+- timestamp: 2026-08-05T14:00:51+08:00
+- artifact: `docs/evidence/M1-07/security-review-5.md`
+- sha256: not_applicable
+- result: FAIL; P0=0, P1=1, P2=0; Native handle return to public LoadedPayload return lacked an allocation-safe owner, exact-close failure cleanup and injection acceptance
+
+### M1-07 independent security review 6
+
+- task_id: M1-07
+- git_commit: bb2e744fce0f64c7f0effd59c99f5bb2882b834c
+- command: sixth independent offline read-only full review; governance/strict/node/diff/UTF-8 checks; wire, metadata handoff and end-to-end startup ownership analysis
+- exit_code: 1
+- environment: Windows 10.0.19045 x64; Node v24.12.0; Git 2.52.0; no network/device/emulator
+- timestamp: 2026-08-05T14:05:48+08:00
+- artifact: `docs/evidence/M1-07/security-review-6.md`
+- sha256: not_applicable
+- result: FAIL; P0=0, P1=2, P2=0; authenticated ConfigV2/SPV1 metadata lacked a same-handle handoff to M2-03 and Guard ownership stopped before VerifiedPayloadSession publication; timestamp is the verifiable target-commit archive time because the reviewer completion clock was not preserved
+
+### M1-07 independent security review 7
+
+- task_id: M1-07
+- git_commit: 3bea66ad1aa89a6cbc97ba093b71235561481d38
+- command: seventh independent offline read-only full review; governance/strict/node/diff/UTF-8 checks; exact wire/boundary arithmetic, dependency traversal, authoritative sequence and dual publication-window analysis
+- exit_code: 1
+- environment: Windows 10.0.19045 x64; PowerShell 5.1.19041.7548; Node v24.12.0; Git 2.52.0; no network/device/emulator
+- timestamp: 2026-08-05T14:35:32+08:00
+- artifact: `docs/evidence/M1-07/security-review-7.md`
+- sha256: not_applicable
+- result: FAIL; P0=0, P1=1, P2=2; architecture sequence preceded authenticated metadata with configuration exposure/loader creation, and shared acceptance summaries omitted metadata injection and the final Guard publication window
+
+### M1-07 independent security review 8
+
+- task_id: M1-07
+- git_commit: 01f76f6c7dfa3a0fad999016c54351329bc56e29
+- command: eighth independent offline read-only full review; governance/strict/node/diff/UTF-8 checks; exact wire/zlib arithmetic, dependency traversal, same-handle package metadata and required-review-input analysis
+- exit_code: 1
+- environment: Windows 10.0.19045 x64; Node v24.12.0; Git 2.52.0; no network/device/emulator
+- timestamp: 2026-08-05T14:44:38+08:00
+- artifact: `docs/evidence/M1-07/security-review-8.md`
+- sha256: not_applicable
+- result: FAIL; P0=0, P1=1, P2=1; authenticated metadata omitted the package digest required for a mechanical Guard recheck, and mandatory review inputs omitted later transaction/ownership gates
+
+### M1-07 independent security review 9
+
+- task_id: M1-07
+- git_commit: d5d5d292600953eb21c4422dee8038288bb19d6a
+- command: ninth independent offline read-only full review; governance/strict/node/diff/UTF-8 checks; exact layout/zlib arithmetic, dependency traversal, metadata/loader order and public-accessor analysis
+- exit_code: 1
+- environment: Windows 10.0.19045; Node v24.12.0; Git 2.52.0; no network/device/emulator
+- timestamp: 2026-08-05T14:56:05+08:00
+- artifact: `docs/evidence/M1-07/security-review-9.md`
+- sha256: not_applicable
+- result: FAIL; P0=0, P1=1, P2=1; ADR demanded Guard rechecks before loader construction although metadata was exposed only through a LoadedPayload with a loader, and non-binding metadata getter signatures remained underspecified
+
+### M1-07 independent security review 10
+
+- task_id: M1-07
+- git_commit: 358a71a9478a0ccb76f71538002184a6a4ea4dc4
+- command: tenth independent offline read-only full review; governance/strict/node/diff/UTF-8 checks; exact arithmetic, dependency traversal, metadata getters, loader-use boundary and Guard comparison-source analysis
+- exit_code: 1
+- environment: Windows 10.0.19045; Node v24.12.0; Git 2.52.0; no network/device/emulator
+- timestamp: 2026-08-05T15:04:49+08:00
+- artifact: `docs/evidence/M1-07/security-review-10.md`
+- sha256: not_applicable
+- result: FAIL; P0=0, P1=0, P2=1; Guard mismatch tests did not map build/key/version/Factory to executable trusted sources, and Factory has no independent comparison source
+
+### M1-07 independent security review 11
+
+- task_id: M1-07
+- git_commit: 9dec7603a860c33ab6bb91f37221e2e81d6011bf
+- command: eleventh independent offline read-only full review; governance/strict/node/diff/UTF-8 checks; exact layout/zlib arithmetic, dependency traversal, wire/crypto, transaction, dual ownership, metadata getters, comparison sources and M3 evidence analysis
+- exit_code: 0
+- environment: Windows 10.0.19045; Node v24.12.0; Git 2.52.0; no network/device/emulator
+- timestamp: 2026-08-05T15:12:59+08:00
+- artifact: `docs/evidence/M1-07/security-review-11.md`
+- sha256: not_applicable
+- result: PASS; P0=0, P1=0, P2=0; timestamp is the coordinator receipt time because reviewer completion time was not preserved
+
+### M1-07 draft PR publication
+
+- task_id: M1-07
+- git_commit: b094119a33e2fe4b69e23f03a0c7ae05080f3834
+- command: validate Governance and strict HandOff; explicit README/HandOff commit; push fixed branch; verify no existing head PR; create the sole Issue #36 draft PR #37
+- exit_code: 0
+- environment: Windows 10.0.19045 x64; Node v24.12.0; Git 2.52.0; GitHub CLI 2.96.0; no device or emulator
+- timestamp: 2026-08-05T23:44:34+08:00
+- artifact: draft PR `https://github.com/xiaokh31/androidAppHardening/pull/37`; Issue `https://github.com/xiaokh31/androidAppHardening/issues/36`; branch `docs/m1-07-chunk-authenticated-container-contract`
+- sha256: not_applicable
+- result: PASS; the branch was published exactly once, PR #37 is draft and uniquely targets main, and the root README now carries the public milestone/task progress rule
+
+### M1-07 draft PR CI evidence
+
+- task_id: M1-07
+- git_commit: ceeae8a4a0828b97ad45196d3727fca460c59f91
+- command: `gh pr checks 37`; live `gh pr view 37` query for head/base, draft, mergeability, closing Issue and check rollup
+- exit_code: 0
+- environment: GitHub Actions Ubuntu 24.04 and Windows 2025; local coordinator Windows 10.0.19045; no device or emulator
+- timestamp: 2026-08-05T23:49:44+08:00
+- artifact: draft PR `https://github.com/xiaokh31/androidAppHardening/pull/37`; Build run `31021991586`, jobs `92360817375`/`92360817245`; Governance run `31021992020`, jobs `92360758847`/`92360758705`; closing Issue #36
+- sha256: not_applicable
+- result: PASS; Ubuntu/Windows Build completed in 1m23s/1m54s and Governance in 13s/39s; PR #37 is OPEN, draft, CLEAN and MERGEABLE at the exact evidence HEAD
+
+### M1-07 final draft HEAD and merge authorization
+
+- task_id: M1-07
+- git_commit: 2c13ecc8521f269e6f02fdace77f7f14f546c9cc
+- command: fetch current main/head; `gh pr checks 37`; live `gh pr view 37` query for exact head/base, draft, mergeability, closing Issue and check rollup
+- exit_code: 0
+- environment: GitHub Actions Ubuntu 24.04 and Windows 2025; local coordinator Windows 10.0.19045; no device or emulator
+- timestamp: 2026-08-06T00:23:15+08:00
+- artifact: draft PR `https://github.com/xiaokh31/androidAppHardening/pull/37`; Build run `31022701793`, jobs `92363215927`/`92363216067`; Governance run `31022701584`, jobs `92363215056`/`92363215049`; closing Issue #36
+- sha256: not_applicable
+- result: PASS; Ubuntu/Windows Build completed in 1m24s/1m37s and Governance in 16s/40s; PR #37 is OPEN, draft, CLEAN and MERGEABLE at exact HEAD, and the user authorized ready/merge
 
 ### M1-03 merger-ready CI and merge
 
@@ -651,14 +881,16 @@ None
 
 ## Ordered Next Actions
 
-1. 提交并推送本 post-merge HandOff 到 `main`。
-2. 要求 post-merge `main` 通过 Ubuntu/Windows Build 与 Governance；若 KVM workflow 对 main push 触发，也必须通过 API 29/36 并完成强制清理。
-3. 等待用户明确选择并启动下一任务；按路线图候选为 M1-04，但不得隐式领取。
-4. 不启动 M2 或任何相邻任务。
+1. 提交并推送本 merger-ready HandOff 到唯一固定分支。
+2. 要求 merger-ready HEAD 再次通过 Ubuntu/Windows Build 与 Governance 四项 CI。
+3. 将 PR #37 转为 ready，并以 expected-head 保护执行普通 merge commit。
+4. 快进本地 `main`，同步 README 将 M1-07 标记完成并记录 post-merge HandOff，再无豁免运行 Governance、strict HandOff 与 diff check。
+5. 不隐式启动 M1-04、M2 或任何相邻任务。
 
 ## Relevant Files and Artifacts
 
 - `HandOff.md`
+- `README.md`
 - `docs/tasks/M0-05-application-factory-provider-jni-poc.md`
 - `docs/tasks/M1-01-untrusted-apk-inspector.md`
 - `docs/tasks/M1-02-signer-policy.md`
@@ -668,6 +900,9 @@ None
 - `docs/adr/0003-api29-public-classloader-hook.md`
 - `docs/adr/0006-offline-key-protection-boundary.md`
 - `docs/adr/0007-source-dir-startup-configuration.md`
+- `docs/adr/0008-chunk-authenticated-dex-container.md`
+- `docs/tasks/M1-07-chunk-authenticated-container-contract.md`
+- `docs/evidence/M1-07/security-review-input.md`
 - `docs/evidence/M0-05/implementation-snapshot.md`
 - `docs/evidence/M0-05/arm64-api29-metadata-blocker.md`
 - `docs/evidence/M0-05/formal-compatibility.md`
@@ -699,6 +934,25 @@ None
 
 ## Resume Checklist
 
+- [x] 用户明确启动 M1-07；Issue #36、固定治理分支和 clean main base 已核验。
+- [x] 完成 AHDC v2 全仓库合同同步、字段复算、Governance 与 strict HandOff。
+- [x] 冻结治理提交并取得独立只读复核 P0/P1/P2 全零结论。
+- [x] 首轮独立复核 FAIL 已归档，`e13927a` 废止；P1 whole-record 措辞和 P2 依赖证明方向已形成修正候选。
+- [x] 第二轮独立复核 FAIL 已归档，`3380659` 废止；M2-02 Goal 和未发布 DEX 事务清理两项 P1 已形成修正候选。
+- [x] 第三轮独立复核 FAIL 已归档，`e355438` 废止；成功提交与发布前失败的映射清理验收已拆分为互斥路径。
+- [x] 第四轮独立复核 FAIL 已归档，`dd0c4c0` 废止；成功提交临时秘密清理、M3-02 事务清理证据和复核时间语义已形成修正候选。
+- [x] 第五轮独立复核 FAIL 已归档，`340b6ae` 废止；跨 JNI 公开对象构造窗口的 primitive/finally 所有权和注入矩阵已形成修正候选。
+- [x] 第六轮独立复核 FAIL 已归档，`bb2e744` 废止；authenticated metadata 接口与 Guard 最终 session 发布窗口已形成修正候选。
+- [x] 第七轮独立复核 FAIL 已归档，`3bea66a` 废止；权威时序、metadata 注入和双窗口验收已形成修正候选。
+- [x] 第八轮独立复核 FAIL 已归档，`01f76f6` 废止；package/lineage 复比较接口与完整独立复核输入已形成修正候选。
+- [x] 第九轮独立复核 FAIL 已归档，`d5d5d29` 废止；loader 构造/使用边界和完整 metadata getter 合同已形成修正候选。
+- [x] 第十轮独立复核 FAIL 已归档，`358a71a` 废止；Guard 比较来源表与真实 Native/parser 验收职责已形成修正候选。
+- [x] 第十一次独立复核 PASS 已归档，`9dec760` 的 P0/P1/P2 全零；M1-07 本地合同修订 ready。
+- [x] 用户已授权发布 M1-07，并要求每个任务完成时同步根 README 进度。
+- [x] 提交 README/HandOff 同步、推送固定分支并创建 Issue #36 的唯一草稿 PR #37；M1-04 在 M1-07 合并前保持 blocked。
+- [x] PR #37 证据 HEAD `ceeae8a` 的 Ubuntu/Windows Build 与 Governance 四项 CI 全绿，PR 为 OPEN/draft/CLEAN/MERGEABLE。
+- [x] 用户已明确授权将 PR #37 转为 ready 并以普通 merge commit 合并。
+- [ ] merger-ready HandOff 提交的四项 CI 全绿后，执行 expected-head 合并；随后在 main 同步 README、关闭 M1-07 并无豁免运行门禁。
 - [x] M1-01 从固定 base `e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030` 与唯一分支 `feat/m1-01-untrusted-apk-inspector` 启动，Issue 固定为 #6；当前恢复点为 `main`。
 - [x] M0-04 与 M0-06 已合并并完成各自门禁。
 - [x] 完成最新 main 合并并无豁免运行 strict HandOff。
@@ -752,6 +1006,18 @@ None
 
 ## Handoff Sign-off
 
+- `/root` 已核验 M1-04 单 tag 合同无法在固定 Provider、512 MiB DEX 和 1 MiB 缓冲下满足认证后解压；M1-07 只修订治理合同，不包含废止实现、不启动模拟器或设备，也未获授权推送/创建 PR。
+- `/root` 已核验首轮 M1-07 独立复核为 FAIL 并废止 `e13927a`；当前只允许关闭该轮 P1/P2、重新冻结并进行完整独立复核。
+- `/root` 已核验第二轮 M1-07 独立复核为 FAIL 并废止 `3380659`；当前只允许关闭两项 P1、重新冻结并进行完整独立复核。
+- `/root` 已核验第三轮 M1-07 独立复核为 FAIL 并废止 `e355438`；当前只允许关闭成功路径清理 P1、重新冻结并进行完整独立复核。
+- `/root` 已核验第四轮 M1-07 独立复核为 FAIL 并废止 `dd0c4c0`；当前只允许关闭两项 P1/P2、重新冻结并进行完整独立复核。
+- `/root` 已核验第五轮 M1-07 独立复核为 FAIL 并废止 `340b6ae`；当前只允许关闭跨 JNI 发布窗口 P1、重新冻结并进行完整独立复核。
+- `/root` 已核验第六轮 M1-07 独立复核为 FAIL 并废止 `bb2e744`；当前只允许关闭 metadata/session 两项 P1、重新冻结并进行完整独立复核。
+- `/root` 已核验第七轮 M1-07 独立复核为 FAIL 并废止 `3bea66a`；当前只允许关闭一项时序 P1 与两项验收 P2、重新冻结并进行完整独立复核。
+- `/root` 已核验第八轮 M1-07 独立复核为 FAIL 并废止 `01f76f6`；当前只允许关闭 package metadata P1 与复核输入 P2、重新冻结并进行完整独立复核。
+- `/root` 已核验第九轮 M1-07 独立复核为 FAIL 并废止 `d5d5d29`；当前只允许关闭 loader 时序 P1 与 metadata API P2、重新冻结并进行完整独立复核。
+- `/root` 已核验第十轮 M1-07 独立复核为 FAIL 并废止 `358a71a`；当前只允许关闭 Guard 比较来源 P2、重新冻结并进行完整独立复核。
+- `/root` 已核验第十一次 M1-07 独立复核为 PASS，`9dec760` 的 P0/P1/P2 全零；唯一草稿 PR #37 的最终 HEAD `2c13ecc` 四项 CI 全绿，用户已授权 ready/merge；当前只准备 merger-ready 协调并要求新 HEAD 重跑四项 CI，不得提前重启 M1-04。
 - Coordinator `/root` 已核验首轮独立复核 FAIL、六项修复 diff、本地 Gradle/check/governance、双变体 Release/R8 和静态 APK 验证结果。
 - 当前快照声明三套 review-3 设备环境验收 PASS、第五次独立复核 P0/P1/P2 全为零、最终 PR HEAD 六项 CI 全部 PASS，PR #32 已合并，且 post-merge `main` Build/Governance 全绿并无豁免通过 strict HandOff；M0-05 标记 done。旧证据仅保留为历史回归基线。
 - `/root` 已核验真机为 API 29 arm64 64-bit、user/release-keys、非 root 环境，设备 runner cleanup PASS；本轮未启动任何本机模拟器。

@@ -6,9 +6,24 @@
 
 ## 当前状态
 
-仓库处于 M0 基础建设与可行性验证阶段，尚未提供可用的 APK 加固程序。开发任务必须从 [`docs/tasks/INDEX.md`](docs/tasks/INDEX.md) 领取，不应依据本 README 推测尚未实现的能力。
+M0 基础建设与可行性验证已经完成，项目正在顺序执行 M1 Host 处理链。当前仍未提供端到端可用的 APK 加固程序：M1-01 输入检查、M1-02 signer policy 和 M1-03 Binary AXML 转换器已经合并，M1-07 的 AHDC v2 分块认证容器合同已完成全零独立复核并发布到草稿 PR #37，四项 CI 全绿，正在等待 ready/merge 授权；M1-04 容器实现必须等 M1-07 合并后重新启动。
 
 开发者和 Agent 从 [`docs/README_FIRST.md`](docs/README_FIRST.md) 开始。项目统筹状态以 [`HandOff.md`](HandOff.md) 为准。
+
+### 任务进度
+
+| 阶段/任务 | 状态 | 说明 |
+| --- | --- | --- |
+| M0-01 ～ M0-06 | 已完成 | 仓库、治理、工具链、CI、API 29/36 ClassLoader 与早期启动/Factory/JNI 可行性验证均已合并并通过门禁 |
+| [M1-01](docs/tasks/M1-01-untrusted-apk-inspector.md) | 已完成 | 不可信 APK 只读检查器，PR #33 |
+| [M1-02](docs/tasks/M1-02-signer-policy.md) | 已完成 | signer policy，PR #34 |
+| [M1-03](docs/tasks/M1-03-binary-axml-transformer.md) | 已完成 | Binary AXML 单属性转换器，PR #35 |
+| [M1-07](docs/tasks/M1-07-chunk-authenticated-container-contract.md) | 草稿 PR 审核 | AHDC v2 合同已通过独立复核与 PR #37 四项 CI，Issue #36；等待 ready/merge 授权，合并前 M1-04 保持阻塞 |
+| [M1-04](docs/tasks/M1-04-encrypted-dex-container.md) | 下一开发任务 | M1-07 合并并在 `main` 无豁免通过 strict HandOff 后，从最新 `main` 重新实现 AHDC v2 |
+| M1-05、M1-06 | 计划中 | APK 重打包/对齐，然后实现 CLI 与 JSON 报告 |
+| M2 ～ M4 | 未启动 | Runtime、验证矩阵与发布阶段不得提前实现 |
+
+任务按 [`docs/tasks/INDEX.md`](docs/tasks/INDEX.md) 的依赖顺序执行。每个任务只有在 PR 合并、合并后门禁与证据完成后才在本表标记“已完成”；每个任务的收尾协调提交必须同步本 README，避免公开进度长期滞后。
 
 ## v0.1 边界
 
@@ -39,7 +54,7 @@ Ubuntu 全量基线：
 ./gradlew --no-daemon :runtime:native:assemble
 ```
 
-当前工程只有十四个无业务行为的模块骨架。依赖解析使用严格 SHA-256 verification metadata、全 configuration lockfile 与 settings 级 `google()`/`mavenCentral()` 白名单。
+当前工程已包含 M1-01 输入检查、M1-02 signer policy 与 M1-03 Binary AXML 转换实现，但尚未形成 M1-04～M1-06 的完整 Host 加固流水线，也没有可发布的端到端 CLI。依赖解析继续使用严格 SHA-256 verification metadata、全 configuration lockfile 与 settings 级 `google()`/`mavenCentral()` 白名单。
 
 ## 许可证
 

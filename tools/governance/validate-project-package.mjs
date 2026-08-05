@@ -42,6 +42,7 @@ const expectedTasks = [
   "M4-02-cross-platform-release-packaging.md",
   "M4-03-release-evidence-and-documentation.md",
   "M0-06-early-startup-config-contract.md",
+  "M1-07-chunk-authenticated-container-contract.md",
 ];
 
 const taskHeadings = [
@@ -176,7 +177,9 @@ if (!fs.existsSync(indexFile)) {
     );
     const expectedIssue = id === "M0-06"
       ? "30"
-      : String(expectedTasks.indexOf(expectedFile) + 1);
+      : id === "M1-07"
+        ? "36"
+        : String(expectedTasks.indexOf(expectedFile) + 1);
     if (!issueMatch || issueMatch[1] !== issueMatch[2] || issueMatch[1] !== expectedIssue) {
       errors.push(`docs/tasks/INDEX.md: ${id} must link its GitHub Issue`);
     }
@@ -386,6 +389,7 @@ const expectedAdrs = [
   "docs/adr/0005-runtime-abi-policy.md",
   "docs/adr/0006-offline-key-protection-boundary.md",
   "docs/adr/0007-source-dir-startup-configuration.md",
+  "docs/adr/0008-chunk-authenticated-dex-container.md",
 ];
 const adrHeadings = [
   "## Status",

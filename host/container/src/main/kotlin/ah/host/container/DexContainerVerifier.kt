@@ -235,7 +235,7 @@ class DexContainerVerifier internal constructor(observer: ContainerObserver) {
                         key,
                     )
                 } finally {
-                    wipe("verify.recordKey.$index", key, observer)
+                    wipe("verify.recordKey", key, observer)
                 }
             }
         } finally {

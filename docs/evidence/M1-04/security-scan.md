@@ -32,6 +32,8 @@ HMAC-SHA-256, RFC 5869 extract/expand, independent manifest/record domains,
 canonical 96-bit chunk nonces, complete metadata MAC coverage, complete ConfigV2
 digest binding, and authenticate-before-inflate ordering.
 
-The first independent review is archived as `security-review-1.md` with result
-`FAIL`; its six findings drove this remediation. A second independent review must
-target the new frozen commit before publication.
+The first and second independent reviews are archived as `security-review-1.md`
+and `security-review-2.md`, both `FAIL`. The second review's OOM ownership finding
+drove allocation-free first-error tracking and transactional sensitive-copy
+construction. A new independent review must target the next frozen commit before
+publication.

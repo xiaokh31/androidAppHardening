@@ -53,7 +53,7 @@ class DexContainerBuilder internal constructor(
                 wipe("rNative", material.rNative, observer)
             }
             secrets?.clear(observer)
-            observations.forEachIndexed { index, value -> wipe("pass1.digest.$index", value.originalSha256, observer) }
+            observations.forEach { value -> wipe("pass1.digest", value.originalSha256, observer) }
             sensitiveCleared = true
             observer.finish(primary)
         }
@@ -298,10 +298,10 @@ class DexContainerBuilder internal constructor(
                         !observation.originalSha256.constantTimeEquals(pass1[index].originalSha256) ||
                         encrypted.chunkCount != record.chunkCount
                     ) inputChanged("dexPass2")
-                    wipe("pass2.digest.$index", observation.originalSha256, observer)
+                    wipe("pass2.digest", observation.originalSha256, observer)
                 } finally {
                     encrypted.clear()
-                    wipe("record.key.$index", key, observer)
+                    wipe("record.key", key, observer)
                 }
             }
         }
@@ -467,12 +467,13 @@ private class BuildSecrets(
         wipe("wrapNonce", wrapNonce, observer)
         wipe("buildId", buildId, observer)
         wipe("keySlotId", keySlotId, observer)
-        noncePrefixes.forEachIndexed { index, bytes -> wipe("noncePrefix.$index", bytes, observer) }
+        noncePrefixes.forEach { bytes -> wipe("noncePrefix", bytes, observer) }
     }
 
     companion object {
-        fun create(random: ContainerRandom, dexCount: Int, observer: ContainerObserver): BuildSecrets {
-            val allocated = ArrayList<Pair<String, ByteArray>>()
+        fun create(random: ContainerRandom, dexCount: Int, observer: CleanupTrackingObserver): BuildSecrets {
+            val allocated = arrayOfNulls<ByteArray>(dexCount + 6)
+            var allocatedCount = 0
             fun take(label: String, size: Int): ByteArray {
                 val bytes = try {
                     random.bytes(label, size)
@@ -481,27 +482,37 @@ private class BuildSecrets(
                 } catch (failure: RuntimeException) {
                     throw ContainerException(ContainerErrorCode.CONTAINER_RANDOM_FAILED, label, failure)
                 }
+                allocated[allocatedCount++] = bytes
                 if (bytes.size != size || bytes.all { it == 0.toByte() }) {
                     bytes.fill(0)
                     throw ContainerException(ContainerErrorCode.CONTAINER_RANDOM_FAILED, label)
                 }
-                allocated += label to bytes
                 return bytes
             }
             try {
+                val noncePrefixes = ArrayList<ByteArray>(dexCount)
                 val cek = take("cek", 32)
                 val root = take("root", 32)
                 val rJava = take("rJava", 32)
                 val wrapNonce = take("wrapNonce", 12)
                 val buildId = take("buildId", 16)
                 val keySlotId = take("keySlotId", 16)
-                val noncePrefixes = (0 until dexCount).map { index -> take("noncePrefix.$index", 8) }
-                if (root.contentEquals(rJava) || buildId.contentEquals(keySlotId) ||
-                    noncePrefixes.map(ByteArray::toHex).distinct().size != noncePrefixes.size
-                ) throw ContainerException(ContainerErrorCode.CONTAINER_RANDOM_FAILED, "randomCollision")
+                repeat(dexCount) { index -> noncePrefixes += take("noncePrefix.$index", 8) }
+                var prefixCollision = false
+                for (left in noncePrefixes.indices) {
+                    for (right in 0 until left) {
+                        if (noncePrefixes[left].contentEquals(noncePrefixes[right])) prefixCollision = true
+                    }
+                }
+                if (root.contentEquals(rJava) || buildId.contentEquals(keySlotId) || prefixCollision) {
+                    throw ContainerException(ContainerErrorCode.CONTAINER_RANDOM_FAILED, "randomCollision")
+                }
                 return BuildSecrets(cek, root, rJava, wrapNonce, buildId, keySlotId, noncePrefixes)
             } catch (failure: Throwable) {
-                allocated.forEach { (label, bytes) -> wipe("random.$label", bytes, observer) }
+                for (index in 0 until allocatedCount) {
+                    allocated[index]?.let { bytes -> wipe("random.partial", bytes, observer) }
+                }
+                observer.finish(failure)
                 throw failure
             }
         }

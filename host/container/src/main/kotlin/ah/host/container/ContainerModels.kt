@@ -77,14 +77,14 @@ enum class RuntimeAbi(val directoryName: String, val abiId: Int) {
     X86_64("x86_64", 4),
 }
 
-class KeyPackagingMaterialV2 internal constructor(
+class KeyPackagingMaterialV2 private constructor(
     private val config: ByteArray,
     private val nativeShare: ByteArray,
     private val build: ByteArray,
     private val slot: ByteArray,
     targetAbis: Set<RuntimeAbi>,
 ) {
-    val targetAbis: Set<RuntimeAbi> = Collections.unmodifiableSet(LinkedHashSet(targetAbis))
+    val targetAbis: Set<RuntimeAbi> = targetAbis
 
     fun configV2(): ByteBuffer = ByteBuffer.wrap(config).asReadOnlyBuffer()
     fun rNative(): ByteBuffer = ByteBuffer.wrap(nativeShare).asReadOnlyBuffer()
@@ -100,6 +100,38 @@ class KeyPackagingMaterialV2 internal constructor(
         wipe("plan.buildId", build, observer)
         wipe("plan.keySlotId", slot, observer)
     }
+
+    companion object {
+        internal fun create(
+            configV2: ByteArray,
+            rNative: ByteArray,
+            buildId: ByteArray,
+            keySlotId: ByteArray,
+            targetAbis: Set<RuntimeAbi>,
+            observer: CleanupTrackingObserver,
+            copier: SensitiveArrayCopier,
+        ): KeyPackagingMaterialV2 {
+            val copiedAbis = Collections.unmodifiableSet(LinkedHashSet(targetAbis))
+            var configCopy: ByteArray? = null
+            var nativeCopy: ByteArray? = null
+            var buildCopy: ByteArray? = null
+            var slotCopy: ByteArray? = null
+            try {
+                configCopy = copier.copy(configV2)
+                nativeCopy = copier.copy(rNative)
+                buildCopy = copier.copy(buildId)
+                slotCopy = copier.copy(keySlotId)
+                return KeyPackagingMaterialV2(configCopy, nativeCopy, buildCopy, slotCopy, copiedAbis)
+            } catch (failure: Throwable) {
+                configCopy?.let { wipe("plan.config", it, observer) }
+                nativeCopy?.let { wipe("plan.rNative", it, observer) }
+                buildCopy?.let { wipe("plan.buildId", it, observer) }
+                slotCopy?.let { wipe("plan.keySlotId", it, observer) }
+                observer.finish(failure)
+                throw failure
+            }
+        }
+    }
 }
 
 class KeyPackagingPlanV2 internal constructor(
@@ -109,15 +141,18 @@ class KeyPackagingPlanV2 internal constructor(
     keySlotId: ByteArray,
     targetAbis: Set<RuntimeAbi>,
     observer: ContainerObserver,
+    copier: SensitiveArrayCopier = DEFAULT_SENSITIVE_ARRAY_COPIER,
 ) : AutoCloseable {
     private val consumed = AtomicBoolean(false)
     private val observer = cleanupTrackingObserver(observer)
-    private val material = KeyPackagingMaterialV2(
-        configV2.copyOf(),
-        rNative.copyOf(),
-        buildId.copyOf(),
-        keySlotId.copyOf(),
+    private val material = KeyPackagingMaterialV2.create(
+        configV2,
+        rNative,
+        buildId,
+        keySlotId,
         targetAbis,
+        this.observer,
+        copier,
     )
 
     fun <T> consume(action: (KeyPackagingMaterialV2) -> T): T {
@@ -153,15 +188,57 @@ class ExpectedBinding internal constructor(
     configV2: ByteArray,
     rNative: ByteArray,
     observer: ContainerObserver,
+    copier: SensitiveArrayCopier = DEFAULT_SENSITIVE_ARRAY_COPIER,
 ) : AutoCloseable {
     private val observer = cleanupTrackingObserver(observer)
-    private val packageDigest = requireDigest(packageNameSha256)
-    private val signerDigest = requireDigest(currentSignerSha256)
-    private val lineageDigests = signerLineageSha256.map(::requireDigest)
-    private val dex = ArrayList(expectedDex)
-    private val config = configV2.copyOf()
-    private val nativeShare = rNative.copyOf()
+    private val packageDigest: ByteArray
+    private val signerDigest: ByteArray
+    private val lineageDigests: List<ByteArray>
+    private val dex: List<DexSummary>
+    private val config: ByteArray
+    private val nativeShare: ByteArray
     private val closed = AtomicBoolean(false)
+
+    init {
+        val lineageCopies = ArrayList<ByteArray>(signerLineageSha256.size)
+        val dexCopy = ArrayList(expectedDex)
+        var packageCopy: ByteArray? = null
+        var signerCopy: ByteArray? = null
+        var configCopy: ByteArray? = null
+        var nativeCopy: ByteArray? = null
+        try {
+            if (packageNameSha256.size != AhConstants.SHA256_BYTES) {
+                throw ContainerException(ContainerErrorCode.CONTAINER_FORMAT, "sha256")
+            }
+            packageCopy = copier.copy(packageNameSha256)
+            if (currentSignerSha256.size != AhConstants.SHA256_BYTES) {
+                throw ContainerException(ContainerErrorCode.CONTAINER_FORMAT, "sha256")
+            }
+            signerCopy = copier.copy(currentSignerSha256)
+            signerLineageSha256.forEach { digest ->
+                if (digest.size != AhConstants.SHA256_BYTES) {
+                    throw ContainerException(ContainerErrorCode.CONTAINER_FORMAT, "sha256")
+                }
+                lineageCopies += copier.copy(digest)
+            }
+            configCopy = copier.copy(configV2)
+            nativeCopy = copier.copy(rNative)
+            packageDigest = packageCopy
+            signerDigest = signerCopy
+            lineageDigests = lineageCopies
+            dex = dexCopy
+            config = configCopy
+            nativeShare = nativeCopy
+        } catch (failure: Throwable) {
+            packageCopy?.let { wipe("binding.package", it, this.observer) }
+            signerCopy?.let { wipe("binding.signer", it, this.observer) }
+            lineageCopies.forEach { bytes -> wipe("binding.lineage", bytes, this.observer) }
+            configCopy?.let { wipe("binding.config", it, this.observer) }
+            nativeCopy?.let { wipe("binding.rNative", it, this.observer) }
+            this.observer.finish(failure)
+            throw failure
+        }
+    }
 
     internal fun packageDigest(): ByteArray = packageDigest.copyOf()
     internal fun signerDigest(): ByteArray = signerDigest.copyOf()
@@ -174,7 +251,7 @@ class ExpectedBinding internal constructor(
         if (closed.compareAndSet(false, true)) {
             wipe("binding.package", packageDigest, observer)
             wipe("binding.signer", signerDigest, observer)
-            lineageDigests.forEachIndexed { index, bytes -> wipe("binding.lineage.$index", bytes, observer) }
+            lineageDigests.forEach { bytes -> wipe("binding.lineage", bytes, observer) }
             wipe("binding.config", config, observer)
             wipe("binding.rNative", nativeShare, observer)
             observer.finish(null)
@@ -210,13 +287,13 @@ internal interface ContainerObserver {
 internal object NO_CONTAINER_OBSERVER : ContainerObserver
 
 internal class CleanupTrackingObserver(private val delegate: ContainerObserver) : ContainerObserver {
-    private val failures = ArrayList<Throwable>()
+    private var firstFailure: Throwable? = null
 
     override fun cleared(label: String, allZero: Boolean) {
         try {
             delegate.cleared(label, allZero)
         } catch (failure: Throwable) {
-            failures += failure
+            firstFailure?.let { first -> suppressCleanup(first, failure) } ?: run { firstFailure = failure }
         }
     }
 
@@ -226,10 +303,8 @@ internal class CleanupTrackingObserver(private val delegate: ContainerObserver) 
         delegate.authenticatedBeforeInflate(record, chunk)
 
     fun finish(primaryFailure: Throwable?) {
-        if (failures.isEmpty()) return
-        val first = failures.removeAt(0)
-        failures.forEach { failure -> suppressCleanup(first, failure) }
-        failures.clear()
+        val first = firstFailure ?: return
+        firstFailure = null
         if (primaryFailure != null) {
             suppressCleanup(primaryFailure, first)
         } else {
@@ -275,6 +350,12 @@ internal fun ByteBuffer.copyRemaining(): ByteArray {
 internal fun interface ContainerRandom {
     fun bytes(label: String, size: Int): ByteArray
 }
+
+internal fun interface SensitiveArrayCopier {
+    fun copy(source: ByteArray): ByteArray
+}
+
+internal val DEFAULT_SENSITIVE_ARRAY_COPIER = SensitiveArrayCopier(ByteArray::copyOf)
 
 internal class SecureContainerRandom private constructor(private val random: SecureRandom) : ContainerRandom {
 

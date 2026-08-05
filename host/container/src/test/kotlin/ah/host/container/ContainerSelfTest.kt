@@ -53,6 +53,7 @@ object ContainerSelfTest {
         runCase("one_shot_key_plan") { verifyOneShotPlan(work) }
         runCase("random_failure_cleanup") { verifyRandomFailureCleanup(work) }
         runCase("io_atomic_cleanup_failures") { verifyIoAtomicAndCleanupFailures(work) }
+        runCase("oom_cleanup_ownership") { verifyOomCleanupOwnership(work) }
         runCase("cancellation_cleanup") { verifyCancellationCleanup(work) }
 
         val report = buildString {
@@ -519,17 +520,17 @@ object ContainerSelfTest {
                 .build(fixture.inspection, fixture.signer, cleanupOutput)
         }
         check(!Files.exists(cleanupOutput))
-        check(earlyObserver.labels.containsAll(listOf("manifest.key", "config", "rNative", "cek", "noncePrefix.0")))
+        check(earlyObserver.labels.containsAll(listOf("manifest.key", "config", "rNative", "cek", "noncePrefix")))
         check(earlyObserver.allZero)
 
-        val middleObserver = ThrowingCleanupObserver(setOf("record.key.0"))
+        val middleObserver = ThrowingCleanupObserver(setOf("record.key"))
         val middleOutput = work.resolve("cleanup-middle-failure.ahdc")
         expectCode(ContainerErrorCode.CONTAINER_KEY_MATERIAL) {
             DexContainerBuilder(fixture.path, FixedRandom(), middleObserver, null)
                 .build(fixture.inspection, fixture.signer, middleOutput)
         }
         check(!Files.exists(middleOutput))
-        check(middleObserver.labels.containsAll(listOf("record.key.0", "config", "rNative", "cek", "noncePrefix.0")))
+        check(middleObserver.labels.containsAll(listOf("record.key", "config", "rNative", "cek", "noncePrefix")))
         check(middleObserver.allZero)
 
         val planObserver = ThrowingCleanupObserver(setOf("plan.config", "plan.rNative", "plan.keySlotId"))
@@ -546,6 +547,86 @@ object ContainerSelfTest {
         check(primary.suppressed.isNotEmpty())
         check(planObserver.labels.containsAll(listOf("plan.config", "plan.rNative", "plan.buildId", "plan.keySlotId")))
         check(planObserver.allZero)
+    }
+
+    private fun verifyOomCleanupOwnership(work: Path) {
+        val fixture = fixture(work.resolve("oom-injection.apk"), intArrayOf(4_096), seed = 53)
+
+        val randomObserver = RecordingObserver()
+        val calls = AtomicInteger()
+        val oomRandom = ContainerRandom { label, size ->
+            if (calls.incrementAndGet() == 4) throw OutOfMemoryError("rng-injected")
+            ByteArray(size) { (label.length + it + 1).toByte() }
+        }
+        expectFailure<OutOfMemoryError> {
+            DexContainerBuilder(fixture.path, oomRandom, randomObserver, null)
+                .build(fixture.inspection, fixture.signer, work.resolve("oom-random.ahdc"))
+        }
+        check(!Files.exists(work.resolve("oom-random.ahdc")))
+        check(randomObserver.clearFailures == 0)
+        check(randomObserver.clearCount >= 3)
+
+        val cleanupObserver = OomCleanupObserver("manifest.key")
+        expectCode(ContainerErrorCode.CONTAINER_KEY_MATERIAL) {
+            DexContainerBuilder(fixture.path, FixedRandom(), cleanupObserver, null)
+                .build(fixture.inspection, fixture.signer, work.resolve("oom-cleanup.ahdc"))
+        }
+        check(!Files.exists(work.resolve("oom-cleanup.ahdc")))
+        check(cleanupObserver.labels.containsAll(listOf("manifest.key", "config", "rNative", "cek", "noncePrefix")))
+        check(cleanupObserver.allZero)
+
+        val copyObserver = RecordingObserver()
+        val copyCalls = AtomicInteger()
+        val oomCopier = SensitiveArrayCopier { source ->
+            if (copyCalls.incrementAndGet() == 3) throw OutOfMemoryError("copy-injected")
+            source.copyOf()
+        }
+        expectFailure<OutOfMemoryError> {
+            KeyPackagingPlanV2(
+                ByteArray(768) { 1 },
+                ByteArray(32) { 2 },
+                ByteArray(16) { 3 },
+                ByteArray(16) { 4 },
+                setOf(RuntimeAbi.ARM64_V8A),
+                copyObserver,
+                oomCopier,
+            )
+        }
+        check(copyObserver.clearFailures == 0)
+        check(copyObserver.clearCount >= 2)
+
+        val bindingObserver = RecordingObserver()
+        val bindingCalls = AtomicInteger()
+        val bindingCopier = SensitiveArrayCopier { source ->
+            if (bindingCalls.incrementAndGet() == 4) throw OutOfMemoryError("binding-copy-injected")
+            source.copyOf()
+        }
+        expectFailure<OutOfMemoryError> {
+            ExpectedBinding(
+                fixture.inspection.packageName,
+                fixture.inspection.packageNameSha256,
+                fixture.signer.currentCertificateSha256,
+                fixture.signer.lineageCertificateSha256,
+                fixture.inspection.dexEntries,
+                ByteArray(768),
+                ByteArray(32),
+                bindingObserver,
+                bindingCopier,
+            )
+        }
+        check(bindingObserver.clearFailures == 0)
+        check(bindingObserver.clearCount >= 3)
+
+        val lateObserver = OomCleanupObserver("plan.rNative")
+        val lateOutput = work.resolve("oom-late.ahdc")
+        val result = DexContainerBuilder(fixture.path, FixedRandom(), lateObserver, null)
+            .build(fixture.inspection, fixture.signer, lateOutput)
+        val primary = expectFailure<IllegalStateException> {
+            result.keyPackagingPlan.consume<Unit> { throw IllegalStateException("oom-primary") }
+        }
+        check(primary.message == "oom-primary")
+        check(lateObserver.labels.containsAll(listOf("plan.config", "plan.rNative", "plan.buildId", "plan.keySlotId")))
+        check(lateObserver.allZero)
     }
 
     private fun verifyCancellationCleanup(work: Path) {
@@ -803,6 +884,16 @@ object ContainerSelfTest {
         }
     }
 
+    private inline fun <reified T : Throwable> expectFailure(action: () -> Unit): T {
+        try {
+            action()
+            error("expected ${T::class.java.simpleName}")
+        } catch (failure: Throwable) {
+            check(failure is T) { "expected ${T::class.java.simpleName}, got ${failure::class.java.simpleName}" }
+            return failure
+        }
+    }
+
     private fun hex(value: String): ByteArray = ByteArray(value.length / 2) { index ->
         value.substring(index * 2, index * 2 + 2).toInt(16).toByte()
     }
@@ -833,10 +924,13 @@ private class RecordingObserver : ContainerObserver {
         private set
     var clearFailures = 0
         private set
+    var clearCount = 0
+        private set
     val authenticated = AtomicInteger()
 
     override fun cleared(label: String, allZero: Boolean) {
         check(label.isNotEmpty())
+        clearCount++
         if (!allZero) clearFailures++
         live.remove(label)?.let { bytes -> liveBytes -= bytes }
     }
@@ -865,6 +959,19 @@ private class ThrowingCleanupObserver(private val throwingLabels: Set<String>) :
         labels += label
         this.allZero = this.allZero && allZero
         if (label in throwingLabels) throw IllegalStateException("cleanup:$label")
+    }
+}
+
+private class OomCleanupObserver(private val throwingLabel: String) : ContainerObserver {
+    val labels = ArrayList<String>()
+    var allZero = true
+        private set
+    private val failure = OutOfMemoryError("cleanup:$throwingLabel")
+
+    override fun cleared(label: String, allZero: Boolean) {
+        labels += label
+        this.allZero = this.allZero && allZero
+        if (label == throwingLabel) throw failure
     }
 }
 

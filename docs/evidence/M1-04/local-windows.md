@@ -1,6 +1,6 @@
 # M1-04 local Windows validation
 
-- Timestamp: `2026-08-06T06:09:05+08:00`
+- Timestamp: `2026-08-06T06:24:29+08:00`
 - Branch: `feat/m1-04-encrypted-dex-container`
 - Starting commit: `ff0d5ab6be6ef39f3ea06ddb06063ed3fcda3276`
 - OS: Windows 10 `10.0` x64
@@ -19,7 +19,7 @@ the system drive.
 | Command | Exit | Result |
 | --- | ---: | --- |
 | `gradle :host:container:compileKotlin --offline -Pkotlin.compiler.execution.strategy=in-process` | `0` | Kotlin main sources compiled with warnings as errors |
-| `gradle :host:container:test --offline --no-configuration-cache -Pkotlin.compiler.execution.strategy=in-process` | `0` | 12 self-test groups passed, including complete 512 MiB build/verify |
+| `gradle :host:container:test --offline --no-configuration-cache -Pkotlin.compiler.execution.strategy=in-process` | `0` | 13 self-test groups passed, including complete 512 MiB build/verify and OOM ownership injection |
 | `gradle :host:container:check --offline --no-configuration-cache -Pkotlin.compiler.execution.strategy=in-process` | `0` | Module check passed |
 | `node tools/validation/verify-ahdc-v2-vector.mjs` | `0` | independent Node consumer parsed, authenticated, decrypted and inflated two records |
 | `node tools/governance/validate-project-package.mjs` | `0` | `OK: 27 task cards, 11 core docs, 8 ADRs` |
@@ -45,7 +45,11 @@ Instrumented arrays observed:
 - contract limit: `1048576` bytes;
 - clear hook failures: `0`;
 - failed build outputs after input-change, I/O, unsupported atomic move,
-  random-source/collision, cancellation, and early/middle cleanup failure: absent.
+  random-source/collision/OOM, cancellation, and early/middle cleanup/OOM failure:
+  absent;
+- random acquisition, key-plan copy and expected-binding copy OOM injection cleared
+  every copy already owned; late cleanup OOM preserved the original action error;
+- no Java process remained after each bounded single-use Gradle run.
 
 The temporary work tree contains only authorized synthetic input APKs, encrypted
 AHDC outputs, and JSON reports under ignored `host/container/build/`. The builder
@@ -58,9 +62,9 @@ never writes original DEX or compressed plaintext to a standalone file.
 | fixed-RNG AHDC v2 | `3764b908e534ffa5179a9519045ec74a7caa44b30c80447998c593a1ac2fa60d` |
 | cross-language vector JSON | `3b2421fcc91234333d13545826b51fbf0de25c5fa26b39aa17d90a9ff2133afc` |
 | independent Node consumer report | `542ba9db02b643f445fc9194220e7fac6debb28e45089de38403843c78be2b1a` |
-| local self-test report | `6984e34727ebfd36c5c02fbb969151679d4547a4a3bb9420c1357e3aacbd5ce9` |
-| production build A | `a1c6aa5ba5a505cf4f3dc942dc2b34597b915d9b4fc1178d7ff723bb1946a216` |
-| production build B | `eb3473673b2bb4d5c88efdcf7d0f75c3b60c77556620361a9422b5e3604fc9dc` |
+| local self-test report | `48e97bfcd6c495fb4f9d8b8a6feb870ec7e5eb0ec4eab8b9d6e5e1377c5f340e` |
+| production build A | `6df49465da8e0bd90d5e95bdb5403c7cbc034008a7eb1bb5da4318bc02845fea` |
+| production build B | `f8bfb8c322618baa30e30fa84d18cbeded94e40350b21340bddf22923d7c7d8f` |
 
 Both production outputs were independently verified. Their CEK, root material,
 Java/native shares, wrapping nonce, build ID, key-slot ID, record nonce prefix,

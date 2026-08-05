@@ -38,6 +38,9 @@ SHA-256 of the UTF-8 sorted `<sha256> <filename>` corpus manifest is
 | I/O injection and unsupported atomic move | `CONTAINER_FORMAT` | partial candidate removed; final output absent |
 | early/middle cleanup callback failure | `CONTAINER_KEY_MATERIAL` | all remaining arrays cleared; final output absent |
 | late cleanup callback plus primary action failure | primary action retained | cleanup failure suppressed and all plan arrays cleared |
+| RNG OOM after prior values | original `OutOfMemoryError` | every already-owned random array cleared; no output |
+| key-plan/expected-binding copy OOM | original `OutOfMemoryError` | every completed sensitive copy cleared transactionally |
+| cleanup callback OOM | `CONTAINER_KEY_MATERIAL`, or existing primary retained | allocation-free first cleanup error; all remaining arrays cleared |
 | cancellation between passes | `CONTAINER_INPUT_CHANGED` with field `cancelled` | partial output removed; material cleared |
 | second `KeyPackagingPlanV2.consume` | `CONTAINER_KEY_MATERIAL` | action is not invoked |
 

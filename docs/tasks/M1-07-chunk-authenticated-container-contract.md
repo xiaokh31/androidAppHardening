@@ -55,7 +55,8 @@ M1-04 首个冻结实现的独立复核发现：单条 DEX 使用一个 GCM tag 
 - ConfigV2 保持 768 bytes，但 `container_major=2`；AHDC v1/ConfigV1 无兼容回退。
 - M1-04 的 `depends_on` 增加 M1-07；在本任务合并且合同独立复核通过前，M1-04 保持 blocked，M2/M3 不得消费废止 v1。
 - M2-02 在 Native handle 创建前必须以事务 owner 持有 completed/partial DEX 映射与临时状态；任一失败无分配地清零/unmap 全部未发布映射、不返回 handle，cleanup failure 不覆盖主错误，全部 DEX 成功后才把 completed mappings 转给内部 handle。
-- 产品发布边界固定为 `PayloadRuntime.openVerified` 返回完整 `LoadedPayload`。Native handle 返回后的 buffer array/element、search path、ClassLoader、LoadedPayload 构造/return 前窗口由 primitive handle + allocation-free `finally` 覆盖，失败恰好 close 一次、清映射/部分引用且不公开对象。
+- `PayloadRuntime.openVerified` 返回完整 `LoadedPayload` 是 M2-02 到 M2-03 的内部模块交接边界。Native handle 返回后的 authenticated metadata bytes/对象、buffer array/element、search path、ClassLoader、LoadedPayload 构造/return 前窗口由 primitive handle + allocation-free `finally` 覆盖，失败恰好 close 一次、清映射/部分引用且不公开对象。
+- M2-02 必须随 `LoadedPayload` 交付同 handle 已认证、无秘密、不可伪造的 `AuthenticatedPayloadMetadata`；M2-03 只从该对象构造安全配置。最终 bootstrap 发布边界是 Guard 返回完整 `VerifiedPayloadSession`，LoadedPayload 到 session return 的 identity/config/session 构造窗口同样 exactly-once close。
 - 本任务冻结提交后由独立只读 reviewer 检查 P0/P1/P2；任何 P0/P1 或未处置 P2 均不得推送或创建 PR。
 
 ## Public Interfaces
@@ -91,7 +92,8 @@ M1-04 首个冻结实现的独立复核发现：单条 DEX 使用一个 GCM tag 
 - 边界推演：1/65535/65536/65537 bytes、最大 DEX、最大 APK、chunk/count/offset 溢出与尾随数据。
 - Native handle 创建前的首个/中间/末尾 chunk 认证、I/O、取消、OOM、zlib/摘要和 cleanup failure 推演，证明未发布 DEX 映射全部清零/unmap、不返回 handle 且主错误保留。
 - 成功提交推演：handle 返回后、close 前所有 key/AAD/compressed/inflater/crypto 临时状态已清零且不可达，只有 completed DEX mappings 转交 handle 并保持可用；生命周期 close 才清零/unmap 映射。
-- 跨 JNI 发布窗口推演：Native handle 返回后在 buffers array/element、search path、ClassLoader、LoadedPayload 构造/return 前注入异常/OOM，证明公开对象未返回、Native close 恰好一次、mappings/部分引用清理且主错误保留。
+- 跨 JNI 内部交接窗口推演：Native handle 返回后在 authenticated metadata bytes/对象、buffers array/element、search path、ClassLoader、LoadedPayload 构造/return 前注入异常/OOM，证明内部交接对象未返回、Native close 恰好一次、mappings/部分引用清理且主错误保留。
+- 同 handle authenticated metadata 的来源/不可伪造/防御性复制/无秘密推演，以及 Guard 取得 LoadedPayload 后 identity/config/session/return 前异常/OOM 的无 session 发布、close-count=1、映射/部分引用清理和主错误优先推演。
 - 独立 reviewer 检查 JCA Provider 语义、认证顺序、domain separation、nonce 重用和 cleanup/error precedence。
 
 ## Required Evidence

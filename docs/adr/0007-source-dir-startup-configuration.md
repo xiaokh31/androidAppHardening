@@ -21,6 +21,8 @@ M0-05 在已授权的 API 29 arm64 非 root 设备上证明：`AppComponentFacto
 7. `ApplicationInfo.metaData` 可以为 `null`，Runtime 不读取它，也不以它决定启动。Context 可用后的 `PackageManager` 读取只允许作为测试诊断，不能解锁 payload 或改变决定。
 8. 完整认证后先创建 provisional payload loader。原 Factory 存在时用它实例化 Factory并恰好一次委托 `instantiateClassLoader`，非空返回值成为 final loader；无原 Factory 时 provisional 即 final。五类组件创建再使用同一 Factory和 final loader。
 9. `VerifiedPayloadSession` 在 `READY` 所有权转移前由引导调用栈独占。Factory 构造/hook、递归、重入或 final loader 验证任一失败时必须恰好一次关闭 session、清除部分初始化引用且只缓存稳定非敏感错误；清理失败不得替换原失败或允许回退。
+10. M2-02 只从同一个已认证 Native handle 的 ConfigV2/`SPV1` 快照构造不可变 `AuthenticatedPayloadMetadata`，随 `LoadedPayload` 交给 M2-03。它仅含可选原 Factory、container/signer/risk policy version、build/key slot、当前 signer 与 lineage 的防御性副本，不含 share、CEK、nonce、wrapped ciphertext/tag 或原始 config bytes。M2-03 只能从该对象构造 `VerifiedStartupConfiguration`，不得重读 ConfigV2、使用未认证预读或接受调用方覆盖。
+11. 真正的 Guard 发布边界是 `RuntimeStartupGuard.openVerifiedPayload` 返回完整 `VerifiedPayloadSession`。Guard 取得 `LoadedPayload` 后用本地唯一 owner、`committed=false` 与 `finally` 覆盖 signer identity、authenticated configuration、session 构造和 return 前窗口；任一异常/OOM 都恰好一次 close `LoadedPayload`、清除部分引用并保留主错误。`VerifiedPayloadSession` 构造器不得注册或泄露 `this`；只有完整结果构造后才无失败地提交并返回。
 
 ## Authentication Order
 
@@ -32,7 +34,8 @@ M0-05 在已授权的 API 29 arm64 非 root 设备上证明：`AppComponentFacto
 4. 验证覆盖 HeaderV2、完整 `SPV1`、record table 与 chunk table 的 manifest MAC；
 5. 从已认证 HeaderV2 取得 `config_sha256`，常量时间比较完整 768-byte ConfigV2；
 6. 交叉比较 ConfigV2、已认证 `SPV1` 与实测 signer，以及 ConfigV2/AHDC 的 build ID、key slot 和版本；
-7. 标记启动配置为 authenticated，随后才允许创建 payload loader或实例化原始 Factory。
+7. 从同一 Native handle 生成无秘密、不可变的 `AuthenticatedPayloadMetadata`，交叉核对实测 signer/package 与已认证字段；随后才允许创建 payload loader。
+8. M2-03 仅从该 metadata 构造 `VerifiedStartupConfiguration`，并与 signer identity、`LoadedPayload` 原子封装为 `VerifiedPayloadSession`；完整 session 返回前不得实例化原 Factory 或向 bootstrap 发布对象。
 
 任一步失败都必须清理敏感材料、缓存同一稳定失败并禁止降级加载业务代码。
 
@@ -76,6 +79,8 @@ ConfigV1 在任何产品发布或实现冻结前被本决策替代；v0.1 reader
 - 对 config 条目重复、DEFLATE、data descriptor、CRC/长度错误、截断、未知版本、非零 reserved 和尾随字节逐项失败关闭。
 - 对 Factory 长度、严格 UTF-8、NUL、类名语法、flag/length 组合和未使用 slot 非零逐项失败关闭。
 - 对 ConfigV2 任一字节、CEK envelope、AHDC manifest MAC、`SPV1`、build/key slot、signer 或 package binding 的篡改均不得创建 payload loader。
+- 同一 handle/snapshot 测试证明 `AuthenticatedPayloadMetadata` 只来自已认证 ConfigV2/`SPV1`，所有数组防御性复制且无恢复秘密；M2-03 不重读或消费未认证预读字段。
+- Guard 在 `LoadedPayload` 返回后对 signer identity、configuration、session 构造及 return 前分别注入异常/OOM，均恰好一次 close、清除部分引用、不发布 `VerifiedPayloadSession`，cleanup error 不覆盖主错误。
 - M1-03 semantic diff 只允许 `android:appComponentFactory` 变化，并证明原 `android:name` 与所有既有 metadata 逐字节语义保持。
 - 自定义 Factory fixture 证明其 `instantiateClassLoader` 只调用一次、返回 loader 是 Framework/组件使用的 final loader；null/异常不回退。
 - 所有 `READY` 前 Factory 失败路径证明 session 只 close 一次、Native handle 与可清零 buffer 已清理、部分 loader/Factory 引用不可达；close 自身失败不覆盖原错误。

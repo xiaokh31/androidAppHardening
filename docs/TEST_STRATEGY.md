@@ -49,6 +49,7 @@
 - Native handle 创建前在首个/中间/末尾 chunk 注入认证、I/O、取消、OOM、zlib/摘要和 cleanup failure，证明 completed/partial DEX 映射清零并 unmap、无 handle 返回且主错误不被覆盖；
 - 正向 `openVerified` 返回后、`close` 前断言全部 key/AAD/compressed/inflater/crypto 临时状态已清零且不可达，只有 completed DEX mappings 由 handle 保持可加载；close 后才清零/unmap 映射；
 - Native handle 返回后在 `nativeDexBuffers` 数组/元素、search path、ClassLoader、`LoadedPayload` 构造/return 前注入异常/OOM，断言公开对象/`ByteBuffer` 未暴露、Native close 恰好一次、mappings/部分引用清理和 primary/suppressed error；
+- 同 handle `AuthenticatedPayloadMetadata` 来源、跨 handle 替换、不可伪造、防御性复制和无恢复秘密测试；Guard 取得 `LoadedPayload` 后在 identity/config/session/return 前注入异常/OOM，断言无 `VerifiedPayloadSession` 发布、close 恰好一次且部分引用清除；
 
 - 任意输入不崩溃、不越界、不无限循环；
 - 解析成功后重新序列化保持规范语义；

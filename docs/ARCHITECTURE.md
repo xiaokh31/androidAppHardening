@@ -102,7 +102,7 @@ Bootstrap Runtime -> verified in-memory business DEX -> original app components
 
 ### 4.2 Native Loader
 
-Native Loader 的顺序固定为：无 payload 分配地检查容器结构边界，恢复每包内容密钥，验证覆盖 HeaderV2、`SPV1`、record table 与 chunk table 的 manifest MAC，再逐 chunk 使用一次性 AES-GCM API 验证 tag。不存在 record-level tag；只有当前 chunk 的 tag 成功后，该 chunk 的已认证压缩明文才允许进入所属 record 的唯一连续 zlib-wrapped DEFLATE 解压器，任何 Provider 在最终 tag 前返回的 plaintext 均不得消费。解压必须恰好命中 record 的原始 DEX 长度和 SHA-256，拒绝 dictionary、尾随/拼接流、checksum 错误和超过单 DEX/总 payload 上限的输出。Native handle 创建前以事务 owner 持有 completed/partial mappings，任何失败都全量清理。全部 DEX 成功后、内部 handle 返回前，CEK/KEK/派生 key、AAD、认证后压缩 chunk、inflater/crypto scratch 全部清零销毁，只有 completed mappings 进入 handle。真正发布边界是 `PayloadRuntime.openVerified` 返回完整 `LoadedPayload`：Java facade 用 primitive handle 和 allocation-free `finally` 覆盖 `nativeDexBuffers`、search path、`InMemoryDexClassLoader` 与 `LoadedPayload` 构造；提交前失败恰好 close handle 一次、清除部分引用、保留主错误且不暴露 `LoadedPayload`/`ByteBuffer`。成功后 DEX mappings 保持到 ClassLoader 生命周期结束时清零/unmap。Native 搜索路径按 M0-05 合同从 `ApplicationInfo`、公开进程 ABI 与当前 APK 清单派生，同时覆盖 extracted 和 APK 内直接加载 SO。不得将明文 DEX 写入 code cache、临时目录或外部存储，也不得反射复制 parent loader 的 path list。
+Native Loader 的顺序固定为：无 payload 分配地检查容器结构边界，恢复每包内容密钥，验证覆盖 HeaderV2、`SPV1`、record table 与 chunk table 的 manifest MAC，再逐 chunk 使用一次性 AES-GCM API 验证 tag。不存在 record-level tag；只有当前 chunk 的 tag 成功后，该 chunk 的已认证压缩明文才允许进入所属 record 的唯一连续 zlib-wrapped DEFLATE 解压器，任何 Provider 在最终 tag 前返回的 plaintext 均不得消费。解压必须恰好命中 record 的原始 DEX 长度和 SHA-256，拒绝 dictionary、尾随/拼接流、checksum 错误和超过单 DEX/总 payload 上限的输出。Native handle 创建前以事务 owner 持有 completed/partial mappings，任何失败都全量清理。全部 DEX 成功后、内部 handle 返回前，CEK/KEK/派生 key、AAD、认证后压缩 chunk、inflater/crypto scratch 全部清零销毁，只有 completed mappings 和同一认证快照派生的无秘密 `AuthenticatedPayloadMetadata` 进入 handle。`PayloadRuntime.openVerified` 用 primitive handle 和 allocation-free `finally` 覆盖 native metadata bytes/对象、buffers、search path、`InMemoryDexClassLoader` 与 `LoadedPayload` 构造；提交前失败恰好 close handle 一次、清除部分引用、保留主错误且不暴露对象。它返回的 `LoadedPayload` 是 M2-02 到 M2-03 的内部模块交接对象，只公开 loader、authenticated metadata 与 close；最终 bootstrap 发布边界是 Guard 返回完整 `VerifiedPayloadSession`。成功后 DEX mappings 保持到 ClassLoader 生命周期结束时清零/unmap。Native 搜索路径按 M0-05 合同从 `ApplicationInfo`、公开进程 ABI 与当前 APK 清单派生，同时覆盖 extracted 和 APK 内直接加载 SO。不得将明文 DEX 写入 code cache、临时目录或外部存储，也不得反射复制 parent loader 的 path list。
 
 多 DEX 的类查找顺序必须与输入的 `classes.dex`、`classes2.dex` 顺序一致。
 
@@ -116,6 +116,8 @@ Native Loader 的顺序固定为：无 payload 分配地检查容器结构边界
 - bootstrap/Native 配置的一致性。
 
 任何强完整性失败在业务类加载前终止。错误对调试构建可分类，对发行构建只暴露稳定、非敏感原因。
+
+Guard 只能从 `LoadedPayload.authenticatedMetadata()` 构造 `VerifiedStartupConfiguration`，不重读 ConfigV2 或使用未认证预读。取得 `LoadedPayload` 后至完整 `VerifiedPayloadSession` 返回前由本地 `committed=false`/`finally` 独占；identity/config/session 构造或 return 前异常/OOM 都恰好 close 一次并清除部分引用。完整 session 才是向 bootstrap 的发布边界；其后 ADR 0007 的 READY 前所有权规则继续生效。
 
 ### 4.4 Environment Risk Engine
 
@@ -225,6 +227,9 @@ Android process creation
 -> feed only the authenticated chunk into its record's continuous bounded zlib inflater
 -> verify original DEX length and SHA-256
 -> build provisional InMemoryDexClassLoader chain
+-> create authenticated metadata from the same Native handle snapshot
+-> construct signer identity and verified startup configuration from authenticated inputs only
+-> atomically return VerifiedPayloadSession or close LoadedPayload exactly once
 -> instantiate original AppComponentFactory when declared
 -> delegate original Factory instantiateClassLoader exactly once
 -> select and return final payload ClassLoader

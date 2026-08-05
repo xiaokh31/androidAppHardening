@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-M0 基础建设与可行性验证已经完成，项目正在顺序执行 M1 Host 处理链。当前仍未提供端到端可用的 APK 加固程序：M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换器和 M1-07 AHDC v2 分块认证容器合同已经合并并通过各自门禁；M1-04 正从最新 `main` 重新实现 AHDC v2 Host 容器。
+M0 基础建设与可行性验证已经完成，项目正在顺序执行 M1 Host 处理链。当前仍未提供端到端可用的 APK 加固程序：M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换器和 M1-07 AHDC v2 分块认证容器合同已经合并并通过各自门禁；M1-04 的本地 AHDC v2 Host 实现和独立安全复核已经通过，等待发布授权与双平台 PR CI。
 
 开发者和 Agent 从 [`docs/README_FIRST.md`](docs/README_FIRST.md) 开始。项目统筹状态以 [`HandOff.md`](HandOff.md) 为准。
 
@@ -19,7 +19,7 @@ M0 基础建设与可行性验证已经完成，项目正在顺序执行 M1 Host
 | [M1-02](docs/tasks/M1-02-signer-policy.md) | 已完成 | signer policy，PR #34 |
 | [M1-03](docs/tasks/M1-03-binary-axml-transformer.md) | 已完成 | Binary AXML 单属性转换器，PR #35 |
 | [M1-07](docs/tasks/M1-07-chunk-authenticated-container-contract.md) | 已完成 | AHDC v2 合同、独立安全复核与双平台门禁，PR #37、Issue #36 |
-| [M1-04](docs/tasks/M1-04-encrypted-dex-container.md) | 开发中 | Issue #9、`feat/m1-04-encrypted-dex-container`；从 clean main 实现 AHDC v2，不复用已废止的 AHDC v1 候选 |
+| [M1-04](docs/tasks/M1-04-encrypted-dex-container.md) | 待发布 | Issue #9、`feat/m1-04-encrypted-dex-container`；本地实现与独立复核 P0/P1/P2 全零，尚未推送或创建 PR |
 | M1-05、M1-06 | 计划中 | APK 重打包/对齐，然后实现 CLI 与 JSON 报告 |
 | M2 ～ M4 | 未启动 | Runtime、验证矩阵与发布阶段不得提前实现 |
 

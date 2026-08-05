@@ -1,6 +1,6 @@
 # M1-04 local Windows validation
 
-- Timestamp: `2026-08-06T06:59:21+08:00`
+- Timestamp: `2026-08-06T07:05:18+08:00`
 - Branch: `feat/m1-04-encrypted-dex-container`
 - Remediation base commit: `25d12336f912a14d889eb594a089cfe6178047fb`
 - OS: Windows 10 `10.0` x64
@@ -73,9 +73,9 @@ never writes original DEX or compressed plaintext to a standalone file.
 | fixed-RNG AHDC v2 | `3764b908e534ffa5179a9519045ec74a7caa44b30c80447998c593a1ac2fa60d` |
 | cross-language vector JSON | `3b2421fcc91234333d13545826b51fbf0de25c5fa26b39aa17d90a9ff2133afc` |
 | independent Node consumer report | `542ba9db02b643f445fc9194220e7fac6debb28e45089de38403843c78be2b1a` |
-| local self-test report | `3b122877a0008226e274a737c6ff5cb38d988a86c2d880a59be8538d1a649b15` |
-| production build A | `36c6e86dd0c5853081713a7a05228cbb0e65d782986c24169ea84a7a0b7210b2` |
-| production build B | `27a37b7fbd3427073cfd1ccdcbd37176e3f744be9cf3a4d92c263da7609f50b6` |
+| local self-test report | `2968ce0a1b5f29090d79f526f83a81d4a228d5402ec9e8e708aeb4727a19cd2b` |
+| production build A | `11393ba742c23c0ea0057af6a102f5084532fb56948a21e832054180782d5a40` |
+| production build B | `31f943a81729e3224dd729c9b57062f854efb69563da40e962a5ab3cc2b44e62` |
 
 Both production outputs were independently verified. Their CEK, root material,
 Java/native shares, wrapping nonce, build ID, key-slot ID, record nonce prefix,

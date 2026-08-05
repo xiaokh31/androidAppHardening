@@ -1,6 +1,6 @@
 # M1-04 local security scan
 
-Timestamp: `2026-08-06T06:59:21+08:00`
+Timestamp: `2026-08-06T07:05:18+08:00`
 
 Scope:
 
@@ -41,3 +41,8 @@ precise OOM, observer-failure, construction-failure, and mismatch injections. A
 new independent review must target the next frozen commit before publication.
 The same audit also moved ConfigV2/`R_native` construction under transactional
 ownership before the next prefix allocation.
+
+The fifth independent read-only review targeted frozen commit `58352c6de732887cf497de2775bc0fa3021f5332`
+and returned **PASS** with `P0=0`, `P1=0`, and `P2=0`. Its full conclusion is
+archived as `security-review-5.md`. Publication still requires separate user
+authorization and Ubuntu/Windows PR CI.

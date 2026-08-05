@@ -1,6 +1,6 @@
 # M1-04 local security scan
 
-Timestamp: `2026-08-06T06:03:17+08:00`
+Timestamp: `2026-08-06T06:40:13+08:00`
 
 Scope:
 
@@ -32,8 +32,10 @@ HMAC-SHA-256, RFC 5869 extract/expand, independent manifest/record domains,
 canonical 96-bit chunk nonces, complete metadata MAC coverage, complete ConfigV2
 digest binding, and authenticate-before-inflate ordering.
 
-The first and second independent reviews are archived as `security-review-1.md`
-and `security-review-2.md`, both `FAIL`. The second review's OOM ownership finding
-drove allocation-free first-error tracking and transactional sensitive-copy
-construction. A new independent review must target the next frozen commit before
-publication.
+The first three independent reviews are archived as `security-review-1.md`,
+`security-review-2.md`, and `security-review-3.md`, all `FAIL`. Review 3 confirmed
+all dynamic checks but found four remaining pre-owner OOM windows. The remediation
+makes verifier copies transactional, registers each ConfigV2/HKDF derivation
+buffer before the next fallible allocation, and makes the builder own random
+destinations before provider fill. A new independent review must target the next
+frozen commit before publication.

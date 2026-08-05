@@ -467,9 +467,9 @@ object ContainerSelfTest {
         val fixture = fixture(work.resolve("random-failure.apk"), intArrayOf(1_024), seed = 41)
         val observer = RecordingObserver()
         val calls = AtomicInteger()
-        val failing = ContainerRandom { label, size ->
+        val failing = ContainerRandom { label, destination ->
             if (calls.incrementAndGet() == 4) throw IllegalStateException("synthetic RNG failure")
-            ByteArray(size) { (label.length + it + 1).toByte() }
+            destination.indices.forEach { destination[it] = (label.length + it + 1).toByte() }
         }
         expectCode(ContainerErrorCode.CONTAINER_RANDOM_FAILED) {
             DexContainerBuilder(fixture.path, failing, observer, null)
@@ -478,15 +478,20 @@ object ContainerSelfTest {
         check(observer.clearFailures == 0)
         check(!Files.exists(work.resolve("random-failure.ahdc")))
 
-        val zeros = ContainerRandom { _, size -> ByteArray(size) }
+        val zeros = ContainerRandom { _, destination -> destination.fill(0) }
         expectCode(ContainerErrorCode.CONTAINER_RANDOM_FAILED) {
             DexContainerBuilder(fixture.path, zeros, observer, null)
                 .build(fixture.inspection, fixture.signer, work.resolve("random-zero.ahdc"))
         }
 
-        val collidingShares = ContainerRandom { label, size ->
-            if (label == "root" || label == "rJava") ByteArray(size) { 7 }
-            else MessageDigest.getInstance("SHA-256").digest("collision:$label".toByteArray()).copyOf(size)
+        val collidingShares = ContainerRandom { label, destination ->
+            if (label == "root" || label == "rJava") {
+                destination.fill(7)
+            } else {
+                val digest = MessageDigest.getInstance("SHA-256").digest("collision:$label".toByteArray())
+                digest.copyInto(destination, endIndex = destination.size)
+                digest.fill(0)
+            }
         }
         expectCode(ContainerErrorCode.CONTAINER_RANDOM_FAILED) {
             DexContainerBuilder(fixture.path, collidingShares, observer, null)
@@ -554,9 +559,14 @@ object ContainerSelfTest {
 
         val randomObserver = RecordingObserver()
         val calls = AtomicInteger()
-        val oomRandom = ContainerRandom { label, size ->
-            if (calls.incrementAndGet() == 4) throw OutOfMemoryError("rng-injected")
-            ByteArray(size) { (label.length + it + 1).toByte() }
+        var partialRandom: ByteArray? = null
+        val oomRandom = ContainerRandom { label, destination ->
+            if (calls.incrementAndGet() == 4) {
+                destination.fill(91)
+                partialRandom = destination
+                throw OutOfMemoryError("rng-injected")
+            }
+            destination.indices.forEach { destination[it] = (label.length + it + 1).toByte() }
         }
         expectFailure<OutOfMemoryError> {
             DexContainerBuilder(fixture.path, oomRandom, randomObserver, null)
@@ -564,7 +574,8 @@ object ContainerSelfTest {
         }
         check(!Files.exists(work.resolve("oom-random.ahdc")))
         check(randomObserver.clearFailures == 0)
-        check(randomObserver.clearCount >= 3)
+        check(randomObserver.clearCount >= 4)
+        check(requireNotNull(partialRandom).all { it == 0.toByte() })
 
         val cleanupObserver = OomCleanupObserver("manifest.key")
         expectCode(ContainerErrorCode.CONTAINER_KEY_MATERIAL) {
@@ -616,6 +627,88 @@ object ContainerSelfTest {
         }
         check(bindingObserver.clearFailures == 0)
         check(bindingObserver.clearCount >= 3)
+
+        val ownershipOutput = work.resolve("oom-consumption.ahdc")
+        val ownershipResult = DexContainerBuilder(fixture.path, FixedRandom(), RecordingObserver(), null)
+            .build(fixture.inspection, fixture.signer, ownershipOutput)
+        ownershipResult.keyPackagingPlan.consume { material ->
+            val config = material.configV2().copyRemaining()
+            val nativeShare = material.rNative().copyRemaining()
+            try {
+                val recoveryArrays = ArrayList<ByteArray>()
+                val recoveryCalls = AtomicInteger()
+                val recoveryAllocator = SensitiveArrayAllocator { size ->
+                    if (recoveryCalls.incrementAndGet() == 4) throw OutOfMemoryError("recover-allocation-injected")
+                    ByteArray(size).also(recoveryArrays::add)
+                }
+                expectFailure<OutOfMemoryError> {
+                    ConfigV2Codec.recoverCek(
+                        config,
+                        nativeShare,
+                        slice(config, 24, 16),
+                        slice(config, 40, 16),
+                        fixture.signer.currentCertificateSha256,
+                        fixture.inspection.packageNameSha256,
+                        recoveryAllocator,
+                    )
+                }
+                check(recoveryArrays.size == 3)
+                check(recoveryArrays.all { bytes -> bytes.all { it == 0.toByte() } })
+
+                val hkdfArrays = ArrayList<ByteArray>()
+                var prk: ByteArray? = null
+                val hkdfAllocator = SensitiveArrayAllocator { size ->
+                    if (hkdfArrays.isNotEmpty()) throw OutOfMemoryError("hkdf-output-injected")
+                    ByteArray(size).also(hkdfArrays::add)
+                }
+                val extractor = HkdfExtractor { _, _ -> ByteArray(32) { 73 }.also { prk = it } }
+                expectFailure<OutOfMemoryError> {
+                    ContainerCrypto.hkdfSha256(
+                        ByteArray(32) { 11 },
+                        ByteArray(0),
+                        byteArrayOf(1, 2, 3),
+                        allocator = hkdfAllocator,
+                        extractor = extractor,
+                    )
+                }
+                check(hkdfArrays.size == 1 && hkdfArrays.single().all { it == 0.toByte() })
+                check(requireNotNull(prk).all { it == 0.toByte() })
+
+                var verificationPhase = false
+                val verificationCalls = AtomicInteger()
+                var verifierConfigCopy: ByteArray? = null
+                val verifierCopier = SensitiveArrayCopier { source ->
+                    if (!verificationPhase) {
+                        source.copyOf()
+                    } else {
+                        when (verificationCalls.incrementAndGet()) {
+                            1 -> source.copyOf().also { verifierConfigCopy = it }
+                            else -> throw OutOfMemoryError("verifier-native-copy-injected")
+                        }
+                    }
+                }
+                ExpectedBinding(
+                    fixture.inspection.packageName,
+                    fixture.inspection.packageNameSha256,
+                    fixture.signer.currentCertificateSha256,
+                    fixture.signer.lineageCertificateSha256,
+                    fixture.inspection.dexEntries,
+                    config,
+                    nativeShare,
+                    RecordingObserver(),
+                    verifierCopier,
+                ).use { binding ->
+                    verificationPhase = true
+                    expectFailure<OutOfMemoryError> {
+                        DexContainerVerifier(RecordingObserver()).verify(ownershipOutput, binding)
+                    }
+                }
+                check(requireNotNull(verifierConfigCopy).all { it == 0.toByte() })
+            } finally {
+                config.fill(0)
+                nativeShare.fill(0)
+            }
+        }
 
         val lateObserver = OomCleanupObserver("plan.rNative")
         val lateOutput = work.resolve("oom-late.ahdc")
@@ -909,11 +1002,12 @@ object ContainerSelfTest {
 private class FixedRandom : ContainerRandom {
     private var counter = 0
 
-    override fun bytes(label: String, size: Int): ByteArray {
-        require(size in 1..32)
+    override fun fill(label: String, destination: ByteArray) {
+        require(destination.size in 1..32)
         val digest = MessageDigest.getInstance("SHA-256")
             .digest("M1-04:$label:${counter++}".toByteArray(Charsets.UTF_8))
-        return digest.copyOf(size).also { digest.fill(0) }
+        digest.copyInto(destination, endIndex = destination.size)
+        digest.fill(0)
     }
 }
 

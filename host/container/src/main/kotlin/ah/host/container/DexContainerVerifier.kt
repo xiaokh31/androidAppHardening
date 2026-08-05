@@ -17,12 +17,11 @@ class DexContainerVerifier internal constructor(observer: ContainerObserver) {
 
     fun verify(container: Path, expected: ExpectedBinding): DexContainerDescriptor {
         val initialHash = hashContainer(container)
-        val config = expected.config()
-        val nativeShare = expected.nativeShare()
         var cek: ByteArray? = null
         var primaryFailure: Throwable? = null
         try {
-            FileChannel.open(container, StandardOpenOption.READ).use { channel ->
+            return expected.withVerificationMaterial(observer) { config, nativeShare ->
+                FileChannel.open(container, StandardOpenOption.READ).use { channel ->
                 val size = channel.size()
                 if (size <= AhConstants.HEADER_BYTES || size > InspectionLimits.MAX_APK_BYTES) limit("containerSize")
                 val headerBytes = channel.readExact(0, AhConstants.HEADER_BYTES)
@@ -88,7 +87,8 @@ class DexContainerVerifier internal constructor(observer: ContainerObserver) {
                     finalHash.fill(0)
                     throw ContainerException(ContainerErrorCode.CONTAINER_INPUT_CHANGED, "containerChanged")
                 }
-                return descriptor(expected, signer.first, signer.second, records, finalHash)
+                    descriptor(expected, signer.first, signer.second, records, finalHash)
+                }
             }
         } catch (exception: ContainerException) {
             primaryFailure = exception
@@ -101,8 +101,6 @@ class DexContainerVerifier internal constructor(observer: ContainerObserver) {
             primaryFailure = failure
             throw failure
         } finally {
-            wipe("verify.config", config, observer)
-            wipe("verify.rNative", nativeShare, observer)
             cek?.let { wipe("verify.cek", it, observer) }
             initialHash.fill(0)
             observer.finish(primaryFailure)

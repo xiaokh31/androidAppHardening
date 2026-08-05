@@ -188,7 +188,7 @@ class ExpectedBinding internal constructor(
     configV2: ByteArray,
     rNative: ByteArray,
     observer: ContainerObserver,
-    copier: SensitiveArrayCopier = DEFAULT_SENSITIVE_ARRAY_COPIER,
+    private val copier: SensitiveArrayCopier = DEFAULT_SENSITIVE_ARRAY_COPIER,
 ) : AutoCloseable {
     private val observer = cleanupTrackingObserver(observer)
     private val packageDigest: ByteArray
@@ -246,6 +246,22 @@ class ExpectedBinding internal constructor(
     internal fun expectedDex(): List<DexSummary> = ArrayList(dex)
     internal fun config(): ByteArray = config.copyOf()
     internal fun nativeShare(): ByteArray = nativeShare.copyOf()
+
+    internal fun <T> withVerificationMaterial(
+        cleanupObserver: ContainerObserver,
+        action: (config: ByteArray, nativeShare: ByteArray) -> T,
+    ): T {
+        var configCopy: ByteArray? = null
+        var nativeCopy: ByteArray? = null
+        try {
+            configCopy = copier.copy(config)
+            nativeCopy = copier.copy(nativeShare)
+            return action(configCopy, nativeCopy)
+        } finally {
+            configCopy?.let { wipe("verify.config", it, cleanupObserver) }
+            nativeCopy?.let { wipe("verify.rNative", it, cleanupObserver) }
+        }
+    }
 
     override fun close() {
         if (closed.compareAndSet(false, true)) {
@@ -348,20 +364,25 @@ internal fun ByteBuffer.copyRemaining(): ByteArray {
 }
 
 internal fun interface ContainerRandom {
-    fun bytes(label: String, size: Int): ByteArray
+    fun fill(label: String, destination: ByteArray)
 }
 
 internal fun interface SensitiveArrayCopier {
     fun copy(source: ByteArray): ByteArray
 }
 
+internal fun interface SensitiveArrayAllocator {
+    fun allocate(size: Int): ByteArray
+}
+
 internal val DEFAULT_SENSITIVE_ARRAY_COPIER = SensitiveArrayCopier(ByteArray::copyOf)
+internal val DEFAULT_SENSITIVE_ARRAY_ALLOCATOR = SensitiveArrayAllocator(::ByteArray)
 
 internal class SecureContainerRandom private constructor(private val random: SecureRandom) : ContainerRandom {
 
-    override fun bytes(label: String, size: Int): ByteArray = try {
-        if (label.isEmpty() || size <= 0) format("randomRequest")
-        ByteArray(size).also(random::nextBytes)
+    override fun fill(label: String, destination: ByteArray) = try {
+        if (label.isEmpty() || destination.isEmpty()) format("randomRequest")
+        random.nextBytes(destination)
     } catch (exception: RuntimeException) {
         throw ContainerException(ContainerErrorCode.CONTAINER_RANDOM_FAILED, "random", exception)
     }

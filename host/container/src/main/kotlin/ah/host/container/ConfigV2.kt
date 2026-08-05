@@ -78,29 +78,50 @@ internal object ConfigV2Codec {
         expectedKeySlotId: ByteArray,
         expectedSignerSha256: ByteArray,
         expectedPackageNameSha256: ByteArray,
+        allocator: SensitiveArrayAllocator = DEFAULT_SENSITIVE_ARRAY_ALLOCATOR,
     ): ByteArray {
         parseAndValidate(config, expectedBuildId, expectedKeySlotId, expectedSignerSha256)
         if (rNative.size != AhConstants.KEY_BYTES) format("rNative")
-        val rJava = slice(config, 88, AhConstants.KEY_BYTES)
-        val root = ByteArray(AhConstants.KEY_BYTES) { index ->
-            (rNative[index].toInt() xor rJava[index].toInt()).toByte()
-        }
-        val nonce = slice(config, 120, AhConstants.GCM_NONCE_BYTES)
-        val prefix = slice(config, 0, PREFIX_BYTES)
-        val envelope = slice(config, 132, AhConstants.KEY_BYTES + AhConstants.GCM_TAG_BYTES)
+        var rJava: ByteArray? = null
+        var root: ByteArray? = null
+        var nonce: ByteArray? = null
+        var prefix: ByteArray? = null
+        var envelope: ByteArray? = null
         var kek: ByteArray? = null
+        var recoveredCek: ByteArray? = null
+        var succeeded = false
         try {
-            kek = ContainerCrypto.offlineKek(root, expectedBuildId, expectedSignerSha256, expectedPackageNameSha256)
-            val cek = ContainerCrypto.aesGcmDecrypt(kek, nonce, prefix, envelope)
+            val rJavaBytes = allocator.allocate(AhConstants.KEY_BYTES)
+            rJava = rJavaBytes
+            config.copyInto(rJavaBytes, 0, 88, 88 + AhConstants.KEY_BYTES)
+            val rootBytes = allocator.allocate(AhConstants.KEY_BYTES)
+            root = rootBytes
+            for (index in rootBytes.indices) {
+                rootBytes[index] = (rNative[index].toInt() xor rJavaBytes[index].toInt()).toByte()
+            }
+            val nonceBytes = allocator.allocate(AhConstants.GCM_NONCE_BYTES)
+            nonce = nonceBytes
+            config.copyInto(nonceBytes, 0, 120, 120 + AhConstants.GCM_NONCE_BYTES)
+            val prefixBytes = allocator.allocate(PREFIX_BYTES)
+            prefix = prefixBytes
+            config.copyInto(prefixBytes, 0, 0, PREFIX_BYTES)
+            val envelopeBytes = allocator.allocate(AhConstants.KEY_BYTES + AhConstants.GCM_TAG_BYTES)
+            envelope = envelopeBytes
+            config.copyInto(envelopeBytes, 0, 132, 132 + envelopeBytes.size)
+            kek = ContainerCrypto.offlineKek(rootBytes, expectedBuildId, expectedSignerSha256, expectedPackageNameSha256)
+            val cek = ContainerCrypto.aesGcmDecrypt(kek, nonceBytes, prefixBytes, envelopeBytes)
+            recoveredCek = cek
             if (cek.size != AhConstants.KEY_BYTES) format("cek")
+            succeeded = true
             return cek
         } finally {
-            rJava.fill(0)
-            root.fill(0)
-            nonce.fill(0)
-            prefix.fill(0)
-            envelope.fill(0)
+            rJava?.fill(0)
+            root?.fill(0)
+            nonce?.fill(0)
+            prefix?.fill(0)
+            envelope?.fill(0)
             kek?.fill(0)
+            if (!succeeded) recoveredCek?.fill(0)
         }
     }
 

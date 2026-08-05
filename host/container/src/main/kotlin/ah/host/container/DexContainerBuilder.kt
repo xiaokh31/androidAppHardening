@@ -475,14 +475,15 @@ private class BuildSecrets(
             val allocated = arrayOfNulls<ByteArray>(dexCount + 6)
             var allocatedCount = 0
             fun take(label: String, size: Int): ByteArray {
-                val bytes = try {
-                    random.bytes(label, size)
+                val bytes = ByteArray(size)
+                allocated[allocatedCount++] = bytes
+                try {
+                    random.fill(label, bytes)
                 } catch (exception: ContainerException) {
                     throw exception
                 } catch (failure: RuntimeException) {
                     throw ContainerException(ContainerErrorCode.CONTAINER_RANDOM_FAILED, label, failure)
                 }
-                allocated[allocatedCount++] = bytes
                 if (bytes.size != size || bytes.all { it == 0.toByte() }) {
                     bytes.fill(0)
                     throw ContainerException(ContainerErrorCode.CONTAINER_RANDOM_FAILED, label)

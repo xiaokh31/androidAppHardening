@@ -11,8 +11,14 @@ import javax.crypto.Mac
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
+internal fun interface HkdfExtractor {
+    fun extract(salt: ByteArray, ikm: ByteArray): ByteArray
+}
+
 internal object ContainerCrypto {
     private const val HASH_BUFFER_BYTES = 65_536
+    private val EMPTY_BYTES = ByteArray(0)
+    private val DEFAULT_HKDF_EXTRACTOR = HkdfExtractor { salt, ikm -> hmacSha256(salt, ikm) }
 
     fun sha256(vararg values: ByteArray): ByteArray {
         val digest = MessageDigest.getInstance("SHA-256")
@@ -53,29 +59,48 @@ internal object ContainerCrypto {
         throw ContainerException(ContainerErrorCode.CONTAINER_CRYPTO, "hmac", exception)
     }
 
-    fun hkdfSha256(ikm: ByteArray, salt: ByteArray, info: ByteArray, length: Int = AhConstants.KEY_BYTES): ByteArray {
+    fun hkdfSha256(
+        ikm: ByteArray,
+        salt: ByteArray,
+        info: ByteArray,
+        length: Int = AhConstants.KEY_BYTES,
+        allocator: SensitiveArrayAllocator = DEFAULT_SENSITIVE_ARRAY_ALLOCATOR,
+        extractor: HkdfExtractor = DEFAULT_HKDF_EXTRACTOR,
+    ): ByteArray {
         if (length !in 1..(255 * AhConstants.SHA256_BYTES)) limit("hkdfLength")
-        val effectiveSalt = if (salt.isEmpty()) ByteArray(AhConstants.SHA256_BYTES) else salt
-        val prk = hmacSha256(effectiveSalt, ikm)
-        val output = ByteArray(length)
-        var previous = ByteArray(0)
+        var ownedSalt: ByteArray? = null
+        var prk: ByteArray? = null
+        var output: ByteArray? = null
+        var previous: ByteArray? = null
+        var succeeded = false
         var offset = 0
         var counter = 1
         try {
+            val effectiveSalt = if (salt.isEmpty()) {
+                allocator.allocate(AhConstants.SHA256_BYTES).also { ownedSalt = it }
+            } else {
+                salt
+            }
+            val extracted = extractor.extract(effectiveSalt, ikm)
+            prk = extracted
+            val outputBytes = allocator.allocate(length)
+            output = outputBytes
             while (offset < length) {
-                val block = hmacSha256(prk, previous, info, byteArrayOf(counter.toByte()))
-                previous.fill(0)
+                val block = hmacSha256(extracted, previous ?: EMPTY_BYTES, info, byteArrayOf(counter.toByte()))
+                previous?.fill(0)
                 previous = block
                 val count = minOf(block.size, length - offset)
-                block.copyInto(output, offset, 0, count)
+                block.copyInto(outputBytes, offset, 0, count)
                 offset += count
                 counter++
             }
-            return output
+            succeeded = true
+            return outputBytes
         } finally {
-            prk.fill(0)
-            previous.fill(0)
-            if (effectiveSalt !== salt) effectiveSalt.fill(0)
+            prk?.fill(0)
+            previous?.fill(0)
+            ownedSalt?.fill(0)
+            if (!succeeded) output?.fill(0)
         }
     }
 

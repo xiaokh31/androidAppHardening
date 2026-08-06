@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-M0 基础建设与可行性验证已经完成，项目正在顺序执行 M1 Host 处理链。当前仍未提供端到端可用的 APK 加固程序：M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换器、M1-07 AHDC v2 分块认证容器合同和 M1-04 AHDC v2 Host 实现已经完成；M1-05 APK 重打包与对齐已由 PR #39 合并，正在执行合并后 `main` 门禁，完成前不启动 M1-06。
+M0 基础建设与可行性验证已经完成，项目正在顺序执行 M1 Host 处理链。当前仍未提供端到端可用的 APK 加固程序：M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换器、M1-07 AHDC v2 分块认证容器合同、M1-04 AHDC v2 Host 实现和 M1-05 APK 重打包与对齐已经完成；M1-06 CLI 与 JSON 报告尚未启动。
 
 开发者和 Agent 从 [`docs/README_FIRST.md`](docs/README_FIRST.md) 开始。项目统筹状态以 [`HandOff.md`](HandOff.md) 为准。
 
@@ -20,8 +20,8 @@ M0 基础建设与可行性验证已经完成，项目正在顺序执行 M1 Host
 | [M1-03](docs/tasks/M1-03-binary-axml-transformer.md) | 已完成 | Binary AXML 单属性转换器，PR #35 |
 | [M1-07](docs/tasks/M1-07-chunk-authenticated-container-contract.md) | 已完成 | AHDC v2 合同、独立安全复核与双平台门禁，PR #37、Issue #36 |
 | [M1-04](docs/tasks/M1-04-encrypted-dex-container.md) | 已完成 | AHDC v2 Host 容器实现；PR #38、Issue #9、独立安全复核、merger-ready 与 post-merge `main` 门禁均已关闭 |
-| [M1-05](docs/tasks/M1-05-apk-repacker-and-alignment.md) | 合并后验收 | PR #39 已以普通 merge commit 合并、Issue #10 已关闭；等待最终 `main` 双平台 CI 与 strict HandOff 收尾 |
-| M1-06 | 计划中 | CLI 与 JSON 报告；M1-05 合并后门禁完成前不启动 |
+| [M1-05](docs/tasks/M1-05-apk-repacker-and-alignment.md) | 已完成 | PR #39、Issue #10、四轮独立安全复核、merger-ready 与 post-merge `main` 双平台 CI、README 和 strict HandOff 均已关闭 |
+| M1-06 | 计划中 | CLI 与 JSON 报告；等待用户明确启动 |
 | M2 ～ M4 | 未启动 | Runtime、验证矩阵与发布阶段不得提前实现 |
 
 任务按 [`docs/tasks/INDEX.md`](docs/tasks/INDEX.md) 的依赖顺序执行。每个任务只有在 PR 合并、合并后门禁与证据完成后才在本表标记“已完成”；每个任务的收尾协调提交必须同步本 README，避免公开进度长期滞后。

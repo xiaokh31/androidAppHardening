@@ -1,8 +1,8 @@
 # Third-Party Notices
 
-## M0-03 构建工具与直接依赖
+## 固定构建工具与直接依赖
 
-这些工具与插件只用于构建、验证或 CI；M0-03 不分发 Host/Runtime 产品二进制，也未引入 APK 业务处理依赖。Maven artifact 的逐文件 SHA-256 位于 `gradle/verification-metadata.xml`，解析版本位于各模块 `gradle.lockfile`。
+构建/验证工具与 Host 直接依赖共用本表；每行单独声明是否随产品分发。Maven artifact 的逐文件 SHA-256 位于 `gradle/verification-metadata.xml`，解析版本位于各模块 `gradle.lockfile`。
 
 | 名称 | 固定版本或提交 | 官方来源 | 许可证 | 项目用途与分发 |
 | --- | --- | --- | --- | --- |
@@ -11,6 +11,7 @@
 | Kotlin Gradle Plugin | `2.4.10` | Maven Central，`org.jetbrains.kotlin:kotlin-gradle-plugin` | Apache-2.0 | 仅五个 Host 空模块；后续分发边界由实现任务决定 |
 | Android Gradle Plugin | `9.3.0` | Google Maven，`com.android.tools.build:gradle` | Apache-2.0 | Android/Native 空模块构建；不随产品分发 |
 | Android apksig | `9.3.0` | Google Maven，`com.android.tools.build:apksig` | Apache-2.0 | M1-02 Host 输入签名验证；随 Host 产品分发但产品不调用其签名 API |
+| Java Native Access (JNA/JNA Platform) | `5.19.1` | Maven Central；`java-native-access/jna` tag `5.19.1` (`1a91122853f6ab6f1fb2a4a284a6cf2ed8af0a4d`) | LGPL-2.1-or-later or Apache-2.0 | M1-05 Host 在 Windows 调用 `MoveFileExW`/文件 ID、在 Linux 调用 `renameat2(RENAME_NOREPLACE)`，保证原子且不覆盖发布；随 Host 产品分发 |
 | Android SDK Platform | `platforms;android-36` | Android SDK Manager | Android SDK License | 编译 API；不随产品分发 |
 | Android SDK Build Tools | `build-tools;36.1.0` | Android SDK Manager | Android SDK License | Android 构建和后续对齐验证；不随产品分发 |
 | Android NDK | `ndk;29.0.14206865` | Android SDK Manager | Apache-2.0 and bundled third-party notices | 四 ABI 空库构建；M0-03 产物不发布 |

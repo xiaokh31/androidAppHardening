@@ -22,6 +22,7 @@ M0-03 必须以仓库配置固化以下基线，不允许依赖开发者全局�
 | Runtime 最低平台 | `minSdk 29`；fixture `targetSdk 36`，输入 APK 的 targetSdk 保持不变 |
 | Runtime ABI | `armeabi-v7a`、`arm64-v8a`、`x86`、`x86_64` |
 | 签名读取与验证 | Android `apksig` 官方库，版本与 AGP 工具链统一锁定 |
+| Host 原子无覆盖发布 | JNA/JNA Platform `5.19.1`；Maven Central，官方 tag `5.19.1`/commit `1a91122853f6ab6f1fb2a4a284a6cf2ed8af0a4d`；仅桥接 Windows `MoveFileExW`/文件 ID 与 Linux `renameat2(RENAME_NOREPLACE)` |
 | APK 对齐验证 | Build Tools `36.1.0` 中的 `zipalign` |
 | 发布校验和 | SHA-256 |
 | SBOM | CycloneDX JSON |

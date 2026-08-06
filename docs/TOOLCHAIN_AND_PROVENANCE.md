@@ -17,6 +17,7 @@ M0-03 必须以仓库配置固化以下基线，不允许依赖开发者全局�
 | Android SDK | `compileSdk 36`、Platform 36、Build Tools `36.1.0` |
 | Runtime 语言 | Java 17；Android 模块不叠加 Kotlin Android plugin |
 | Native 构建 | Android NDK `29.0.14206865`、CMake `4.1.2`、C++17 |
+| Native 密码后端 | Mbed TLS `4.1.1` 官方完整归档；仅静态链接 bundled TF-PSA-Crypto `1.1.1` |
 | 治理脚本 | Node.js `24.12.0` |
 | Host 测试 | Windows x64 与 Ubuntu x64 |
 | Runtime 最低平台 | `minSdk 29`；fixture `targetSdk 36`，输入 APK 的 targetSdk 保持不变 |
@@ -86,6 +87,10 @@ M0-05 的 GitHub Linux/KVM 验收复用上述 API 29 revision 8 与 API 36 revis
 | Linux/KVM Emulator | `emulator` 37.1.11 build 15917651 | `emulator-linux_x64-15917651.zip` | 334378080 | `1b1f78891abf8ec268264356e1365c25519e8379` | `95771e0ae431897b2a4bd2d97fa095f29a8b0624a7b216baf529f9306161c266` |
 
 机器可读锁位于 `tools/validation/m0-05-linux-kvm-packages.json`。GitHub Actions 将固定归档下载到仓库根的 `.toolchains/android-m0-05-ci/`，先核对长度和 SHA-256，再启动 KVM；不得使用 `sdkmanager` 的浮动 `emulator` 或 system-image 版本代替。
+
+M2-07 的 Native 密码后端固定为 Mbed TLS `4.1.1` 官方 release asset `mbedtls-4.1.1.tar.bz2`：`7099934` bytes，SHA-256 `3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c`；annotated tag object 为 `783058d12831aedd3ef57a64577f6f8a88d23bd3`，指向 commit `0a8fda272a5a0abef3b47c91bed37185d5a726b1`。完整归档内 bundled TF-PSA-Crypto 的实际版本为 `1.1.1`。机器锁位于 `tools/validation/m2-07-native-crypto.json`；归档和解压源码只允许位于仓库根 `.toolchains/native-crypto/` 并保持 Git 忽略。`node tools/validation/verify-m2-07-native-crypto.mjs` 必须在任何 Native 配置前核对长度、SHA-256、许可证和 bundled 版本；Gradle/CMake 不得自行联网。
+
+项目选择上游双许可证中的 Apache-2.0。构建只加入 `tf-psa-crypto` 子项目并静态链接 AES/GCM/SHA-256/HMAC/HKDF 所需对象；不构建或链接 TLS、X.509、RSA/ECC 或 Android 私有 BoringSSL。上游 4.1.1 release body 把 bundled TF-PSA-Crypto 写成 `1.2.0`，但官方完整归档的 CMake/ChangeLog 均为 `1.1.1`；该差异已在 ADR 0009 记录，锁定归档 bytes 是构建事实来源。
 
 Ubuntu 24.04 KVM runner 还固定安装 `libpulse0=1:16.1+dfsg1-2ubuntu10.1`，版本记录在同一机器可读锁的 `host_packages` 中。workflow 必须以精确版本安装并在启动 Emulator 前逐字比对 `dpkg-query` 结果，不得接受仓库候选版本漂移。
 

@@ -59,6 +59,33 @@ jobs:
             "ndk;29.0.14206865" \
             "cmake;4.1.2"
 
+      - name: Prepare verified M2-07 Native crypto source
+        shell: bash
+        run: |
+          archive=".toolchains/native-crypto/downloads/mbedtls-4.1.1.tar.bz2"
+          source_root=".toolchains/native-crypto/src"
+          mkdir -p "$(dirname "$archive")" "$source_root"
+          curl --fail --location --retry 3 \
+            --output "$archive" \
+            "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-4.1.1/mbedtls-4.1.1.tar.bz2"
+          tar -xjf "$archive" -C "$source_root"
+          node tools/validation/verify-m2-07-native-crypto.mjs --self-test
+
+      - name: Run M2-07 Host crypto vectors
+        shell: bash
+        run: |
+          cmake_bin="$ANDROID_HOME/cmake/4.1.2/bin/cmake"
+          ctest_bin="$ANDROID_HOME/cmake/4.1.2/bin/ctest"
+          "$cmake_bin" \
+            -S runtime/native/src/main/cpp \
+            -B runtime/native/build/m2-07-host \
+            -G Ninja \
+            -DCMAKE_MAKE_PROGRAM="$ANDROID_HOME/cmake/4.1.2/bin/ninja" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DAH_MBEDTLS_ROOT="$PWD/.toolchains/native-crypto/src/mbedtls-4.1.1"
+          "$cmake_bin" --build runtime/native/build/m2-07-host --config Release
+          "$ctest_bin" --test-dir runtime/native/build/m2-07-host --output-on-failure
+
       - name: Verify pinned entry points
         shell: bash
         run: |
@@ -158,7 +185,18 @@ jobs:
           for abi in armeabi-v7a arm64-v8a x86 x86_64; do
             file="runtime/native/build/intermediates/stripped_native_libs/debug/stripDebugDebugSymbols/out/lib/$abi/libah_runtime.so"
             test -f "$file"
-            "$ANDROID_HOME/ndk/29.0.14206865/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf" -h "$file"
+            test "$(stat -c%s "$file")" -gt 100000
+            readelf="$ANDROID_HOME/ndk/29.0.14206865/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
+            nm="$ANDROID_HOME/ndk/29.0.14206865/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-nm"
+            "$readelf" -h -d "$file"
+            if "$readelf" -d "$file" | grep -E 'libcrypto|libssl|mbedtls|mbedx509'; then
+              echo "unexpected dynamic crypto/TLS dependency in $file" >&2
+              exit 1
+            fi
+            if "$nm" -D --defined-only "$file" | grep -E '(^| )psa_|(^| )mbedtls_'; then
+              echo "unexpected exported upstream crypto symbol in $file" >&2
+              exit 1
+            fi
           done
 
   windows:
@@ -204,6 +242,39 @@ jobs:
             "ndk;29.0.14206865" `
             "cmake;4.1.2"
 
+      - name: Prepare verified M2-07 Native crypto source
+        shell: pwsh
+        run: |
+          $archiveDir = ".toolchains/native-crypto/downloads"
+          $sourceRoot = ".toolchains/native-crypto/src"
+          $archive = "$archiveDir/mbedtls-4.1.1.tar.bz2"
+          New-Item -ItemType Directory -Force -Path $archiveDir, $sourceRoot | Out-Null
+          curl.exe --fail --location --retry 3 `
+            --output $archive `
+            "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-4.1.1/mbedtls-4.1.1.tar.bz2"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & 7z.exe x $archive "-o$archiveDir" -y
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & 7z.exe x "$archiveDir/mbedtls-4.1.1.tar" "-o$sourceRoot" -y
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tools/validation/verify-m2-07-native-crypto.mjs --self-test
+
+      - name: Run M2-07 Host crypto vectors
+        shell: pwsh
+        run: |
+          $cmake = "$env:ANDROID_HOME/cmake/4.1.2/bin/cmake.exe"
+          $ctest = "$env:ANDROID_HOME/cmake/4.1.2/bin/ctest.exe"
+          & $cmake `
+            -S runtime/native/src/main/cpp `
+            -B runtime/native/build/m2-07-host `
+            -G "Visual Studio 17 2022" `
+            -A x64 `
+            "-DAH_MBEDTLS_ROOT=$pwd/.toolchains/native-crypto/src/mbedtls-4.1.1"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $cmake --build runtime/native/build/m2-07-host --config Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $ctest --test-dir runtime/native/build/m2-07-host -C Release --output-on-failure
+
       - name: Verify pinned entry points
         shell: pwsh
         run: |
@@ -215,7 +286,7 @@ jobs:
       - name: Run Windows checks
         shell: pwsh
         run: |
-          .\gradlew.bat --no-daemon clean check verifyGovernance `
+          .\gradlew.bat --no-daemon clean check verifyGovernance :runtime:native:assemble `
             "-Paapt2Executable=$env:ANDROID_HOME\build-tools\36.1.0\aapt2.exe" `
             "-Paapt2AndroidJar=$env:ANDROID_HOME\platforms\android-36\android.jar"
 
@@ -305,4 +376,25 @@ jobs:
             $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $entry.Key).Hash.ToLowerInvariant()
             if ($actual -ne $entry.Value) { exit 1 }
             Write-Output "$actual  $($entry.Key)"
+          }
+
+      - name: Verify four Native ABIs
+        shell: pwsh
+        run: |
+          $toolRoot = "$env:ANDROID_HOME/ndk/29.0.14206865/toolchains/llvm/prebuilt/windows-x86_64/bin"
+          foreach ($abi in @("armeabi-v7a", "arm64-v8a", "x86", "x86_64")) {
+            $file = "runtime/native/build/intermediates/stripped_native_libs/debug/stripDebugDebugSymbols/out/lib/$abi/libah_runtime.so"
+            if (-not (Test-Path -LiteralPath $file)) { throw "missing $file" }
+            if ((Get-Item -LiteralPath $file).Length -le 100000) { throw "crypto backend was not retained in $file" }
+            $dynamic = & "$toolRoot/llvm-readelf.exe" -h -d $file
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $dynamic
+            if ($dynamic -match "libcrypto|libssl|mbedtls|mbedx509") {
+              throw "unexpected dynamic crypto/TLS dependency in $file"
+            }
+            $exports = & "$toolRoot/llvm-nm.exe" -D --defined-only $file
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            if ($exports -match "(^| )psa_|(^| )mbedtls_") {
+              throw "unexpected exported upstream crypto symbol in $file"
+            }
           }

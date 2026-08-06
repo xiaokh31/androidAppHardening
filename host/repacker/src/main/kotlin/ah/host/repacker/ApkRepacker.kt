@@ -10,7 +10,6 @@ import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
-import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.BasicFileAttributes
 import java.security.MessageDigest
 
@@ -19,6 +18,7 @@ class ApkRepacker internal constructor(
     private val atomicMove: (Path, Path) -> Unit,
 ) {
     constructor() : this(NO_PACKAGE_FAULTS, ::defaultAtomicMove)
+    internal constructor(faults: PackageFaults) : this(faults, ::defaultAtomicMove)
 
     fun repack(request: RepackRequest): OutputVerification {
         var ready: ReadyCandidate? = null
@@ -61,8 +61,12 @@ class ApkRepacker internal constructor(
                                 writer.finish()
                             }
                             prepared.clearPayloads()
+                            val candidateIdentity = FileIdentity.capture(candidate, PackageErrorCode.PACKAGE_WRITE_FAILED, "candidateIdentity")
                             faults.afterCandidateClosed(candidate)
                             val verification = OutputVerifier.verify(candidate, prepared.expected, faults)
+                            if (!candidateIdentity.matches(candidate, requireSamePath = true)) {
+                                packageFailure(PackageErrorCode.OUTPUT_VERIFICATION_FAILED, "candidateIdentity")
+                            }
                             paths.verify(outputMustBeAbsent = true)
                             if (!containerIdentity.matches(request.container.toAbsolutePath().normalize(), requireSamePath = true)) {
                                 packageFailure(PackageErrorCode.PACKAGE_ABI_MISMATCH, "containerIdentity")
@@ -70,7 +74,7 @@ class ApkRepacker internal constructor(
                             if (!MessageDigest.isEqual(archive.fileSha256(), initialInputHash)) {
                                 packageFailure(PackageErrorCode.OUTPUT_INPUT_CHANGED, "inputBeforeCleanup")
                             }
-                            val value = ReadyCandidate(candidate, archive, paths, initialInputHash, verification)
+                            val value = ReadyCandidate(candidate, archive, paths, initialInputHash, candidateIdentity, verification)
                             returned = true
                             value
                         } catch (failure: PackageException) {
@@ -94,10 +98,18 @@ class ApkRepacker internal constructor(
             ready = candidate
             faults.beforeAtomicMove(candidate.path, candidate.paths.output)
             candidate.paths.verify(outputMustBeAbsent = true)
+            if (!candidate.identity.matches(candidate.path, requireSamePath = true)) {
+                packageFailure(PackageErrorCode.OUTPUT_VERIFICATION_FAILED, "candidateIdentity")
+            }
             if (!MessageDigest.isEqual(candidate.archive.fileSha256(), candidate.inputSha256)) {
                 packageFailure(PackageErrorCode.OUTPUT_INPUT_CHANGED, "inputBeforeMove")
             }
-            val candidateIdentity = FileIdentity.capture(candidate.path, PackageErrorCode.PACKAGE_WRITE_FAILED, "candidateIdentity")
+            candidate.closeArchive()
+            faults.beforePublication(candidate.path, candidate.paths.output)
+            candidate.paths.verify(outputMustBeAbsent = true)
+            if (!candidate.identity.matches(candidate.path, requireSamePath = true)) {
+                packageFailure(PackageErrorCode.OUTPUT_VERIFICATION_FAILED, "candidateIdentity")
+            }
             try {
                 atomicMove(candidate.path, candidate.paths.output)
             } catch (_: AtomicMoveNotSupportedException) {
@@ -106,27 +118,12 @@ class ApkRepacker internal constructor(
                 packageFailure(PackageErrorCode.PACKAGE_WRITE_FAILED, "atomicMove")
             }
             published = true
-            faults.afterPublished(candidate.paths.output)
-            candidate.paths.verify(outputMustBeAbsent = false)
-            if (!candidateIdentity.matches(candidate.paths.output)) {
-                packageFailure(PackageErrorCode.OUTPUT_VERIFICATION_FAILED, "publishedIdentity")
-            }
-            if (!MessageDigest.isEqual(candidate.archive.fileSha256(), candidate.inputSha256)) {
-                packageFailure(PackageErrorCode.OUTPUT_INPUT_CHANGED, "inputAfterMove")
-            }
-            if (!MessageDigest.isEqual(candidate.verification.outputSha256, sha256(candidate.paths.output))) {
-                packageFailure(PackageErrorCode.OUTPUT_VERIFICATION_FAILED, "publishedDigest")
-            }
-            candidate.closeArchive()
             completed = true
             return candidate.verification
         } finally {
             ready?.let { candidate ->
                 candidate.closeArchiveQuietly()
                 if (!published) deleteQuietly(candidate.path)
-                if (published && !completed && Files.exists(candidate.paths.output, LinkOption.NOFOLLOW_LINKS)) {
-                    deleteQuietly(candidate.paths.output)
-                }
             }
         }
     }
@@ -168,16 +165,14 @@ class ApkRepacker internal constructor(
             archive.entries.forEach { source ->
                 when {
                     source.name == MANIFEST_PATH -> {
-                        val plan = bytesPlan(
+                        bytesPlan(
                             source.name,
                             request.transformedManifest.bytes,
                             source.method,
                             alignment(source.name, source.method),
                             ExpectedContentKind.MANIFEST,
                             original = source,
-                        )
-                        entries += plan.first
-                        expected += plan.second
+                        ).use { plan -> plan.transferTo(entries, expected) }
                     }
                     isBusinessDex(source.name) || isJarSignatureEntry(source.name) -> deleted += source.name
                     isReservedEntry(source.name) -> packageFailure(PackageErrorCode.PACKAGE_ENTRY_CONFLICT, "reservedEntry")
@@ -213,23 +208,24 @@ class ApkRepacker internal constructor(
             addBytes(entries, expected, CONFIG_PATH, configValue, METHOD_STORED, 4096, ExpectedContentKind.CONFIG)
             runtimes.sortedBy { it.abi.directoryName }.forEach { runtime ->
                 val path = runtimePath(runtime.abi)
-                val pair = bytesPlan(path, runtime.bytes, METHOD_STORED, 16_384, ExpectedContentKind.RUNTIME)
+                bytesPlan(path, runtime.bytes, METHOD_STORED, 16_384, ExpectedContentKind.RUNTIME).use { pair ->
                 val runtimeContract = ExpectedEntry(
-                    pair.second.name,
-                    pair.second.method,
-                    pair.second.crc32,
-                    pair.second.compressedSize,
-                    pair.second.uncompressedSize,
-                    pair.second.alignment,
-                    pair.second.kind,
-                    pair.second.uncompressedSha256,
-                    pair.second.compressedSha256,
+                    pair.expected.name,
+                    pair.expected.method,
+                    pair.expected.crc32,
+                    pair.expected.compressedSize,
+                    pair.expected.uncompressedSize,
+                    pair.expected.alignment,
+                    pair.expected.kind,
+                    pair.expected.uncompressedSha256,
+                    pair.expected.compressedSha256,
                     runtime.abi,
                     runtime.template,
                     runtime.slotOffset,
                 )
-                entries += pair.first.copyWithExpected(runtimeContract)
-                expected += runtimeContract
+                pair.replaceExpected(runtimeContract)
+                pair.transferTo(entries, expected)
+                }
             }
             expectedBuild = buildValue.copyOf()
             expectedSlot = slotValue.copyOf()
@@ -278,9 +274,7 @@ class ApkRepacker internal constructor(
         alignment: Int,
         kind: ExpectedContentKind,
     ) {
-        val pair = bytesPlan(name, bytes, method, alignment, kind)
-        entries += pair.first
-        expected += pair.second
+        bytesPlan(name, bytes, method, alignment, kind).use { plan -> plan.transferTo(entries, expected) }
     }
 
     private fun addFile(
@@ -311,8 +305,12 @@ class ApkRepacker internal constructor(
         alignment: Int,
         kind: ExpectedContentKind,
         original: RawZipEntry? = null,
-    ): Pair<PlannedZipEntry, ExpectedEntry> {
-        val payload = if (method == METHOD_DEFLATED) deflateRaw(bytes) else bytes.copyOf()
+    ): OwnedBytesPlan {
+        var payloadOwner: ByteArray? = if (method == METHOD_DEFLATED) deflateRaw(bytes) else bytes.copyOf()
+        try {
+        val payload = requireNotNull(payloadOwner)
+        val cleanupLabel = "bytesPlan.${kind.name.lowercase()}"
+        faults.afterSensitiveCopy(cleanupLabel)
         val digest = sha256(bytes)
         val contract = ExpectedEntry(
             name,
@@ -325,7 +323,8 @@ class ApkRepacker internal constructor(
             digest,
             sha256(payload),
         )
-        val plan = if (original == null) canonicalPlan(contract, BytesEntryPayload(payload)) else PlannedZipEntry(
+        val bytesPayload = BytesEntryPayload(payload)
+        val plan = if (original == null) canonicalPlan(contract, bytesPayload) else PlannedZipEntry(
             contract,
             original.flags or UTF8_FLAG,
             original.modTime,
@@ -334,9 +333,14 @@ class ApkRepacker internal constructor(
             original.versionNeeded,
             original.internalAttributes,
             original.externalAttributes,
-            BytesEntryPayload(payload),
+            bytesPayload,
         )
-        return plan to contract
+        val owned = OwnedBytesPlan(plan, contract, bytesPayload)
+        payloadOwner = null
+        return owned
+        } finally {
+            payloadOwner?.let { clearSensitive("bytesPlan.${kind.name.lowercase()}", it, faults) }
+        }
     }
 
     private fun canonicalPlan(expected: ExpectedEntry, payload: EntryPayload): PlannedZipEntry = PlannedZipEntry(
@@ -484,6 +488,7 @@ class ApkRepacker internal constructor(
         val archive: RawZipArchive,
         val paths: PathContract,
         val inputSha256: ByteArray,
+        val identity: FileIdentity,
         val verification: OutputVerification,
     ) {
         private var archiveClosed = false
@@ -513,11 +518,11 @@ class ApkRepacker internal constructor(
         private val parentIdentity: FileIdentity,
     ) {
         fun verify(outputMustBeAbsent: Boolean) {
-            if (!inputIdentity.matches(input, requireSamePath = true)) {
-                packageFailure(PackageErrorCode.OUTPUT_INPUT_CHANGED, "inputIdentity")
-            }
             if (!parentIdentity.matches(parent, requireSamePath = true)) {
                 packageFailure(PackageErrorCode.PACKAGE_WRITE_FAILED, "outputParentIdentity")
+            }
+            if (!inputIdentity.matches(input, requireSamePath = true)) {
+                packageFailure(PackageErrorCode.OUTPUT_INPUT_CHANGED, "inputIdentity")
             }
             val exists = Files.exists(output, LinkOption.NOFOLLOW_LINKS)
             if (outputMustBeAbsent && exists) packageFailure(PackageErrorCode.OUTPUT_ALREADY_EXISTS, "outputRace")
@@ -528,15 +533,14 @@ class ApkRepacker internal constructor(
     private data class FileIdentity(
         val realPath: Path,
         val fileKey: String?,
-        val size: Long,
         val directory: Boolean,
     ) {
         fun matches(path: Path, requireSamePath: Boolean = false): Boolean = try {
             val actualReal = path.toRealPath()
             val attributes = Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
             (if (directory) attributes.isDirectory else attributes.isRegularFile) &&
-                (!requireSamePath || actualReal == realPath) &&
-                if (fileKey != null && attributes.fileKey() != null) fileKey == attributes.fileKey().toString() else size == attributes.size()
+                (!requireSamePath || actualReal == realPath) && fileKey != null &&
+                fileKey == NativeFileIdentity.capture(path, attributes)
         } catch (_: IOException) {
             false
         } catch (_: SecurityException) {
@@ -548,7 +552,8 @@ class ApkRepacker internal constructor(
                 val real = path.toRealPath()
                 val attributes = Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
                 if (!attributes.isRegularFile && !attributes.isDirectory) packageFailure(code, field)
-                FileIdentity(real, attributes.fileKey()?.toString(), attributes.size(), attributes.isDirectory)
+                val key = NativeFileIdentity.capture(path, attributes) ?: packageFailure(code, field)
+                FileIdentity(real, key, attributes.isDirectory)
             } catch (_: IOException) {
                 packageFailure(code, field)
             } catch (_: SecurityException) {
@@ -561,7 +566,7 @@ class ApkRepacker internal constructor(
         private val NATIVE_LIBRARY = Regex("lib/([^/]+)/[^/]+\\.so")
 
         private fun defaultAtomicMove(source: Path, destination: Path) {
-            Files.move(source, destination, StandardCopyOption.ATOMIC_MOVE)
+            NativeAtomicPublisher.moveNoReplace(source, destination)
         }
     }
 }
@@ -573,17 +578,30 @@ private fun List<PlannedZipEntry>.clearBytePayloads() {
 private fun List<PlannedZipEntry>.bytePayloadsCleared(): Boolean =
     all { entry -> (entry.payload as? BytesEntryPayload)?.isCleared() != false }
 
-private fun PlannedZipEntry.copyWithExpected(expected: ExpectedEntry): PlannedZipEntry = PlannedZipEntry(
-    expected,
-    flags,
-    modTime,
-    modDate,
-    versionMadeBy,
-    versionNeeded,
-    internalAttributes,
-    externalAttributes,
-    payload,
-)
+private class OwnedBytesPlan(
+    private var plan: PlannedZipEntry?,
+    var expected: ExpectedEntry,
+    private val payload: BytesEntryPayload,
+) : AutoCloseable {
+    fun replaceExpected(value: ExpectedEntry) {
+        val current = requireNotNull(plan)
+        plan = PlannedZipEntry(value, current.flags, current.modTime, current.modDate, current.versionMadeBy,
+            current.versionNeeded, current.internalAttributes, current.externalAttributes, current.payload)
+        expected = value
+    }
+
+    fun transferTo(entries: MutableList<PlannedZipEntry>, expectedEntries: MutableList<ExpectedEntry>) {
+        val value = requireNotNull(plan)
+        entries.add(value)
+        plan = null
+        expectedEntries.add(expected)
+    }
+
+    override fun close() {
+        if (plan != null) payload.clear()
+        plan = null
+    }
+}
 
 private fun java.nio.ByteBuffer.copyBytes(): ByteArray {
     val copy = asReadOnlyBuffer()

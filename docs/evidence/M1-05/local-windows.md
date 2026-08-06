@@ -1,6 +1,6 @@
 # M1-05 local Windows validation
 
-- Timestamp: `2026-08-06T10:25:17+08:00`
+- Timestamp: `2026-08-06T11:03:35+08:00`
 - Branch: `feat/m1-05-apk-repacker-and-alignment`
 - Base commit: `d32abe1d68d41910d72c90c3f9fc3d2831972756`
 - OS: Windows 10 `10.0.19045` x64
@@ -18,7 +18,7 @@ All Gradle work used the repository-local JDK, Gradle installation, and
 | Command | Exit | Result |
 | --- | ---: | --- |
 | `gradle :host:repacker:test --offline --no-daemon -Pkotlin.compiler.execution.strategy=in-process -Paapt2Executable=<Build Tools 36.1.0>/aapt2.exe -Paapt2AndroidJar=<Platform 36>/android.jar` | `0` | Four ABI policies, targeted verifier mutations, identity races, cleanup injection, and external Android tools passed |
-| `gradle clean check verifyGovernance --offline --no-daemon -Pkotlin.compiler.execution.strategy=in-process -Paapt2Executable=... -Paapt2AndroidJar=...` | `0` | `268` tasks; all M1-01 through M1-05 host tests, Android checks, toolchain policy, and governance passed in `1m47s` |
+| `gradle clean check verifyGovernance --offline --no-daemon -Pkotlin.compiler.execution.strategy=in-process -Paapt2Executable=... -Paapt2AndroidJar=...` | `0` | `268` tasks; all M1-01 through M1-05 host tests, Android checks, toolchain policy, and governance passed in `1m42s` |
 | `node tools/governance/validate-project-package.mjs` | `0` | `OK: 27 task cards, 11 core docs, 8 ADRs` |
 | `git diff --check` | `0` | no whitespace errors |
 | `aapt2 dump xmltree output-unsigned.apk --file AndroidManifest.xml` | `0` | binary Manifest parsed and shell factory was present |
@@ -61,7 +61,9 @@ against the exact ConfigV2 material.
 | duplicate name, compressed fixed asset, altered preserved bytes, Runtime slot, DEX/signature return, trailing bytes, descriptor, local-offset overlap | `OUTPUT_VERIFICATION_FAILED` |
 | misaligned fixed asset | `PACKAGE_ALIGNMENT` |
 | input changed or input identity replaced before publish | `OUTPUT_INPUT_CHANGED` |
-| output-parent identity replaced before publish | `PACKAGE_WRITE_FAILED` (real rename on Ubuntu CI; platform-stable report on Windows) |
+| local-header gap, APK-Signing-Block-shaped gap, container/candidate identity replacement | stable verifier or ABI failure with no publication |
+| output target created immediately before publish | `OUTPUT_ALREADY_EXISTS`; attacker bytes retained |
+| output-parent identity replaced before publish | `PACKAGE_WRITE_FAILED`; the real directory swap executes on Windows and Linux |
 | unsupported atomic move | `OUTPUT_ATOMIC_MOVE_UNSUPPORTED` |
 | unsupported native ABI | `COMPAT_ABI_UNSUPPORTED` |
 
@@ -73,10 +75,13 @@ Developer Mode.
 
 Every repack attempt consumes and clears its one-shot `KeyPackagingPlanV2`,
 including same-path and pre-existing-output failures. Publication is invoked
-only after that cleanup has completed. Copy, Runtime materialization, and output
-verification OOM injections all left every observed sensitive owner zeroed;
-the success path also zeroed prepared payloads, Runtime reads, and the expected
-binding contract.
+only after that cleanup has completed. It uses native Windows/Linux atomic
+no-replace primitives, and the move is the final fallible operation. Copy,
+payload-plan construction, Runtime materialization, verifier materialization,
+and verifier OOM injections all left every observed sensitive owner zeroed; the
+success path also zeroed prepared payloads, Runtime reads, and the expected
+binding contract. The canonical failure and cleanup reports contain `28` and
+`6` executed cases respectively.
 
 ## Artifact hashes
 
@@ -86,11 +91,11 @@ final APK hashes on each run.
 
 | Artifact | SHA-256 |
 | --- | --- |
-| synthetic input APK | `94b1e36cad17412bdccaf3a4d27d4768a19833e75b255f9904f803d314a83a57` |
+| synthetic input APK | `b8a4321907017911c22fb24605b795fedcbf3893558345e5d48fdf9070207bab` |
 | transformed Manifest | `e6613214a7437b5edf59198896e5aeedef51938dbf78fcb1673f81591d06eb4d` |
-| AHDC v2 container | `b2ce7cedf6a3fc79926af4dbf8d00a96d75c2e5d97f781711c98cea850af078b` |
-| ConfigV2 | `6483c3b78f52e8099de3bdea3d14b8b74ccb6d6113e6d7e5db34c91d3f55bffe` |
-| candidate/final unsigned APK | `f7228836595666da63d21c2a230e16eeacce7a2b4e15834ad5cbbd0f37945b1e` |
+| AHDC v2 container | `1515a016d39529df4dfce9f8705047ca316b299315f7e1c337da8367a6e6d748` |
+| ConfigV2 | `9bb5130317476c4afb30ce8f98bd242595eaeaf2a288943fef88735377d65033` |
+| candidate/final unsigned APK | `ce8634eb84bd870e13b5146ba2e4a1477649cec85dc0d0abfab4e7afab471eb2` |
 | Runtime `armeabi-v7a` template | `810c8aa6c928a6e789dd0d9c669b819de206064daa090c66e5b6074e3f5e3e10` |
 | Runtime `arm64-v8a` template | `95ae3c5b119329bf0a2c43c1232ab8c6ab184aa68d0b07fffb310a9a7c637be3` |
 | Runtime `x86` template | `84b1b0569724c97bf388f25216f8ba2d1f4eda2c8a1215e4248befab44572d73` |
@@ -102,8 +107,8 @@ reports:
 | Report | SHA-256 |
 | --- | --- |
 | entry manifest | `1a4caf8b01af9326d3ff3e8c9581d4c4ce40e0f7c5aefa1f8ee63ca0b018e201` |
-| error matrix | `dcc13ee7c616027ecce4272e57f7af5fa1b1c0ad25ceea8b3289c383885e7fa5` |
-| cleanup matrix | `5cb6bd2b79ad89204cd188402c3d1a34e80c9e77862f8d57f837cbbeaa8f5c0d` |
+| error matrix | `cc624a344cb82df3074b46ed39c8776c2bdb2e962e22fe3c46a667adf16da21d` |
+| cleanup matrix | `474cd013d51c3b8faec5d25863d31288b4de4af3a095e14c78acb659df4e52b5` |
 | alignment report | `a9b153f5ad01cbc7df8aa993416fb5d819e05ee5029a89bc5edf38b3d80e4a5b` |
 | ABI matrix | `add443496d258e389917d7fabaf1ea7d59b120d7d57b088969bb89976da3f5b8` |
 | external tools | `9723e87adedf97b176ea186baf0309159981e0154fedd25f46841d53f0bde29b` |

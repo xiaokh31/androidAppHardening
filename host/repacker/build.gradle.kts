@@ -9,6 +9,7 @@ dependencies {
     api(project(":host:apk-inspector"))
     api(project(":host:axml"))
     api(project(":host:container"))
+    implementation(libs.jna.platform)
 }
 
 val repackerTest by tasks.registering(JavaExec::class) {

@@ -39,7 +39,12 @@ object OutputVerifier {
                     verificationFailure("plaintextDex")
                 }
                 if (contract.kind == ExpectedContentKind.RUNTIME) {
-                    val runtimeBytes = archive.readUncompressed(entry, MAX_RUNTIME_BYTES)
+                    val runtimeBytes = archive.readUncompressed(
+                        entry,
+                        MAX_RUNTIME_BYTES,
+                        onAllocated = { faults.afterSensitiveCopy("verifier.materialize") },
+                        onFailureCleared = { cleared -> reportSensitiveCleared("verifier.materialize", cleared, faults) },
+                    )
                     try {
                         faults.afterVerifierRuntimeRead()
                         verifyRuntime(runtimeBytes, contract, expected)

@@ -14,7 +14,8 @@ device execution.
   transformed Manifest, AHDC v2 container descriptor/path, bootstrap DEX,
   four-template `RuntimeBundle`, and one-shot `KeyPackagingPlanV2`.
 - Output: an initially absent path on the same file system, atomically
-  published only after independent verification.
+  published only after independent verification through fixed Windows/Linux
+  native no-replace primitives; publication is the final fallible operation.
 - Result: immutable `OutputVerification` with entry changes, hashes,
   alignment offsets, effective ABI set, container/config/Manifest identity,
   input immutability, and `signingPerformed=false`.
@@ -53,12 +54,13 @@ alignment, output publication, and unsigned-output policy.
 4. Alignment tests inspect data offsets and run pinned `zipalign -c -P 16 -v 4`.
 5. External tests run pinned `aapt2 dump xmltree` and require pinned
    `apksigner verify` to fail specifically because the output is unsigned.
-6. Failure tests cover same path, symlink/hardlink alias, existing target,
+6. Failure tests cover same path, symlink/hardlink alias, existing and racing
+   targets, input/container/candidate/parent identity replacement,
    disk-full/write/close faults, verifier tamper, and atomic-move refusal.
 7. Independent verifier mutations cover duplicate/conflicting entries,
    compressed or misaligned fixed assets, altered preserved bytes, Runtime
-   slot mismatch, original DEX presence, signature material, and trailing/gap
-   structures.
+   slot mismatch, original DEX presence, signature material, local and
+   Signing-Block-shaped gaps, and trailing structures.
 8. Canonical entry/error/cleanup/alignment reports are byte-compared on Ubuntu
    and Windows CI; randomized APK/container bytes are excluded from equivalence.
 

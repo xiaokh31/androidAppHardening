@@ -11,6 +11,7 @@
 | Kotlin Gradle Plugin | `2.4.10` | Maven Central，`org.jetbrains.kotlin:kotlin-gradle-plugin` | Apache-2.0 | 仅五个 Host 空模块；后续分发边界由实现任务决定 |
 | Android Gradle Plugin | `9.3.0` | Google Maven，`com.android.tools.build:gradle` | Apache-2.0 | Android/Native 空模块构建；不随产品分发 |
 | Android apksig | `9.3.0` | Google Maven，`com.android.tools.build:apksig` | Apache-2.0 | M1-02 Host 输入签名验证；随 Host 产品分发但产品不调用其签名 API |
+| Java Native Access (JNA/JNA Platform) | `5.6.0` | Maven Central；`java-native-access/jna` tag `5.6.0` | LGPL-2.1-or-later or Apache-2.0 | M1-05 Host 在 Windows 调用 `MoveFileExW`/文件 ID、在 Linux 调用 `renameat2(RENAME_NOREPLACE)`，保证原子且不覆盖发布；随 Host 产品分发 |
 | Android SDK Platform | `platforms;android-36` | Android SDK Manager | Android SDK License | 编译 API；不随产品分发 |
 | Android SDK Build Tools | `build-tools;36.1.0` | Android SDK Manager | Android SDK License | Android 构建和后续对齐验证；不随产品分发 |
 | Android NDK | `ndk;29.0.14206865` | Android SDK Manager | Apache-2.0 and bundled third-party notices | 四 ABI 空库构建；M0-03 产物不发布 |

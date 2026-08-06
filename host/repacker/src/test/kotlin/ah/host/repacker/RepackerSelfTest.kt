@@ -99,14 +99,16 @@ object RepackerSelfTest {
         fun expect(name: String, expected: PackageErrorCode, factory: () -> Fixture, repacker: (Fixture) -> Unit) {
             val fixture = factory()
             val inputHash = sha256(fixture.input)
-            val failure = runCatching { repacker(fixture) }.exceptionOrNull() as? PackageException
-                ?: error("$name did not fail with PackageException")
+            val actualFailure = runCatching { repacker(fixture) }.exceptionOrNull()
+            val failure = actualFailure as? PackageException
+                ?: error("$name did not fail with PackageException: $actualFailure")
             check(failure.code == expected) { "$name: expected $expected, got ${failure.code}" }
             check(MessageDigest.isEqual(inputHash, sha256(fixture.input))) { "$name changed input" }
-            if (fixture.output != fixture.input && name != "pre-existing") {
+            if (fixture.output != fixture.input && name !in setOf("pre-existing", "output-race")) {
                 check(!Files.exists(fixture.output)) { "$name left output" }
             }
             if (name == "pre-existing") check(Files.readAllBytes(fixture.output).contentEquals(byteArrayOf(1)))
+            if (name == "output-race") check(Files.readAllBytes(fixture.output).contentEquals(byteArrayOf(1)))
             check(Files.list(fixture.output.parent).use { paths -> paths.noneMatch { it.fileName.toString().startsWith(".ah-repack-") } })
             assertPlanConsumed(fixture)
             observed[name] = failure.code
@@ -147,6 +149,8 @@ object RepackerSelfTest {
             "trailing-structure" to { bytes -> bytes + byteArrayOf(0x5a) },
             "data-descriptor" to { bytes -> setDescriptor(bytes, CONFIG_PATH) },
             "local-range-overlap" to { bytes -> overlapLocalOffset(bytes) },
+            "local-gap" to { bytes -> insertCentralGap(bytes, byteArrayOf(0)) },
+            "signing-block-gap" to { bytes -> insertCentralGap(bytes, "APK Sig Block 42".toByteArray(StandardCharsets.US_ASCII)) },
         )
         mutations.forEach { (name, mutation) ->
             expect(name, if (name == "misaligned-fixed-asset") PackageErrorCode.PACKAGE_ALIGNMENT else PackageErrorCode.OUTPUT_VERIFICATION_FAILED,
@@ -203,6 +207,47 @@ object RepackerSelfTest {
                     }
                 }
             })
+        expect("container-identity-swap", PackageErrorCode.PACKAGE_ABI_MISMATCH,
+            { buildFixture(root.resolve("fail-container-identity"), emptyList(), manifest, bundle) },
+            { fixture ->
+                val container = fixture.request.container
+                val displaced = container.resolveSibling("payload-original.ahdc")
+                try {
+                    ApkRepacker(object : PackageFaults {
+                        override fun afterCandidateClosed(candidate: Path) {
+                            Files.move(container, displaced)
+                            Files.copy(displaced, container)
+                        }
+                    }, ::atomicMove).repack(fixture.request)
+                } finally {
+                    Files.deleteIfExists(container)
+                    if (Files.exists(displaced)) Files.move(displaced, container)
+                }
+            })
+        expect("candidate-identity-swap", PackageErrorCode.OUTPUT_VERIFICATION_FAILED,
+            { buildFixture(root.resolve("fail-candidate-identity"), emptyList(), manifest, bundle) },
+            { fixture ->
+                var displaced: Path? = null
+                try {
+                    ApkRepacker(object : PackageFaults {
+                        override fun beforePublication(candidate: Path, output: Path) {
+                            val backup = candidate.resolveSibling("${candidate.fileName}.original")
+                            Files.move(candidate, backup)
+                            Files.copy(backup, candidate)
+                            displaced = backup
+                        }
+                    }, ::atomicMove).repack(fixture.request)
+                } finally {
+                    displaced?.let(Files::deleteIfExists)
+                }
+            })
+        expect("output-race", PackageErrorCode.OUTPUT_ALREADY_EXISTS,
+            { buildFixture(root.resolve("fail-output-race"), emptyList(), manifest, bundle) },
+            { fixture -> ApkRepacker(object : PackageFaults {
+                override fun beforePublication(candidate: Path, output: Path) {
+                    Files.write(output, byteArrayOf(1))
+                }
+            }).repack(fixture.request) })
         expect("atomic-move", PackageErrorCode.OUTPUT_ATOMIC_MOVE_UNSUPPORTED,
             { buildFixture(root.resolve("fail-atomic"), emptyList(), manifest, bundle) },
             { fixture -> ApkRepacker(NO_PACKAGE_FAULTS) { source, target ->
@@ -236,15 +281,14 @@ object RepackerSelfTest {
         }
         observed["symlink-alias"] = PackageErrorCode.OUTPUT_PATH_ALIAS
 
-        if (!isWindows()) {
-            expect("parent-identity-swap", PackageErrorCode.PACKAGE_WRITE_FAILED,
+        expect("parent-identity-swap", PackageErrorCode.PACKAGE_WRITE_FAILED,
                 { buildFixture(root.resolve("fail-parent-identity"), emptyList(), manifest, bundle) },
                 { fixture ->
                     val parent = fixture.output.parent
                     val displaced = parent.resolveSibling("${parent.fileName}-original")
                     try {
                         ApkRepacker(object : PackageFaults {
-                            override fun beforeAtomicMove(candidate: Path, output: Path) {
+                            override fun beforePublication(candidate: Path, output: Path) {
                                 Files.move(parent, displaced)
                                 Files.createDirectory(parent)
                             }
@@ -259,9 +303,6 @@ object RepackerSelfTest {
                         }
                     }
                 })
-        } else {
-            observed["parent-identity-swap"] = PackageErrorCode.PACKAGE_WRITE_FAILED
-        }
 
         val unsupported = buildFixture(root.resolve("fail-abi"), listOf("mips"), manifest, bundle)
         val abiFailure = runCatching { ApkRepacker().repack(unsupported.request) }.exceptionOrNull() as? PackageException
@@ -317,7 +358,9 @@ object RepackerSelfTest {
     private fun sensitiveCleanupMatrix(root: Path, manifest: ManifestFixture, bundle: RuntimeBundle) {
         val cases = linkedMapOf<String, (CleanupFaults) -> Unit>(
             "copy-oom" to { faults -> faults.failAfterCopy = "prepare.config" },
+            "payload-plan-oom" to { faults -> faults.failAfterCopy = "bytesPlan.config" },
             "materialization-oom" to { faults -> faults.failAfterCopy = "materializer.runtime.armeabi-v7a" },
+            "verifier-materialize-oom" to { faults -> faults.failAfterCopy = "verifier.materialize" },
             "verifier-oom" to { faults -> faults.failVerifier = true },
             "success" to { _ -> },
         )
@@ -598,6 +641,17 @@ object RepackerSelfTest {
         check(records.size >= 2)
         putTestU4(bytes, records[1].centralOffset + 42, records[0].localOffset.toLong())
         return bytes
+    }
+
+    private fun insertCentralGap(bytes: ByteArray, gap: ByteArray): ByteArray {
+        val eocd = findSignature(bytes, EOCD_SIGNATURE, bytes.size - EOCD_FIXED_BYTES)
+        val central = leU4(bytes, eocd + 16).toInt()
+        val shifted = ByteArray(bytes.size + gap.size)
+        bytes.copyInto(shifted, 0, 0, central)
+        gap.copyInto(shifted, central)
+        bytes.copyInto(shifted, central + gap.size, central, bytes.size)
+        putTestU4(shifted, eocd + gap.size + 16, central.toLong() + gap.size)
+        return shifted
     }
 
     private fun misalignEntry(bytes: ByteArray, name: String): ByteArray {

@@ -42,7 +42,10 @@ internal class RawZipArchive private constructor(
     val centralOffset: Long,
     val fileSize: Long,
 ) : AutoCloseable {
-    fun fileSha256(): ByteArray = digestRange(0, fileSize)
+    fun fileSha256(): ByteArray {
+        if (channel.size() != fileSize) packageFailure(PackageErrorCode.OUTPUT_INPUT_CHANGED, "inputSize")
+        return digestRange(0, fileSize)
+    }
 
     fun compressedSha256(entry: RawZipEntry): ByteArray = digestRange(entry.dataOffset, entry.compressedSize)
 
@@ -68,17 +71,40 @@ internal class RawZipArchive private constructor(
         return digest.digest()
     }
 
-    fun readUncompressed(entry: RawZipEntry, limit: Int): ByteArray {
+    fun readUncompressed(
+        entry: RawZipEntry,
+        limit: Int,
+        onAllocated: () -> Unit = {},
+        onFailureCleared: (Boolean) -> Unit = {},
+    ): ByteArray {
         if (entry.uncompressedSize > limit.toLong()) zipFailure("materializeLimit")
-        val output = ByteArrayOutputStream(entry.uncompressedSize.toInt())
-        when (entry.method) {
-            METHOD_STORED -> transferRange(entry.dataOffset, entry.compressedSize) { bytes, count -> output.write(bytes, 0, count) }
-            METHOD_DEFLATED -> inflate(entry) { bytes, count -> output.write(bytes, 0, count) }
-            else -> zipFailure("method")
+        var owner: ByteArray? = ByteArray(entry.uncompressedSize.toInt())
+        try {
+            val result = requireNotNull(owner)
+            onAllocated()
+            var offset = 0
+            fun consume(bytes: ByteArray, count: Int) {
+                if (count < 0 || offset > result.size - count) zipFailure("materializeSize")
+                bytes.copyInto(result, offset, 0, count)
+                offset += count
+            }
+            when (entry.method) {
+                METHOD_STORED -> {
+                    if (entry.compressedSize != entry.uncompressedSize) zipFailure("storedSize")
+                    transferRange(entry.dataOffset, entry.compressedSize, ::consume)
+                }
+                METHOD_DEFLATED -> inflate(entry, ::consume)
+                else -> zipFailure("method")
+            }
+            if (offset.toLong() != entry.uncompressedSize) zipFailure("materializeSize")
+            owner = null
+            return result
+        } finally {
+            owner?.let { bytes ->
+                bytes.fill(0)
+                try { onFailureCleared(bytes.all { it == 0.toByte() }) } catch (_: Throwable) { /* cleanup wins */ }
+            }
         }
-        val result = output.toByteArray()
-        if (result.size.toLong() != entry.uncompressedSize) zipFailure("materializeSize")
-        return result
     }
 
     fun uncompressedPrefix(entry: RawZipEntry, count: Int): ByteArray {
@@ -420,7 +446,7 @@ internal interface PackageFaults {
     fun allowedWrite(position: Long, requested: Int): Int = requested
     fun afterCandidateClosed(candidate: Path) = Unit
     fun beforeAtomicMove(candidate: Path, output: Path) = Unit
-    fun afterPublished(output: Path) = Unit
+    fun beforePublication(candidate: Path, output: Path) = Unit
     fun beforeWriterClose() = Unit
     fun afterSensitiveCopy(label: String) = Unit
     fun afterVerifierRuntimeRead() = Unit

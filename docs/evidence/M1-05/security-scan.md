@@ -1,6 +1,6 @@
 # M1-05 local security scan
 
-Timestamp: `2026-08-06T10:25:17+08:00`
+Timestamp: `2026-08-06T11:03:35+08:00`
 
 Scope:
 
@@ -19,9 +19,9 @@ Results:
   manifest/signature reason;
 - no client APK, client path, certificate body, plaintext DEX dump, reusable key,
   token, credential, or UTF-8 replacement character is present;
-- one read-only input channel is held for inspection, raw entry transfer, and
-  every pre/post-publication hash; input, container, candidate, and output-parent
-  identities are captured and revalidated around the atomic move;
+- one read-only input channel is held for inspection and raw entry transfer;
+  input, container, candidate, and output-parent identities are captured and
+  revalidated before publication using fail-closed platform file identities;
 - entries are never extracted by untrusted name; the writer consumes bounded
   buffers, in-memory approved replacements, or the authorized container path;
 - ZIP64, encryption, unsupported flags/methods, unsafe or normalized duplicate
@@ -33,14 +33,17 @@ Results:
   metadata, compressed/uncompressed hashes, alignment, fixed-entry bindings,
   Runtime slots, ABI set, signature absence, and plaintext DEX absence before the
   atomic move;
-- output publication runs only after one-shot key-plan cleanup, has no
-  non-atomic fallback, and targeted structural/content/alignment, identity-swap,
-  write, disk, close, verification, and move failures leave no candidate or
-  published success output;
+- output publication runs only after one-shot key-plan cleanup, uses fixed
+  Windows/Linux native atomic no-replace primitives with no fallback, and is the
+  final fallible operation; targeted structural/content/alignment, gap,
+  identity-swap, output-race, write, disk, close, verification, and move failures
+  leave no candidate or published success output;
 - ConfigV2, `R_native`, build/key-slot IDs, materialized Runtime bytes, prepared
   payloads, verifier Runtime reads, digests, inflate buffers, and transfer
-  buffers have transactional owners; copy/materialization/verifier OOM and
-  normal-success probes observe zeroed cleanup;
+  buffers have transactional owners; `OwnedBytesPlan` covers construction and
+  ownership transfer, Runtime reads materialize directly into one clearable
+  array, and copy/plan/materialization/verifier OOM plus normal-success probes
+  observe zeroed cleanup;
 - exception messages expose stable codes and field labels only, never absolute
   paths, entry names, key material, package identifiers, or content bytes;
 - no claim of absolute, unbreakable, or impossible-to-extract protection was

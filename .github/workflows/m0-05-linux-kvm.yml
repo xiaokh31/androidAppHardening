@@ -134,6 +134,19 @@ jobs:
           echo "$sdk_root/platform-tools" >> "$GITHUB_PATH"
           echo "$sdk_root/emulator" >> "$GITHUB_PATH"
 
+      - name: Prepare verified M2-07 Native crypto source
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive=".toolchains/native-crypto/downloads/mbedtls-4.1.1.tar.bz2"
+          source_root=".toolchains/native-crypto/src"
+          mkdir -p "$(dirname "$archive")" "$source_root"
+          curl --fail --location --retry 3 \
+            --output "$archive" \
+            "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-4.1.1/mbedtls-4.1.1.tar.bz2"
+          tar -xjf "$archive" -C "$source_root"
+          node tools/validation/verify-m2-07-native-crypto.mjs --self-test
+
       - name: Build signed Release/R8 fixtures in two passes
         shell: bash
         run: |

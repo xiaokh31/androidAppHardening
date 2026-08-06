@@ -245,18 +245,22 @@ jobs:
       - name: Prepare verified M2-07 Native crypto source
         shell: pwsh
         run: |
-          $archiveDir = ".toolchains/native-crypto/downloads"
-          $sourceRoot = ".toolchains/native-crypto/src"
-          $archive = "$archiveDir/mbedtls-4.1.1.tar.bz2"
+          $archiveDir = Join-Path $pwd ".toolchains/native-crypto/downloads"
+          $sourceRoot = Join-Path $pwd ".toolchains/native-crypto/src"
+          $archive = Join-Path $archiveDir "mbedtls-4.1.1.tar.bz2"
+          $cmake = "$env:ANDROID_HOME/cmake/4.1.2/bin/cmake.exe"
           New-Item -ItemType Directory -Force -Path $archiveDir, $sourceRoot | Out-Null
           curl.exe --fail --location --retry 3 `
             --output $archive `
             "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-4.1.1/mbedtls-4.1.1.tar.bz2"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & 7z.exe x $archive "-o$archiveDir" -y
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & 7z.exe x "$archiveDir/mbedtls-4.1.1.tar" "-o$sourceRoot" -y
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Push-Location $sourceRoot
+          try {
+            & $cmake -E tar xjf $archive
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            Pop-Location
+          }
           node tools/validation/verify-m2-07-native-crypto.mjs --self-test
 
       - name: Run M2-07 Host crypto vectors

@@ -133,6 +133,21 @@ jobs:
             echo "$actual  $file"
           done
 
+      - name: Verify M1-06 byte-identical CLI reports
+        shell: bash
+        run: |
+          declare -A expected=(
+            ["host/cli/build/reports/m1-06/integration/normalized-success.json"]="71052641e1e8933b6104087362180125f88b4ff8dfe4a34b7e4851b1e304c213"
+            ["host/cli/build/reports/m1-06/integration/error-matrix.json"]="9de958b0855ec939d9f7523880552e2962b4144dbea76fcc37d393d9397e785e"
+            ["host/cli/build/reports/m1-06/integration/cleanup-matrix.json"]="03f9f1b80b7a562db4d406fdda23deab03b688bc87fd50fb8d913283da956598"
+            ["host/cli/build/reports/m1-06/unit/path-error-matrix.json"]="ea48b25b0c8f561bb533f0df578a0755f27a6a0c257ffd600a976c0687b1e4a5"
+          )
+          for file in "${!expected[@]}"; do
+            actual="$(sha256sum "$file" | awk '{print $1}')"
+            test "$actual" = "${expected[$file]}"
+            echo "$actual  $file"
+          done
+
       - name: Test dependency verification failure
         shell: bash
         run: node tools/validation/test-dependency-verification.mjs
@@ -270,6 +285,21 @@ jobs:
             "host/repacker/build/reports/m1-05/alignment-report.json" = "a9b153f5ad01cbc7df8aa993416fb5d819e05ee5029a89bc5edf38b3d80e4a5b"
             "host/repacker/build/reports/m1-05/abi-matrix.json" = "add443496d258e389917d7fabaf1ea7d59b120d7d57b088969bb89976da3f5b8"
             "host/repacker/build/reports/m1-05/external-tools.json" = "9723e87adedf97b176ea186baf0309159981e0154fedd25f46841d53f0bde29b"
+          }
+          foreach ($entry in $expected.GetEnumerator()) {
+            $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $entry.Key).Hash.ToLowerInvariant()
+            if ($actual -ne $entry.Value) { exit 1 }
+            Write-Output "$actual  $($entry.Key)"
+          }
+
+      - name: Verify M1-06 byte-identical CLI reports
+        shell: pwsh
+        run: |
+          $expected = @{
+            "host/cli/build/reports/m1-06/integration/normalized-success.json" = "71052641e1e8933b6104087362180125f88b4ff8dfe4a34b7e4851b1e304c213"
+            "host/cli/build/reports/m1-06/integration/error-matrix.json" = "9de958b0855ec939d9f7523880552e2962b4144dbea76fcc37d393d9397e785e"
+            "host/cli/build/reports/m1-06/integration/cleanup-matrix.json" = "03f9f1b80b7a562db4d406fdda23deab03b688bc87fd50fb8d913283da956598"
+            "host/cli/build/reports/m1-06/unit/path-error-matrix.json" = "ea48b25b0c8f561bb533f0df578a0755f27a6a0c257ffd600a976c0687b1e4a5"
           }
           foreach ($entry in $expected.GetEnumerator()) {
             $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $entry.Key).Hash.ToLowerInvariant()

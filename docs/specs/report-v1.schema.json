@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xiaokh31/androidAppHardening/docs/specs/report-v1.schema.json",
+  "title": "Android App Hardening Protection Report V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "tool", "result", "input", "output", "application", "signing", "dex", "abi", "compatibility", "stages", "size", "errors"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "const": "android-app-hardening" },
+        "version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "error_code", "started_at", "finished_at"],
+      "properties": {
+        "status": { "enum": ["success", "rejected", "failed"] },
+        "error_code": { "type": ["string", "null"] },
+        "started_at": { "type": "string", "format": "date-time" },
+        "finished_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "input": { "$ref": "#/$defs/input" },
+    "output": { "$ref": "#/$defs/output" },
+    "application": { "$ref": "#/$defs/application" },
+    "signing": { "$ref": "#/$defs/signing" },
+    "dex": { "$ref": "#/$defs/dex" },
+    "abi": { "$ref": "#/$defs/abi" },
+    "compatibility": { "$ref": "#/$defs/compatibility" },
+    "stages": {
+      "type": "array",
+      "maxItems": 7,
+      "items": { "$ref": "#/$defs/stage" }
+    },
+    "size": { "$ref": "#/$defs/size" },
+    "errors": {
+      "type": "array",
+      "maxItems": 1,
+      "items": { "$ref": "#/$defs/error" }
+    }
+  },
+  "$defs": {
+    "nullableString": { "type": ["string", "null"] },
+    "nullableInteger": { "type": ["integer", "null"] },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "nullableSha256": { "anyOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+    "basename": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "input": {
+      "type": "object", "additionalProperties": false,
+      "required": ["basename", "path_token", "sha256"],
+      "properties": {
+        "basename": { "$ref": "#/$defs/basename" },
+        "path_token": { "$ref": "#/$defs/sha256" },
+        "sha256": { "$ref": "#/$defs/nullableSha256" }
+      }
+    },
+    "output": {
+      "type": "object", "additionalProperties": false,
+      "required": ["basename", "path_token", "report_basename", "report_path_token", "sha256", "manifest_sha256", "container_sha256", "config_sha256"],
+      "properties": {
+        "basename": { "$ref": "#/$defs/basename" },
+        "path_token": { "$ref": "#/$defs/sha256" },
+        "report_basename": { "$ref": "#/$defs/basename" },
+        "report_path_token": { "$ref": "#/$defs/sha256" },
+        "sha256": { "$ref": "#/$defs/nullableSha256" },
+        "manifest_sha256": { "$ref": "#/$defs/nullableSha256" },
+        "container_sha256": { "$ref": "#/$defs/nullableSha256" },
+        "config_sha256": { "$ref": "#/$defs/nullableSha256" }
+      }
+    },
+    "application": {
+      "type": "object", "additionalProperties": false,
+      "required": ["package_name", "min_sdk", "target_sdk", "application_class", "original_factory", "shell_factory"],
+      "properties": {
+        "package_name": { "$ref": "#/$defs/nullableString" },
+        "min_sdk": { "$ref": "#/$defs/nullableInteger" },
+        "target_sdk": { "$ref": "#/$defs/nullableInteger" },
+        "application_class": { "$ref": "#/$defs/nullableString" },
+        "original_factory": { "$ref": "#/$defs/nullableString" },
+        "shell_factory": { "$ref": "#/$defs/nullableString" }
+      }
+    },
+    "signing": {
+      "type": "object", "additionalProperties": false,
+      "required": ["input_verified", "current_certificate_sha256", "lineage_certificate_sha256", "verified_schemes", "required", "performed"],
+      "properties": {
+        "input_verified": { "type": "boolean" },
+        "current_certificate_sha256": { "$ref": "#/$defs/nullableSha256" },
+        "lineage_certificate_sha256": { "type": "array", "maxItems": 16, "items": { "$ref": "#/$defs/sha256" } },
+        "verified_schemes": { "type": "array", "items": { "enum": ["V1", "V2", "V3", "V31", "V4"] } },
+        "required": { "const": true },
+        "performed": { "const": false }
+      }
+    },
+    "dexEntry": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "ordinal", "bytes", "sha256"],
+      "properties": {
+        "name": { "type": "string" },
+        "ordinal": { "type": "integer", "minimum": 1 },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "dex": {
+      "type": "object", "additionalProperties": false,
+      "required": ["count", "entries", "container_major", "container_minor"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 0, "maximum": 64 },
+        "entries": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/dexEntry" } },
+        "container_major": { "$ref": "#/$defs/nullableInteger" },
+        "container_minor": { "$ref": "#/$defs/nullableInteger" }
+      }
+    },
+    "abi": {
+      "type": "object", "additionalProperties": false,
+      "required": ["input", "output"],
+      "properties": {
+        "input": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "output": { "type": "array", "items": { "enum": ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"] }, "uniqueItems": true }
+      }
+    },
+    "compatibility": {
+      "type": "object", "additionalProperties": false,
+      "required": ["supported", "rules_version", "findings"],
+      "properties": {
+        "supported": { "type": "boolean" },
+        "rules_version": { "$ref": "#/$defs/nullableString" },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["marker_id", "category"],
+            "properties": { "marker_id": { "type": "string" }, "category": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "stage": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "status", "duration_ms"],
+      "properties": {
+        "id": { "enum": ["inspect", "signer", "manifest", "container", "package", "verify", "publish"] },
+        "status": { "enum": ["success", "failed"] },
+        "duration_ms": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "size": {
+      "type": "object", "additionalProperties": false,
+      "required": ["input_bytes", "output_bytes", "delta_bytes"],
+      "properties": {
+        "input_bytes": { "$ref": "#/$defs/nullableInteger" },
+        "output_bytes": { "$ref": "#/$defs/nullableInteger" },
+        "delta_bytes": { "$ref": "#/$defs/nullableInteger" }
+      }
+    },
+    "error": {
+      "type": "object", "additionalProperties": false,
+      "required": ["code", "stage", "message_id"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1 },
+        "stage": { "enum": ["inspect", "signer", "manifest", "container", "package", "verify", "publish"] },
+        "message_id": { "type": "string", "pattern": "^[a-z0-9_.]+$" }
+      }
+    }
+  }
+}

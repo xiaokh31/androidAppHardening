@@ -273,6 +273,7 @@ jobs:
             -B runtime/native/build/m2-07-host `
             -G "Visual Studio 17 2022" `
             -A x64 `
+            "-DCMAKE_GENERATOR_INSTANCE=C:/Program Files/Microsoft Visual Studio/2022/Enterprise" `
             "-DAH_MBEDTLS_ROOT=$pwd/.toolchains/native-crypto/src/mbedtls-4.1.1"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $cmake --build runtime/native/build/m2-07-host --config Release

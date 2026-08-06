@@ -7,7 +7,7 @@ updated_by: /root
 state: active
 source_branch: feat/m1-05-apk-repacker-and-alignment
 base_commit: d32abe1d68d41910d72c90c3f9fc3d2831972756
-working_tree: dirty
+working_tree: clean
 current_milestone: M1
 active_task: M1-05
 next_owner: /root
@@ -998,7 +998,7 @@ next_owner: /root
 ### M1-05 local implementation validation
 
 - task_id: M1-05
-- git_commit: a17bc478713405eef2f0bc3454ba6ec48d91e88a
+- git_commit: 8f07e686c414d86b19740e71cf8d51e4e4e49fc3
 - command: clean `:host:repacker:test`; pinned `aapt2 dump xmltree`, `zipalign -c -P 16 -v 4`, and unsigned `apksigner verify`; repository `check verifyGovernance`; deterministic report hash gates; diff and security scan
 - exit_code: 0
 - environment: Windows 10.0.19045 x64; Eclipse Temurin 17.0.19; Gradle 9.5.0; Build Tools 36.1.0; AAPT2 2.20-14042983; apksigner 0.9; no device, emulator, or download

@@ -2,12 +2,12 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-06T10:25:17+08:00
+updated_at: 2026-08-06T10:28:00+08:00
 updated_by: /root
 state: active
 source_branch: feat/m1-05-apk-repacker-and-alignment
 base_commit: d32abe1d68d41910d72c90c3f9fc3d2831972756
-working_tree: dirty
+working_tree: clean
 current_milestone: M1
 active_task: M1-05
 next_owner: /root
@@ -26,7 +26,7 @@ next_owner: /root
 - 实现与验收边界归档于 `docs/evidence/M1-05/implementation-plan.md`。ADR 0005/0006/0007/0008 已固定 ABI、NativeShareSlotV1、sourceDir 资产和 AHDC v2 合同，无需新 ADR；独立复核者固定为 `m1_05_security_review`，仅在 clean 冻结提交后启动。
 - `host/repacker` 已完成 raw ZIP 白名单重建、精确签名材料删除、四 ABI Runtime materialization、4 KiB/16 KiB 对齐、AHDC v2 重新认证、独立候选重读和无降级原子发布。Windows clean 268-task 根回归、Governance、固定 Android 工具、23 项失败矩阵与四项敏感清理矩阵均 PASS；证据归档于 `docs/evidence/M1-05/local-windows.md` 与 `security-scan.md`。
 - 首轮独立只读 `m1_05_security_review` 对冻结提交 `bb748f68ec3cfac255124c6bdfd0bbb242bed1c1` 判定 FAIL：`P0=0`、`P1=4`、`P2=1`。plan cleanup/发布顺序、敏感数组事务所有权、文件身份 TOCTOU、缺失的定向 verifier mutation 矩阵和异常 entry 名脱敏均须修复；旧冻结点已废止，完整结论归档于 `docs/evidence/M1-05/security-review-1.md`。
-- 修复候选已把所有失败纳入一次性 plan 消费并在清理后发布，为敏感数组建立事务 owner，绑定输入/container/父目录/candidate 文件身份，加入 inode/父目录替换注入、十类定向 ZIP 变异、恶意名称脱敏与精确 unsigned reason 验证；本地门禁已通过，下一步只允许提交并生成新的 clean 冻结 SHA 后执行 `m1_05_security_review_2`。
+- 修复提交 `c1c1f3006bc57754ba7637653d9c5b1bb1838e93` 已把所有失败纳入一次性 plan 消费并在清理后发布，为敏感数组建立事务 owner，绑定输入/container/父目录/candidate 文件身份，加入 inode/父目录替换注入、十类定向 ZIP 变异、恶意名称脱敏与精确 unsigned reason 验证；本地门禁已通过，当前协调提交完成后即形成新的 clean review HEAD，只允许执行 `m1_05_security_review_2`。
 - PR [#38](https://github.com/xiaokh31/androidAppHardening/pull/38) 已按用户授权转为 ready，并以 expected-head 保护的普通 merge commit `f908861cbb61e79e7c3127fd5216d4a6f8c6e3e1` 合并到 `main`；唯一 tracking Issue [#9](https://github.com/xiaokh31/androidAppHardening/issues/9) 已关闭。
 - 旧本地同名分支停在失败复核提交 `ca3d14147b88991c45d539e90b1f42dc95116860`，已无损重命名为 `spike/m1-04-rejected-ahdc-v1`。新任务分支从最新 main 创建，不 merge/cherry-pick/复用废止 AHDC v1 实现。
 - M1-04 采用 `pre-cli` 验证模式，只实现 `host:container` 的 AHDC v2 builder/verifier、768-byte ConfigV2、不可变 descriptor、一次性 `KeyPackagingPlanV2`、规范向量与失败关闭测试；本轮不启动设备或模拟器。
@@ -146,7 +146,7 @@ next_owner: /root
 | M1-03 | `/root` | `feat/m1-03-binary-axml-transformer` | done | M1-01, M0-05 | PR #35、Issue #8、独立复核、三套设备/CI 矩阵和 main strict HandOff 均已关闭 |
 | M1-07 | `/root` | `docs/m1-07-chunk-authenticated-container-contract` | done | M1-02 | PR #37、Issue #36、独立复核、双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-04 | `/root` | `feat/m1-04-encrypted-dex-container` | done | M1-01, M1-02, M1-07 | PR #38、Issue #9、独立复核、merger-ready 六项 CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
-| M1-05 | `/root` | `feat/m1-05-apk-repacker-and-alignment` | in_progress | M1-02, M1-03, M1-04 | 首轮复核发现已修复且本地 268-task 门禁通过；下一步冻结新 clean SHA 并执行第二轮独立复核，不启动 M1-06/M2 |
+| M1-05 | `/root` | `feat/m1-05-apk-repacker-and-alignment` | in_progress | M1-02, M1-03, M1-04 | 首轮复核发现已由 `c1c1f30` 修复且本地 268-task 门禁通过；下一步对 clean HEAD 执行第二轮独立复核，不启动 M1-06/M2 |
 
 ## Decisions and Invariants
 
@@ -1025,14 +1025,14 @@ next_owner: /root
 ### M1-05 review-1 remediation validation
 
 - task_id: M1-05
-- git_commit: bb748f68ec3cfac255124c6bdfd0bbb242bed1c1
+- git_commit: c1c1f3006bc57754ba7637653d9c5b1bb1838e93
 - command: repository-local offline `gradle clean check verifyGovernance`; pinned `aapt2 dump xmltree`, `zipalign -c -P 16 -v 4`, exact unsigned `apksigner verify`; 23-case failure/TOCTOU/mutation matrix; four-case success/OOM cleanup matrix; diff and security scan
 - exit_code: 0
 - environment: Windows 10.0.19045 x64; Eclipse Temurin 17.0.19; Gradle 9.5.0; Build Tools 36.1.0; AAPT2 2.20-14042983; apksigner 0.9; no device, emulator, or download
 - timestamp: 2026-08-06T10:25:17+08:00
 - artifact: `docs/evidence/M1-05/local-windows.md`; `docs/evidence/M1-05/security-scan.md`; `docs/evidence/M1-05/security-review-1.md`; six deterministic reports
 - sha256: f7228836595666da63d21c2a230e16eeacce7a2b4e15834ad5cbbd0f37945b1e
-- result: PASS on the explicitly dirty remediation diff above bb748f68ec3cfac255124c6bdfd0bbb242bed1c1; 268 tasks passed in 1m47s, every targeted candidate mutation failed closed, every repack attempt consumed the one-shot plan, and observed sensitive owners were zeroed on success plus copy/materialization/verifier OOM paths; a clean freeze and independent review 2 remain mandatory
+- result: PASS; remediation commit c1c1f3006bc57754ba7637653d9c5b1bb1838e93 records the reviewed diff, 268 tasks passed in 1m47s, every targeted candidate mutation failed closed, every repack attempt consumed the one-shot plan, and observed sensitive owners were zeroed on success plus copy/materialization/verifier OOM paths; independent review 2 remains mandatory
 
 ## Blockers and Required Approvals
 
@@ -1040,9 +1040,8 @@ None
 
 ## Ordered Next Actions
 
-1. 提交已通过本地门禁的首轮复核修复与证据，生成新的 clean 冻结 SHA。
-2. 对新 SHA 启动完整 `m1_05_security_review_2`；P0/P1/P2 全零后才推送固定分支并创建关闭 Issue #10 的唯一草稿 PR。
-3. 等待 Ubuntu/Windows CI，在 exact merger-ready HEAD 全绿后 ready/merge；合并后在 `main` 无豁免完成 strict HandOff、双平台 CI 与 README/HandOff 收尾。
+1. 对当前 clean HEAD 启动完整 `m1_05_security_review_2`；P0/P1/P2 全零后才推送固定分支并创建关闭 Issue #10 的唯一草稿 PR。
+2. 等待 Ubuntu/Windows CI，在 exact merger-ready HEAD 全绿后 ready/merge；合并后在 `main` 无豁免完成 strict HandOff、双平台 CI 与 README/HandOff 收尾。
 
 ## Relevant Files and Artifacts
 

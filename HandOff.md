@@ -2,12 +2,12 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-06T11:03:35+08:00
+updated_at: 2026-08-06T11:07:00+08:00
 updated_by: /root
 state: active
 source_branch: feat/m1-05-apk-repacker-and-alignment
 base_commit: d32abe1d68d41910d72c90c3f9fc3d2831972756
-working_tree: dirty
+working_tree: clean
 current_milestone: M1
 active_task: M1-05
 next_owner: /root
@@ -27,7 +27,7 @@ next_owner: /root
 - `host/repacker` 已完成 raw ZIP 白名单重建、精确签名材料删除、四 ABI Runtime materialization、4 KiB/16 KiB 对齐、AHDC v2 重新认证、独立候选重读和 Windows/Linux native atomic no-replace 发布。Windows clean 268-task 根回归、Governance、固定 Android 工具、28 项失败矩阵与六项敏感清理矩阵均 PASS；证据归档于 `docs/evidence/M1-05/local-windows.md` 与 `security-scan.md`。
 - 首轮独立只读 `m1_05_security_review` 对冻结提交 `bb748f68ec3cfac255124c6bdfd0bbb242bed1c1` 判定 FAIL：`P0=0`、`P1=4`、`P2=1`。plan cleanup/发布顺序、敏感数组事务所有权、文件身份 TOCTOU、缺失的定向 verifier mutation 矩阵和异常 entry 名脱敏均须修复；旧冻结点已废止，完整结论归档于 `docs/evidence/M1-05/security-review-1.md`。
 - 修复提交 `c1c1f3006bc57754ba7637653d9c5b1bb1838e93` 已关闭首轮发现；其后冻结 `55b951269201f37aada6945b13c0716531616b92` 的第二轮独立复核仍为 FAIL：`P0=0`、`P1=3`、`P2=1`，结论归档于 `docs/evidence/M1-05/security-review-2.md`，该冻结点已废止。
-- 当前第二轮修复候选用 `OwnedBytesPlan` 和单一可清理 Runtime buffer 关闭敏感副本窗口，把所有校验与 handle close 移至发布前并令 native no-replace move 成为最后可失败操作，以 fail-closed 平台文件身份绑定 candidate/input/container/parent，并新增 local/Signing Block gap、container/candidate/output race 与真实 Windows parent swap。完整离线 clean 268-task 回归已 PASS；待提交 clean 冻结点后只允许执行第三轮独立只读复核。
+- 第二轮修复提交 `f99c7d05f2a70aa9b076a2d1baadfce5a931f036` 用 `OwnedBytesPlan` 和单一可清理 Runtime buffer 关闭敏感副本窗口，把所有校验与 handle close 移至发布前并令 native no-replace move 成为最后可失败操作，以 fail-closed 平台文件身份绑定 candidate/input/container/parent，并新增 local/Signing Block gap、container/candidate/output race 与真实 Windows parent swap。完整离线 clean 268-task 回归已 PASS；待协调提交形成 clean 冻结点后只允许执行第三轮独立只读复核。
 - PR [#38](https://github.com/xiaokh31/androidAppHardening/pull/38) 已按用户授权转为 ready，并以 expected-head 保护的普通 merge commit `f908861cbb61e79e7c3127fd5216d4a6f8c6e3e1` 合并到 `main`；唯一 tracking Issue [#9](https://github.com/xiaokh31/androidAppHardening/issues/9) 已关闭。
 - 旧本地同名分支停在失败复核提交 `ca3d14147b88991c45d539e90b1f42dc95116860`，已无损重命名为 `spike/m1-04-rejected-ahdc-v1`。新任务分支从最新 main 创建，不 merge/cherry-pick/复用废止 AHDC v1 实现。
 - M1-04 采用 `pre-cli` 验证模式，只实现 `host:container` 的 AHDC v2 builder/verifier、768-byte ConfigV2、不可变 descriptor、一次性 `KeyPackagingPlanV2`、规范向量与失败关闭测试；本轮不启动设备或模拟器。
@@ -1050,14 +1050,14 @@ next_owner: /root
 ### M1-05 review-2 remediation validation
 
 - task_id: M1-05
-- git_commit: 55b951269201f37aada6945b13c0716531616b92
+- git_commit: f99c7d05f2a70aa9b076a2d1baadfce5a931f036
 - command: repository-local offline `gradle clean check verifyGovernance`; pinned `aapt2 dump xmltree`, `zipalign -c -P 16 -v 4`, exact unsigned `apksigner verify`; 28-case failure/TOCTOU/mutation matrix; six-case success/OOM cleanup matrix; diff and security scan
 - exit_code: 0
 - environment: Windows 10.0.19045 x64; Eclipse Temurin 17.0.19; Gradle 9.5.0; Build Tools 36.1.0; AAPT2 2.20-14042983; apksigner 0.9; no device, emulator, network, or download
 - timestamp: 2026-08-06T11:03:35+08:00
 - artifact: `docs/evidence/M1-05/local-windows.md`; `docs/evidence/M1-05/security-scan.md`; `docs/evidence/M1-05/security-review-2.md`; six deterministic reports
 - sha256: ce8634eb84bd870e13b5146ba2e4a1477649cec85dc0d0abfab4e7afab471eb2
-- result: PASS_WORKTREE_REMEDIATION; against invalidated freeze 55b951269201f37aada6945b13c0716531616b92, 268 tasks passed in 1m42s, native Windows no-replace publication and real parent/output races executed, all 28 failures retained fail-closed semantics, and all six sensitive-owner cleanup probes passed; the exact clean remediation commit will replace this provisional reference before independent review 3
+- result: PASS; remediation commit f99c7d05f2a70aa9b076a2d1baadfce5a931f036 records the exact reviewed diff; 268 tasks passed in 1m42s, native Windows no-replace publication and real parent/output races executed, all 28 failures retained fail-closed semantics, and all six sensitive-owner cleanup probes passed; independent review 3 remains mandatory
 
 ## Blockers and Required Approvals
 

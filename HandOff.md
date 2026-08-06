@@ -2,12 +2,12 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-06T11:22:43+08:00
+updated_at: 2026-08-06T11:26:00+08:00
 updated_by: /root
 state: active
 source_branch: feat/m1-05-apk-repacker-and-alignment
 base_commit: d32abe1d68d41910d72c90c3f9fc3d2831972756
-working_tree: dirty
+working_tree: clean
 current_milestone: M1
 active_task: M1-05
 next_owner: /root
@@ -28,7 +28,7 @@ next_owner: /root
 - 首轮独立只读 `m1_05_security_review` 对冻结提交 `bb748f68ec3cfac255124c6bdfd0bbb242bed1c1` 判定 FAIL：`P0=0`、`P1=4`、`P2=1`。plan cleanup/发布顺序、敏感数组事务所有权、文件身份 TOCTOU、缺失的定向 verifier mutation 矩阵和异常 entry 名脱敏均须修复；旧冻结点已废止，完整结论归档于 `docs/evidence/M1-05/security-review-1.md`。
 - 修复提交 `c1c1f3006bc57754ba7637653d9c5b1bb1838e93` 已关闭首轮发现；其后冻结 `55b951269201f37aada6945b13c0716531616b92` 的第二轮独立复核仍为 FAIL：`P0=0`、`P1=3`、`P2=1`，结论归档于 `docs/evidence/M1-05/security-review-2.md`，该冻结点已废止。
 - 第二轮修复提交 `f99c7d05f2a70aa9b076a2d1baadfce5a931f036` 已关闭所有既有代码发现。第三轮独立复核对 clean 冻结 `1febc2da91d62ba3163cdab022955c51be88759a` 判定 FAIL：`P0=0`、`P1=1`、`P2=0`；唯一 P1 是直接分发的 JNA 5.6.0 缺少维护状态与已知漏洞核对，结论归档于 `docs/evidence/M1-05/security-review-3.md`，该冻结点已废止。
-- 当前依赖修复候选选择官方最新 tag `5.19.1`/commit `1a91122853f6ab6f1fb2a4a284a6cf2ed8af0a4d`，GitHub 官方 Maven Advisory API 对 `jna`/`jna-platform` 均返回零公告；第三轮引用的 `CVE-2021-44549` 经 GitHub/NVD 核实属于 Apache Sling Mail 而非 JNA。catalog、受影响锁、verification metadata、provenance、notice 与点时安全审查已同步；5.19.1 Windows 生产 JNA 模块门禁和 268-task clean 根回归均 PASS，仍须提交、冻结和第四轮独立复核。
+- 依赖修复提交 `af2d850f54eb6555d8880449d99750491ee7f0eb` 选择官方最新 tag `5.19.1`/commit `1a91122853f6ab6f1fb2a4a284a6cf2ed8af0a4d`，GitHub 官方 Maven Advisory API 对 `jna`/`jna-platform` 均返回零公告；第三轮引用的 `CVE-2021-44549` 经 GitHub/NVD 核实属于 Apache Sling Mail 而非 JNA。catalog、受影响锁、verification metadata、provenance、notice 与点时安全审查已同步；5.19.1 Windows 生产 JNA 模块门禁和 268-task clean 根回归均 PASS，仍须协调冻结和第四轮独立复核。
 - PR [#38](https://github.com/xiaokh31/androidAppHardening/pull/38) 已按用户授权转为 ready，并以 expected-head 保护的普通 merge commit `f908861cbb61e79e7c3127fd5216d4a6f8c6e3e1` 合并到 `main`；唯一 tracking Issue [#9](https://github.com/xiaokh31/androidAppHardening/issues/9) 已关闭。
 - 旧本地同名分支停在失败复核提交 `ca3d14147b88991c45d539e90b1f42dc95116860`，已无损重命名为 `spike/m1-04-rejected-ahdc-v1`。新任务分支从最新 main 创建，不 merge/cherry-pick/复用废止 AHDC v1 实现。
 - M1-04 采用 `pre-cli` 验证模式，只实现 `host:container` 的 AHDC v2 builder/verifier、768-byte ConfigV2、不可变 descriptor、一次性 `KeyPackagingPlanV2`、规范向量与失败关闭测试；本轮不启动设备或模拟器。
@@ -1075,14 +1075,14 @@ next_owner: /root
 ### M1-05 review-3 dependency remediation
 
 - task_id: M1-05
-- git_commit: 1febc2da91d62ba3163cdab022955c51be88759a
+- git_commit: af2d850f54eb6555d8880449d99750491ee7f0eb
 - command: GitHub official tag and global-advisory API queries; NVD cross-check; upgrade JNA/JNA Platform to 5.19.1; Gradle-generated lock and SHA-256 verification metadata; repository-local offline `:host:repacker:test`
 - exit_code: 0
 - environment: Windows 10.0.19045 amd64; Eclipse Temurin 17.0.19; Gradle 9.5.0; project-local D-drive `GRADLE_USER_HOME`; no C-drive download, device, or emulator
 - timestamp: 2026-08-06T11:22:43+08:00
 - artifact: `docs/evidence/M1-05/dependency-security-review.md`; JNA tag `5.19.1` commit `1a91122853f6ab6f1fb2a4a284a6cf2ed8af0a4d`; JAR/POM hashes in `gradle/verification-metadata.xml`
 - sha256: eabc8c5bdc159f0e3e158236f278ef76bfbc79505bc2fbce0b972a82105e2fb8
-- result: PASS_WORKTREE_REMEDIATION; official JNA 5.19.1 release resolved from Maven Central, both exact Maven package advisory queries returned zero records, the cited CVE was independently shown unrelated to JNA, the Windows production JNA module test passed in 38s, and the 268-task clean root validation passed in 1m46s with unchanged deterministic report hashes; an exact remediation commit and fourth independent review remain mandatory
+- result: PASS; remediation commit af2d850f54eb6555d8880449d99750491ee7f0eb records the exact dependency and evidence diff; official JNA 5.19.1 release resolved from Maven Central, both exact Maven package advisory queries returned zero records, the cited CVE was independently shown unrelated to JNA, the Windows production JNA module test passed in 38s, and the 268-task clean root validation passed in 1m46s with unchanged deterministic report hashes; fourth independent review remains mandatory
 
 ## Blockers and Required Approvals
 

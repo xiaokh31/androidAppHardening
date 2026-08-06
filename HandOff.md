@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-07T06:59:54+08:00
+updated_at: 2026-08-07T07:14:00+08:00
 updated_by: /root
 state: active
 source_branch: chore/m2-07-native-crypto-backend
@@ -21,7 +21,7 @@ next_owner: /root
 
 ## Current State
 
-- 用户已授权独立 M2-07 ADR/任务合同与供应链修订，并要求合并后恢复 M2-02。Issue #41 和分支 `chore/m2-07-native-crypto-backend` 已从 `main@1bce1f6` 建立；M2-02 本地分支 `feat/m2-02-native-decrypt-loader@40e3900` 保持暂停且未发布。候选已从受 2026-07 官方安全公告影响的 Mbed TLS 4.1.0 提升为 4.1.1 LTS；官方完整归档已下载到忽略的仓库根 `.toolchains/native-crypto/` 并命中 `7099934` bytes/SHA-256 `3359a349...5c98c`，未向 C 盘下载大体积程序。ADR 0009、任务卡、机器锁、许可证/漏洞记录、最小 TF-PSA facade、标准向量和双平台/四 ABI CI 正在实现，尚未冻结或复核。
+- 用户已授权独立 M2-07 ADR/任务合同与供应链修订，并要求合并后恢复 M2-02。Issue #41 和分支 `chore/m2-07-native-crypto-backend` 已从 `main@1bce1f6` 建立；M2-02 本地分支 `feat/m2-02-native-decrypt-loader@40e3900` 保持暂停且未发布。候选已从受 2026-07 官方安全公告影响的 Mbed TLS 4.1.0 提升为 4.1.1 LTS；官方完整归档已下载到忽略的仓库根 `.toolchains/native-crypto/` 并命中 `7099934` bytes/SHA-256 `3359a349...5c98c`，未向 C 盘下载大体积程序。首个 CI 候选 `dcd27f1e141222d7af81f4289034dc1c1a5c5310` 已通过本地 296-task 根回归和四 ABI ELF/符号检查，固定分支已推送并创建关联关闭 Issue #41 的唯一草稿 PR [#42](https://github.com/xiaokh31/androidAppHardening/pull/42)；当前等待 Ubuntu/Windows Host 标准向量和四 ABI CI，尚未冻结或独立复核。
 - 用户已明确启动 M1-06，并预先授权任务所需的推送、唯一草稿 PR、ready 与 expected-head 普通合并。Issue [#11](https://github.com/xiaokh31/androidAppHardening/issues/11) 为 OPEN、无 assignee；远程不存在固定分支或关联 PR。分支 `feat/m1-06-cli-and-json-report` 从已完成 M1-05 且 final main 双平台 CI 全绿的 `main@55ef3c57e631cde65d3e04d58aa75d26a7e75ba8` 创建。
 - M1-01 至 M1-05 依赖均已完成。M1-06 选择 `full-flow` 验证模式；实现计划归档于 `docs/evidence/M1-06/implementation-plan.md`。生产入口仅从后续 distribution 提供的固定 classpath RuntimeBundle 读取资源，不把 synthetic Runtime 打入产品；本任务集成测试使用 M1-05 已授权的合成 RuntimeBundle 合同 fixture。当前只修改 `host/cli`、REPORT_V1、M1-06 证据/CI 与根交接，不启动 M2、设备或模拟器。
 - M1-06 Host 实现与 Windows full-flow 已通过：唯一 `protect` CLI、REPORT_V1 及 Draft 2020-12 可执行 schema validator、七阶段状态机、M1-01 一基至 AHDC v2 零基 ordinal 边界适配、输入只读、未签名输出、报告原子 no-replace 发布/回滚、线程中断与 JVM shutdown 清理、路径/能力扫描均已闭环。Windows 离线 clean 根 `check verifyGovernance` 共 273 项任务退出 `0`；规范化成功报告、错误矩阵、清理矩阵和路径矩阵已固定到 Ubuntu/Windows CI，当前等待冻结提交、只读复核、唯一草稿 PR 和远端双平台门禁。
@@ -162,7 +162,7 @@ next_owner: /root
 | M1-04 | `/root` | `feat/m1-04-encrypted-dex-container` | done | M1-01, M1-02, M1-07 | PR #38、Issue #9、独立复核、merger-ready 六项 CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-05 | `/root` | `feat/m1-05-apk-repacker-and-alignment` | done | M1-02, M1-03, M1-04 | PR #39、Issue #10、独立复核、merger-ready CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-06 | `/root` | `feat/m1-06-cli-and-json-report` | done | M1-01, M1-02, M1-03, M1-04, M1-05 | PR #40、Issue #11、冻结复核、merger-ready 双平台 CI 与 expected-head 合并已关闭；等待 post-merge main 最终门禁，不启动 M2 |
-| M2-07 | `/root` | `chore/m2-07-native-crypto-backend` | in_progress | M0-03, M1-04 | 固定依赖、标准向量与四 ABI CI 后冻结，启动独立只读安全复核 |
+| M2-07 | `/root` | `chore/m2-07-native-crypto-backend` | in_progress | M0-03, M1-04 | PR #42 双平台标准向量与四 ABI CI 通过后冻结，启动独立只读安全复核 |
 | M2-02 | `/root` | `feat/m2-02-native-decrypt-loader` | blocked | M0-04, M1-04, M2-07 | `/root` 在 M2-07 合并且 final main 门禁通过后恢复 `40e3900` |
 
 ## Decisions and Invariants

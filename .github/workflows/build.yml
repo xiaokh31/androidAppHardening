@@ -268,17 +268,28 @@ jobs:
         run: |
           $cmake = "$env:ANDROID_HOME/cmake/4.1.2/bin/cmake.exe"
           $ctest = "$env:ANDROID_HOME/cmake/4.1.2/bin/ctest.exe"
+          $ninja = "$env:ANDROID_HOME/cmake/4.1.2/bin/ninja.exe"
+          $vsDevCmd = "C:/Program Files/Microsoft Visual Studio/18/Enterprise/Common7/Tools/VsDevCmd.bat"
+          if (-not (Test-Path -LiteralPath $vsDevCmd)) { throw "missing pinned runner compiler environment: $vsDevCmd" }
+          $vsEnvLines = & cmd.exe /d /s /c "`"$vsDevCmd`" -no_logo -arch=x64 -host_arch=x64 && set"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($line in $vsEnvLines) {
+            if ($line -match '^([^=]+)=(.*)$') {
+              [Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], 'Process')
+            }
+          }
+          if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) { throw "VS 2026 x64 compiler environment was not activated" }
           & $cmake `
             -S runtime/native/src/main/cpp `
             -B runtime/native/build/m2-07-host `
-            -G "Visual Studio 17 2022" `
-            -A x64 `
-            "-DCMAKE_GENERATOR_INSTANCE=C:/Program Files/Microsoft Visual Studio/2022/Enterprise" `
+            -G Ninja `
+            "-DCMAKE_MAKE_PROGRAM=$ninja" `
+            -DCMAKE_BUILD_TYPE=Release `
             "-DAH_MBEDTLS_ROOT=$pwd/.toolchains/native-crypto/src/mbedtls-4.1.1"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $cmake --build runtime/native/build/m2-07-host --config Release
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $ctest --test-dir runtime/native/build/m2-07-host -C Release --output-on-failure
+          & $ctest --test-dir runtime/native/build/m2-07-host --output-on-failure
 
       - name: Verify pinned entry points
         shell: pwsh

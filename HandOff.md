@@ -2,12 +2,12 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-06T11:07:00+08:00
+updated_at: 2026-08-06T11:22:43+08:00
 updated_by: /root
 state: active
 source_branch: feat/m1-05-apk-repacker-and-alignment
 base_commit: d32abe1d68d41910d72c90c3f9fc3d2831972756
-working_tree: clean
+working_tree: dirty
 current_milestone: M1
 active_task: M1-05
 next_owner: /root
@@ -27,7 +27,8 @@ next_owner: /root
 - `host/repacker` 已完成 raw ZIP 白名单重建、精确签名材料删除、四 ABI Runtime materialization、4 KiB/16 KiB 对齐、AHDC v2 重新认证、独立候选重读和 Windows/Linux native atomic no-replace 发布。Windows clean 268-task 根回归、Governance、固定 Android 工具、28 项失败矩阵与六项敏感清理矩阵均 PASS；证据归档于 `docs/evidence/M1-05/local-windows.md` 与 `security-scan.md`。
 - 首轮独立只读 `m1_05_security_review` 对冻结提交 `bb748f68ec3cfac255124c6bdfd0bbb242bed1c1` 判定 FAIL：`P0=0`、`P1=4`、`P2=1`。plan cleanup/发布顺序、敏感数组事务所有权、文件身份 TOCTOU、缺失的定向 verifier mutation 矩阵和异常 entry 名脱敏均须修复；旧冻结点已废止，完整结论归档于 `docs/evidence/M1-05/security-review-1.md`。
 - 修复提交 `c1c1f3006bc57754ba7637653d9c5b1bb1838e93` 已关闭首轮发现；其后冻结 `55b951269201f37aada6945b13c0716531616b92` 的第二轮独立复核仍为 FAIL：`P0=0`、`P1=3`、`P2=1`，结论归档于 `docs/evidence/M1-05/security-review-2.md`，该冻结点已废止。
-- 第二轮修复提交 `f99c7d05f2a70aa9b076a2d1baadfce5a931f036` 用 `OwnedBytesPlan` 和单一可清理 Runtime buffer 关闭敏感副本窗口，把所有校验与 handle close 移至发布前并令 native no-replace move 成为最后可失败操作，以 fail-closed 平台文件身份绑定 candidate/input/container/parent，并新增 local/Signing Block gap、container/candidate/output race 与真实 Windows parent swap。完整离线 clean 268-task 回归已 PASS；待协调提交形成 clean 冻结点后只允许执行第三轮独立只读复核。
+- 第二轮修复提交 `f99c7d05f2a70aa9b076a2d1baadfce5a931f036` 已关闭所有既有代码发现。第三轮独立复核对 clean 冻结 `1febc2da91d62ba3163cdab022955c51be88759a` 判定 FAIL：`P0=0`、`P1=1`、`P2=0`；唯一 P1 是直接分发的 JNA 5.6.0 缺少维护状态与已知漏洞核对，结论归档于 `docs/evidence/M1-05/security-review-3.md`，该冻结点已废止。
+- 当前依赖修复候选选择官方最新 tag `5.19.1`/commit `1a91122853f6ab6f1fb2a4a284a6cf2ed8af0a4d`，GitHub 官方 Maven Advisory API 对 `jna`/`jna-platform` 均返回零公告；第三轮引用的 `CVE-2021-44549` 经 GitHub/NVD 核实属于 Apache Sling Mail 而非 JNA。catalog、受影响锁、verification metadata、provenance、notice 与点时安全审查已同步；5.19.1 Windows 生产 JNA 模块门禁和 268-task clean 根回归均 PASS，仍须提交、冻结和第四轮独立复核。
 - PR [#38](https://github.com/xiaokh31/androidAppHardening/pull/38) 已按用户授权转为 ready，并以 expected-head 保护的普通 merge commit `f908861cbb61e79e7c3127fd5216d4a6f8c6e3e1` 合并到 `main`；唯一 tracking Issue [#9](https://github.com/xiaokh31/androidAppHardening/issues/9) 已关闭。
 - 旧本地同名分支停在失败复核提交 `ca3d14147b88991c45d539e90b1f42dc95116860`，已无损重命名为 `spike/m1-04-rejected-ahdc-v1`。新任务分支从最新 main 创建，不 merge/cherry-pick/复用废止 AHDC v1 实现。
 - M1-04 采用 `pre-cli` 验证模式，只实现 `host:container` 的 AHDC v2 builder/verifier、768-byte ConfigV2、不可变 descriptor、一次性 `KeyPackagingPlanV2`、规范向量与失败关闭测试；本轮不启动设备或模拟器。
@@ -147,7 +148,7 @@ next_owner: /root
 | M1-03 | `/root` | `feat/m1-03-binary-axml-transformer` | done | M1-01, M0-05 | PR #35、Issue #8、独立复核、三套设备/CI 矩阵和 main strict HandOff 均已关闭 |
 | M1-07 | `/root` | `docs/m1-07-chunk-authenticated-container-contract` | done | M1-02 | PR #37、Issue #36、独立复核、双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-04 | `/root` | `feat/m1-04-encrypted-dex-container` | done | M1-01, M1-02, M1-07 | PR #38、Issue #9、独立复核、merger-ready 六项 CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
-| M1-05 | `/root` | `feat/m1-05-apk-repacker-and-alignment` | in_progress | M1-02, M1-03, M1-04 | 第二轮 FAIL 已归档并修复，28 项失败/六项清理和 268-task clean 门禁通过；下一步冻结并执行第三轮独立复核，不启动 M1-06/M2 |
+| M1-05 | `/root` | `feat/m1-05-apk-repacker-and-alignment` | in_progress | M1-02, M1-03, M1-04 | 第三轮唯一依赖审查 P1 已以 JNA 5.19.1 和权威公告证据修复；下一步 clean 根回归、冻结并执行第四轮独立复核，不启动 M1-06/M2 |
 
 ## Decisions and Invariants
 
@@ -1059,13 +1060,37 @@ next_owner: /root
 - sha256: ce8634eb84bd870e13b5146ba2e4a1477649cec85dc0d0abfab4e7afab471eb2
 - result: PASS; remediation commit f99c7d05f2a70aa9b076a2d1baadfce5a931f036 records the exact reviewed diff; 268 tasks passed in 1m42s, native Windows no-replace publication and real parent/output races executed, all 28 failures retained fail-closed semantics, and all six sensitive-owner cleanup probes passed; independent review 3 remains mandatory
 
+### M1-05 independent security review 3
+
+- task_id: M1-05
+- git_commit: 1febc2da91d62ba3163cdab022955c51be88759a
+- command: independent full diff/dependency/publication review; repository-local offline `:host:repacker:test`; Governance, strict HandOff, diff, UTF-8, sensitive-data, and deterministic report-hash checks
+- exit_code: 1
+- environment: Windows 10.0.19045 amd64; Eclipse Temurin 17.0.19; Gradle 9.5.0; Node 24.12.0; no network/device/emulator/write operation
+- timestamp: 2026-08-06T11:13:11+08:00
+- artifact: `docs/evidence/M1-05/security-review-3.md`
+- sha256: not_applicable
+- result: FAIL; P0=0, P1=1, P2=0; all review-1/2 code findings were confirmed closed, but direct Host distribution of JNA 5.6.0 lacked the mandatory maintained-version and known-vulnerability evidence
+
+### M1-05 review-3 dependency remediation
+
+- task_id: M1-05
+- git_commit: 1febc2da91d62ba3163cdab022955c51be88759a
+- command: GitHub official tag and global-advisory API queries; NVD cross-check; upgrade JNA/JNA Platform to 5.19.1; Gradle-generated lock and SHA-256 verification metadata; repository-local offline `:host:repacker:test`
+- exit_code: 0
+- environment: Windows 10.0.19045 amd64; Eclipse Temurin 17.0.19; Gradle 9.5.0; project-local D-drive `GRADLE_USER_HOME`; no C-drive download, device, or emulator
+- timestamp: 2026-08-06T11:22:43+08:00
+- artifact: `docs/evidence/M1-05/dependency-security-review.md`; JNA tag `5.19.1` commit `1a91122853f6ab6f1fb2a4a284a6cf2ed8af0a4d`; JAR/POM hashes in `gradle/verification-metadata.xml`
+- sha256: eabc8c5bdc159f0e3e158236f278ef76bfbc79505bc2fbce0b972a82105e2fb8
+- result: PASS_WORKTREE_REMEDIATION; official JNA 5.19.1 release resolved from Maven Central, both exact Maven package advisory queries returned zero records, the cited CVE was independently shown unrelated to JNA, the Windows production JNA module test passed in 38s, and the 268-task clean root validation passed in 1m46s with unchanged deterministic report hashes; an exact remediation commit and fourth independent review remain mandatory
+
 ## Blockers and Required Approvals
 
 None
 
 ## Ordered Next Actions
 
-1. 提交当前修复与证据，形成 clean 冻结 HEAD，并启动完整 `m1_05_security_review_3`；P0/P1/P2 全零后才推送固定分支并创建关闭 Issue #10 的唯一草稿 PR。
+1. 完成 JNA 5.19.1 的离线 clean 根回归，提交依赖安全修复与证据，形成 clean 冻结 HEAD，并启动完整 `m1_05_security_review_4`；P0/P1/P2 全零后才推送固定分支并创建关闭 Issue #10 的唯一草稿 PR。
 2. 等待 Ubuntu/Windows CI，在 exact merger-ready HEAD 全绿后 ready/merge；合并后在 `main` 无豁免完成 strict HandOff、双平台 CI 与 README/HandOff 收尾。
 
 ## Relevant Files and Artifacts
@@ -1125,7 +1150,7 @@ None
 - [x] 用户明确启动 M1-05 并预先授权推送、唯一 PR、ready 与合并；Issue #10、依赖、无远程分支/PR冲突和最新 main 门禁已核验。
 - [x] 从 `main@d32abe1` 创建固定分支，归档 `pre-cli` 实现/验收计划并预定独立 reviewer `m1_05_security_review`。
 - [x] 实现 repacker/materializer/verifier/native no-replace publisher，完成固定 Android 工具、28 项失败/TOCTOU/mutation、六项清理矩阵和 268-task clean 根回归。
-- [ ] 首轮 `bb748f6` 与第二轮 `55b9512` 的独立复核 FAIL 均已归档；第二轮 P1=3/P2=1 修复候选本地通过，仍须重新冻结并取得第三轮独立只读复核 P0/P1/P2 全零。
+- [ ] 首轮 `bb748f6`、第二轮 `55b9512` 与第三轮 `1febc2d` 的独立复核 FAIL 均已归档；前两轮代码发现已关闭，第三轮唯一依赖审查 P1 已以 JNA 5.19.1/权威公告证据修复，仍须 clean 根回归并取得第四轮独立只读复核 P0/P1/P2 全零。
 - [ ] 推送、创建唯一草稿 PR、完成双平台 CI、expected-head 合并及 post-merge main 门禁；README 标记 M1-05 完成。
 - [x] 用户明确启动 M1-04；Issue #9、固定分支、clean main base 与 M1-07 合并门禁已核验。
 - [x] 旧 AHDC v1 失败分支已无损归档，新分支不包含其实现提交；`pre-cli` 实现计划已归档。
@@ -1213,6 +1238,7 @@ None
 - `/root` 已核验首轮 M1-05 独立复核为 FAIL 并废止 `bb748f6`；当前只允许关闭 P1=4/P2=1、重跑门禁和重新冻结，不得推送、创建 PR 或启动 M1-06/M2。
 - `/root` 已核验首轮 M1-05 P1=4/P2=1 的修复 diff、固定 Android 工具、23 项失败/变异/身份矩阵、四项敏感清理矩阵和 268-task clean 回归全部 PASS；当前只允许提交新冻结点并执行第二轮独立只读复核，复核全零前不得推送、创建 PR 或启动 M1-06/M2。
 - `/root` 已核验第二轮 M1-05 复核为 FAIL 并废止 `55b9512`；P1=3/P2=1 已由敏感 owner、单缓冲 Runtime materialization、发布前全部校验/close、native no-replace、fail-closed file identity 和完整 gap/race 矩阵关闭。28 项失败、六项清理与 268-task clean 根回归 PASS；当前只允许冻结并执行第三轮独立只读复核，复核全零前不得发布或启动 M1-06/M2。
+- `/root` 已核验第三轮 M1-05 复核为 FAIL 并废止 `1febc2d`；其唯一 P1 限于 JNA 5.6.0 依赖审查证据。官方最新 5.19.1 tag/commit、Maven Central artifact SHA-256、GitHub 双包零公告查询与错误 CVE 归属核对已归档，Windows 生产 JNA 模块测试 PASS；当前只允许完成 clean 根回归、冻结和第四轮独立复核，复核全零前不得发布或启动 M1-06/M2。
 - `/root` 已核验 M1-04 从 `main@ebbe928` clean 重启、Issue #9 OPEN、远程无同 head PR；废止 v1 分支仅保留为 rejected 归档。当前只实现 AHDC v2 Host 范围，不启动 Runtime、ZIP/CLI、设备或相邻任务。
 - `/root` 已核验唯一草稿 PR #38 正确关联关闭 Issue #9；最终草稿 HEAD `4af2e44` 的 API 29/36 KVM、Ubuntu/Windows Build/Governance 六项全部 PASS，PR 为 CLEAN/MERGEABLE。用户已授权 ready/merge，本协调提交只准备 expected-head 合并与 post-merge `main` 恢复点。
 - `/root` 已核验 merger-ready HEAD `65ae18e` 的六项检查全部 PASS；PR #38 以 expected-head 普通 merge commit `f908861cbb61e79e7c3127fd5216d4a6f8c6e3e1` 合并，Issue #9 关闭，本地 main 已同步。M1-04 仍等待 post-merge main 双平台 CI，完成前不启动 M1-05/M2。

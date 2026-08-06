@@ -1,6 +1,6 @@
 # M1-05 local security scan
 
-Timestamp: `2026-08-06T11:03:35+08:00`
+Timestamp: `2026-08-06T11:22:43+08:00`
 
 Scope:
 
@@ -19,6 +19,10 @@ Results:
   manifest/signature reason;
 - no client APK, client path, certificate body, plaintext DEX dump, reusable key,
   token, credential, or UTF-8 replacement character is present;
+- the direct Native bridge is fixed to the maintained official JNA/JNA Platform
+  `5.19.1` tag, with Maven Central JAR/POM SHA-256 verification and a dated
+  GitHub Advisory/NVD review in `dependency-security-review.md`; no vulnerability
+  risk acceptance or dynamic version is used;
 - one read-only input channel is held for inspection and raw entry transfer;
   input, container, candidate, and output-parent identities are captured and
   revalidated before publication using fail-closed platform file identities;

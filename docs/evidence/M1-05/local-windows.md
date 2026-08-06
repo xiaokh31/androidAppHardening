@@ -1,6 +1,6 @@
 # M1-05 local Windows validation
 
-- Timestamp: `2026-08-06T11:03:35+08:00`
+- Timestamp: `2026-08-06T11:22:43+08:00`
 - Branch: `feat/m1-05-apk-repacker-and-alignment`
 - Base commit: `d32abe1d68d41910d72c90c3f9fc3d2831972756`
 - OS: Windows 10 `10.0.19045` x64
@@ -11,14 +11,15 @@
 - Validation mode: `pre-cli`; no device or emulator
 
 All Gradle work used the repository-local JDK, Gradle installation, and
-`GRADLE_USER_HOME` under `.toolchains`. No dependency or tool was downloaded.
+`GRADLE_USER_HOME` under `.toolchains`. JNA/JNA Platform `5.19.1` was downloaded
+only into that ignored project-local D-drive cache; nothing was downloaded to C.
 
 ## Commands and results
 
 | Command | Exit | Result |
 | --- | ---: | --- |
 | `gradle :host:repacker:test --offline --no-daemon -Pkotlin.compiler.execution.strategy=in-process -Paapt2Executable=<Build Tools 36.1.0>/aapt2.exe -Paapt2AndroidJar=<Platform 36>/android.jar` | `0` | Four ABI policies, targeted verifier mutations, identity races, cleanup injection, and external Android tools passed |
-| `gradle clean check verifyGovernance --offline --no-daemon -Pkotlin.compiler.execution.strategy=in-process -Paapt2Executable=... -Paapt2AndroidJar=...` | `0` | `268` tasks; all M1-01 through M1-05 host tests, Android checks, toolchain policy, and governance passed in `1m42s` |
+| `gradle clean check verifyGovernance --offline --no-daemon -Pkotlin.compiler.execution.strategy=in-process -Paapt2Executable=... -Paapt2AndroidJar=...` | `0` | `268` tasks; all M1-01 through M1-05 host tests, Android checks, toolchain policy, and governance passed with JNA 5.19.1 in `1m46s` |
 | `node tools/governance/validate-project-package.mjs` | `0` | `OK: 27 task cards, 11 core docs, 8 ADRs` |
 | `git diff --check` | `0` | no whitespace errors |
 | `aapt2 dump xmltree output-unsigned.apk --file AndroidManifest.xml` | `0` | binary Manifest parsed and shell factory was present |
@@ -91,11 +92,11 @@ final APK hashes on each run.
 
 | Artifact | SHA-256 |
 | --- | --- |
-| synthetic input APK | `b8a4321907017911c22fb24605b795fedcbf3893558345e5d48fdf9070207bab` |
+| synthetic input APK | `9dccef16ff020499ea1974754a8781899f831fcd1d2464e1448511f55c728695` |
 | transformed Manifest | `e6613214a7437b5edf59198896e5aeedef51938dbf78fcb1673f81591d06eb4d` |
-| AHDC v2 container | `1515a016d39529df4dfce9f8705047ca316b299315f7e1c337da8367a6e6d748` |
-| ConfigV2 | `9bb5130317476c4afb30ce8f98bd242595eaeaf2a288943fef88735377d65033` |
-| candidate/final unsigned APK | `ce8634eb84bd870e13b5146ba2e4a1477649cec85dc0d0abfab4e7afab471eb2` |
+| AHDC v2 container | `19080c687b5a7cec15bc4694648e7ff8fdd8a2dd15c0eee078be6e418bec9421` |
+| ConfigV2 | `7cd0c4e6e370fae8ae3486cc562a07b652a0445496e5e297c2b44febdf175595` |
+| candidate/final unsigned APK | `eabc8c5bdc159f0e3e158236f278ef76bfbc79505bc2fbce0b972a82105e2fb8` |
 | Runtime `armeabi-v7a` template | `810c8aa6c928a6e789dd0d9c669b819de206064daa090c66e5b6074e3f5e3e10` |
 | Runtime `arm64-v8a` template | `95ae3c5b119329bf0a2c43c1232ab8c6ab184aa68d0b07fffb310a9a7c637be3` |
 | Runtime `x86` template | `84b1b0569724c97bf388f25216f8ba2d1f4eda2c8a1215e4248befab44572d73` |

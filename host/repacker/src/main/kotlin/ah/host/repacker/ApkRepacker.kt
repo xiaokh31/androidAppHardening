@@ -21,78 +21,113 @@ class ApkRepacker internal constructor(
     constructor() : this(NO_PACKAGE_FAULTS, ::defaultAtomicMove)
 
     fun repack(request: RepackRequest): OutputVerification {
-        val input = request.input.toAbsolutePath().normalize()
-        val output = request.output.toAbsolutePath().normalize()
-        validatePaths(input, output)
-        val initialInputHash = readInputHash(input)
-        if (!MessageDigest.isEqual(initialInputHash, request.inspection.inputSha256)) {
-            packageFailure(PackageErrorCode.OUTPUT_INPUT_CHANGED, "inputSha256")
-        }
-        validateBindings(request)
-        var temp: Path? = null
+        var ready: ReadyCandidate? = null
         var published = false
         var completed = false
         try {
-            val result = request.keyPackagingPlan.consume { material ->
+            val candidate = request.keyPackagingPlan.consume { material ->
+                val input = request.input.toAbsolutePath().normalize()
+                val output = request.output.toAbsolutePath().normalize()
+                val paths = validatePaths(input, output)
+                val containerIdentity = FileIdentity.capture(
+                    request.container.toAbsolutePath().normalize(),
+                    PackageErrorCode.PACKAGE_ABI_MISMATCH,
+                    "containerIdentity",
+                )
+                validateBindings(request)
                 verifyContainer(request, material)
-                RawZipArchive.open(input).use { archive ->
+                val archive = openInputArchive(input)
+                var returned = false
+                try {
+                    val initialInputHash = archive.fileSha256()
+                    if (!MessageDigest.isEqual(initialInputHash, request.inspection.inputSha256)) {
+                        packageFailure(PackageErrorCode.OUTPUT_INPUT_CHANGED, "inputSha256")
+                    }
                     validateInspection(archive, request)
                     val effectiveAbis = effectiveAbis(archive, request)
                     if (material.targetAbis != effectiveAbis) {
                         packageFailure(PackageErrorCode.PACKAGE_ABI_MISMATCH, "targetAbis")
                     }
-                    val prepared = prepare(request, archive, material, effectiveAbis, initialInputHash)
-                    prepared.expected.use { expected ->
+                    prepare(request, archive, material, effectiveAbis, initialInputHash).use { prepared ->
                         val parent = output.parent ?: packageFailure(PackageErrorCode.PACKAGE_WRITE_FAILED, "outputParent")
                         val candidate = try {
                             Files.createTempFile(parent, ".ah-repack-", ".part")
                         } catch (_: IOException) {
                             packageFailure(PackageErrorCode.PACKAGE_WRITE_FAILED, "tempCreate")
                         }
-                        temp = candidate
                         try {
                             AlignedZipWriter(candidate, faults).use { writer ->
                                 prepared.entries.forEach(writer::writeEntry)
                                 writer.finish()
                             }
+                            prepared.clearPayloads()
                             faults.afterCandidateClosed(candidate)
-                            val verification = OutputVerifier.verify(candidate, expected)
-                            if (!MessageDigest.isEqual(readInputHash(input), initialInputHash)) {
-                                packageFailure(PackageErrorCode.OUTPUT_INPUT_CHANGED, "inputBeforeMove")
+                            val verification = OutputVerifier.verify(candidate, prepared.expected, faults)
+                            paths.verify(outputMustBeAbsent = true)
+                            if (!containerIdentity.matches(request.container.toAbsolutePath().normalize(), requireSamePath = true)) {
+                                packageFailure(PackageErrorCode.PACKAGE_ABI_MISMATCH, "containerIdentity")
                             }
-                            faults.beforeAtomicMove(candidate, output)
-                            try {
-                                atomicMove(candidate, output)
-                            } catch (_: AtomicMoveNotSupportedException) {
-                                packageFailure(PackageErrorCode.OUTPUT_ATOMIC_MOVE_UNSUPPORTED, "atomicMove")
-                            } catch (_: IOException) {
-                                packageFailure(PackageErrorCode.PACKAGE_WRITE_FAILED, "atomicMove")
+                            if (!MessageDigest.isEqual(archive.fileSha256(), initialInputHash)) {
+                                packageFailure(PackageErrorCode.OUTPUT_INPUT_CHANGED, "inputBeforeCleanup")
                             }
-                            temp = null
-                            published = true
-                            faults.afterPublished(output)
-                            if (!MessageDigest.isEqual(readInputHash(input), initialInputHash)) {
-                                packageFailure(PackageErrorCode.OUTPUT_INPUT_CHANGED, "inputAfterMove")
-                            }
-                            if (!MessageDigest.isEqual(verification.outputSha256, sha256(output))) {
-                                packageFailure(PackageErrorCode.OUTPUT_VERIFICATION_FAILED, "publishedDigest")
-                            }
-                            verification
+                            val value = ReadyCandidate(candidate, archive, paths, initialInputHash, verification)
+                            returned = true
+                            value
                         } catch (failure: PackageException) {
+                            deleteQuietly(candidate)
                             throw failure
                         } catch (_: IOException) {
+                            deleteQuietly(candidate)
                             packageFailure(PackageErrorCode.PACKAGE_WRITE_FAILED, "io")
                         } catch (_: SecurityException) {
+                            deleteQuietly(candidate)
                             packageFailure(PackageErrorCode.PACKAGE_WRITE_FAILED, "permission")
+                        } catch (failure: Throwable) {
+                            deleteQuietly(candidate)
+                            throw failure
                         }
                     }
+                } finally {
+                    if (!returned) archive.close()
                 }
             }
+            ready = candidate
+            faults.beforeAtomicMove(candidate.path, candidate.paths.output)
+            candidate.paths.verify(outputMustBeAbsent = true)
+            if (!MessageDigest.isEqual(candidate.archive.fileSha256(), candidate.inputSha256)) {
+                packageFailure(PackageErrorCode.OUTPUT_INPUT_CHANGED, "inputBeforeMove")
+            }
+            val candidateIdentity = FileIdentity.capture(candidate.path, PackageErrorCode.PACKAGE_WRITE_FAILED, "candidateIdentity")
+            try {
+                atomicMove(candidate.path, candidate.paths.output)
+            } catch (_: AtomicMoveNotSupportedException) {
+                packageFailure(PackageErrorCode.OUTPUT_ATOMIC_MOVE_UNSUPPORTED, "atomicMove")
+            } catch (_: IOException) {
+                packageFailure(PackageErrorCode.PACKAGE_WRITE_FAILED, "atomicMove")
+            }
+            published = true
+            faults.afterPublished(candidate.paths.output)
+            candidate.paths.verify(outputMustBeAbsent = false)
+            if (!candidateIdentity.matches(candidate.paths.output)) {
+                packageFailure(PackageErrorCode.OUTPUT_VERIFICATION_FAILED, "publishedIdentity")
+            }
+            if (!MessageDigest.isEqual(candidate.archive.fileSha256(), candidate.inputSha256)) {
+                packageFailure(PackageErrorCode.OUTPUT_INPUT_CHANGED, "inputAfterMove")
+            }
+            if (!MessageDigest.isEqual(candidate.verification.outputSha256, sha256(candidate.paths.output))) {
+                packageFailure(PackageErrorCode.OUTPUT_VERIFICATION_FAILED, "publishedDigest")
+            }
+            candidate.closeArchive()
             completed = true
-            return result
+            return candidate.verification
         } finally {
-            temp?.let(::deleteQuietly)
-            if (published && !completed && Files.exists(output, LinkOption.NOFOLLOW_LINKS)) deleteQuietly(output)
+            ready?.let { candidate ->
+                candidate.closeArchiveQuietly()
+                if (!published) deleteQuietly(candidate.path)
+                if (published && !completed && Files.exists(candidate.paths.output, LinkOption.NOFOLLOW_LINKS)) {
+                    deleteQuietly(candidate.paths.output)
+                }
+            }
         }
     }
 
@@ -103,15 +138,33 @@ class ApkRepacker internal constructor(
         effectiveAbis: Set<RuntimeAbi>,
         inputHash: ByteArray,
     ): PreparedOutput {
-        val config = material.configV2().copyBytes()
-        val rNative = material.rNative().copyBytes()
-        val buildId = material.buildId().copyBytes()
-        val keySlotId = material.keySlotId().copyBytes()
-        val runtimes = RuntimeMaterializer.materialize(request.runtimeBundle, material)
+        var config: ByteArray? = null
+        var rNative: ByteArray? = null
+        var buildId: ByteArray? = null
+        var keySlotId: ByteArray? = null
+        var runtimes: List<MaterializedRuntime> = emptyList()
         val entries = ArrayList<PlannedZipEntry>()
         val expected = ArrayList<ExpectedEntry>()
         val deleted = LinkedHashSet<String>()
+        var expectedBuild: ByteArray? = null
+        var expectedSlot: ByteArray? = null
+        var expectedNative: ByteArray? = null
+        var outputContract: ExpectedOutput? = null
+        var completed = false
         try {
+            val configValue = material.configV2().copyBytes()
+            config = configValue
+            faults.afterSensitiveCopy("prepare.config")
+            val nativeValue = material.rNative().copyBytes()
+            rNative = nativeValue
+            faults.afterSensitiveCopy("prepare.rNative")
+            val buildValue = material.buildId().copyBytes()
+            buildId = buildValue
+            faults.afterSensitiveCopy("prepare.buildId")
+            val slotValue = material.keySlotId().copyBytes()
+            keySlotId = slotValue
+            faults.afterSensitiveCopy("prepare.keySlotId")
+            runtimes = RuntimeMaterializer.materialize(request.runtimeBundle, material, faults)
             archive.entries.forEach { source ->
                 when {
                     source.name == MANIFEST_PATH -> {
@@ -157,7 +210,7 @@ class ApkRepacker internal constructor(
             }
             addBytes(entries, expected, BOOTSTRAP_PATH, request.runtimeBundle.bootstrapDex, METHOD_DEFLATED, 1, ExpectedContentKind.BOOTSTRAP)
             addFile(entries, expected, PAYLOAD_PATH, request.container, request.containerDescriptor.containerSha256, 4096, ExpectedContentKind.CONTAINER)
-            addBytes(entries, expected, CONFIG_PATH, config, METHOD_STORED, 4096, ExpectedContentKind.CONFIG)
+            addBytes(entries, expected, CONFIG_PATH, configValue, METHOD_STORED, 4096, ExpectedContentKind.CONFIG)
             runtimes.sortedBy { it.abi.directoryName }.forEach { runtime ->
                 val path = runtimePath(runtime.abi)
                 val pair = bytesPlan(path, runtime.bytes, METHOD_STORED, 16_384, ExpectedContentKind.RUNTIME)
@@ -178,26 +231,41 @@ class ApkRepacker internal constructor(
                 entries += pair.first.copyWithExpected(runtimeContract)
                 expected += runtimeContract
             }
+            expectedBuild = buildValue.copyOf()
+            expectedSlot = slotValue.copyOf()
+            expectedNative = nativeValue.copyOf()
             val contract = ExpectedOutput(
                 expected,
                 deleted,
                 inputHash.copyOf(),
                 request.transformedManifest.afterSha256,
                 request.containerDescriptor.containerSha256,
-                sha256(config),
-                buildId.copyOf(),
-                keySlotId.copyOf(),
-                rNative.copyOf(),
+                sha256(configValue),
+                requireNotNull(expectedBuild),
+                requireNotNull(expectedSlot),
+                requireNotNull(expectedNative),
                 request.inspection.nativeAbis.abis.toSet(),
                 effectiveAbis,
             )
-            return PreparedOutput(entries, contract)
+            outputContract = contract
+            expectedBuild = null
+            expectedSlot = null
+            expectedNative = null
+            completed = true
+            return PreparedOutput(entries, contract, faults)
         } finally {
-            config.fill(0)
-            rNative.fill(0)
-            buildId.fill(0)
-            keySlotId.fill(0)
-            runtimes.forEach { it.bytes.fill(0) }
+            config?.let { clearSensitive("prepare.config", it, faults) }
+            rNative?.let { clearSensitive("prepare.rNative", it, faults) }
+            buildId?.let { clearSensitive("prepare.buildId", it, faults) }
+            keySlotId?.let { clearSensitive("prepare.keySlotId", it, faults) }
+            runtimes.forEach { clearSensitive("prepare.runtime.${it.abi.directoryName}", it.bytes, faults) }
+            expectedBuild?.let { clearSensitive("prepare.expectedBuild", it, faults) }
+            expectedSlot?.let { clearSensitive("prepare.expectedSlot", it, faults) }
+            expectedNative?.let { clearSensitive("prepare.expectedNative", it, faults) }
+            if (!completed) {
+                entries.clearBytePayloads()
+                outputContract?.close()
+            }
         }
     }
 
@@ -356,7 +424,7 @@ class ApkRepacker internal constructor(
             actualNames.mapTo(LinkedHashSet()) { supported.getValue(it) }
     }
 
-    private fun validatePaths(input: Path, output: Path) {
+    private fun validatePaths(input: Path, output: Path): PathContract {
         if (input == output) packageFailure(PackageErrorCode.OUTPUT_PATH_ALIAS, "normalizedPath")
         if (!Files.isRegularFile(input, LinkOption.NOFOLLOW_LINKS)) {
             packageFailure(PackageErrorCode.OUTPUT_INPUT_CHANGED, "inputType")
@@ -365,26 +433,19 @@ class ApkRepacker internal constructor(
             val aliases = try { Files.isSameFile(input, output) } catch (_: IOException) { false }
             packageFailure(if (aliases) PackageErrorCode.OUTPUT_PATH_ALIAS else PackageErrorCode.OUTPUT_ALREADY_EXISTS, "output")
         }
-        val inputReal = try { input.toRealPath() } catch (_: IOException) {
-            packageFailure(PackageErrorCode.OUTPUT_INPUT_CHANGED, "inputRealPath")
-        }
         val parent = output.parent ?: packageFailure(PackageErrorCode.PACKAGE_WRITE_FAILED, "outputParent")
-        val parentReal = try { parent.toRealPath() } catch (_: IOException) {
-            packageFailure(PackageErrorCode.PACKAGE_WRITE_FAILED, "outputParent")
-        }
-        if (inputReal == parentReal.resolve(output.fileName).normalize()) {
+        val inputIdentity = FileIdentity.capture(input, PackageErrorCode.OUTPUT_INPUT_CHANGED, "inputIdentity")
+        val parentIdentity = FileIdentity.capture(parent, PackageErrorCode.PACKAGE_WRITE_FAILED, "outputParent")
+        if (inputIdentity.realPath == parentIdentity.realPath.resolve(output.fileName).normalize()) {
             packageFailure(PackageErrorCode.OUTPUT_PATH_ALIAS, "resolvedPath")
         }
-        val attributes = try {
-            Files.readAttributes(input, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
-        } catch (_: IOException) {
-            packageFailure(PackageErrorCode.OUTPUT_INPUT_CHANGED, "inputIdentity")
-        }
-        if (!attributes.isRegularFile) packageFailure(PackageErrorCode.OUTPUT_INPUT_CHANGED, "inputType")
+        return PathContract(input, output, parent, inputIdentity, parentIdentity)
     }
 
-    private fun readInputHash(input: Path): ByteArray = try { sha256(input) } catch (_: IOException) {
-        packageFailure(PackageErrorCode.OUTPUT_INPUT_CHANGED, "inputRead")
+    private fun openInputArchive(input: Path): RawZipArchive = try {
+        RawZipArchive.open(input)
+    } catch (_: PackageException) {
+        packageFailure(PackageErrorCode.OUTPUT_INPUT_CHANGED, "inputZip")
     }
 
     private fun alignment(name: String, method: Int): Int = when {
@@ -397,7 +458,104 @@ class ApkRepacker internal constructor(
         try { Files.deleteIfExists(path) } catch (_: IOException) { /* cleanup is best-effort */ }
     }
 
-    private data class PreparedOutput(val entries: List<PlannedZipEntry>, val expected: ExpectedOutput)
+    private class PreparedOutput(
+        val entries: List<PlannedZipEntry>,
+        val expected: ExpectedOutput,
+        private val faults: PackageFaults,
+    ) : AutoCloseable {
+        private var payloadsCleared = false
+
+        fun clearPayloads() {
+            if (payloadsCleared) return
+            payloadsCleared = true
+            entries.clearBytePayloads()
+            reportSensitiveCleared("prepared.bytePayloads", entries.bytePayloadsCleared(), faults)
+        }
+
+        override fun close() {
+            clearPayloads()
+            expected.close()
+            reportSensitiveCleared("prepared.expected", expected.isCleared(), faults)
+        }
+    }
+
+    private class ReadyCandidate(
+        val path: Path,
+        val archive: RawZipArchive,
+        val paths: PathContract,
+        val inputSha256: ByteArray,
+        val verification: OutputVerification,
+    ) {
+        private var archiveClosed = false
+
+        fun closeArchive() {
+            if (archiveClosed) return
+            archiveClosed = true
+            try {
+                archive.close()
+            } catch (_: IOException) {
+                packageFailure(PackageErrorCode.PACKAGE_WRITE_FAILED, "inputClose")
+            }
+        }
+
+        fun closeArchiveQuietly() {
+            if (archiveClosed) return
+            archiveClosed = true
+            try { archive.close() } catch (_: IOException) { /* preserve the primary failure */ }
+        }
+    }
+
+    private class PathContract(
+        val input: Path,
+        val output: Path,
+        private val parent: Path,
+        private val inputIdentity: FileIdentity,
+        private val parentIdentity: FileIdentity,
+    ) {
+        fun verify(outputMustBeAbsent: Boolean) {
+            if (!inputIdentity.matches(input, requireSamePath = true)) {
+                packageFailure(PackageErrorCode.OUTPUT_INPUT_CHANGED, "inputIdentity")
+            }
+            if (!parentIdentity.matches(parent, requireSamePath = true)) {
+                packageFailure(PackageErrorCode.PACKAGE_WRITE_FAILED, "outputParentIdentity")
+            }
+            val exists = Files.exists(output, LinkOption.NOFOLLOW_LINKS)
+            if (outputMustBeAbsent && exists) packageFailure(PackageErrorCode.OUTPUT_ALREADY_EXISTS, "outputRace")
+            if (!outputMustBeAbsent && !exists) packageFailure(PackageErrorCode.OUTPUT_VERIFICATION_FAILED, "publishedMissing")
+        }
+    }
+
+    private data class FileIdentity(
+        val realPath: Path,
+        val fileKey: String?,
+        val size: Long,
+        val directory: Boolean,
+    ) {
+        fun matches(path: Path, requireSamePath: Boolean = false): Boolean = try {
+            val actualReal = path.toRealPath()
+            val attributes = Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+            (if (directory) attributes.isDirectory else attributes.isRegularFile) &&
+                (!requireSamePath || actualReal == realPath) &&
+                if (fileKey != null && attributes.fileKey() != null) fileKey == attributes.fileKey().toString() else size == attributes.size()
+        } catch (_: IOException) {
+            false
+        } catch (_: SecurityException) {
+            false
+        }
+
+        companion object {
+            fun capture(path: Path, code: PackageErrorCode, field: String): FileIdentity = try {
+                val real = path.toRealPath()
+                val attributes = Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+                if (!attributes.isRegularFile && !attributes.isDirectory) packageFailure(code, field)
+                FileIdentity(real, attributes.fileKey()?.toString(), attributes.size(), attributes.isDirectory)
+            } catch (_: IOException) {
+                packageFailure(code, field)
+            } catch (_: SecurityException) {
+                packageFailure(code, field)
+            }
+        }
+    }
 
     companion object {
         private val NATIVE_LIBRARY = Regex("lib/([^/]+)/[^/]+\\.so")
@@ -407,6 +565,13 @@ class ApkRepacker internal constructor(
         }
     }
 }
+
+private fun List<PlannedZipEntry>.clearBytePayloads() {
+    forEach { entry -> (entry.payload as? BytesEntryPayload)?.clear() }
+}
+
+private fun List<PlannedZipEntry>.bytePayloadsCleared(): Boolean =
+    all { entry -> (entry.payload as? BytesEntryPayload)?.isCleared() != false }
 
 private fun PlannedZipEntry.copyWithExpected(expected: ExpectedEntry): PlannedZipEntry = PlannedZipEntry(
     expected,

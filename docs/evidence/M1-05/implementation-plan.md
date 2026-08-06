@@ -59,8 +59,8 @@ alignment, output publication, and unsigned-output policy.
    compressed or misaligned fixed assets, altered preserved bytes, Runtime
    slot mismatch, original DEX presence, signature material, and trailing/gap
    structures.
-8. Canonical entry/error/alignment reports are byte-compared on Ubuntu and
-   Windows CI; randomized APK/container bytes are excluded from equivalence.
+8. Canonical entry/error/cleanup/alignment reports are byte-compared on Ubuntu
+   and Windows CI; randomized APK/container bytes are excluded from equivalence.
 
 ## Evidence and review sequence
 

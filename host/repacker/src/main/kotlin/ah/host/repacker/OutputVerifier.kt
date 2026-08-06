@@ -5,7 +5,9 @@ import java.nio.file.Path
 import java.security.MessageDigest
 
 object OutputVerifier {
-    fun verify(candidate: Path, expected: ExpectedOutput): OutputVerification {
+    fun verify(candidate: Path, expected: ExpectedOutput): OutputVerification = verify(candidate, expected, NO_PACKAGE_FAULTS)
+
+    internal fun verify(candidate: Path, expected: ExpectedOutput, faults: PackageFaults): OutputVerification {
         val verified = ArrayList<VerifiedEntry>(expected.entries.size)
         RawZipArchive.open(candidate, requirePackedLayout = true).use { archive ->
             val actual = archive.entries
@@ -37,7 +39,13 @@ object OutputVerifier {
                     verificationFailure("plaintextDex")
                 }
                 if (contract.kind == ExpectedContentKind.RUNTIME) {
-                    verifyRuntime(archive.readUncompressed(entry, MAX_RUNTIME_BYTES), contract, expected)
+                    val runtimeBytes = archive.readUncompressed(entry, MAX_RUNTIME_BYTES)
+                    try {
+                        faults.afterVerifierRuntimeRead()
+                        verifyRuntime(runtimeBytes, contract, expected)
+                    } finally {
+                        clearSensitive("verifier.runtime", runtimeBytes, faults)
+                    }
                 }
                 verified += VerifiedEntry(
                     entry.name,
@@ -93,11 +101,14 @@ object OutputVerifier {
         }
         if (!bytes.copyOfRange(slot, slot + 4).contentEquals(AHS1) ||
             leU2(bytes, slot + 4) != 1 || leU2(bytes, slot + 6) != abi.abiId ||
-            !bytes.copyOfRange(slot + 8, slot + 24).contentEquals(expected.keySlotId) ||
-            !bytes.copyOfRange(slot + 24, slot + 40).contentEquals(expected.buildId) ||
-            !bytes.copyOfRange(slot + 40, slot + 72).contentEquals(expected.rNative)
+            !rangeEquals(bytes, slot + 8, expected.keySlotId) ||
+            !rangeEquals(bytes, slot + 24, expected.buildId) ||
+            !rangeEquals(bytes, slot + 40, expected.rNative)
         ) verificationFailure("runtimeBinding")
-        if (!MessageDigest.isEqual(sha256(bytes.copyOfRange(slot, slot + 72)), bytes.copyOfRange(slot + 72, slot + 104))) {
+        val slotDigest = MessageDigest.getInstance("SHA-256").apply { update(bytes, slot, 72) }.digest()
+        val validDigest = rangeEquals(bytes, slot + 72, slotDigest)
+        slotDigest.fill(0)
+        if (!validDigest) {
             verificationFailure("runtimeSlotDigest")
         }
     }
@@ -122,6 +133,15 @@ object OutputVerifier {
 
     private fun verificationFailure(field: String): Nothing =
         throw PackageException(PackageErrorCode.OUTPUT_VERIFICATION_FAILED, field)
+
+    private fun rangeEquals(container: ByteArray, offset: Int, expected: ByteArray): Boolean {
+        if (offset < 0 || offset > container.size - expected.size) return false
+        var difference = 0
+        expected.indices.forEach { index ->
+            difference = difference or (container[offset + index].toInt() xor expected[index].toInt())
+        }
+        return difference == 0
+    }
 
     private val AHP0 = "AHP0".toByteArray(Charsets.US_ASCII)
     private val AHS1 = "AHS1".toByteArray(Charsets.US_ASCII)

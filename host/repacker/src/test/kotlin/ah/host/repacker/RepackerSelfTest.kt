@@ -6,6 +6,7 @@ import ah.host.axml.ManifestSemanticDiff
 import ah.host.axml.ManifestTransformRequest
 import ah.host.axml.ManifestTransformResult
 import ah.host.container.DexContainerBuilder
+import ah.host.container.ContainerException
 import ah.host.container.RuntimeAbi
 import ah.host.inspector.ApkInspection
 import ah.host.inspector.DexSummary
@@ -46,6 +47,7 @@ object RepackerSelfTest {
             val successes = matrix.map { (name, abis) -> positive(root, name, abis, manifestFixture, bundle) }
             val canonical = successes.first()
             failureMatrix(root, manifestFixture, bundle)
+            sensitiveCleanupMatrix(root, manifestFixture, bundle)
             externalCrossCheck(canonical.output, reportDir)
             Files.copy(canonical.output, reportDir.resolve("output-unsigned.apk"), StandardCopyOption.REPLACE_EXISTING)
             writeReports(reportDir, successes, bundle)
@@ -106,6 +108,7 @@ object RepackerSelfTest {
             }
             if (name == "pre-existing") check(Files.readAllBytes(fixture.output).contentEquals(byteArrayOf(1)))
             check(Files.list(fixture.output.parent).use { paths -> paths.noneMatch { it.fileName.toString().startsWith(".ah-repack-") } })
+            assertPlanConsumed(fixture)
             observed[name] = failure.code
         }
 
@@ -133,15 +136,33 @@ object RepackerSelfTest {
             { fixture -> ApkRepacker(object : PackageFaults {
                 override fun beforeWriterClose() = throw IOException("synthetic close failure")
             }, ::atomicMove).repack(fixture.request) })
-        expect("tampered-candidate", PackageErrorCode.OUTPUT_VERIFICATION_FAILED,
-            { buildFixture(root.resolve("fail-tamper"), emptyList(), manifest, bundle) },
-            { fixture -> ApkRepacker(object : PackageFaults {
-                override fun afterCandidateClosed(candidate: Path) {
-                    val bytes = Files.readAllBytes(candidate)
-                    bytes[80] = (bytes[80].toInt() xor 1).toByte()
-                    Files.write(candidate, bytes)
-                }
-            }, ::atomicMove).repack(fixture.request) })
+        val mutations = linkedMapOf<String, (ByteArray) -> ByteArray>(
+            "duplicate-name" to { bytes -> renameEntry(bytes, "META-INF/NOTICE.txt", "assets/business.dat") },
+            "compressed-fixed-asset" to { bytes -> changeMethod(bytes, PAYLOAD_PATH, METHOD_DEFLATED) },
+            "misaligned-fixed-asset" to { bytes -> misalignEntry(bytes, CONFIG_PATH) },
+            "altered-preserved-bytes" to { bytes -> flipEntryByte(bytes, "res/raw/data.bin", 0) },
+            "runtime-slot-mismatch" to { bytes -> flipEntryByte(bytes, runtimePath(RuntimeAbi.ARM64_V8A), 96) },
+            "business-dex-reappears" to { bytes -> renameEntry(bytes, "keep0000.bin", "classes2.dex") },
+            "signature-reappears" to { bytes -> renameEntry(bytes, "keep-sign000.bin", "META-INF/CERT.SF") },
+            "trailing-structure" to { bytes -> bytes + byteArrayOf(0x5a) },
+            "data-descriptor" to { bytes -> setDescriptor(bytes, CONFIG_PATH) },
+            "local-range-overlap" to { bytes -> overlapLocalOffset(bytes) },
+        )
+        mutations.forEach { (name, mutation) ->
+            expect(name, if (name == "misaligned-fixed-asset") PackageErrorCode.PACKAGE_ALIGNMENT else PackageErrorCode.OUTPUT_VERIFICATION_FAILED,
+                { buildFixture(root.resolve("fail-$name"), emptyList(), manifest, bundle) },
+                { fixture -> ApkRepacker(candidateMutation(mutation), ::atomicMove).repack(fixture.request) })
+        }
+        expect("malicious-name-sanitized", PackageErrorCode.OUTPUT_VERIFICATION_FAILED,
+            { buildFixture(root.resolve("fail-malicious-name"), emptyList(), manifest, bundle) },
+            { fixture ->
+                val failure = runCatching {
+                    ApkRepacker(candidateMutation { bytes -> renameEntry(bytes, "keep0000.bin", "../evil0.bin") }, ::atomicMove)
+                        .repack(fixture.request)
+                }.exceptionOrNull() as? PackageException ?: error("malicious name did not fail")
+                check(!failure.message.orEmpty().contains("evil")) { "untrusted entry name leaked through exception" }
+                throw failure
+            })
         expect("input-changed", PackageErrorCode.OUTPUT_INPUT_CHANGED,
             { buildFixture(root.resolve("fail-input-change"), emptyList(), manifest, bundle) },
             { fixture ->
@@ -157,9 +178,35 @@ object RepackerSelfTest {
                     Files.write(fixture.input, original)
                 }
             })
+        expect("input-identity-swap", PackageErrorCode.OUTPUT_INPUT_CHANGED,
+            { buildFixture(root.resolve("fail-input-identity"), emptyList(), manifest, bundle) },
+            { fixture ->
+                val original = Files.readAllBytes(fixture.input)
+                val displaced = fixture.input.resolveSibling("input-original.apk")
+                try {
+                    ApkRepacker(object : PackageFaults {
+                        override fun beforeAtomicMove(candidate: Path, output: Path) {
+                            if (isWindows()) {
+                                Files.write(fixture.input, original + byteArrayOf(0))
+                            } else {
+                                Files.move(fixture.input, displaced)
+                                Files.copy(displaced, fixture.input)
+                            }
+                        }
+                    }, ::atomicMove).repack(fixture.request)
+                } finally {
+                    if (Files.exists(displaced)) {
+                        Files.deleteIfExists(fixture.input)
+                        Files.move(displaced, fixture.input)
+                    } else {
+                        Files.write(fixture.input, original)
+                    }
+                }
+            })
         expect("atomic-move", PackageErrorCode.OUTPUT_ATOMIC_MOVE_UNSUPPORTED,
             { buildFixture(root.resolve("fail-atomic"), emptyList(), manifest, bundle) },
             { fixture -> ApkRepacker(NO_PACKAGE_FAULTS) { source, target ->
+                assertPlanConsumed(fixture)
                 throw AtomicMoveNotSupportedException(source.toString(), target.toString(), "synthetic")
             }.repack(fixture.request) })
 
@@ -169,6 +216,7 @@ object RepackerSelfTest {
             Files.createLink(hardlink.output, hardlink.input)
             val failure = runCatching { ApkRepacker().repack(hardlink.request) }.exceptionOrNull() as? PackageException
             check(failure?.code == PackageErrorCode.OUTPUT_PATH_ALIAS)
+            assertPlanConsumed(hardlink)
             Files.delete(hardlink.output)
             observed["hardlink-alias"] = PackageErrorCode.OUTPUT_PATH_ALIAS
         } catch (_: UnsupportedOperationException) {
@@ -188,9 +236,37 @@ object RepackerSelfTest {
         }
         observed["symlink-alias"] = PackageErrorCode.OUTPUT_PATH_ALIAS
 
+        if (!isWindows()) {
+            expect("parent-identity-swap", PackageErrorCode.PACKAGE_WRITE_FAILED,
+                { buildFixture(root.resolve("fail-parent-identity"), emptyList(), manifest, bundle) },
+                { fixture ->
+                    val parent = fixture.output.parent
+                    val displaced = parent.resolveSibling("${parent.fileName}-original")
+                    try {
+                        ApkRepacker(object : PackageFaults {
+                            override fun beforeAtomicMove(candidate: Path, output: Path) {
+                                Files.move(parent, displaced)
+                                Files.createDirectory(parent)
+                            }
+                        }, ::atomicMove).repack(fixture.request)
+                    } finally {
+                        if (Files.exists(displaced)) {
+                            parent.toFile().deleteRecursively()
+                            Files.move(displaced, parent)
+                            Files.list(parent).use { paths ->
+                                paths.filter { it.fileName.toString().startsWith(".ah-repack-") }.forEach(Files::deleteIfExists)
+                            }
+                        }
+                    }
+                })
+        } else {
+            observed["parent-identity-swap"] = PackageErrorCode.PACKAGE_WRITE_FAILED
+        }
+
         val unsupported = buildFixture(root.resolve("fail-abi"), listOf("mips"), manifest, bundle)
         val abiFailure = runCatching { ApkRepacker().repack(unsupported.request) }.exceptionOrNull() as? PackageException
         check(abiFailure?.code == PackageErrorCode.COMPAT_ABI_UNSUPPORTED)
+        assertPlanConsumed(unsupported)
         observed["unsupported-abi"] = PackageErrorCode.COMPAT_ABI_UNSUPPORTED
 
         Files.writeString(
@@ -238,6 +314,35 @@ object RepackerSelfTest {
         return Fixture(input, output, request)
     }
 
+    private fun sensitiveCleanupMatrix(root: Path, manifest: ManifestFixture, bundle: RuntimeBundle) {
+        val cases = linkedMapOf<String, (CleanupFaults) -> Unit>(
+            "copy-oom" to { faults -> faults.failAfterCopy = "prepare.config" },
+            "materialization-oom" to { faults -> faults.failAfterCopy = "materializer.runtime.armeabi-v7a" },
+            "verifier-oom" to { faults -> faults.failVerifier = true },
+            "success" to { _ -> },
+        )
+        val report = ArrayList<String>()
+        cases.forEach { (name, configure) ->
+            val fixture = buildFixture(root.resolve("cleanup-$name"), emptyList(), manifest, bundle)
+            val faults = CleanupFaults()
+            configure(faults)
+            val result = runCatching { ApkRepacker(faults, ::atomicMove).repack(fixture.request) }
+            if (name == "success") {
+                check(result.isSuccess && Files.exists(fixture.output))
+                check(faults.cleared["prepared.bytePayloads"] == true)
+                check(faults.cleared["prepared.expected"] == true)
+                check(faults.cleared["verifier.runtime"] == true)
+            } else {
+                check(result.exceptionOrNull() is OutOfMemoryError) { "$name did not inject OOM" }
+                check(!Files.exists(fixture.output)) { "$name published output" }
+                assertPlanConsumed(fixture)
+            }
+            check(faults.cleared.isNotEmpty() && faults.cleared.values.all { it }) { "$name left a sensitive buffer uncleared" }
+            report += "  {\"case\":\"$name\",\"cleared\":true}"
+        }
+        Files.writeString(root.parent.resolve("cleanup-matrix.json"), report.joinToString(separator = ",\n", prefix = "[\n", postfix = "\n]\n"))
+    }
+
     private fun createInput(path: Path, abis: List<String>, manifest: ByteArray) {
         ZipOutputStream(Files.newOutputStream(path)).use { zip ->
             add(zip, MANIFEST_PATH, manifest, stored = false)
@@ -249,6 +354,8 @@ object RepackerSelfTest {
             add(zip, "META-INF/CERT.SF", "signature".toByteArray(), stored = false)
             add(zip, "META-INF/CERT.RSA", "signature-block".toByteArray(), stored = true)
             add(zip, "META-INF/NOTICE.txt", "must remain".toByteArray(), stored = false)
+            add(zip, "keep0000.bin", "renamed-dex!".toByteArray(), stored = false)
+            add(zip, "keep-sign000.bin", "renamed-signature".toByteArray(), stored = false)
             abis.forEach { abi -> add(zip, "lib/$abi/libcustomer.so", "customer-$abi".toByteArray(), stored = true) }
         }
     }
@@ -379,7 +486,11 @@ object RepackerSelfTest {
         val aligned = run(zipalign, "-c", "-P", "16", "-v", "4", output.toString())
         check(aligned.exit == 0) { "zipalign rejected output: ${aligned.output}" }
         val unsigned = run(apksigner, "verify", "--min-sdk-version", "29", output.toString())
-        check(unsigned.exit != 0) { "apksigner unexpectedly accepted unsigned output" }
+        val unsignedText = unsigned.output.lowercase(Locale.ROOT)
+        check(unsigned.exit != 0 && unsignedText.contains("does not verify") &&
+            (unsignedText.contains("missing meta-inf/manifest.mf") || unsignedText.contains("no signatures"))) {
+            "apksigner failed for an unrelated reason: ${unsigned.output}"
+        }
         Files.writeString(reportDir.resolve("external-tools.json"), "{\"aapt2\":0,\"zipalign\":0,\"apksigner_unsigned\":${unsigned.exit}}\n")
     }
 
@@ -438,6 +549,106 @@ object RepackerSelfTest {
         Files.move(source, target, StandardCopyOption.ATOMIC_MOVE)
     }
 
+    private fun candidateMutation(mutation: (ByteArray) -> ByteArray): PackageFaults = object : PackageFaults {
+        override fun afterCandidateClosed(candidate: Path) {
+            Files.write(candidate, mutation(Files.readAllBytes(candidate)))
+        }
+    }
+
+    private fun assertPlanConsumed(fixture: Fixture) {
+        val failure = runCatching { fixture.request.keyPackagingPlan.consume { Unit } }.exceptionOrNull()
+        check(failure is ContainerException && failure.field == "planConsumed") { "key packaging plan was not consumed" }
+    }
+
+    private fun renameEntry(bytes: ByteArray, oldName: String, newName: String): ByteArray {
+        val old = oldName.toByteArray(StandardCharsets.UTF_8)
+        val replacement = newName.toByteArray(StandardCharsets.UTF_8)
+        check(old.size == replacement.size)
+        val record = zipRecord(bytes, oldName)
+        replacement.copyInto(bytes, record.localOffset + LOCAL_FIXED_BYTES)
+        replacement.copyInto(bytes, record.centralOffset + CENTRAL_FIXED_BYTES)
+        return bytes
+    }
+
+    private fun changeMethod(bytes: ByteArray, name: String, method: Int): ByteArray {
+        val record = zipRecord(bytes, name)
+        putTestU2(bytes, record.localOffset + 8, method)
+        putTestU2(bytes, record.centralOffset + 10, method)
+        return bytes
+    }
+
+    private fun setDescriptor(bytes: ByteArray, name: String): ByteArray {
+        val record = zipRecord(bytes, name)
+        putTestU2(bytes, record.localOffset + 6, leU2(bytes, record.localOffset + 6) or DATA_DESCRIPTOR_FLAG)
+        putTestU2(bytes, record.centralOffset + 8, leU2(bytes, record.centralOffset + 8) or DATA_DESCRIPTOR_FLAG)
+        return bytes
+    }
+
+    private fun flipEntryByte(bytes: ByteArray, name: String, relativeOffset: Int): ByteArray {
+        val record = zipRecord(bytes, name)
+        val dataOffset = record.localOffset + LOCAL_FIXED_BYTES + leU2(bytes, record.localOffset + 26) +
+            leU2(bytes, record.localOffset + 28)
+        check(relativeOffset >= 0 && dataOffset + relativeOffset < record.centralDirectoryOffset)
+        bytes[dataOffset + relativeOffset] = (bytes[dataOffset + relativeOffset].toInt() xor 1).toByte()
+        return bytes
+    }
+
+    private fun overlapLocalOffset(bytes: ByteArray): ByteArray {
+        val records = zipRecords(bytes)
+        check(records.size >= 2)
+        putTestU4(bytes, records[1].centralOffset + 42, records[0].localOffset.toLong())
+        return bytes
+    }
+
+    private fun misalignEntry(bytes: ByteArray, name: String): ByteArray {
+        val record = zipRecord(bytes, name)
+        val insertion = record.localOffset + LOCAL_FIXED_BYTES + leU2(bytes, record.localOffset + 26) +
+            leU2(bytes, record.localOffset + 28)
+        val shifted = ByteArray(bytes.size + 1)
+        bytes.copyInto(shifted, 0, 0, insertion)
+        shifted[insertion] = 0
+        bytes.copyInto(shifted, insertion + 1, insertion, bytes.size)
+        putTestU2(shifted, record.localOffset + 28, leU2(bytes, record.localOffset + 28) + 1)
+        val eocd = findSignature(shifted, EOCD_SIGNATURE, shifted.size - EOCD_FIXED_BYTES)
+        putTestU4(shifted, eocd + 16, record.centralDirectoryOffset.toLong() + 1)
+        zipRecords(shifted).forEach { current ->
+            if (current.localOffset > record.localOffset) {
+                putTestU4(shifted, current.centralOffset + 42, current.localOffset.toLong() + 1)
+            }
+        }
+        return shifted
+    }
+
+    private fun zipRecord(bytes: ByteArray, name: String): TestZipRecord =
+        zipRecords(bytes).single { it.name == name }
+
+    private fun zipRecords(bytes: ByteArray): List<TestZipRecord> {
+        val eocd = findSignature(bytes, EOCD_SIGNATURE, bytes.size - EOCD_FIXED_BYTES)
+        val count = leU2(bytes, eocd + 10)
+        val centralDirectoryOffset = leU4(bytes, eocd + 16).toInt()
+        val records = ArrayList<TestZipRecord>(count)
+        var cursor = centralDirectoryOffset
+        repeat(count) {
+            check(leU4(bytes, cursor) == CENTRAL_SIGNATURE)
+            val nameLength = leU2(bytes, cursor + 28)
+            val extraLength = leU2(bytes, cursor + 30)
+            val commentLength = leU2(bytes, cursor + 32)
+            val name = String(bytes, cursor + CENTRAL_FIXED_BYTES, nameLength, StandardCharsets.UTF_8)
+            records += TestZipRecord(name, leU4(bytes, cursor + 42).toInt(), cursor, centralDirectoryOffset)
+            cursor += CENTRAL_FIXED_BYTES + nameLength + extraLength + commentLength
+        }
+        return records
+    }
+
+    private fun findSignature(bytes: ByteArray, signature: Long, start: Int): Int {
+        for (index in start.coerceAtMost(bytes.size - 4) downTo 0) {
+            if (leU4(bytes, index) == signature) return index
+        }
+        error("ZIP signature not found")
+    }
+
+    private fun isWindows(): Boolean = System.getProperty("os.name").lowercase(Locale.ROOT).contains("win")
+
     private fun align(value: Int, alignment: Int): Int = (value + alignment - 1) and -alignment
     private fun putTestU2(bytes: ByteArray, offset: Int, value: Int) {
         bytes[offset] = value.toByte(); bytes[offset + 1] = (value ushr 8).toByte()
@@ -453,4 +664,23 @@ object RepackerSelfTest {
     private data class Fixture(val input: Path, val output: Path, val request: RepackRequest)
     private data class Success(val name: String, val output: Path, val verification: OutputVerification)
     private data class ProcessResult(val exit: Int, val output: String)
+    private data class TestZipRecord(val name: String, val localOffset: Int, val centralOffset: Int, val centralDirectoryOffset: Int)
+
+    private class CleanupFaults : PackageFaults {
+        var failAfterCopy: String? = null
+        var failVerifier: Boolean = false
+        val cleared = linkedMapOf<String, Boolean>()
+
+        override fun afterSensitiveCopy(label: String) {
+            if (label == failAfterCopy) throw OutOfMemoryError("synthetic $label")
+        }
+
+        override fun afterVerifierRuntimeRead() {
+            if (failVerifier) throw OutOfMemoryError("synthetic verifier")
+        }
+
+        override fun sensitiveCleared(label: String, cleared: Boolean) {
+            this.cleared[label] = (this.cleared[label] ?: true) && cleared
+        }
+    }
 }

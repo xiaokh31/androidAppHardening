@@ -42,6 +42,8 @@ internal class RawZipArchive private constructor(
     val centralOffset: Long,
     val fileSize: Long,
 ) : AutoCloseable {
+    fun fileSha256(): ByteArray = digestRange(0, fileSize)
+
     fun compressedSha256(entry: RawZipEntry): ByteArray = digestRange(entry.dataOffset, entry.compressedSize)
 
     fun uncompressedSha256(entry: RawZipEntry): ByteArray {
@@ -111,6 +113,7 @@ internal class RawZipArchive private constructor(
                     output
                 } finally {
                     inflater.end()
+                    input.fill(0)
                 }
             }
             else -> zipFailure("method")
@@ -129,14 +132,18 @@ internal class RawZipArchive private constructor(
 
     private fun transferRange(offset: Long, size: Long, sink: (ByteArray, Int) -> Unit) {
         val buffer = ByteArray(IO_BUFFER_BYTES)
-        var position = offset
-        var remaining = size
-        while (remaining > 0L) {
-            val count = minOf(buffer.size.toLong(), remaining).toInt()
-            readInto(channel, position, buffer, count)
-            sink(buffer, count)
-            position += count
-            remaining -= count
+        try {
+            var position = offset
+            var remaining = size
+            while (remaining > 0L) {
+                val count = minOf(buffer.size.toLong(), remaining).toInt()
+                readInto(channel, position, buffer, count)
+                sink(buffer, count)
+                position += count
+                remaining -= count
+            }
+        } finally {
+            buffer.fill(0)
         }
     }
 
@@ -165,6 +172,8 @@ internal class RawZipArchive private constructor(
             if (fed - inflater.remaining != entry.compressedSize) zipFailure("deflateTrailing")
         } finally {
             inflater.end()
+            input.fill(0)
+            output.fill(0)
         }
     }
 
@@ -376,6 +385,8 @@ internal class RawEntryPayload(
 
 internal class BytesEntryPayload(private val bytes: ByteArray) : EntryPayload {
     override fun writeTo(writer: AlignedZipWriter) = writer.writePayload(bytes, bytes.size)
+    fun clear() = bytes.fill(0)
+    fun isCleared(): Boolean = bytes.all { it == 0.toByte() }
 }
 
 internal class FileEntryPayload(private val path: Path, private val size: Long) : EntryPayload {
@@ -411,6 +422,9 @@ internal interface PackageFaults {
     fun beforeAtomicMove(candidate: Path, output: Path) = Unit
     fun afterPublished(output: Path) = Unit
     fun beforeWriterClose() = Unit
+    fun afterSensitiveCopy(label: String) = Unit
+    fun afterVerifierRuntimeRead() = Unit
+    fun sensitiveCleared(label: String, cleared: Boolean) = Unit
 }
 
 internal object NO_PACKAGE_FAULTS : PackageFaults
@@ -445,7 +459,7 @@ internal class AlignedZipWriter(
         writeBytes(name, name.size)
         writeBytes(extra, extra.size)
         val dataOffset = channel.position()
-        if (dataOffset % entry.expected.alignment != 0L) packageFailure(PackageErrorCode.PACKAGE_ALIGNMENT, entry.expected.name)
+        if (dataOffset % entry.expected.alignment != 0L) packageFailure(PackageErrorCode.PACKAGE_ALIGNMENT, "entryAlignment")
         val before = channel.position()
         entry.payload.writeTo(this)
         if (channel.position() - before != entry.expected.compressedSize) {

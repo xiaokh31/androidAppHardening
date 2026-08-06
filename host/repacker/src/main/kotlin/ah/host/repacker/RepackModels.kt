@@ -180,6 +180,12 @@ class ExpectedOutput internal constructor(
         keySlotId.fill(0)
         rNative.fill(0)
     }
+
+    internal fun isCleared(): Boolean =
+        inputSha256.all { it == 0.toByte() } && manifestSha256.all { it == 0.toByte() } &&
+            containerSha256.all { it == 0.toByte() } && configSha256.all { it == 0.toByte() } &&
+            buildId.all { it == 0.toByte() } && keySlotId.all { it == 0.toByte() } &&
+            rNative.all { it == 0.toByte() }
 }
 
 internal fun requireSha256(bytes: ByteArray): ByteArray {

@@ -120,9 +120,10 @@ jobs:
         shell: bash
         run: |
           declare -A expected=(
-            ["host/repacker/build/reports/m1-05/entry-manifest.json"]="606eb0d4a28d2235d054273b749740eaaff2fdf0891d84e582291ff327e2d687"
-            ["host/repacker/build/reports/m1-05/error-matrix.json"]="3c5b1283874f101b9007d67c2bdceff002afff0505292f91398401ab4cb2f941"
-            ["host/repacker/build/reports/m1-05/alignment-report.json"]="c173698b586d53b61874611cc36930725dd8ce7ea2f737c51b02d5afa7e427bd"
+            ["host/repacker/build/reports/m1-05/entry-manifest.json"]="1a4caf8b01af9326d3ff3e8c9581d4c4ce40e0f7c5aefa1f8ee63ca0b018e201"
+            ["host/repacker/build/reports/m1-05/error-matrix.json"]="dcc13ee7c616027ecce4272e57f7af5fa1b1c0ad25ceea8b3289c383885e7fa5"
+            ["host/repacker/build/reports/m1-05/cleanup-matrix.json"]="5cb6bd2b79ad89204cd188402c3d1a34e80c9e77862f8d57f837cbbeaa8f5c0d"
+            ["host/repacker/build/reports/m1-05/alignment-report.json"]="a9b153f5ad01cbc7df8aa993416fb5d819e05ee5029a89bc5edf38b3d80e4a5b"
             ["host/repacker/build/reports/m1-05/abi-matrix.json"]="add443496d258e389917d7fabaf1ea7d59b120d7d57b088969bb89976da3f5b8"
             ["host/repacker/build/reports/m1-05/external-tools.json"]="9723e87adedf97b176ea186baf0309159981e0154fedd25f46841d53f0bde29b"
           )
@@ -263,9 +264,10 @@ jobs:
         shell: pwsh
         run: |
           $expected = @{
-            "host/repacker/build/reports/m1-05/entry-manifest.json" = "606eb0d4a28d2235d054273b749740eaaff2fdf0891d84e582291ff327e2d687"
-            "host/repacker/build/reports/m1-05/error-matrix.json" = "3c5b1283874f101b9007d67c2bdceff002afff0505292f91398401ab4cb2f941"
-            "host/repacker/build/reports/m1-05/alignment-report.json" = "c173698b586d53b61874611cc36930725dd8ce7ea2f737c51b02d5afa7e427bd"
+            "host/repacker/build/reports/m1-05/entry-manifest.json" = "1a4caf8b01af9326d3ff3e8c9581d4c4ce40e0f7c5aefa1f8ee63ca0b018e201"
+            "host/repacker/build/reports/m1-05/error-matrix.json" = "dcc13ee7c616027ecce4272e57f7af5fa1b1c0ad25ceea8b3289c383885e7fa5"
+            "host/repacker/build/reports/m1-05/cleanup-matrix.json" = "5cb6bd2b79ad89204cd188402c3d1a34e80c9e77862f8d57f837cbbeaa8f5c0d"
+            "host/repacker/build/reports/m1-05/alignment-report.json" = "a9b153f5ad01cbc7df8aa993416fb5d819e05ee5029a89bc5edf38b3d80e4a5b"
             "host/repacker/build/reports/m1-05/abi-matrix.json" = "add443496d258e389917d7fabaf1ea7d59b120d7d57b088969bb89976da3f5b8"
             "host/repacker/build/reports/m1-05/external-tools.json" = "9723e87adedf97b176ea186baf0309159981e0154fedd25f46841d53f0bde29b"
           }

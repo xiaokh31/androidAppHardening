@@ -13,16 +13,34 @@ internal data class MaterializedRuntime(
 )
 
 internal object RuntimeMaterializer {
-    fun materialize(bundle: RuntimeBundle, material: KeyPackagingMaterialV2): List<MaterializedRuntime> {
+    fun materialize(
+        bundle: RuntimeBundle,
+        material: KeyPackagingMaterialV2,
+        faults: PackageFaults = NO_PACKAGE_FAULTS,
+    ): List<MaterializedRuntime> {
         val selected = material.targetAbis
         if (selected.isEmpty()) packageFailure(PackageErrorCode.PACKAGE_ABI_MISMATCH, "targetAbis")
-        val config = material.configV2().copyBytes()
-        val nativeShare = material.rNative().copyBytes()
-        val buildId = material.buildId().copyBytes()
-        val keySlotId = material.keySlotId().copyBytes()
+        var config: ByteArray? = null
+        var nativeShare: ByteArray? = null
+        var buildId: ByteArray? = null
+        var keySlotId: ByteArray? = null
+        val results = ArrayList<MaterializedRuntime>(selected.size)
+        var completed = false
         try {
-            validateMaterial(config, nativeShare, buildId, keySlotId)
-            return RuntimeAbi.entries.filter(selected::contains).map { abi ->
+            val configValue = material.configV2().copyBytes()
+            config = configValue
+            faults.afterSensitiveCopy("materializer.config")
+            val nativeShareValue = material.rNative().copyBytes()
+            nativeShare = nativeShareValue
+            faults.afterSensitiveCopy("materializer.rNative")
+            val buildIdValue = material.buildId().copyBytes()
+            buildId = buildIdValue
+            faults.afterSensitiveCopy("materializer.buildId")
+            val keySlotIdValue = material.keySlotId().copyBytes()
+            keySlotId = keySlotIdValue
+            faults.afterSensitiveCopy("materializer.keySlotId")
+            validateMaterial(configValue, nativeShareValue, buildIdValue, keySlotIdValue)
+            RuntimeAbi.entries.filter(selected::contains).forEach { abi ->
                 val template = bundle.templates[abi]
                     ?: packageFailure(PackageErrorCode.PACKAGE_ABI_MISMATCH, "runtimeTemplate")
                 val source = template.bytes
@@ -31,15 +49,26 @@ internal object RuntimeMaterializer {
                 }
                 val slot = locateSlot(source, abi)
                 validatePlaceholder(source, slot, abi)
-                val output = source.copyOf()
-                writeSlot(output, slot, abi, keySlotId, buildId, nativeShare)
-                MaterializedRuntime(abi, output, template, slot)
+                val outputValue = source.copyOf()
+                var output: ByteArray? = outputValue
+                try {
+                    writeSlot(outputValue, slot, abi, keySlotIdValue, buildIdValue, nativeShareValue)
+                    val runtime = MaterializedRuntime(abi, outputValue, template, slot)
+                    results.add(runtime)
+                    output = null
+                    faults.afterSensitiveCopy("materializer.runtime.${abi.directoryName}")
+                } finally {
+                    output?.let { clearSensitive("materializer.pendingRuntime", it, faults) }
+                }
             }
+            completed = true
+            return results
         } finally {
-            config.fill(0)
-            nativeShare.fill(0)
-            buildId.fill(0)
-            keySlotId.fill(0)
+            config?.let { clearSensitive("materializer.config", it, faults) }
+            nativeShare?.let { clearSensitive("materializer.rNative", it, faults) }
+            buildId?.let { clearSensitive("materializer.buildId", it, faults) }
+            keySlotId?.let { clearSensitive("materializer.keySlotId", it, faults) }
+            if (!completed) results.forEach { clearSensitive("materializer.runtime.${it.abi.directoryName}", it.bytes, faults) }
         }
     }
 
@@ -52,8 +81,8 @@ internal object RuntimeMaterializer {
             leU2(config, 6) != 0 ||
             leU4(config, 12) != CONFIG_V2_BYTES.toLong() ||
             leU2(config, 16) != 2 ||
-            !config.copyOfRange(24, 40).contentEquals(buildId) ||
-            !config.copyOfRange(40, 56).contentEquals(keySlotId)
+            !rangeEquals(config, 24, buildId) ||
+            !rangeEquals(config, 40, keySlotId)
         ) {
             packageFailure(PackageErrorCode.PACKAGE_ABI_MISMATCH, "configBinding")
         }
@@ -105,7 +134,12 @@ internal object RuntimeMaterializer {
         keySlotId.copyInto(output, offset + 8)
         buildId.copyInto(output, offset + 24)
         nativeShare.copyInto(output, offset + 40)
-        sha256(output.copyOfRange(offset, offset + 72)).copyInto(output, offset + 72)
+        val digest = MessageDigest.getInstance("SHA-256").apply { update(output, offset, 72) }.digest()
+        try {
+            digest.copyInto(output, offset + 72)
+        } finally {
+            digest.fill(0)
+        }
     }
 
     private fun expectedMachine(abi: RuntimeAbi): Int = when (abi) {
@@ -113,6 +147,19 @@ internal object RuntimeMaterializer {
         RuntimeAbi.ARM64_V8A -> 183
         RuntimeAbi.X86 -> 3
         RuntimeAbi.X86_64 -> 62
+    }
+}
+
+internal fun clearSensitive(label: String, bytes: ByteArray, faults: PackageFaults) {
+    bytes.fill(0)
+    reportSensitiveCleared(label, bytes.all { it == 0.toByte() }, faults)
+}
+
+internal fun reportSensitiveCleared(label: String, cleared: Boolean, faults: PackageFaults) {
+    try {
+        faults.sensitiveCleared(label, cleared)
+    } catch (_: Throwable) {
+        // A test observer must never interrupt the real cleanup transaction.
     }
 }
 
@@ -216,6 +263,15 @@ private fun ByteBuffer.copyBytes(): ByteArray {
     val result = ByteArray(copy.remaining())
     copy.get(result)
     return result
+}
+
+private fun rangeEquals(container: ByteArray, offset: Int, expected: ByteArray): Boolean {
+    if (offset < 0 || offset > container.size - expected.size) return false
+    var difference = 0
+    expected.indices.forEach { index ->
+        difference = difference or (container[offset + index].toInt() xor expected[index].toInt())
+    }
+    return difference == 0
 }
 
 private fun leU8(bytes: ByteArray, offset: Int): Long {

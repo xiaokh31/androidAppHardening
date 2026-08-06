@@ -2,11 +2,11 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-06T23:33:00+08:00
+updated_at: 2026-08-06T23:40:34+08:00
 updated_by: /root
 state: active
-source_branch: feat/m1-06-cli-and-json-report
-base_commit: 55ef3c57e631cde65d3e04d58aa75d26a7e75ba8
+source_branch: main
+base_commit: d0eb39264f1382469712a4f3c28a7d42ab19d1dd
 working_tree: clean
 current_milestone: M1
 active_task: M1-06
@@ -27,6 +27,7 @@ next_owner: /root
 - 首个冻结提交 `7d9072e` 的协调者只读复核发现两个关停边界缺口并立即废止：报告临时文件/hard-link 已发布窗口未被 shutdown hook 精确拥有，以及首 stage 前未知异常会错误归到 `publish`。当前修复精确追踪本次 report temp/target、失败时只删除 owned target、失败清理不成功则保留退出 hook 重试，并按实际 active stage 映射未知异常；新增 pre-stage、report-temp 和 report-target shutdown 回归。修复后 targeted full-flow 与最终 273-task clean 根回归再次退出 `0`，等待新冻结点完整复核。
 - 新冻结提交 `e882691c1dbc4958c111c7e33580c3921eff2fc8` 的完整协调者只读复核为 PASS：P0/P1/P2 均为 `0`。生产 JAR 无 synthetic Runtime/DEX/SO/key/cert，生产源码无签名执行、网络或环境采集能力，Git 无 build 产物，首个冻结点两项发现和全部任务验收已关闭；结论归档于 `docs/evidence/M1-06/read-only-review.md`。当前允许推送固定分支并创建关闭 Issue #11 的唯一草稿 PR。
 - 固定分支已推送，关联关闭 Issue #11 的唯一草稿 PR 为 [#40](https://github.com/xiaokh31/androidAppHardening/pull/40)。初始 HEAD `5a3981ced2c1f889ece284684b9167c34bae5f99` 的 Build run `31115781825` 与 Governance run `31115781121` 在 Ubuntu 24.04/Windows 2025 四项全部 PASS；两个 Build job 的 M1-06 full-flow 与固定 normalized/error/cleanup/path 哈希均命中。当前只允许提交 merger-ready 证据并等待该 exact HEAD 的替换 CI，不启动 M2。
+- merger-ready HEAD `702995748cfd643feb9d75ef0abee9cbced1cb4c` 的 Build run `31116416406` 与 Governance run `31116415535` 在 Ubuntu/Windows 四项全部 PASS；两个 Build job 再次通过 M1-06 full-flow 和四份固定哈希。PR #40 已按预授权转为 ready，并以 expected-head 保护的普通 merge commit `d0eb39264f1382469712a4f3c28a7d42ab19d1dd` 合并到 `main`，Issue #11 已关闭。本地 main 已快进同步；当前只允许 post-merge README/HandOff、无豁免 strict/Governance 和最终 main 双平台门禁，不启动 M2。
 - 用户已明确启动 M1-05，并预先授权任务所需的推送、唯一草稿 PR、ready 与 expected-head 普通合并。Issue [#10](https://github.com/xiaokh31/androidAppHardening/issues/10) 为 OPEN、无 assignee，远程无固定分支或关联 PR；分支 `feat/m1-05-apk-repacker-and-alignment` 从已验证 `main@d32abe1d68d41910d72c90c3f9fc3d2831972756` 创建。
 - M1-02/M1-03/M1-04 依赖均已合并并完成 post-merge 门禁。M1-05 使用 `pre-cli` 内部 assembler/repacker harness，不启动本机模拟器或真机；生产 Runtime binaries 在 M3 集成前可由任务卡明确允许的合成 RuntimeBundle 合同 fixture 代替。
 - 实现与验收边界归档于 `docs/evidence/M1-05/implementation-plan.md`。ADR 0005/0006/0007/0008 已固定 ABI、NativeShareSlotV1、sourceDir 资产和 AHDC v2 合同，无需新 ADR；独立复核者固定为 `m1_05_security_review`，仅在 clean 冻结提交后启动。
@@ -159,7 +160,7 @@ next_owner: /root
 | M1-07 | `/root` | `docs/m1-07-chunk-authenticated-container-contract` | done | M1-02 | PR #37、Issue #36、独立复核、双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-04 | `/root` | `feat/m1-04-encrypted-dex-container` | done | M1-01, M1-02, M1-07 | PR #38、Issue #9、独立复核、merger-ready 六项 CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-05 | `/root` | `feat/m1-05-apk-repacker-and-alignment` | done | M1-02, M1-03, M1-04 | PR #39、Issue #10、独立复核、merger-ready CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
-| M1-06 | `/root` | `feat/m1-06-cli-and-json-report` | in_progress | M1-01, M1-02, M1-03, M1-04, M1-05 | PR #40 初始 Ubuntu/Windows Build/Governance 与四份固定哈希全绿；等待 merger-ready exact-head CI、合并和 main 门禁，不启动 M2 |
+| M1-06 | `/root` | `feat/m1-06-cli-and-json-report` | done | M1-01, M1-02, M1-03, M1-04, M1-05 | PR #40、Issue #11、冻结复核、merger-ready 双平台 CI 与 expected-head 合并已关闭；等待 post-merge main 最终门禁，不启动 M2 |
 
 ## Decisions and Invariants
 
@@ -189,6 +190,7 @@ next_owner: /root
 - Windows full-flow 使用官方固定 aapt2/apksigner、仓库合成双 DEX/四 ABI/Application/Factory fixture 和 test-only RuntimeBundle 通过；官方 apksigner 确认输出未签名。SIGNER/AXML/CONTAINER/PACKAGE/VERIFY/PUBLISH/INTERNAL、线程取消、JVM shutdown、short-write/disk-full 等价注入、report race 与 cleanup/input immutability 全部失败关闭；所有成功/失败报告实际执行 checked-in Draft 2020-12 Schema 校验。
 - 首个冻结点 `7d9072e` 的 shutdown report publication owning 与 pre-stage error mapping 发现已修复；新增三个定向回归并重跑 273-task clean 根门禁，冻结哈希更新为 normalized `71052641...c213`、error `9de958b0...785e`、cleanup `03f9f1b8...598`、path `ea48b25b...e4a5`。
 - 发布固定分支并创建唯一草稿 PR #40，正确关联关闭 Issue #11；初始 HEAD `5a3981c` 的 Build/Governance run `31115781825`/`31115781121` 在 Ubuntu/Windows 四项全绿，两平台 M1-06 full-flow 与四份字节一致性门禁全部 PASS。
+- merger-ready `7029957` 的 Build/Governance run `31116416406`/`31116415535` 四项全绿；PR #40 已以 expected-head 普通 merge commit `d0eb392` 合并且 Issue #11 关闭。本地 main 已同步，README 将 M1-06 标记完成，当前执行 post-merge strict 与最终 main CI。
 - 用户明确启动 M1-05 并授予完成任务所需的推送/PR/ready/merge权限；协调者核验 Issue #10、无同名远程分支/PR、依赖完成和 `main@d32abe1` 双平台 Build/Governance 全绿后创建固定分支。
 - 新增 M1-05 实现计划，把九项验收映射为 raw ZIP 保留、签名材料精确删除、ABI policy、ELF share materialization、4 KiB/16 KiB 对齐、独立 verifier、别名/故障注入、外部 Android 工具和双平台字节门禁；未改变 ADR 或相邻公共接口。
 - 关闭首轮 M1-05 复核候选的 P1=4/P2=1：plan cleanup 先于发布、敏感 owner/OOM 清理、同句柄输入及文件身份复验、完整定向 mutation/TOCTOU 矩阵、异常名称脱敏与官方 unsigned reason 均已有可执行证据；旧冻结 `bb748f6` 保持废止。
@@ -1185,14 +1187,26 @@ next_owner: /root
 - sha256: not_applicable
 - result: PASS; Ubuntu/Windows Build and Governance all passed; both Build jobs passed M1-06 unit/full-flow and matched normalized 71052641...c213, error 9de958b0...785e, cleanup 03f9f1b8...598, and path ea48b25b...e4a5
 
+### M1-06 merger-ready CI and merge
+
+- task_id: M1-06
+- git_commit: 702995748cfd643feb9d75ef0abee9cbced1cb4c
+- command: GitHub Actions Build run 31116416406 and Governance run 31116415535; ready transition; expected-head protected normal merge
+- exit_code: 0
+- environment: GitHub ubuntu-24.04 and windows-2025 with pinned repository toolchain
+- timestamp: 2026-08-06T23:39:22+08:00
+- artifact: https://github.com/xiaokh31/androidAppHardening/actions/runs/31116416406 ; https://github.com/xiaokh31/androidAppHardening/actions/runs/31116415535 ; https://github.com/xiaokh31/androidAppHardening/pull/40 ; https://github.com/xiaokh31/androidAppHardening/issues/11
+- sha256: not_applicable
+- result: PASS; exact-head Ubuntu/Windows Build and Governance all passed, both Build jobs matched all four M1-06 hashes, PR #40 merged as d0eb39264f1382469712a4f3c28a7d42ab19d1dd, and Issue #11 closed
+
 ## Blockers and Required Approvals
 
 None
 
 ## Ordered Next Actions
 
-1. 提交并推送 merger-ready HandOff 证据，等待该 exact HEAD 的 Ubuntu/Windows Build/Governance 与规范哈希全绿。
-2. exact-head CI 全绿后 ready/expected-head 普通合并；在 main 完成 README/HandOff、strict 与最终双平台 CI，不启动 M2。
+1. 在 main 提交 README/HandOff post-merge 状态，无豁免运行 Governance、strict HandOff 与 diff check并推送。
+2. 等待 post-merge main Ubuntu/Windows Build/Governance 与 M1-06 固定哈希全绿；完成 M1-06，不启动 M2。
 
 ## Relevant Files and Artifacts
 
@@ -1259,7 +1273,8 @@ None
 - [x] 完成 Windows 273-task clean 根回归、Governance、strict HandOff、diff/敏感/UTF-8 检查。
 - [x] 冻结 `e882691` 并完成完整只读复核；P0/P1/P2 全零。
 - [x] 固定分支已推送，唯一草稿 PR #40 正确关联 Issue #11；初始 Ubuntu/Windows Build/Governance 与固定哈希全绿。
-- [ ] 完成 merger-ready exact-head Ubuntu/Windows CI、合并及 post-merge main 门禁。
+- [x] merger-ready `7029957` 的 exact-head Ubuntu/Windows CI 全绿；PR #40 已普通合并，Issue #11 已关闭。
+- [ ] 完成 post-merge main README/HandOff、strict 与最终双平台门禁。
 - [x] 用户明确启动 M1-05 并预先授权推送、唯一 PR、ready 与合并；Issue #10、依赖、无远程分支/PR冲突和最新 main 门禁已核验。
 - [x] 从 `main@d32abe1` 创建固定分支，归档 `pre-cli` 实现/验收计划并预定独立 reviewer `m1_05_security_review`。
 - [x] 实现 repacker/materializer/verifier/native no-replace publisher，完成固定 Android 工具、28 项失败/TOCTOU/mutation、六项清理矩阵和 268-task clean 根回归。
@@ -1348,7 +1363,7 @@ None
 
 ## Handoff Sign-off
 
-- `/root` 已核验 M1-06 冻结 `e882691` 的全部本地门禁和 P0/P1/P2 全零复核；唯一草稿 PR #40 的初始 Ubuntu/Windows Build/Governance、full-flow 与四份固定哈希全部 PASS。当前只允许 merger-ready exact-head CI 和授权的合并/main 收尾，synthetic RuntimeBundle 仅限测试，不启动 M2、设备或模拟器。
+- `/root` 已核验 M1-06 冻结 `e882691`、merger-ready `7029957` 的本地/双平台门禁和全零复核；PR #40 已 expected-head 普通合并且 Issue #11 关闭。当前只允许 main 的 README/HandOff、strict/Governance 和最终双平台门禁，synthetic RuntimeBundle 仅限测试，不启动 M2、设备或模拟器。
 - `/root` 已核验 M1-05 的唯一 Issue #10、固定分支、依赖和 main 双平台基线；当前只允许 `host/repacker` 与合成 `pre-cli` 验收，不启动 M1-06/M2、设备或本机模拟器。用户已预授权本任务后续发布与合并，但技术门禁和独立复核不得跳过。
 - `/root` 已核验 M1-05 本地实现、AHDC v2 重新认证、四 ABI/故障矩阵、固定 Android 工具和 245-task 根回归全部 PASS；当前仅允许冻结并启动独立只读复核，复核全零前不得发布完成或启动 M1-06/M2。
 - `/root` 已核验首轮 M1-05 独立复核为 FAIL 并废止 `bb748f6`；当前只允许关闭 P1=4/P2=1、重跑门禁和重新冻结，不得推送、创建 PR 或启动 M1-06/M2。

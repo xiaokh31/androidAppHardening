@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-06T07:08:11+08:00
+updated_at: 2026-08-06T08:23:06+08:00
 updated_by: /root
 state: active
 source_branch: feat/m1-04-encrypted-dex-container
@@ -21,14 +21,15 @@ next_owner: /root
 
 ## Current State
 
-- 用户已明确启动 M1-04。唯一 tracking Issue 为 [#9](https://github.com/xiaokh31/androidAppHardening/issues/9)，固定分支为 `feat/m1-04-encrypted-dex-container`，base 为 clean `main@ebbe92830cd5f3a4f3c7a51f058d8d5f6f74912a`；未授权推送或创建 PR。
+- 用户已明确授权发布 M1-04。固定分支 `feat/m1-04-encrypted-dex-container` 已推送，关联并关闭唯一 tracking Issue [#9](https://github.com/xiaokh31/androidAppHardening/issues/9) 的唯一草稿 PR 为 [#38](https://github.com/xiaokh31/androidAppHardening/pull/38)，base 为 `main@ebbe92830cd5f3a4f3c7a51f058d8d5f6f74912a`；尚未授权 ready 或 merge。
 - 旧本地同名分支停在失败复核提交 `ca3d14147b88991c45d539e90b1f42dc95116860`，已无损重命名为 `spike/m1-04-rejected-ahdc-v1`。新任务分支从最新 main 创建，不 merge/cherry-pick/复用废止 AHDC v1 实现。
 - M1-04 采用 `pre-cli` 验证模式，只实现 `host:container` 的 AHDC v2 builder/verifier、768-byte ConfigV2、不可变 descriptor、一次性 `KeyPackagingPlanV2`、规范向量与失败关闭测试；本轮不启动设备或模拟器。
 - 实现计划归档于 `docs/evidence/M1-04/implementation-plan.md`。固定合同来自 ADR 0008/0006；任何 wire、密钥边界或公开接口变化必须先停下并修订 ADR，不得在代码中漂移。
 - M1-04 当前冻结实现为 `58352c6de732887cf497de2775bc0fa3021f5332`：包含两遍连续 zlib、64 KiB 分块 AES-256-GCM、HeaderV2/RecordV2/ChunkV2、SPV1 manifest MAC、768-byte ConfigV2、一次性 `KeyPackagingPlanV2`、只读 verifier、严格拓扑/尾随拒绝，以及 OOM/callback/构造/比较失败下的事务清理；未实现 Runtime、APK 注入、签名或 CLI。
 - Windows `:host:container:check` 退出 `0`；13 组自测覆盖 RFC 5869、NIST AES-256-GCM、zlib、完整 512 MiB 流式输入、1/65535/65536/65537 边界、单/多 DEX、生产随机差异、篡改矩阵、ConfigV2、两遍输入变化、I/O/原子移动/随机/OOM/callback/取消和一次性消费。固定容器 SHA-256 为 `3764b908e534ffa5179a9519045ec74a7caa44b30c80447998c593a1ac2fa60d`，跟踪峰值 live buffer 为 `262431` bytes。
 - Ubuntu/Windows Build workflow 已增加同一固定容器哈希门禁。仓库级本地 `check` 在配置阶段因既有 `fixtures:android` 未声明固定 NDK 29、且仓库 SDK 不含 AGP 默认 NDK 28.2 而停止；未下载未固定工具或混入相邻 fixture 修复。模块门禁与 Governance 均通过。
-- 第五轮独立只读复核对冻结实现 `58352c6de732887cf497de2775bc0fa3021f5332` 给出 PASS：P0 `0`、P1 `0`、P2 `0`；前四轮发现全部关闭，Node 消费者和模块 13 项门禁独立通过，复核结论归档于 `docs/evidence/M1-04/security-review-5.md`。README 标记为待发布；未获单独授权前不得推送分支或创建 PR。
+- 第五轮独立只读复核对冻结实现 `58352c6de732887cf497de2775bc0fa3021f5332` 给出 PASS：P0 `0`、P1 `0`、P2 `0`；前四轮发现全部关闭，Node 消费者和模块 13 项门禁独立通过，复核结论归档于 `docs/evidence/M1-04/security-review-5.md`。README 保持 M1-04 待合并，PR #38 仍为 draft。
+- PR #38 初始 HEAD `ab24d32a45912cac4e0b938d4720f49bf2d79fb0` 的 Build run `31059253829` 与 Governance run `31059253798` 已在 Ubuntu 24.04/Windows 2025 四项全部 PASS；两平台 M1-04 固定 AHDC v2 字节门禁均随 Build 通过。自动触发的 API 29/36 Linux/KVM run `31059253819` 不属于本 Host 任务的设备验收门禁，记录时仍在运行。
 - 用户已明确授权启动独立 ADR/任务合同修订。唯一 tracking Issue 为 [#36](https://github.com/xiaokh31/androidAppHardening/issues/36)，固定分支为 `docs/m1-07-chunk-authenticated-container-contract`，base 为 clean `main@225ec169661e2a366736be36b1249fb79faf3dcc`；未授权推送或创建 PR。
 - M1-04 首个实现候选 `97cb9dc75f68b5ce0ddde2134e09c15ae2e798fb` 的独立复核为 FAIL（P0 `0`、P1 `3`、P2 `2`）；该提交仅保留在本地废止分支，不属于 M1-07，也不得发布。
 - 决定性 P1 是每 DEX 单 GCM tag 在固定 SunJCE 下可能缓存至多 512 MiB ciphertext；使用其他 Provider 的 `update` plaintext 又会在 tag 成功前解压，无法同时兑现认证顺序与 1 MiB 缓冲。
@@ -138,7 +139,7 @@ next_owner: /root
 | M1-02 | `/root` | `feat/m1-02-signer-policy` | done | M1-01 | PR #34、Issue #7、独立复核、双平台字节一致性 CI 与 main strict HandOff 均已关闭 |
 | M1-03 | `/root` | `feat/m1-03-binary-axml-transformer` | done | M1-01, M0-05 | PR #35、Issue #8、独立复核、三套设备/CI 矩阵和 main strict HandOff 均已关闭 |
 | M1-07 | `/root` | `docs/m1-07-chunk-authenticated-container-contract` | done | M1-02 | PR #37、Issue #36、独立复核、双平台 CI、README 与 main strict HandOff 均已关闭 |
-| M1-04 | `/root` | `feat/m1-04-encrypted-dex-container` | in_progress | M1-01, M1-02, M1-07 | 本地实现与独立复核已通过；等待用户授权推送分支并创建关联 Issue #9 的唯一草稿 PR |
+| M1-04 | `/root` | `feat/m1-04-encrypted-dex-container` | in_progress | M1-01, M1-02, M1-07 | PR #38 为唯一草稿 PR；本地独立复核及首轮 Ubuntu/Windows Build/Governance 已通过，等待 ready/merge 授权 |
 
 ## Decisions and Invariants
 
@@ -164,7 +165,7 @@ next_owner: /root
 
 - 冻结提交 `58352c6de732887cf497de2775bc0fa3021f5332` 完成 AHDC v2 builder/verifier、ConfigV2/密钥包装、规范、自测、证据和 Ubuntu/Windows 固定容器哈希门禁；不包含 Runtime、APK 注入、签名或 CLI。
 - Windows 模块 `check`、Node 独立消费者、Governance、diff check 与安全扫描均通过；固定容器哈希为 `3764b908e...fa60d`，完整篡改矩阵、512 MiB、边界和事务清理负例全部失败关闭，运行结束 Java 为 0。
-- 五轮独立只读复核中前四轮 FAIL 均已归档；第五轮在冻结提交上 PASS，P0/P1/P2 全零。下一门禁是用户单独授权发布后运行 Ubuntu/Windows PR CI；尚未授权推送或 PR。
+- 五轮独立只读复核中前四轮 FAIL 均已归档；第五轮在冻结提交上 PASS，P0/P1/P2 全零。用户随后授权发布，唯一草稿 PR #38 的初始 Ubuntu/Windows Build 与 Governance 已全部通过；当前门禁为最终协调 HEAD CI 与单独 ready/merge 授权。
 - 用户启动 M1-04；核验 Issue #9 OPEN、远程无关联 PR/分支、main 与 origin/main 一致且 post-M1-07 双平台 CI 全绿。
 - 旧 AHDC v1 失败分支无损归档为 `spike/m1-04-rejected-ahdc-v1`，从 `main@ebbe928` 新建固定 AHDC v2 工作分支；新增 `docs/evidence/M1-04/implementation-plan.md`，未复用废止实现。
 - 用户启动 M1-07，创建 Issue #36 和独立治理分支；该分支不包含废止的 M1-04 产品实现。
@@ -927,15 +928,27 @@ next_owner: /root
 - sha256: 3764b908e534ffa5179a9519045ec74a7caa44b30c80447998c593a1ac2fa60d
 - result: PASS; 13/13 module cases and independent Node consumer passed; independent review P0=0/P1=0/P2=0; input remained read-only, output publication atomic, sensitive cleanup transactional, no plaintext DEX persisted, and no wire/hash drift occurred
 
+### M1-04 draft PR initial CI
+
+- task_id: M1-04
+- git_commit: ab24d32a45912cac4e0b938d4720f49bf2d79fb0
+- command: push `feat/m1-04-encrypted-dex-container`; create unique draft PR #38 with `Closes #9`; GitHub Actions Build and Governance matrices on Ubuntu 24.04 and Windows 2025
+- exit_code: 0
+- environment: GitHub Actions Ubuntu 24.04 and Windows 2025; no local device or emulator
+- timestamp: 2026-08-06T08:23:06+08:00
+- artifact: `https://github.com/xiaokh31/androidAppHardening/pull/38`; Build run `31059253829`; Governance run `31059253798`
+- sha256: 3764b908e534ffa5179a9519045ec74a7caa44b30c80447998c593a1ac2fa60d
+- result: PASS; Ubuntu/Windows Build and Governance all passed, including the fixed M1-04 AHDC v2 byte-identity gate; PR remains OPEN/draft and no ready/merge authority has been granted
+
 ## Blockers and Required Approvals
 
-- M1-04 发布仍需用户单独授权推送 `feat/m1-04-encrypted-dex-container` 并创建关联 Issue #9 的唯一草稿 PR。
+- PR #38 转为 ready 并合并仍需用户单独授权。
 
 ## Ordered Next Actions
 
-1. 等待用户单独授权推送 `feat/m1-04-encrypted-dex-container` 并创建关联 Issue #9 的唯一草稿 PR。
-2. 发布后运行 Ubuntu/Windows Build 与 Governance，并核对两平台固定 AHDC/vector/Node report hashes。
-3. 只有唯一草稿 PR 的双平台 CI 全绿后，才向用户请求 ready/merge 授权。
+1. 提交并推送本次纯 HandOff 发布证据，确认最终草稿 HEAD 的 Ubuntu/Windows Build 与 Governance 仍全部通过。
+2. 保持 PR #38 为 draft，等待用户单独授权 ready/merge。
+3. 获得授权后只准备 merger-ready 协调提交，并以 expected-head 保护执行普通 merge commit。
 4. M1-04 合并及 main 合并后门禁完成前不得启动 M1-05、M2 或设备/模拟器工作。
 
 ## Relevant Files and Artifacts
@@ -992,7 +1005,8 @@ next_owner: /root
 - [x] 用户明确启动 M1-04；Issue #9、固定分支、clean main base 与 M1-07 合并门禁已核验。
 - [x] 旧 AHDC v1 失败分支已无损归档，新分支不包含其实现提交；`pre-cli` 实现计划已归档。
 - [x] 从零实现 AHDC v2 builder/verifier、ConfigV2、descriptor 与一次性 KeyPackagingPlanV2，并完成所有本地验收。
-- [x] 冻结 clean 提交 `58352c6` 并取得独立只读复核 P0/P1/P2 全零；尚未授权发布或创建 PR。
+- [x] 冻结 clean 提交 `58352c6` 并取得独立只读复核 P0/P1/P2 全零。
+- [x] 用户授权发布；固定分支已推送，关联 Issue #9 的唯一草稿 PR #38 已创建，初始 HEAD 的 Ubuntu/Windows Build 与 Governance 四项全绿。
 - [x] 用户明确启动 M1-07；Issue #36、固定治理分支和 clean main base 已核验。
 - [x] 完成 AHDC v2 全仓库合同同步、字段复算、Governance 与 strict HandOff。
 - [x] 冻结治理提交并取得独立只读复核 P0/P1/P2 全零结论。
@@ -1067,6 +1081,7 @@ next_owner: /root
 ## Handoff Sign-off
 
 - `/root` 已核验 M1-04 从 `main@ebbe928` clean 重启、Issue #9 OPEN、远程无同 head PR；废止 v1 分支仅保留为 rejected 归档。当前只实现 AHDC v2 Host 范围，不启动 Runtime、ZIP/CLI、设备或相邻任务。
+- `/root` 已核验用户授权发布后的唯一草稿 PR #38 正确关联关闭 Issue #9；初始 HEAD `ab24d32` 的 Ubuntu/Windows Build 与 Governance 四项全部 PASS，PR 保持 draft，尚未获 ready/merge 授权。
 - `/root` 已核验 M1-04 单 tag 合同无法在固定 Provider、512 MiB DEX 和 1 MiB 缓冲下满足认证后解压；M1-07 只修订治理合同，不包含废止实现、不启动模拟器或设备，也未获授权推送/创建 PR。
 - `/root` 已核验首轮 M1-07 独立复核为 FAIL 并废止 `e13927a`；当前只允许关闭该轮 P1/P2、重新冻结并进行完整独立复核。
 - `/root` 已核验第二轮 M1-07 独立复核为 FAIL 并废止 `3380659`；当前只允许关闭两项 P1、重新冻结并进行完整独立复核。

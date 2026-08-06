@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-M0 基础建设与可行性验证已经完成，项目正在顺序执行 M1 Host 处理链。当前仍未提供端到端可用的 APK 加固程序：M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换器、M1-07 AHDC v2 分块认证容器合同、M1-04 AHDC v2 Host 实现和 M1-05 APK 重打包与对齐已经完成；M1-06 CLI 与 JSON 报告尚未启动。
+M0 基础建设与可行性验证已经完成，项目正在顺序执行 M1 Host 处理链。M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换器、M1-07 AHDC v2 分块认证容器合同、M1-04 AHDC v2 Host 实现和 M1-05 APK 重打包与对齐已经完成；M1-06 CLI 与 JSON 报告已完成本地 full-flow 实现与验证，正在关闭 PR/双平台门禁。生产 RuntimeBundle 与可发布端到端发行包仍属于后续任务。
 
 开发者和 Agent 从 [`docs/README_FIRST.md`](docs/README_FIRST.md) 开始。项目统筹状态以 [`HandOff.md`](HandOff.md) 为准。
 
@@ -21,7 +21,7 @@ M0 基础建设与可行性验证已经完成，项目正在顺序执行 M1 Host
 | [M1-07](docs/tasks/M1-07-chunk-authenticated-container-contract.md) | 已完成 | AHDC v2 合同、独立安全复核与双平台门禁，PR #37、Issue #36 |
 | [M1-04](docs/tasks/M1-04-encrypted-dex-container.md) | 已完成 | AHDC v2 Host 容器实现；PR #38、Issue #9、独立安全复核、merger-ready 与 post-merge `main` 门禁均已关闭 |
 | [M1-05](docs/tasks/M1-05-apk-repacker-and-alignment.md) | 已完成 | PR #39、Issue #10、四轮独立安全复核、merger-ready 与 post-merge `main` 双平台 CI、README 和 strict HandOff 均已关闭 |
-| M1-06 | 计划中 | CLI 与 JSON 报告；等待用户明确启动 |
+| [M1-06](docs/tasks/M1-06-cli-and-json-report.md) | 验证中 | 唯一 `protect` CLI、REPORT_V1、失败关闭/回滚矩阵与 Windows full-flow 已通过；等待唯一 PR、Ubuntu/Windows CI 与合并后门禁 |
 | M2 ～ M4 | 未启动 | Runtime、验证矩阵与发布阶段不得提前实现 |
 
 任务按 [`docs/tasks/INDEX.md`](docs/tasks/INDEX.md) 的依赖顺序执行。每个任务只有在 PR 合并、合并后门禁与证据完成后才在本表标记“已完成”；每个任务的收尾协调提交必须同步本 README，避免公开进度长期滞后。
@@ -55,7 +55,7 @@ Ubuntu 全量基线：
 ./gradlew --no-daemon :runtime:native:assemble
 ```
 
-当前工程已包含 M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换、M1-04 AHDC v2 容器实现与 M1-05 APK 重打包/对齐能力，但尚未实现 M1-06 CLI 与 JSON 报告，也没有可发布的端到端 CLI。依赖解析继续使用严格 SHA-256 verification metadata、全 configuration lockfile 与 settings 级 `google()`/`mavenCentral()` 白名单。
+当前工程已包含 M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换、M1-04 AHDC v2 容器、M1-05 APK 重打包/对齐和 M1-06 Host CLI/REPORT_V1。M1-06 生产入口只读取后续发行任务提供的固定 classpath RuntimeBundle；仓库合成 RuntimeBundle 仅用于忽略目录中的 full-flow 测试，不是可发布 Runtime。依赖解析继续使用严格 SHA-256 verification metadata、全 configuration lockfile 与 settings 级 `google()`/`mavenCentral()` 白名单。
 
 ## 许可证
 

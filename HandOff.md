@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-06T23:19:59+08:00
+updated_at: 2026-08-06T23:22:00+08:00
 updated_by: /root
 state: active
 source_branch: feat/m1-06-cli-and-json-report
@@ -25,6 +25,7 @@ next_owner: /root
 - M1-01 至 M1-05 依赖均已完成。M1-06 选择 `full-flow` 验证模式；实现计划归档于 `docs/evidence/M1-06/implementation-plan.md`。生产入口仅从后续 distribution 提供的固定 classpath RuntimeBundle 读取资源，不把 synthetic Runtime 打入产品；本任务集成测试使用 M1-05 已授权的合成 RuntimeBundle 合同 fixture。当前只修改 `host/cli`、REPORT_V1、M1-06 证据/CI 与根交接，不启动 M2、设备或模拟器。
 - M1-06 Host 实现与 Windows full-flow 已通过：唯一 `protect` CLI、REPORT_V1 及 Draft 2020-12 可执行 schema validator、七阶段状态机、M1-01 一基至 AHDC v2 零基 ordinal 边界适配、输入只读、未签名输出、报告原子 no-replace 发布/回滚、线程中断与 JVM shutdown 清理、路径/能力扫描均已闭环。Windows 离线 clean 根 `check verifyGovernance` 共 273 项任务退出 `0`；规范化成功报告、错误矩阵、清理矩阵和路径矩阵已固定到 Ubuntu/Windows CI，当前等待冻结提交、只读复核、唯一草稿 PR 和远端双平台门禁。
 - 首个冻结提交 `7d9072e` 的协调者只读复核发现两个关停边界缺口并立即废止：报告临时文件/hard-link 已发布窗口未被 shutdown hook 精确拥有，以及首 stage 前未知异常会错误归到 `publish`。当前修复精确追踪本次 report temp/target、失败时只删除 owned target、失败清理不成功则保留退出 hook 重试，并按实际 active stage 映射未知异常；新增 pre-stage、report-temp 和 report-target shutdown 回归。修复后 targeted full-flow 与最终 273-task clean 根回归再次退出 `0`，等待新冻结点完整复核。
+- 新冻结提交 `e882691c1dbc4958c111c7e33580c3921eff2fc8` 的完整协调者只读复核为 PASS：P0/P1/P2 均为 `0`。生产 JAR 无 synthetic Runtime/DEX/SO/key/cert，生产源码无签名执行、网络或环境采集能力，Git 无 build 产物，首个冻结点两项发现和全部任务验收已关闭；结论归档于 `docs/evidence/M1-06/read-only-review.md`。当前允许推送固定分支并创建关闭 Issue #11 的唯一草稿 PR。
 - 用户已明确启动 M1-05，并预先授权任务所需的推送、唯一草稿 PR、ready 与 expected-head 普通合并。Issue [#10](https://github.com/xiaokh31/androidAppHardening/issues/10) 为 OPEN、无 assignee，远程无固定分支或关联 PR；分支 `feat/m1-05-apk-repacker-and-alignment` 从已验证 `main@d32abe1d68d41910d72c90c3f9fc3d2831972756` 创建。
 - M1-02/M1-03/M1-04 依赖均已合并并完成 post-merge 门禁。M1-05 使用 `pre-cli` 内部 assembler/repacker harness，不启动本机模拟器或真机；生产 Runtime binaries 在 M3 集成前可由任务卡明确允许的合成 RuntimeBundle 合同 fixture 代替。
 - 实现与验收边界归档于 `docs/evidence/M1-05/implementation-plan.md`。ADR 0005/0006/0007/0008 已固定 ABI、NativeShareSlotV1、sourceDir 资产和 AHDC v2 合同，无需新 ADR；独立复核者固定为 `m1_05_security_review`，仅在 clean 冻结提交后启动。
@@ -157,7 +158,7 @@ next_owner: /root
 | M1-07 | `/root` | `docs/m1-07-chunk-authenticated-container-contract` | done | M1-02 | PR #37、Issue #36、独立复核、双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-04 | `/root` | `feat/m1-04-encrypted-dex-container` | done | M1-01, M1-02, M1-07 | PR #38、Issue #9、独立复核、merger-ready 六项 CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-05 | `/root` | `feat/m1-05-apk-repacker-and-alignment` | done | M1-02, M1-03, M1-04 | PR #39、Issue #10、独立复核、merger-ready CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
-| M1-06 | `/root` | `feat/m1-06-cli-and-json-report` | in_progress | M1-01, M1-02, M1-03, M1-04, M1-05 | Host CLI/report、Windows full-flow 与 273-task clean 根回归已通过；等待冻结复核、唯一 PR、双平台 CI、合并后门禁，不启动 M2 |
+| M1-06 | `/root` | `feat/m1-06-cli-and-json-report` | in_progress | M1-01, M1-02, M1-03, M1-04, M1-05 | 冻结 `e882691`、Windows full-flow、273-task clean 根回归与只读复核全零已通过；等待唯一 PR、双平台 CI、合并后门禁，不启动 M2 |
 
 ## Decisions and Invariants
 
@@ -1146,17 +1147,29 @@ next_owner: /root
 - sha256: not_applicable
 - result: PASS; Ubuntu/Windows Build and Governance, M1-05 byte-identical reports, Linux native no-replace path, dependency verification failure probe, four Native ABIs, and local no-exemption strict HandOff all passed; M1-05 is complete
 
-### M1-06 Windows full-flow implementation candidate
+### M1-06 Windows full-flow frozen candidate
 
 - task_id: M1-06
-- git_commit: 55ef3c57e631cde65d3e04d58aa75d26a7e75ba8
+- git_commit: e882691c1dbc4958c111c7e33580c3921eff2fc8
 - command: repository-local offline `clean check verifyGovernance`; official pinned aapt2 link, apksigner test-fixture sign and unsigned-output verify; strict HandOff and diff/sensitive/UTF-8 checks
 - exit_code: 0
 - environment: Windows 10.0.19045 x64; Eclipse Temurin 17.0.19+10; Gradle 9.5.0; Android Build Tools 36.1.0; no download/device/emulator
 - timestamp: 2026-08-06T23:10:40+08:00
 - artifact: `docs/evidence/M1-06/local-windows.md`; REPORT_V1 schema; normalized/error/cleanup/path matrices in ignored `host/cli/build/reports/m1-06/`
 - sha256: not_applicable
-- result: PASS; Windows clean root run completed 273 actionable tasks in 2m5s; actual two-DEX/four-ABI/custom Application/Factory Host pipeline completed, input stayed unchanged, output was verifier-approved and unsigned, REPORT_V1 passed the checked-in Draft 2020-12 validator, and all injected failures including shutdown cleanup removed outputs/workspaces without exposing paths, stacks, DEX or signing capability
+- result: PASS; final post-review-fix Windows clean root run completed 273 actionable tasks in 2m; actual two-DEX/four-ABI/custom Application/Factory Host pipeline completed, input stayed unchanged, output was verifier-approved and unsigned, REPORT_V1 passed the checked-in Draft 2020-12 validator, and all injected failures including shutdown cleanup removed outputs/workspaces without exposing paths, stacks, DEX or signing capability
+
+### M1-06 frozen read-only review
+
+- task_id: M1-06
+- git_commit: e882691c1dbc4958c111c7e33580c3921eff2fc8
+- command: frozen diff/security/capability/classpath/artifact review; final offline clean root check; Governance; strict HandOff; diff check
+- exit_code: 0
+- environment: Windows 10.0.19045 x64; Eclipse Temurin 17.0.19+10; Gradle 9.5.0; Android Build Tools 36.1.0; no download/device/emulator
+- timestamp: 2026-08-06T23:22:00+08:00
+- artifact: `docs/evidence/M1-06/read-only-review.md`
+- sha256: not_applicable
+- result: PASS; P0=0, P1=0, P2=0; rejected freeze 7d9072e findings are closed, production JAR/capability boundaries are clean, final 273-task root gate and all frozen report hashes passed; Ubuntu byte identity remains mandatory PR CI
 
 ## Blockers and Required Approvals
 
@@ -1164,9 +1177,8 @@ None
 
 ## Ordered Next Actions
 
-1. 冻结当前 clean 候选并完成完整只读复核。
-2. 复核无发现后推送固定分支并创建关闭 Issue #11 的唯一草稿 PR；核验 Ubuntu/Windows 规范报告哈希和全量 Build/Governance。
-3. exact-head CI 全绿后 ready/expected-head 普通合并；在 main 完成 README/HandOff、strict 与最终双平台 CI，不启动 M2。
+1. 推送固定分支并创建关闭 Issue #11 的唯一草稿 PR；核验 Ubuntu/Windows 规范报告哈希和全量 Build/Governance。
+2. exact-head CI 全绿后 ready/expected-head 普通合并；在 main 完成 README/HandOff、strict 与最终双平台 CI，不启动 M2。
 
 ## Relevant Files and Artifacts
 
@@ -1180,6 +1192,7 @@ None
 - `docs/tasks/M1-05-apk-repacker-and-alignment.md`
 - `docs/tasks/M1-06-cli-and-json-report.md`
 - `docs/evidence/M1-06/implementation-plan.md`
+- `docs/evidence/M1-06/read-only-review.md`
 - `docs/specs/REPORT_V1.md`
 - `host/cli/`
 - `docs/evidence/M1-05/implementation-plan.md`
@@ -1230,7 +1243,8 @@ None
 - [x] 从 `main@55ef3c5` 创建固定分支，选择 full-flow 模式并归档 CLI/report 实施计划。
 - [x] 完成 Host CLI/REPORT_V1、Windows full-flow、失败/清理/敏感能力扫描和双平台规范报告哈希候选。
 - [x] 完成 Windows 273-task clean 根回归、Governance、strict HandOff、diff/敏感/UTF-8 检查。
-- [ ] 完成冻结只读复核、唯一 PR、exact-head Ubuntu/Windows CI、合并及 post-merge main 门禁。
+- [x] 冻结 `e882691` 并完成完整只读复核；P0/P1/P2 全零。
+- [ ] 完成唯一 PR、exact-head Ubuntu/Windows CI、合并及 post-merge main 门禁。
 - [x] 用户明确启动 M1-05 并预先授权推送、唯一 PR、ready 与合并；Issue #10、依赖、无远程分支/PR冲突和最新 main 门禁已核验。
 - [x] 从 `main@d32abe1` 创建固定分支，归档 `pre-cli` 实现/验收计划并预定独立 reviewer `m1_05_security_review`。
 - [x] 实现 repacker/materializer/verifier/native no-replace publisher，完成固定 Android 工具、28 项失败/TOCTOU/mutation、六项清理矩阵和 268-task clean 根回归。
@@ -1319,7 +1333,7 @@ None
 
 ## Handoff Sign-off
 
-- `/root` 已核验 M1-06 Host CLI/REPORT_V1、Windows full-flow、273-task clean 根回归、未签名输出、ordinal 边界适配、失败/回滚/shutdown 清理矩阵和固定 CI 哈希候选全部 PASS；当前只允许冻结只读复核和授权的 PR/CI/合并收尾，synthetic RuntimeBundle 仅限测试，不启动 M2、设备或模拟器。
+- `/root` 已核验 M1-06 冻结 `e882691` 的 Host CLI/REPORT_V1、Windows full-flow、273-task clean 根回归、未签名输出、ordinal 边界适配、失败/回滚/shutdown 清理矩阵、生产 classpath/能力边界和固定 CI 哈希全部 PASS；只读复核 P0/P1/P2 全零，当前允许授权的 PR/CI/合并收尾，synthetic RuntimeBundle 仅限测试，不启动 M2、设备或模拟器。
 - `/root` 已核验 M1-05 的唯一 Issue #10、固定分支、依赖和 main 双平台基线；当前只允许 `host/repacker` 与合成 `pre-cli` 验收，不启动 M1-06/M2、设备或本机模拟器。用户已预授权本任务后续发布与合并，但技术门禁和独立复核不得跳过。
 - `/root` 已核验 M1-05 本地实现、AHDC v2 重新认证、四 ABI/故障矩阵、固定 Android 工具和 245-task 根回归全部 PASS；当前仅允许冻结并启动独立只读复核，复核全零前不得发布完成或启动 M1-06/M2。
 - `/root` 已核验首轮 M1-05 独立复核为 FAIL 并废止 `bb748f6`；当前只允许关闭 P1=4/P2=1、重跑门禁和重新冻结，不得推送、创建 PR 或启动 M1-06/M2。

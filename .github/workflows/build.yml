@@ -116,6 +116,22 @@ jobs:
           test "$(sha256sum "$consumer" | awk '{print $1}')" = "542ba9db02b643f445fc9194220e7fac6debb28e45089de38403843c78be2b1a"
           sha256sum "$container" "$vector" "$consumer"
 
+      - name: Verify M1-05 byte-identical repacker reports
+        shell: bash
+        run: |
+          declare -A expected=(
+            ["host/repacker/build/reports/m1-05/entry-manifest.json"]="606eb0d4a28d2235d054273b749740eaaff2fdf0891d84e582291ff327e2d687"
+            ["host/repacker/build/reports/m1-05/error-matrix.json"]="3c5b1283874f101b9007d67c2bdceff002afff0505292f91398401ab4cb2f941"
+            ["host/repacker/build/reports/m1-05/alignment-report.json"]="c173698b586d53b61874611cc36930725dd8ce7ea2f737c51b02d5afa7e427bd"
+            ["host/repacker/build/reports/m1-05/abi-matrix.json"]="add443496d258e389917d7fabaf1ea7d59b120d7d57b088969bb89976da3f5b8"
+            ["host/repacker/build/reports/m1-05/external-tools.json"]="9723e87adedf97b176ea186baf0309159981e0154fedd25f46841d53f0bde29b"
+          )
+          for file in "${!expected[@]}"; do
+            actual="$(sha256sum "$file" | awk '{print $1}')"
+            test "$actual" = "${expected[$file]}"
+            echo "$actual  $file"
+          done
+
       - name: Test dependency verification failure
         shell: bash
         run: node tools/validation/test-dependency-verification.mjs
@@ -242,3 +258,19 @@ jobs:
           Write-Output "$containerHash  $container"
           Write-Output "$vectorHash  $vector"
           Write-Output "$consumerHash  $consumer"
+
+      - name: Verify M1-05 byte-identical repacker reports
+        shell: pwsh
+        run: |
+          $expected = @{
+            "host/repacker/build/reports/m1-05/entry-manifest.json" = "606eb0d4a28d2235d054273b749740eaaff2fdf0891d84e582291ff327e2d687"
+            "host/repacker/build/reports/m1-05/error-matrix.json" = "3c5b1283874f101b9007d67c2bdceff002afff0505292f91398401ab4cb2f941"
+            "host/repacker/build/reports/m1-05/alignment-report.json" = "c173698b586d53b61874611cc36930725dd8ce7ea2f737c51b02d5afa7e427bd"
+            "host/repacker/build/reports/m1-05/abi-matrix.json" = "add443496d258e389917d7fabaf1ea7d59b120d7d57b088969bb89976da3f5b8"
+            "host/repacker/build/reports/m1-05/external-tools.json" = "9723e87adedf97b176ea186baf0309159981e0154fedd25f46841d53f0bde29b"
+          }
+          foreach ($entry in $expected.GetEnumerator()) {
+            $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $entry.Key).Hash.ToLowerInvariant()
+            if ($actual -ne $entry.Value) { exit 1 }
+            Write-Output "$actual  $($entry.Key)"
+          }

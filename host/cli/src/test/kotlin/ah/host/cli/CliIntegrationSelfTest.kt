@@ -143,7 +143,16 @@ object CliIntegrationSelfTest {
 
         val cancellationChecks = AtomicInteger()
         val forcedShutdown = CapturingShutdownHooks()
+        val reportTempShutdown = CapturingShutdownHooks()
+        val reportTargetShutdown = CapturingShutdownHooks()
         val cases = listOf(
+            FailureCase(
+                "pre-stage-unexpected",
+                70,
+                "INTERNAL_UNEXPECTED",
+                PipelineStage.INSPECT,
+                shutdownHooks = RejectingShutdownHooks,
+            ),
             FailureCase(
                 "container",
                 13,
@@ -210,6 +219,36 @@ object CliIntegrationSelfTest {
                     throw CliFailure(70, "INTERNAL_CANCELLED", PipelineStage.PUBLISH, "internal.cancelled", ResultStatus.FAILED)
                 },
                 shutdownHooks = forcedShutdown,
+            ),
+            FailureCase(
+                "shutdown-report-temp",
+                70,
+                "INTERNAL_CANCELLED",
+                PipelineStage.PUBLISH,
+                faults = object : CliFaults {
+                    override fun reportTempChanged(temp: Path?, success: Boolean) {
+                        if (success && temp != null) {
+                            reportTempShutdown.fire()
+                            throw CliFailure(70, "INTERNAL_CANCELLED", PipelineStage.PUBLISH, "internal.cancelled", ResultStatus.FAILED)
+                        }
+                    }
+                },
+                shutdownHooks = reportTempShutdown,
+            ),
+            FailureCase(
+                "shutdown-report-target",
+                70,
+                "INTERNAL_CANCELLED",
+                PipelineStage.PUBLISH,
+                faults = object : CliFaults {
+                    override fun afterReportTargetPublished(report: Path, success: Boolean) {
+                        if (success) {
+                            reportTargetShutdown.fire()
+                            throw CliFailure(70, "INTERNAL_CANCELLED", PipelineStage.PUBLISH, "internal.cancelled", ResultStatus.FAILED)
+                        }
+                    }
+                },
+                shutdownHooks = reportTargetShutdown,
             ),
             FailureCase(
                 "report-publish-race",
@@ -357,6 +396,11 @@ object CliIntegrationSelfTest {
         }
 
         fun fire() = requireNotNull(hook).run()
+    }
+
+    private object RejectingShutdownHooks : ShutdownHooks {
+        override fun add(hook: Thread) = throw SecurityException("fixture")
+        override fun remove(hook: Thread) = Unit
     }
 
     private fun invoke(

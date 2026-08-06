@@ -138,8 +138,8 @@ jobs:
         run: |
           declare -A expected=(
             ["host/cli/build/reports/m1-06/integration/normalized-success.json"]="71052641e1e8933b6104087362180125f88b4ff8dfe4a34b7e4851b1e304c213"
-            ["host/cli/build/reports/m1-06/integration/error-matrix.json"]="63a9dcbb1974cdc824f605fef2119fa8402a8ace1c14c8475f385275dbd31428"
-            ["host/cli/build/reports/m1-06/integration/cleanup-matrix.json"]="e7d9e68694e5df60a15f62b62e080459a39355a7cab2daea5934029cfeeed558"
+            ["host/cli/build/reports/m1-06/integration/error-matrix.json"]="9de958b0855ec939d9f7523880552e2962b4144dbea76fcc37d393d9397e785e"
+            ["host/cli/build/reports/m1-06/integration/cleanup-matrix.json"]="03f9f1b80b7a562db4d406fdda23deab03b688bc87fd50fb8d913283da956598"
             ["host/cli/build/reports/m1-06/unit/path-error-matrix.json"]="ea48b25b0c8f561bb533f0df578a0755f27a6a0c257ffd600a976c0687b1e4a5"
           )
           for file in "${!expected[@]}"; do
@@ -297,8 +297,8 @@ jobs:
         run: |
           $expected = @{
             "host/cli/build/reports/m1-06/integration/normalized-success.json" = "71052641e1e8933b6104087362180125f88b4ff8dfe4a34b7e4851b1e304c213"
-            "host/cli/build/reports/m1-06/integration/error-matrix.json" = "63a9dcbb1974cdc824f605fef2119fa8402a8ace1c14c8475f385275dbd31428"
-            "host/cli/build/reports/m1-06/integration/cleanup-matrix.json" = "e7d9e68694e5df60a15f62b62e080459a39355a7cab2daea5934029cfeeed558"
+            "host/cli/build/reports/m1-06/integration/error-matrix.json" = "9de958b0855ec939d9f7523880552e2962b4144dbea76fcc37d393d9397e785e"
+            "host/cli/build/reports/m1-06/integration/cleanup-matrix.json" = "03f9f1b80b7a562db4d406fdda23deab03b688bc87fd50fb8d913283da956598"
             "host/cli/build/reports/m1-06/unit/path-error-matrix.json" = "ea48b25b0c8f561bb533f0df578a0755f27a6a0c257ffd600a976c0687b1e4a5"
           }
           foreach ($entry in $expected.GetEnumerator()) {

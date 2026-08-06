@@ -65,12 +65,18 @@ internal object PathPolicy {
         }
     }
 
-    fun publishReport(bytes: ByteArray, target: Path): Path {
+    fun publishReport(
+        bytes: ByteArray,
+        target: Path,
+        onTempChanged: (Path?) -> Unit = {},
+        onPublished: () -> Unit = {},
+    ): Path {
         val parent = target.parent ?: outputFailure("REPORT_PARENT_INVALID")
         var temp: Path? = null
         try {
             if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) outputFailure("REPORT_ALREADY_EXISTS")
             temp = Files.createTempFile(parent, ".ah-report-", ".json")
+            onTempChanged(temp)
             java.nio.channels.FileChannel.open(temp, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING).use { channel ->
                 val buffer = java.nio.ByteBuffer.wrap(bytes)
                 while (buffer.hasRemaining()) channel.write(buffer)
@@ -81,9 +87,11 @@ internal object PathPolicy {
             // create-new/no-replace semantics on both supported hosts. Never fall back to an
             // ATOMIC_MOVE whose Windows provider may replace a raced destination.
             Files.createLink(target, temp)
+            onPublished()
             try {
                 Files.delete(temp)
                 temp = null
+                onTempChanged(null)
             } catch (failure: IOException) {
                 runCatching { Files.deleteIfExists(target) }
                 throw failure
@@ -99,16 +107,18 @@ internal object PathPolicy {
             outputFailure("REPORT_PUBLISH_FAILED")
         } finally {
             temp?.let { runCatching { Files.deleteIfExists(it) } }
+            onTempChanged(null)
         }
     }
 
-    fun deleteOwnedTree(path: Path?) {
-        if (path == null || !Files.exists(path, LinkOption.NOFOLLOW_LINKS)) return
-        runCatching {
+    fun deleteOwnedTree(path: Path?): Boolean {
+        if (path == null || !Files.exists(path, LinkOption.NOFOLLOW_LINKS)) return true
+        val deleted = runCatching {
             Files.walk(path).use { stream ->
                 stream.sorted(Comparator.reverseOrder()).forEach { current -> Files.deleteIfExists(current) }
             }
-        }
+        }.isSuccess
+        return deleted && !Files.exists(path, LinkOption.NOFOLLOW_LINKS)
     }
 
     private fun resolveAbsent(path: Path): Path {

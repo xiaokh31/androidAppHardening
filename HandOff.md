@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-06T23:10:40+08:00
+updated_at: 2026-08-06T23:19:59+08:00
 updated_by: /root
 state: active
 source_branch: feat/m1-06-cli-and-json-report
@@ -24,6 +24,7 @@ next_owner: /root
 - 用户已明确启动 M1-06，并预先授权任务所需的推送、唯一草稿 PR、ready 与 expected-head 普通合并。Issue [#11](https://github.com/xiaokh31/androidAppHardening/issues/11) 为 OPEN、无 assignee；远程不存在固定分支或关联 PR。分支 `feat/m1-06-cli-and-json-report` 从已完成 M1-05 且 final main 双平台 CI 全绿的 `main@55ef3c57e631cde65d3e04d58aa75d26a7e75ba8` 创建。
 - M1-01 至 M1-05 依赖均已完成。M1-06 选择 `full-flow` 验证模式；实现计划归档于 `docs/evidence/M1-06/implementation-plan.md`。生产入口仅从后续 distribution 提供的固定 classpath RuntimeBundle 读取资源，不把 synthetic Runtime 打入产品；本任务集成测试使用 M1-05 已授权的合成 RuntimeBundle 合同 fixture。当前只修改 `host/cli`、REPORT_V1、M1-06 证据/CI 与根交接，不启动 M2、设备或模拟器。
 - M1-06 Host 实现与 Windows full-flow 已通过：唯一 `protect` CLI、REPORT_V1 及 Draft 2020-12 可执行 schema validator、七阶段状态机、M1-01 一基至 AHDC v2 零基 ordinal 边界适配、输入只读、未签名输出、报告原子 no-replace 发布/回滚、线程中断与 JVM shutdown 清理、路径/能力扫描均已闭环。Windows 离线 clean 根 `check verifyGovernance` 共 273 项任务退出 `0`；规范化成功报告、错误矩阵、清理矩阵和路径矩阵已固定到 Ubuntu/Windows CI，当前等待冻结提交、只读复核、唯一草稿 PR 和远端双平台门禁。
+- 首个冻结提交 `7d9072e` 的协调者只读复核发现两个关停边界缺口并立即废止：报告临时文件/hard-link 已发布窗口未被 shutdown hook 精确拥有，以及首 stage 前未知异常会错误归到 `publish`。当前修复精确追踪本次 report temp/target、失败时只删除 owned target、失败清理不成功则保留退出 hook 重试，并按实际 active stage 映射未知异常；新增 pre-stage、report-temp 和 report-target shutdown 回归。修复后 targeted full-flow 与最终 273-task clean 根回归再次退出 `0`，等待新冻结点完整复核。
 - 用户已明确启动 M1-05，并预先授权任务所需的推送、唯一草稿 PR、ready 与 expected-head 普通合并。Issue [#10](https://github.com/xiaokh31/androidAppHardening/issues/10) 为 OPEN、无 assignee，远程无固定分支或关联 PR；分支 `feat/m1-05-apk-repacker-and-alignment` 从已验证 `main@d32abe1d68d41910d72c90c3f9fc3d2831972756` 创建。
 - M1-02/M1-03/M1-04 依赖均已合并并完成 post-merge 门禁。M1-05 使用 `pre-cli` 内部 assembler/repacker harness，不启动本机模拟器或真机；生产 Runtime binaries 在 M3 集成前可由任务卡明确允许的合成 RuntimeBundle 合同 fixture 代替。
 - 实现与验收边界归档于 `docs/evidence/M1-05/implementation-plan.md`。ADR 0005/0006/0007/0008 已固定 ABI、NativeShareSlotV1、sourceDir 资产和 AHDC v2 合同，无需新 ADR；独立复核者固定为 `m1_05_security_review`，仅在 clean 冻结提交后启动。
@@ -184,6 +185,7 @@ next_owner: /root
 - 新增 M1-06 full-flow 实施计划，固定唯一 protect 命令、schema discriminator、报告自哈希边界、RuntimeBundle distribution/test fixture 分离、原子 report 回滚语义与验收矩阵；不改变上游算法或启动 M2。
 - 实现 `host/cli` 应用入口、严格 parser/path policy、七阶段 orchestration、REPORT_V1 writer/schema、classpath RuntimeBundle fail-closed loader、输出/report 回滚和稳定 exit/error 映射。CLI 只在编排边界把 M1-01 一基 DEX ordinal 转成 AHDC v2 零基视图，不修改上游 parser 或容器 wire format。
 - Windows full-flow 使用官方固定 aapt2/apksigner、仓库合成双 DEX/四 ABI/Application/Factory fixture 和 test-only RuntimeBundle 通过；官方 apksigner 确认输出未签名。SIGNER/AXML/CONTAINER/PACKAGE/VERIFY/PUBLISH/INTERNAL、线程取消、JVM shutdown、short-write/disk-full 等价注入、report race 与 cleanup/input immutability 全部失败关闭；所有成功/失败报告实际执行 checked-in Draft 2020-12 Schema 校验。
+- 首个冻结点 `7d9072e` 的 shutdown report publication owning 与 pre-stage error mapping 发现已修复；新增三个定向回归并重跑 273-task clean 根门禁，冻结哈希更新为 normalized `71052641...c213`、error `9de958b0...785e`、cleanup `03f9f1b8...598`、path `ea48b25b...e4a5`。
 - 用户明确启动 M1-05 并授予完成任务所需的推送/PR/ready/merge权限；协调者核验 Issue #10、无同名远程分支/PR、依赖完成和 `main@d32abe1` 双平台 Build/Governance 全绿后创建固定分支。
 - 新增 M1-05 实现计划，把九项验收映射为 raw ZIP 保留、签名材料精确删除、ABI policy、ELF share materialization、4 KiB/16 KiB 对齐、独立 verifier、别名/故障注入、外部 Android 工具和双平台字节门禁；未改变 ADR 或相邻公共接口。
 - 关闭首轮 M1-05 复核候选的 P1=4/P2=1：plan cleanup 先于发布、敏感 owner/OOM 清理、同句柄输入及文件身份复验、完整定向 mutation/TOCTOU 矩阵、异常名称脱敏与官方 unsigned reason 均已有可执行证据；旧冻结 `bb748f6` 保持废止。

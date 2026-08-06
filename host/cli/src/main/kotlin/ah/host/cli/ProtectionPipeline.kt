@@ -24,6 +24,7 @@ import java.nio.file.Path
 import java.security.MessageDigest
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import java.util.zip.CRC32
 import java.util.zip.ZipFile
 
@@ -31,6 +32,8 @@ internal interface CliFaults {
     fun beforeStage(stage: PipelineStage) = Unit
     fun afterStage(stage: PipelineStage) = Unit
     fun beforeReportPublish(report: Path, success: Boolean) = Unit
+    fun reportTempChanged(temp: Path?, success: Boolean) = Unit
+    fun afterReportTargetPublished(report: Path, success: Boolean) = Unit
 }
 
 internal object NO_CLI_FAULTS : CliFaults
@@ -54,8 +57,11 @@ internal class ProtectionPipeline(
         var containerBuild: ContainerBuildResult? = null
         var verification: OutputVerification? = null
         val outputPublished = AtomicBoolean(false)
+        val reportPublished = AtomicBoolean(false)
+        val reportTemp = AtomicReference<Path?>()
         val transactionCommitted = AtomicBoolean(false)
         var shutdownHook: Thread? = null
+        var activeStage = PipelineStage.INSPECT
         val stages = ArrayList<StageRecord>()
         try {
             paths = PathPolicy.validate(arguments)
@@ -64,24 +70,32 @@ internal class ProtectionPipeline(
             workspace = PathPolicy.createWorkspace(paths.output.parent)
             val ownedWorkspace = workspace
             val ownedOutput = paths.output
+            val ownedReport = paths.report
             shutdownHook = Thread({
+                reportTemp.get()?.let { temp -> runCatching { Files.deleteIfExists(temp) } }
                 if (!transactionCommitted.get()) {
                     if (outputPublished.get()) runCatching { Files.deleteIfExists(ownedOutput) }
-                    PathPolicy.deleteOwnedTree(ownedWorkspace)
+                    if (reportPublished.get()) runCatching { Files.deleteIfExists(ownedReport) }
                 }
+                PathPolicy.deleteOwnedTree(ownedWorkspace)
             }, "ah-cli-shutdown-cleanup").also(shutdownHooks::add)
 
+            activeStage = PipelineStage.INSPECT
             inspection = stage(PipelineStage.INSPECT, stages) { ApkInspector().inspect(paths.input) }
+            activeStage = PipelineStage.SIGNER
             signer = stage(PipelineStage.SIGNER, stages) { SignerPolicyVerifier().verify(paths.input, inspection) }
             val ahdcInspection = containerInspection(inspection)
+            activeStage = PipelineStage.MANIFEST
             val transformed = stage(PipelineStage.MANIFEST, stages) {
                 val manifest = readManifest(paths.input, inspection)
                 BinaryManifestTransformer.transform(manifest, ManifestTransformRequest(inspection.manifest))
             }
             val containerPath = workspace.resolve("payload.ahdc")
+            activeStage = PipelineStage.CONTAINER
             containerBuild = stage(PipelineStage.CONTAINER, stages) {
                 DexContainerBuilder(paths.input).build(ahdcInspection, signer, containerPath)
             }
+            activeStage = PipelineStage.PACKAGE
             val bundle = try {
                 runtimeBundleProvider.load()
             } catch (_: RuntimeBundleUnavailable) {
@@ -103,11 +117,13 @@ internal class ProtectionPipeline(
                 )
             }
             outputPublished.set(true)
+            activeStage = PipelineStage.VERIFY
             completedCompositeStage(PipelineStage.VERIFY, stages)
             val finalHash = sha256(paths.input)
             if (!MessageDigest.isEqual(inputHash, finalHash)) {
                 throw CliFailure(10, "INPUT_CHANGED", PipelineStage.PUBLISH, "input.changed", ResultStatus.REJECTED)
             }
+            activeStage = PipelineStage.PUBLISH
             completedCompositeStage(PipelineStage.PUBLISH, stages)
             val successBytes = ReportV1Writer.write(
                 snapshot(
@@ -126,14 +142,23 @@ internal class ProtectionPipeline(
                 ),
             )
             faults.beforeReportPublish(paths.report, true)
-            PathPolicy.publishReport(successBytes, paths.report)
+            PathPolicy.publishReport(
+                successBytes,
+                paths.report,
+                { temp -> reportTemp.set(temp); faults.reportTempChanged(temp, true) },
+                { reportPublished.set(true); faults.afterReportTargetPublished(paths.report, true) },
+            )
             transactionCommitted.set(true)
             return CliExecution(0, ResultStatus.SUCCESS, null, paths.reportBasename)
         } catch (failure: Throwable) {
-            val mapped = mapFailure(failure)
+            val mapped = mapFailure(failure, activeStage)
             if (outputPublished.get()) {
                 runCatching { paths?.output?.let { output -> Files.deleteIfExists(output) } }
                 outputPublished.set(false)
+            }
+            if (reportPublished.get()) {
+                runCatching { paths?.report?.let { report -> Files.deleteIfExists(report) } }
+                reportPublished.set(false)
             }
             containerBuild?.keyPackagingPlan?.let { plan -> runCatching { plan.close() } }
             val validPaths = paths
@@ -162,17 +187,24 @@ internal class ProtectionPipeline(
                 )
                 try {
                     faults.beforeReportPublish(validPaths.report, false)
-                    PathPolicy.publishReport(reportBytes, validPaths.report)
+                    PathPolicy.publishReport(
+                        reportBytes,
+                        validPaths.report,
+                        { temp -> reportTemp.set(temp); faults.reportTempChanged(temp, false) },
+                        { reportPublished.set(true); faults.afterReportTargetPublished(validPaths.report, false) },
+                    )
                     transactionCommitted.set(true)
                 } catch (reportFailure: Throwable) {
-                    val reportMapped = mapFailure(reportFailure)
+                    val reportMapped = mapFailure(reportFailure, PipelineStage.PUBLISH)
                     return CliExecution(reportMapped.exitCode, reportMapped.status, reportMapped.errorCode, validPaths.reportBasename)
                 }
             }
             return CliExecution(mapped.exitCode, mapped.status, mapped.errorCode, validPaths?.reportBasename ?: "-")
         } finally {
-            shutdownHook?.let { hook -> runCatching { shutdownHooks.remove(hook) } }
-            PathPolicy.deleteOwnedTree(workspace)
+            val workspaceCleaned = PathPolicy.deleteOwnedTree(workspace)
+            if (workspaceCleaned && reportTemp.get() == null) {
+                shutdownHook?.let { hook -> runCatching { shutdownHooks.remove(hook) } }
+            }
             inputHash?.fill(0)
         }
     }
@@ -278,15 +310,15 @@ internal class ProtectionPipeline(
         inspection.limitsApplied,
     )
 
-    private fun mapFailure(failure: Throwable): CliFailure = when (failure) {
+    private fun mapFailure(failure: Throwable, fallbackStage: PipelineStage): CliFailure = when (failure) {
         is CliFailure -> failure
         is InspectionException -> CliFailure(10, failure.code.name, PipelineStage.INSPECT, "inspection.${failure.code.name.lowercase()}", ResultStatus.REJECTED)
         is SignerPolicyException -> CliFailure(11, failure.code.name, PipelineStage.SIGNER, "signer.${failure.code.name.lowercase()}", ResultStatus.REJECTED)
         is AxmlTransformException -> CliFailure(12, failure.code.name, PipelineStage.MANIFEST, "manifest.${failure.code.name.lowercase()}", ResultStatus.REJECTED)
         is ContainerException -> CliFailure(13, failure.code.name, PipelineStage.CONTAINER, "container.${failure.code.name.lowercase()}", ResultStatus.FAILED)
         is PackageException -> mapPackageFailure(failure)
-        is OutOfMemoryError -> CliFailure(70, "INTERNAL_RESOURCE_EXHAUSTED", PipelineStage.PUBLISH, "internal.resource", ResultStatus.FAILED)
-        else -> CliFailure(70, "INTERNAL_UNEXPECTED", PipelineStage.PUBLISH, "internal.unexpected", ResultStatus.FAILED)
+        is OutOfMemoryError -> CliFailure(70, "INTERNAL_RESOURCE_EXHAUSTED", fallbackStage, "internal.resource", ResultStatus.FAILED)
+        else -> CliFailure(70, "INTERNAL_UNEXPECTED", fallbackStage, "internal.unexpected", ResultStatus.FAILED)
     }
 
     private fun mapPackageFailure(failure: PackageException): CliFailure {

@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-M0 基础建设与可行性验证已经完成，项目正在顺序执行 M1 Host 处理链。当前仍未提供端到端可用的 APK 加固程序：M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换器和 M1-07 AHDC v2 分块认证容器合同已经合并并通过各自门禁；M1-04 的本地 AHDC v2 Host 实现和独立安全复核已经通过，等待发布授权与双平台 PR CI。
+M0 基础建设与可行性验证已经完成，项目正在顺序执行 M1 Host 处理链。当前仍未提供端到端可用的 APK 加固程序：M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换器和 M1-07 AHDC v2 分块认证容器合同已经完成；M1-04 AHDC v2 Host 实现已由 PR #38 合并，正在执行合并后 `main` 门禁，完成前不启动 M1-05。
 
 开发者和 Agent 从 [`docs/README_FIRST.md`](docs/README_FIRST.md) 开始。项目统筹状态以 [`HandOff.md`](HandOff.md) 为准。
 
@@ -19,7 +19,7 @@ M0 基础建设与可行性验证已经完成，项目正在顺序执行 M1 Host
 | [M1-02](docs/tasks/M1-02-signer-policy.md) | 已完成 | signer policy，PR #34 |
 | [M1-03](docs/tasks/M1-03-binary-axml-transformer.md) | 已完成 | Binary AXML 单属性转换器，PR #35 |
 | [M1-07](docs/tasks/M1-07-chunk-authenticated-container-contract.md) | 已完成 | AHDC v2 合同、独立安全复核与双平台门禁，PR #37、Issue #36 |
-| [M1-04](docs/tasks/M1-04-encrypted-dex-container.md) | 待发布 | Issue #9、`feat/m1-04-encrypted-dex-container`；本地实现与独立复核 P0/P1/P2 全零，尚未推送或创建 PR |
+| [M1-04](docs/tasks/M1-04-encrypted-dex-container.md) | 合并后验收 | PR #38 已以普通 merge commit 合并、Issue #9 已关闭；等待 `main` 双平台 CI 与 strict HandOff 收尾 |
 | M1-05、M1-06 | 计划中 | APK 重打包/对齐，然后实现 CLI 与 JSON 报告 |
 | M2 ～ M4 | 未启动 | Runtime、验证矩阵与发布阶段不得提前实现 |
 
@@ -54,7 +54,7 @@ Ubuntu 全量基线：
 ./gradlew --no-daemon :runtime:native:assemble
 ```
 
-当前工程已包含 M1-01 输入检查、M1-02 signer policy 与 M1-03 Binary AXML 转换实现，但尚未形成 M1-04～M1-06 的完整 Host 加固流水线，也没有可发布的端到端 CLI。依赖解析继续使用严格 SHA-256 verification metadata、全 configuration lockfile 与 settings 级 `google()`/`mavenCentral()` 白名单。
+当前工程已包含 M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换与 M1-04 AHDC v2 容器实现，但尚未形成 M1-05/M1-06 的完整 Host 重打包与 CLI 流水线，也没有可发布的端到端 CLI。依赖解析继续使用严格 SHA-256 verification metadata、全 configuration lockfile 与 settings 级 `google()`/`mavenCentral()` 白名单。
 
 ## 许可证
 

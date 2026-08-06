@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-M0 基础建设与可行性验证已经完成，项目正在顺序执行 M1 Host 处理链。当前仍未提供端到端可用的 APK 加固程序：M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换器、M1-07 AHDC v2 分块认证容器合同和 M1-04 AHDC v2 Host 实现已经完成；M1-05 尚未启动。
+M0 基础建设与可行性验证已经完成，项目正在顺序执行 M1 Host 处理链。当前仍未提供端到端可用的 APK 加固程序：M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换器、M1-07 AHDC v2 分块认证容器合同和 M1-04 AHDC v2 Host 实现已经完成；M1-05 APK 重打包与对齐正在执行。
 
 开发者和 Agent 从 [`docs/README_FIRST.md`](docs/README_FIRST.md) 开始。项目统筹状态以 [`HandOff.md`](HandOff.md) 为准。
 
@@ -20,7 +20,8 @@ M0 基础建设与可行性验证已经完成，项目正在顺序执行 M1 Host
 | [M1-03](docs/tasks/M1-03-binary-axml-transformer.md) | 已完成 | Binary AXML 单属性转换器，PR #35 |
 | [M1-07](docs/tasks/M1-07-chunk-authenticated-container-contract.md) | 已完成 | AHDC v2 合同、独立安全复核与双平台门禁，PR #37、Issue #36 |
 | [M1-04](docs/tasks/M1-04-encrypted-dex-container.md) | 已完成 | AHDC v2 Host 容器实现；PR #38、Issue #9、独立安全复核、merger-ready 与 post-merge `main` 门禁均已关闭 |
-| M1-05、M1-06 | 计划中 | APK 重打包/对齐，然后实现 CLI 与 JSON 报告 |
+| [M1-05](docs/tasks/M1-05-apk-repacker-and-alignment.md) | 执行中 | APK 重打包、签名材料移除、Runtime materialization、对齐、独立重读与原子发布 |
+| M1-06 | 计划中 | CLI 与 JSON 报告；M1-05 完成前不启动 |
 | M2 ～ M4 | 未启动 | Runtime、验证矩阵与发布阶段不得提前实现 |
 
 任务按 [`docs/tasks/INDEX.md`](docs/tasks/INDEX.md) 的依赖顺序执行。每个任务只有在 PR 合并、合并后门禁与证据完成后才在本表标记“已完成”；每个任务的收尾协调提交必须同步本 README，避免公开进度长期滞后。

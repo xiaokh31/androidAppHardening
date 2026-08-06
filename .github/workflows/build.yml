@@ -270,7 +270,9 @@ jobs:
           $ctest = "$env:ANDROID_HOME/cmake/4.1.2/bin/ctest.exe"
           $ninja = "$env:ANDROID_HOME/cmake/4.1.2/bin/ninja.exe"
           $vsDevCmd = "C:/Program Files/Microsoft Visual Studio/18/Enterprise/Common7/Tools/VsDevCmd.bat"
+          $clangCl = "C:/Program Files/LLVM/bin/clang-cl.exe"
           if (-not (Test-Path -LiteralPath $vsDevCmd)) { throw "missing pinned runner compiler environment: $vsDevCmd" }
+          if (-not (Test-Path -LiteralPath $clangCl)) { throw "missing pinned runner clang-cl: $clangCl" }
           $vsEnvLines = & cmd.exe /d /s /c "`"$vsDevCmd`" -no_logo -arch=x64 -host_arch=x64 && set"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           foreach ($line in $vsEnvLines) {
@@ -284,6 +286,8 @@ jobs:
             -B runtime/native/build/m2-07-host `
             -G Ninja `
             "-DCMAKE_MAKE_PROGRAM=$ninja" `
+            "-DCMAKE_C_COMPILER=$clangCl" `
+            "-DCMAKE_CXX_COMPILER=$clangCl" `
             -DCMAKE_BUILD_TYPE=Release `
             "-DAH_MBEDTLS_ROOT=$pwd/.toolchains/native-crypto/src/mbedtls-4.1.1"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

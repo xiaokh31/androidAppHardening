@@ -1,0 +1,109 @@
+# M1-04 local Windows validation
+
+- Timestamp: `2026-08-06T07:05:18+08:00`
+- Branch: `feat/m1-04-encrypted-dex-container`
+- Remediation base commit: `25d12336f912a14d889eb594a089cfe6178047fb`
+- OS: Windows 10 `10.0` x64
+- Java: Eclipse Temurin `17.0.19`
+- Gradle: `9.5.0`
+- JCA AES/GCM provider: `SunJCE`
+- Compression: JDK `java.util.zip.Deflater`, zlib-wrapped level `9`, no dictionary
+- Validation mode: `pre-cli`
+
+## Commands and results
+
+All Gradle commands used the repository-local JDK, Gradle installation, and
+`GRADLE_USER_HOME` below `.toolchains`; no tool or dependency was downloaded to
+the system drive.
+
+| Command | Exit | Result |
+| --- | ---: | --- |
+| `gradle :host:container:compileKotlin --offline -Pkotlin.compiler.execution.strategy=in-process` | `0` | Kotlin main sources compiled with warnings as errors |
+| `gradle :host:container:check --offline --no-daemon --no-configuration-cache -Pkotlin.compiler.execution.strategy=in-process` | `0` | 13 self-test groups passed in 45 seconds, including complete 512 MiB build/verify and OOM ownership injection |
+| `node tools/validation/verify-ahdc-v2-vector.mjs` | `0` | independent Node consumer parsed, authenticated, decrypted and inflated two records |
+| `node tools/governance/validate-project-package.mjs` | `0` | `OK: 27 task cards, 11 core docs, 8 ADRs` |
+| `git diff --check` | `0` | no whitespace errors |
+
+The repository-wide `gradle check --offline` was also attempted with a hard
+90-second process limit so local Android tasks could not hang the workstation. It
+timed out with exit `124` while `host:apk-inspector:inspectorSelfTest` was running;
+the M1-04 self-test, Android lint/unit checks reached before that point, toolchain
+policy, M0-05 parser and M1-03 AXML test had passed. The terminated single-use
+daemon left no Java process. This bounded attempt is not claimed as a passing root
+check; Ubuntu/Windows root checks remain a publication CI gate.
+
+## Bounded-memory and cleanup evidence
+
+The self-test generated a `521980`-byte synthetic APK whose logical DEX is exactly
+`536870912` bytes, then completed both builder passes and independent verification;
+the AHDC output was `522580` bytes. No DEX-sized file or array was created.
+Instrumented arrays observed:
+
+- largest single buffer: `65552` bytes (`65536` ciphertext bytes plus GCM tag);
+- largest simultaneous tracked live buffers: `262431` bytes;
+- contract limit: `1048576` bytes;
+- clear hook failures: `0`;
+- failed build outputs after input-change, I/O, unsupported atomic move,
+  random-source/collision/OOM, cancellation, and early/middle cleanup/OOM failure:
+  absent;
+- partial random-provider fill, key-plan copy, expected-binding construction and
+  verifier ConfigV2/`R_native` copy OOM injection cleared every array already
+  owned;
+- ConfigV2 recovery allocation OOM cleared `R_java`, root and nonce; HKDF output
+  allocation OOM cleared the owned zero salt and extracted PRK; late cleanup OOM
+  preserved the original action error;
+- ConfigV2 construction prefix-allocation OOM cleared the partially populated
+  config and derived `R_native` before either value escaped;
+- record-stream construction OOM cleared its already-derived record key; chunk
+  allocation-observer OOM cleared the exact compressed plaintext, AAD, record key
+  and pass-1 digest; verifier manifest-copy/AAD allocation OOM cleared manifest
+  key, ciphertext and nonce;
+- pass-1 and pass-2 mismatch paths plus `CompressionObservation` construction OOM
+  clear every digest already returned by the provider;
+- no Java process remained after each bounded single-use Gradle run.
+
+The temporary work tree contains only authorized synthetic input APKs, encrypted
+AHDC outputs, and JSON reports under ignored `host/container/build/`. The builder
+never writes original DEX or compressed plaintext to a standalone file.
+
+## Fixed and production-random outputs
+
+| Artifact | SHA-256 |
+| --- | --- |
+| fixed-RNG AHDC v2 | `3764b908e534ffa5179a9519045ec74a7caa44b30c80447998c593a1ac2fa60d` |
+| cross-language vector JSON | `3b2421fcc91234333d13545826b51fbf0de25c5fa26b39aa17d90a9ff2133afc` |
+| independent Node consumer report | `542ba9db02b643f445fc9194220e7fac6debb28e45089de38403843c78be2b1a` |
+| local self-test report | `2968ce0a1b5f29090d79f526f83a81d4a228d5402ec9e8e708aeb4727a19cd2b` |
+| production build A | `11393ba742c23c0ea0057af6a102f5084532fb56948a21e832054180782d5a40` |
+| production build B | `31f943a81729e3224dd729c9b57062f854efb69563da40e962a5ab3cc2b44e62` |
+
+Both production outputs were independently verified. Their CEK, root material,
+Java/native shares, wrapping nonce, build ID, key-slot ID, record nonce prefix,
+ConfigV2 and container hashes differed, while complete descriptor semantics and
+recovered DEX data matched. The fixed container, vector and independent-consumer
+report hashes are enforced in both Ubuntu and Windows jobs.
+
+The cross-language vector contains only deterministic synthetic fixture material;
+it is not generated by the production RNG and is not a production reusable key.
+The Node consumer uses only standard `node:crypto` and `node:zlib`, not the Kotlin
+codec, to check ConfigV2 recovery, manifest MAC, per-chunk GCM AAD, zlib and DEX
+digests.
+
+## Input DEX binding
+
+| Entry | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `classes.dex` | `1024` | `e2b552e6e65ef03871d031dbf5000dded1151b89d600c0cc0839faa6ea943459` |
+| `classes2.dex` | `190000` | `56c1da2ecd6a964411915937b70843977cd9bfb7f017b36fa3dfed0914e36eec` |
+
+The independent verifier matched both records' size, SHA-256, and canonical order
+after per-chunk authentication and continuous zlib inflation.
+
+## Standard vectors
+
+- RFC 5869 SHA-256 test case 1, 42-byte output.
+- NIST SP 800-38D AES-256-GCM zero-key/zero-IV, 16-byte plaintext vector.
+- zlib-wrapped level-9 `hello` vector:
+  `78dacb48cdc9c90700062c0215`.
+- HKDF domain separation between manifest, record zero, and record one keys.
+- nonce separation between adjacent chunk ordinals.

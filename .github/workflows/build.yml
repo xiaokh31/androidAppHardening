@@ -104,6 +104,18 @@ jobs:
           test "$(sha256sum "$aapt2" | awk '{print $1}')" = "916e2d79af152c6090fc7ba0c4b9b24f054f0eb094ff2968192b922d0d593672"
           sha256sum "$transforms" "$errors" "$fuzz" "$aapt2"
 
+      - name: Verify M1-04 byte-identical AHDC v2 container
+        shell: bash
+        run: |
+          node tools/validation/verify-ahdc-v2-vector.mjs
+          container="host/container/build/reports/m1-04/work/deterministic-a.ahdc"
+          vector="host/container/build/reports/m1-04/cross-language-vector.json"
+          consumer="host/container/build/reports/m1-04/cross-language-consumer.json"
+          test "$(sha256sum "$container" | awk '{print $1}')" = "3764b908e534ffa5179a9519045ec74a7caa44b30c80447998c593a1ac2fa60d"
+          test "$(sha256sum "$vector" | awk '{print $1}')" = "3b2421fcc91234333d13545826b51fbf0de25c5fa26b39aa17d90a9ff2133afc"
+          test "$(sha256sum "$consumer" | awk '{print $1}')" = "542ba9db02b643f445fc9194220e7fac6debb28e45089de38403843c78be2b1a"
+          sha256sum "$container" "$vector" "$consumer"
+
       - name: Test dependency verification failure
         shell: bash
         run: node tools/validation/test-dependency-verification.mjs
@@ -213,3 +225,20 @@ jobs:
             if ($actual -ne $entry.Value) { exit 1 }
             Write-Output "$actual  $($entry.Key)"
           }
+
+      - name: Verify M1-04 byte-identical AHDC v2 container
+        shell: pwsh
+        run: |
+          node tools/validation/verify-ahdc-v2-vector.mjs
+          $container = "host/container/build/reports/m1-04/work/deterministic-a.ahdc"
+          $vector = "host/container/build/reports/m1-04/cross-language-vector.json"
+          $consumer = "host/container/build/reports/m1-04/cross-language-consumer.json"
+          $containerHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $container).Hash.ToLowerInvariant()
+          $vectorHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $vector).Hash.ToLowerInvariant()
+          $consumerHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $consumer).Hash.ToLowerInvariant()
+          if ($containerHash -ne "3764b908e534ffa5179a9519045ec74a7caa44b30c80447998c593a1ac2fa60d") { exit 1 }
+          if ($vectorHash -ne "3b2421fcc91234333d13545826b51fbf0de25c5fa26b39aa17d90a9ff2133afc") { exit 1 }
+          if ($consumerHash -ne "542ba9db02b643f445fc9194220e7fac6debb28e45089de38403843c78be2b1a") { exit 1 }
+          Write-Output "$containerHash  $container"
+          Write-Output "$vectorHash  $vector"
+          Write-Output "$consumerHash  $consumer"

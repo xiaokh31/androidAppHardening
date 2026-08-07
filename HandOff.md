@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-07T12:17:52+08:00
+updated_at: 2026-08-07T12:29:36+08:00
 updated_by: /root
 state: active
 source_branch: chore/m2-07-native-crypto-backend
@@ -308,6 +308,7 @@ next_owner: /root
 - Review-4 remediation `024d24eaf8bd82c07ebe67dfb7750762cb3c8400` 的 Build `31143103481`、Governance `31143103486` 与 API 29/36 KVM `31143103462` 全部 PASS；Windows 实际读取并打印 VS `18.8.12023.21` 和 selected x64-tools component `18.8.11901.359`，两个 mismatch 负例、双平台 Host、根回归、四 ABI、设备验收和清理均通过。包含本状态的当前 HEAD 仅在其自身 exact-head Build/Governance/KVM 全绿时才是第五轮复核唯一输入；reviewer 必须按该 SHA 独立解析 run IDs。PR #42 仍 draft，M2-02 仍暂停。
 - 第五轮独立只读复核永久废止 frozen SHA `a6497c2713e9025db11c4b5ccc657d42beb9236e`，结论 `P0=0/P1=0/P2=2`，归档于 `docs/evidence/M2-07/read-only-review-5.md`；此前十三项 finding 全部 CLOSED，冻结 SHA 的 Build `31143702806`、Governance `31143702757` 与 KVM `31143702763` 全绿。新增 P2 为四 ABI 实际保留十二个 TF-PSA 内部 AES block/CTR-DRBG/entropy/random lifecycle 本地符号但合同误称其不存在，以及 Active Workstreams 滞后。移除 DRBG 配置的有界实验以 `No DRBG module available for the psa_crypto module` 失败，故当前修复改为机器锁定配置 hash 和精确十二符号集合、逐 ABI 拒绝缺失/新增/动态导出，并按无 RSA/CBC/padding API/调用路径和仅认证 GCM 解密重新陈述 CVE 可达性；之后必须新 SHA、三套 exact-head CI 与第六轮完整独立复核。PR #42 保持 draft，M2-02 继续暂停。
 - 第六轮独立只读复核永久废止 frozen SHA `9c29fb63c8e54cb6d0670e6e01bdbfc88e113cc3`，结论 `P0=0/P1=0/P2=2`，归档于 `docs/evidence/M2-07/read-only-review-6.md`；十四项历史 finding 已 CLOSED，Build `31145662390`、Governance `31145662398` 与 KVM `31145662402` 在该 SHA 全绿。剩余 review-5 符号 finding 仅部分关闭：每个 ABI 实际还有三个无前缀 DRBG/entropy helper 和两个 platform entropy-hook 符号，总计十七个，其中十六个 local text (`t`) 和一个 local data (`d`)；旧门禁只捕获十二个名称且未核对类型。第二个 P2 为 Ordered Next Actions 再次滞后。当前最小修复锁定完整十七个 type+name 并让双平台逐 ABI 拒绝名称/数量/类型/导出漂移，同时把下一动作更新为新 SHA、replacement CI 与第七轮完整独立复核。PR #42 保持 draft，M2-02 继续暂停。
+- Review-6 remediation candidate `b7c120b7774bf788de750f35d0fbe946af6c2307` 的 Build `31147033042`、Governance `31147033069` 与 API 29/36 KVM `31147033086` 全部 PASS；Ubuntu/Windows 的四 ABI 步骤均执行完整十七项 local `t/d` type+name 精确比较。包含本状态的 evidence-only successor 仅在其自身 exact-head 三套 workflow 全绿时才是第七轮复核的唯一输入，reviewer 必须从该 SHA 独立解析 run IDs；不得仅为复制 run ID 再创建提交。PR #42 保持 draft，M2-02 继续暂停。
 
 ## Verification Evidence
 
@@ -1253,10 +1254,10 @@ None
 
 ## Ordered Next Actions
 
-1. Commit and push the review-6 remediation that machine-locks all seventeen internal symbols by exact local `t/d` type plus name, updates both four-ABI gates, archives review 6 and reconciles this HandOff.
-2. Run exact-head Build, Governance and KVM on that new SHA; only a clean all-green SHA may become the sole review-7 freeze.
-3. Run the seventh complete independent read-only M2-07 review against that exact SHA and require disposition of all seventeen findings with P0/P1/P2 all zero; otherwise remediate and re-freeze.
-4. On a zero-finding review, archive the immutable conclusion, rerun final exact-head gates, mark PR #42 ready, merge with expected-head protection, run final `main` gates, update README/HandOff, then resume `feat/m2-02-native-decrypt-loader`.
+1. Treat the current clean HEAD as the sole review-7 candidate only when the remote branch equals it and its exact-head Build, Governance and KVM workflows all succeed; if already green, proceed without another evidence-only commit.
+2. Run the seventh complete independent read-only M2-07 review against that exact SHA; the reviewer must independently resolve the three run IDs, disposition all seventeen findings and require P0/P1/P2 all zero.
+3. If review 7 fails, archive it and repeat bounded remediation/new-SHA gates/review; if it passes, archive the immutable conclusion in one evidence-only successor and run final exact-head gates.
+4. After the zero-finding archive successor's final gates pass, mark PR #42 ready, merge with expected-head protection, run final `main` gates, update README/HandOff, then resume `feat/m2-02-native-decrypt-loader`.
 
 ## Relevant Files and Artifacts
 

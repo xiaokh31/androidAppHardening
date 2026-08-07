@@ -50,7 +50,7 @@ Command:
 
 Exit `0` in 1m33s, 296 tasks. Existing M1-01 through M1-06 self-tests and full-flow remained green; Native Android lint/check and four ABI assemble passed.
 
-## Pending remote evidence
+## Remote CI evidence
 
 The local Visual Studio installation lacks the C/C++ compiler workload, so the Windows Host executable was not run locally. The checked-in CI builds and executes the exact C++ facade against NIST AES-256-GCM and RFC 5869 case 1 on Ubuntu and Windows before Gradle, then independently builds/scans all four Android ABIs. Those results must pass before the implementation commit is frozen for independent review.
 
@@ -65,3 +65,13 @@ On replacement HEAD `c7499b5a8045c02ff7095b78d79b0811761be68b`, Governance run `
 Run `31132095119` then showed that its actual immutable image was `windows-2025-vs2026` version `20260728.188.1`, not the current generic Windows 2025 manifest. The run-provided official manifest pins Visual Studio Enterprise 2026 `18.8.12023.21` at `C:/Program Files/Microsoft Visual Studio/18/Enterprise`. CMake 4.1.2 supports Visual Studio generators only through VS 2022, so it cannot consume a VS 2026 generator instance. Windows Host CI now activates that image's x64 compiler environment with `VsDevCmd.bat` and uses the already fixed CMake 4.1.2/Ninja generator; no compiler, SDK, CMake, or runner downgrade is downloaded.
 
 Run `31132353130` confirmed that this activation found MSVC `19.51.36252.0` and configured CMake/Ninja successfully. Compilation then failed in upstream `extras/pk_ecc.c` and `extras/pk_rsa.c`: with every PK key type intentionally disabled, MSVC rejects an internal zero-sized array with `C2229`, even though those object files are not selected into the final minimal facade. The same locked source/configuration passes on Ubuntu and all Android Clang targets, and the immutable runner manifest includes LLVM `20.1.8`. The next Windows candidate retains the VS 2026 SDK/link environment but explicitly selects preinstalled `C:/Program Files/LLVM/bin/clang-cl.exe`; it does not enable PK/RSA/ECC or weaken the product feature profile.
+
+Candidate `10a1862dbce4c1b6defbfa16ebd4bb49e8335e58` closed every replacement gate on `2026-08-07`:
+
+| Workflow | Run | Result | Relevant proof |
+| --- | ---: | --- | --- |
+| Build | [`31132692644`](https://github.com/xiaokh31/androidAppHardening/actions/runs/31132692644) | PASS | Ubuntu 24.04 and Windows 2025 both verified the locked archive, ran NIST AES-256-GCM and RFC 5869 case 1, ran the root regression, and built/scanned all four Android ABIs. Windows used the immutable runner's preinstalled LLVM `20.1.8` `clang-cl` with its VS 2026 SDK/link environment. |
+| Governance | [`31132692665`](https://github.com/xiaokh31/androidAppHardening/actions/runs/31132692665) | PASS | Ubuntu 24.04 and Windows 2025 passed project-package validation, strict PR HandOff validation, negative HandOff tests, and Git object verification. |
+| M0-05 Linux KVM | [`31132692597`](https://github.com/xiaokh31/androidAppHardening/actions/runs/31132692597) | PASS | API 29 and API 36 x86_64 both verified the same Native source before two-pass Release/R8 fixture builds, completed bounded device acceptance, cleanup diagnostics, and evidence upload. |
+
+The GitHub annotation that `actions/upload-artifact` is being forced from Node.js 20 to Node.js 24 is a non-failing action-runtime deprecation warning; it does not change dependency bytes or test results. With all three exact-head workflows green, this evidence commit may freeze the input for independent read-only security review. PR #42 remains draft and M2-02 remains paused until that review has zero P0/P1/P2 findings and replacement exact-head CI passes.

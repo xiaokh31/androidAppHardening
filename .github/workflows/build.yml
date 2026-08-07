@@ -362,7 +362,7 @@ jobs:
           }
           if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) { throw "VS 2026 x64 compiler environment was not activated" }
           $clVersion = (& cl.exe 2>&1) -join "`n"
-          if ($clVersion -notmatch 'Version 19\.51\.36252\.0') {
+          if ($clVersion -notmatch 'Version 19\.51\.36252(?:\s|$)') {
             throw "unexpected VS compiler environment: $clVersion"
           }
           & $cmake `

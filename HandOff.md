@@ -2,10 +2,10 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-07T13:25:50+08:00
+updated_at: 2026-08-07T13:37:58+08:00
 updated_by: /root
 state: active
-source_branch: chore/m2-07-native-crypto-backend
+source_branch: main
 base_commit: 1bce1f61a3edcebdf94a511c495006a38edb6cb4
 working_tree: clean
 current_milestone: M2
@@ -17,7 +17,7 @@ next_owner: /root
 
 ## Objective
 
-在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内执行 M2-07：固定并验证 M2-02 唯一可用的 Native 密码后端、供应链和最小 AES-256-GCM/HKDF-SHA-256 facade；不实现 AHDC parser、DEX loader、TLS/X.509 或相邻 M2 功能。
+在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内完成 M2-07 合并后 README/HandOff 与最终 `main` 门禁；门禁通过后恢复既有 M2-02 分支，不启动 M2-03 或相邻任务。
 
 ## Current State
 
@@ -167,7 +167,7 @@ next_owner: /root
 | M1-04 | `/root` | `feat/m1-04-encrypted-dex-container` | done | M1-01, M1-02, M1-07 | PR #38、Issue #9、独立复核、merger-ready 六项 CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-05 | `/root` | `feat/m1-05-apk-repacker-and-alignment` | done | M1-02, M1-03, M1-04 | PR #39、Issue #10、独立复核、merger-ready CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-06 | `/root` | `feat/m1-06-cli-and-json-report` | done | M1-01, M1-02, M1-03, M1-04, M1-05 | PR #40、Issue #11、独立复核、merger-ready 与 post-merge main 双平台 CI、README 和 strict HandOff 均已关闭 |
-| M2-07 | `/root` | `chore/m2-07-native-crypto-backend` | in_progress | M0-03, M1-04 | 冻结 `7190a6e` 的 Build/Governance/KVM 全绿且第九轮最终独立复核 P0/P1/P2 全零；当前只允许归档该结论、运行 evidence-only successor 的最终 exact-head 门禁并合并 |
+| M2-07 | `/root` | `main` | in_progress | M0-03, M1-04 | PR #42 与 Issue #41 已关闭；README 已同步，等待 post-merge `main` 无豁免 strict 与 Build/Governance/KVM 最终门禁 |
 | M2-02 | `/root` | `feat/m2-02-native-decrypt-loader` | blocked | M0-04, M1-04, M2-07 | `/root` 在 M2-07 合并且 final main 门禁通过后恢复 `40e3900` |
 
 ## Decisions and Invariants
@@ -312,6 +312,7 @@ next_owner: /root
 - 第七轮独立只读复核永久废止 frozen SHA `4a4de2820308eb7adefa4f5cfbc76eed0dbb6031`，结论 `P0=0/P1=0/P2=2`，归档于 `docs/evidence/M2-07/read-only-review-7.md`；Build `31147638536`、Governance `31147638532` 与 KVM `31147638429` 在该 SHA 全绿，实际四 ABI 十七项集合与漏洞不可达性均成立。符号 gate finding 仍部分开放：Ubuntu 在精确比较前丢弃非 `t/d` 类型，而动态扫描未覆盖无前缀 `ctr_drbg_`/`entropy_`，未来大写/global helper 可绕过；第二个 P2 为 Active Workstreams 再次滞后。当前最小修复让双平台共用全类型 parser 和相同相关名称前缀，新增 local/global/hidden-global/缺失/类型变化/导出自测，并把 workstream 改为条件式检查点。PR #42 保持 draft，M2-02 继续暂停。
 - 第八轮独立只读复核永久废止 frozen SHA `dfda35fad30d7edf2ee1fdfe26d3248dacd15e91`，结论 `P0=0/P1=0/P2=1`，归档于 `docs/evidence/M2-07/read-only-review-8.md`；此前十九项 finding 全部 CLOSED，Build `31148877894`、Governance `31148877818` 与 KVM `31148877817` 在该 SHA 全绿。唯一 P2 是共享 parser 自测虽已覆盖 `t→d` 并经独立合成输入证明比较器拒绝 `d→t`，但没有显式的 `d→t` 自测用例。当前最小修复只补该反向类型变化负例；之后必须新 SHA、三套 exact-head CI 与第九轮完整独立复核。PR #42 保持 draft，M2-02 继续暂停。
 - 第九轮最终独立只读复核对 frozen SHA `7190a6ee61285fe065d5de6cbe836a648482d658` 给出 PASS：`P0=0/P1=0/P2=0`，结论归档于 `docs/evidence/M2-07/read-only-review-9.md`；前二十项 finding 全部 CLOSED 且无新增 finding。该 SHA 的 Build `31149909030`、Governance `31149909021` 与 API 29/36 KVM `31149909014` 全绿，双平台 Host 向量、四 ABI 精确十七项 surface、零相关动态导出、设备验收、强制清理和证据上传均通过。该复核是最终结论，除非出现真实接受面或安全边界缺陷，不再因措辞或可选增强开启新轮次。当前只允许 evidence-only 归档 successor、最终 exact-head 门禁与 expected-head 合并；PR #42 仍 draft，M2-02 在 final main 门禁前继续暂停。
+- Evidence-only merger-ready HEAD `0c741e76477a1b8885ae354747168c1145152e0a` 的 Build `31150620828`、Governance `31150620836` 与 API 29/36 KVM `31150620830` 六项全部 PASS；PR #42 已转 ready，并以 expected-head 保护的普通 merge commit `1ac8e308236078827ec3e4a8f438514dcf69b10c` 合并到 `main`，Issue #41 已关闭。README 已同步 M2-07 完成状态；当前只允许提交本 post-merge 协调状态并运行无豁免 strict/Governance/Build/KVM 最终 `main` 门禁，全部通过后恢复 `feat/m2-02-native-decrypt-loader@40e3900`。
 
 ## Verification Evidence
 
@@ -1257,10 +1258,9 @@ None
 
 ## Ordered Next Actions
 
-1. Commit this immutable review-9 archive as the sole evidence-only successor; do not change production code, dependency locks, ABI surface or workflow acceptance.
-2. Require that successor's exact-head Build, Governance and KVM workflows to succeed; no additional security-review round is required absent a real acceptance-surface or security-boundary defect.
-3. Mark PR #42 ready and merge with expected-head protection, then update task/README/HandOff on `main` and run final no-exemption strict/Governance/Build/KVM gates.
-4. After final `main` gates pass, restore and resume `feat/m2-02-native-decrypt-loader@40e3900` without starting M2-03 or adjacent work.
+1. Commit and push this README/HandOff-only post-merge coordination update on `main`; do not change production code, dependency locks, ABI surface or workflow acceptance.
+2. Require that exact `main` HEAD to pass local no-exemption strict HandOff/Governance and remote Build, Governance and API 29/36 KVM.
+3. After all final `main` gates pass, merge `main` into and resume `feat/m2-02-native-decrypt-loader@40e3900`, update HandOff for the restored task, and continue only M2-02.
 
 ## Relevant Files and Artifacts
 

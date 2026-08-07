@@ -59,6 +59,7 @@ function selfTest() {
     ["extra hidden global", `${baseline}\n${address} T mbedtls_ctr_drbg_future_helper\n`],
     ["missing", expected.slice(1).map((entry) => `${address} ${entry}`).join("\n")],
     ["t to d", baseline.replace(" t ctr_drbg_update_internal", " d ctr_drbg_update_internal")],
+    ["d to t", baseline.replace(" d mbedtls_platform_dev_random", " t mbedtls_platform_dev_random")],
     ["t to T", baseline.replace(" t ctr_drbg_update_internal", " T ctr_drbg_update_internal")],
   ];
   for (const [name, candidate] of mutations) {

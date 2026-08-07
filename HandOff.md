@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-07T12:53:24+08:00
+updated_at: 2026-08-07T13:11:54+08:00
 updated_by: /root
 state: active
 source_branch: chore/m2-07-native-crypto-backend
@@ -167,7 +167,7 @@ next_owner: /root
 | M1-04 | `/root` | `feat/m1-04-encrypted-dex-container` | done | M1-01, M1-02, M1-07 | PR #38、Issue #9、独立复核、merger-ready 六项 CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-05 | `/root` | `feat/m1-05-apk-repacker-and-alignment` | done | M1-02, M1-03, M1-04 | PR #39、Issue #10、独立复核、merger-ready CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-06 | `/root` | `feat/m1-06-cli-and-json-report` | done | M1-01, M1-02, M1-03, M1-04, M1-05 | PR #40、Issue #11、独立复核、merger-ready 与 post-merge main 双平台 CI、README 和 strict HandOff 均已关闭 |
-| M2-07 | `/root` | `chore/m2-07-native-crypto-backend` | in_progress | M0-03, M1-04 | 第七冻结复核 P2=2 FAIL 已归档并废止；当前 HEAD 仅在共享 parser 全类型/导出自测、三套 exact-head CI 与第八轮全零复核均成立时可继续，否则必须废止 |
+| M2-07 | `/root` | `chore/m2-07-native-crypto-backend` | in_progress | M0-03, M1-04 | 第八冻结复核 P2=1 FAIL 已归档并废止；当前 HEAD 仅在显式双向 `t↔d` 与完整 parser 自测、三套 exact-head CI 与第九轮全零复核均成立时可继续，否则必须废止 |
 | M2-02 | `/root` | `feat/m2-02-native-decrypt-loader` | blocked | M0-04, M1-04, M2-07 | `/root` 在 M2-07 合并且 final main 门禁通过后恢复 `40e3900` |
 
 ## Decisions and Invariants
@@ -310,6 +310,7 @@ next_owner: /root
 - 第六轮独立只读复核永久废止 frozen SHA `9c29fb63c8e54cb6d0670e6e01bdbfc88e113cc3`，结论 `P0=0/P1=0/P2=2`，归档于 `docs/evidence/M2-07/read-only-review-6.md`；十四项历史 finding 已 CLOSED，Build `31145662390`、Governance `31145662398` 与 KVM `31145662402` 在该 SHA 全绿。剩余 review-5 符号 finding 仅部分关闭：每个 ABI 实际还有三个无前缀 DRBG/entropy helper 和两个 platform entropy-hook 符号，总计十七个，其中十六个 local text (`t`) 和一个 local data (`d`)；旧门禁只捕获十二个名称且未核对类型。第二个 P2 为 Ordered Next Actions 再次滞后。当前最小修复锁定完整十七个 type+name 并让双平台逐 ABI 拒绝名称/数量/类型/导出漂移，同时把下一动作更新为新 SHA、replacement CI 与第七轮完整独立复核。PR #42 保持 draft，M2-02 继续暂停。
 - Review-6 remediation candidate `b7c120b7774bf788de750f35d0fbe946af6c2307` 的 Build `31147033042`、Governance `31147033069` 与 API 29/36 KVM `31147033086` 全部 PASS；Ubuntu/Windows 的四 ABI 步骤均执行完整十七项 local `t/d` type+name 精确比较。包含本状态的 evidence-only successor 仅在其自身 exact-head 三套 workflow 全绿时才是第七轮复核的唯一输入，reviewer 必须从该 SHA 独立解析 run IDs；不得仅为复制 run ID 再创建提交。PR #42 保持 draft，M2-02 继续暂停。
 - 第七轮独立只读复核永久废止 frozen SHA `4a4de2820308eb7adefa4f5cfbc76eed0dbb6031`，结论 `P0=0/P1=0/P2=2`，归档于 `docs/evidence/M2-07/read-only-review-7.md`；Build `31147638536`、Governance `31147638532` 与 KVM `31147638429` 在该 SHA 全绿，实际四 ABI 十七项集合与漏洞不可达性均成立。符号 gate finding 仍部分开放：Ubuntu 在精确比较前丢弃非 `t/d` 类型，而动态扫描未覆盖无前缀 `ctr_drbg_`/`entropy_`，未来大写/global helper 可绕过；第二个 P2 为 Active Workstreams 再次滞后。当前最小修复让双平台共用全类型 parser 和相同相关名称前缀，新增 local/global/hidden-global/缺失/类型变化/导出自测，并把 workstream 改为条件式检查点。PR #42 保持 draft，M2-02 继续暂停。
+- 第八轮独立只读复核永久废止 frozen SHA `dfda35fad30d7edf2ee1fdfe26d3248dacd15e91`，结论 `P0=0/P1=0/P2=1`，归档于 `docs/evidence/M2-07/read-only-review-8.md`；此前十九项 finding 全部 CLOSED，Build `31148877894`、Governance `31148877818` 与 KVM `31148877817` 在该 SHA 全绿。唯一 P2 是共享 parser 自测虽已覆盖 `t→d` 并经独立合成输入证明比较器拒绝 `d→t`，但没有显式的 `d→t` 自测用例。当前最小修复只补该反向类型变化负例；之后必须新 SHA、三套 exact-head CI 与第九轮完整独立复核。PR #42 保持 draft，M2-02 继续暂停。
 
 ## Verification Evidence
 
@@ -1255,9 +1256,9 @@ None
 
 ## Ordered Next Actions
 
-1. Treat the current clean HEAD as the sole review-8 candidate only when the remote branch equals it and its exact-head Build, Governance and KVM workflows all succeed; if already green, proceed without another evidence-only commit.
-2. Run the eighth complete independent read-only M2-07 review against that exact SHA; the reviewer must independently resolve the three run IDs, disposition all nineteen findings and require P0/P1/P2 all zero.
-3. If review 8 fails, archive it and repeat bounded remediation/new-SHA gates/review; if it passes, archive the immutable conclusion in one evidence-only successor and run final exact-head gates.
+1. Treat the current clean HEAD as the sole review-9 candidate only when the remote branch equals it and its exact-head Build, Governance and KVM workflows all succeed; if already green, proceed without another evidence-only commit.
+2. Run the ninth complete independent read-only M2-07 review against that exact SHA; the reviewer must independently resolve the three run IDs, disposition all twenty findings and require P0/P1/P2 all zero.
+3. If review 9 fails, archive it and repeat bounded remediation/new-SHA gates/review; if it passes, archive the immutable conclusion in one evidence-only successor and run final exact-head gates.
 4. After the zero-finding archive successor's final gates pass, mark PR #42 ready, merge with expected-head protection, run final `main` gates, update README/HandOff, then resume `feat/m2-02-native-decrypt-loader`.
 
 ## Relevant Files and Artifacts

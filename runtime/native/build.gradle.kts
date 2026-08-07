@@ -2,6 +2,13 @@ plugins {
     alias(libs.plugins.android.library)
 }
 
+val verifiedMbedTlsRoot =
+    rootProject.layout.projectDirectory
+        .dir(".toolchains/native-crypto/src/mbedtls-4.1.1")
+        .asFile
+        .absolutePath
+        .replace('\\', '/')
+
 android {
     namespace = "ah.runtime.nativebridge"
     compileSdk = libs.versions.android.compile.sdk.get().toInt()
@@ -30,6 +37,14 @@ android {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
             version = libs.versions.android.cmake.get()
+        }
+    }
+
+    defaultConfig {
+        externalNativeBuild {
+            cmake {
+                arguments += "-DAH_MBEDTLS_ROOT=$verifiedMbedTlsRoot"
+            }
         }
     }
 

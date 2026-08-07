@@ -17,6 +17,7 @@ M0-03 必须以仓库配置固化以下基线，不允许依赖开发者全局�
 | Android SDK | `compileSdk 36`、Platform 36、Build Tools `36.1.0` |
 | Runtime 语言 | Java 17；Android 模块不叠加 Kotlin Android plugin |
 | Native 构建 | Android NDK `29.0.14206865`、CMake `4.1.2`、C++17 |
+| Native 密码后端 | Mbed TLS `4.1.1` 官方完整归档；仅静态链接 bundled TF-PSA-Crypto `1.1.1` |
 | 治理脚本 | Node.js `24.12.0` |
 | Host 测试 | Windows x64 与 Ubuntu x64 |
 | Runtime 最低平台 | `minSdk 29`；fixture `targetSdk 36`，输入 APK 的 targetSdk 保持不变 |
@@ -86,6 +87,16 @@ M0-05 的 GitHub Linux/KVM 验收复用上述 API 29 revision 8 与 API 36 revis
 | Linux/KVM Emulator | `emulator` 37.1.11 build 15917651 | `emulator-linux_x64-15917651.zip` | 334378080 | `1b1f78891abf8ec268264356e1365c25519e8379` | `95771e0ae431897b2a4bd2d97fa095f29a8b0624a7b216baf529f9306161c266` |
 
 机器可读锁位于 `tools/validation/m0-05-linux-kvm-packages.json`。GitHub Actions 将固定归档下载到仓库根的 `.toolchains/android-m0-05-ci/`，先核对长度和 SHA-256，再启动 KVM；不得使用 `sdkmanager` 的浮动 `emulator` 或 system-image 版本代替。
+
+M2-07 的 Native 密码后端固定为 Mbed TLS `4.1.1` 官方 release asset `mbedtls-4.1.1.tar.bz2`：`7099934` bytes，SHA-256 `3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c`；annotated tag object 为 `783058d12831aedd3ef57a64577f6f8a88d23bd3`，指向 commit `0a8fda272a5a0abef3b47c91bed37185d5a726b1`。完整归档内 bundled TF-PSA-Crypto 的实际版本为 `1.1.1`。机器锁位于 `tools/validation/m2-07-native-crypto.json`；归档和解压源码只允许位于仓库根 `.toolchains/native-crypto/` 并保持 Git 忽略。准备顺序固定为下载、解包前长度/SHA-256 校验、成员路径校验、空临时目录解压、完整常规文件树 `3927` files/`60515866` bytes/SHA-256 `7c4ba655...d2140` 与 Unix `147` 个限定前缀 symlink（Windows 固定 extractor 跳过时为 `0`）校验、写入双 hash stamp、原子提升；失败清理归档与候选树。`node tools/validation/verify-m2-07-native-crypto.mjs` 必须在任何 Native 配置前核对全部不可变锁字段、完整树、许可证和 bundled 版本；Gradle/CMake 不得自行联网且 CMake 拒绝无 stamp 目录。
+
+同一机器锁还固定 `runtime/native/src/main/cpp/ah_crypto_config.h` 的 SHA-256 `75094e9ef8dbb381cfadddc7e7c89eed9c622d471331ce95a30574e93156ef35`，以及四 ABI 未剥离 Release ELF 中恰好十七个 TF-PSA 内部本地符号的名称和绑定类型：十六个 local text (`t`) 与一个 local data (`d`)。TF-PSA 的 PSA 初始化要求 built-in CTR-DRBG/entropy；GCM/DRBG 因此保留隐藏的 AES block、DRBG update、entropy gather/update、platform entropy hook 和 random lifecycle 实现。该内部集合不启用 PSA ECB/CBC、padding 或随机生成 facade，也不得动态导出。Ubuntu/Windows 共用 `verify-m2-07-symbol-surface.mjs`，先收集所有相关名称而不预先排除大写/global 或其他类型，再比较精确 type+name；自测拒绝新增 local/global/hidden-global、缺失、类型变化和相关导出。CI 对名称、数量或类型的任何缺少、增加或变化均失败关闭，并要求重新执行漏洞可达性审查。
+
+项目选择上游双许可证中的 Apache-2.0。构建只加入 `tf-psa-crypto` 子项目；产品 facade 只消费 AES-256-GCM、SHA-256、HMAC-SHA-256 与 HKDF-SHA-256，PSA 初始化所需的内部 DRBG/entropy/AES block 边界按上述机器锁固定。不构建或链接 TLS、X.509、RSA/ECC 或 Android 私有 BoringSSL。上游 4.1.1 release body 把 bundled TF-PSA-Crypto 写成 `1.2.0`，但官方完整归档的 CMake/ChangeLog 均为 `1.1.1`；该差异已在 ADR 0009 记录，锁定归档 bytes 是构建事实来源。
+
+GitHub 的 `windows-2025` 托管池会在并发 run 间分配两个已发布镜像，因此 M2-07 Windows Host 使用精确、有限且机器锁定的不可变 allowlist：runtime `ImageVersion=20260728.188.1` 对应 [manifest ref `win25-vs2026/20260728.188`](https://github.com/actions/runner-images/blob/win25-vs2026/20260728.188/images/windows/Windows2025-VS2026-Readme.md)，runtime `ImageVersion=20260803.193.1` 对应 [manifest ref `win25-vs2026/20260803.193`](https://github.com/actions/runner-images/blob/win25-vs2026/20260803.193/images/windows/Windows2025-VS2026-Readme.md)。两份清单均固定 LLVM/`clang-cl` `20.1.8`、Visual Studio Enterprise 2026 `18.8.12023.21`（x64 tools component `18.8.11901.359`、`cl.exe` runtime `19.51.36252`）与 Windows SDK `10.0.26100.0`；项目继续固定 CMake/Ninja `4.1.2`。workflow 精确映射 runtime 到清单 ref 并逐项断言编译器环境；不接受范围、第三个镜像或 `latest`，托管池出现新值时失败关闭并要求独立工具链复核。
+
+M2-07 Ubuntu Host 与 KVM 固定到 run 自报的 `ImageOS=ubuntu24`，并使用精确、有限且机器锁定的不可变 allowlist：runtime `ImageVersion=20260720.247.2` 对应[清单 ref `ubuntu24/20260720.247`](https://github.com/actions/runner-images/blob/ubuntu24/20260720.247/images/ubuntu/Ubuntu2404-Readme.md)，runtime `ImageVersion=20260804.265.1` 对应[清单 ref `ubuntu24/20260804.265`](https://github.com/actions/runner-images/blob/ubuntu24/20260804.265/images/ubuntu/Ubuntu2404-Readme.md)。两份清单均提供 GNU C/C++ `13.3.0`，workflow 精确映射 runtime 到清单 ref 并断言编译器版本。机器锁 `ci_toolchains.ubuntu` 固定顺序、runner label、两个 runtime/ref、编译器命令与版本，字段或顺序变更均由负例拒绝；不接受范围、第三个镜像或 `latest`，托管池再出现新值时必须失败关闭并重新审查。
 
 Ubuntu 24.04 KVM runner 还固定安装 `libpulse0=1:16.1+dfsg1-2ubuntu10.1`，版本记录在同一机器可读锁的 `host_packages` 中。workflow 必须以精确版本安装并在启动 Emulator 前逐字比对 `dpkg-query` 结果，不得接受仓库候选版本漂移。
 

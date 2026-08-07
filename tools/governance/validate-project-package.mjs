@@ -43,6 +43,7 @@ const expectedTasks = [
   "M4-03-release-evidence-and-documentation.md",
   "M0-06-early-startup-config-contract.md",
   "M1-07-chunk-authenticated-container-contract.md",
+  "M2-07-native-crypto-backend.md",
 ];
 
 const taskHeadings = [
@@ -179,7 +180,9 @@ if (!fs.existsSync(indexFile)) {
       ? "30"
       : id === "M1-07"
         ? "36"
-        : String(expectedTasks.indexOf(expectedFile) + 1);
+        : id === "M2-07"
+          ? "41"
+          : String(expectedTasks.indexOf(expectedFile) + 1);
     if (!issueMatch || issueMatch[1] !== issueMatch[2] || issueMatch[1] !== expectedIssue) {
       errors.push(`docs/tasks/INDEX.md: ${id} must link its GitHub Issue`);
     }
@@ -390,6 +393,7 @@ const expectedAdrs = [
   "docs/adr/0006-offline-key-protection-boundary.md",
   "docs/adr/0007-source-dir-startup-configuration.md",
   "docs/adr/0008-chunk-authenticated-dex-container.md",
+  "docs/adr/0009-native-cryptography-backend.md",
 ];
 const adrHeadings = [
   "## Status",

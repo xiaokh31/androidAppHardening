@@ -2,14 +2,14 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-06T23:40:34+08:00
+updated_at: 2026-08-07T13:25:50+08:00
 updated_by: /root
 state: active
-source_branch: main
-base_commit: d0eb39264f1382469712a4f3c28a7d42ab19d1dd
+source_branch: chore/m2-07-native-crypto-backend
+base_commit: 1bce1f61a3edcebdf94a511c495006a38edb6cb4
 working_tree: clean
-current_milestone: M1
-active_task: M1-06
+current_milestone: M2
+active_task: M2-07
 next_owner: /root
 ---
 
@@ -17,10 +17,16 @@ next_owner: /root
 
 ## Objective
 
-在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内执行 M1-06：以唯一 `protect` 命令按失败关闭顺序编排已冻结 M1 Host 模块，产生稳定、脱敏、可机器处理的 JSON report；不实现生产签名、GUI、网络、release packaging、Runtime 或 M2。
+在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内执行 M2-07：固定并验证 M2-02 唯一可用的 Native 密码后端、供应链和最小 AES-256-GCM/HKDF-SHA-256 facade；不实现 AHDC parser、DEX loader、TLS/X.509 或相邻 M2 功能。
 
 ## Current State
 
+- 用户已授权独立 M2-07 ADR/任务合同与供应链修订，并要求合并后恢复 M2-02。Issue #41 和分支 `chore/m2-07-native-crypto-backend` 已从 `main@1bce1f6` 建立；M2-02 本地分支 `feat/m2-02-native-decrypt-loader@40e3900` 保持暂停且未发布。候选已从受 2026-07 官方安全公告影响的 Mbed TLS 4.1.0 提升为 4.1.1 LTS；官方完整归档已下载到忽略的仓库根 `.toolchains/native-crypto/` 并命中 `7099934` bytes/SHA-256 `3359a349...5c98c`，未向 C 盘下载大体积程序。首个 CI 候选 `dcd27f1e141222d7af81f4289034dc1c1a5c5310` 已通过本地 296-task 根回归和四 ABI ELF/符号检查，固定分支已推送并创建关联关闭 Issue #41 的唯一草稿 PR [#42](https://github.com/xiaokh31/androidAppHardening/pull/42)。GitHub 延迟补发的旧 HEAD `f2ebbbef7784ea9aea3100ad2242160bb5da2454` 已证明 Ubuntu Host NIST/RFC 向量、依赖负例、完整回归和四 ABI 全部 PASS；Governance 仅因 HandOff dirty 声明失败，Windows Build 仅因 7-Zip 拒绝未启用 PQC examples 的 147 个符号链接失败，API 36 KVM 仅因未准备 fail-closed 密码源失败。当前候选已声明 clean、把 Windows 解包切到固定 CMake 4.1.2，并在 KVM 构建前校验同一锁定归档；等待 replacement CI。PR 保持 draft，M2-02 不恢复。
+- replacement HEAD `c7499b5a8045c02ff7095b78d79b0811761be68b` 的 Governance `31131750917` 双平台 PASS，Ubuntu Build `31131751261` 再次完整 PASS，KVM `31131755538` 已在 API 29/36 两个 job 中通过密码源准备并继续运行。Windows Build 已通过归档准备，但固定 CMake 无法自动发现镜像内 Visual Studio；GitHub 官方 Windows 2025 镜像清单固定安装路径为 `C:/Program Files/Microsoft Visual Studio/2022/Enterprise`，下一候选显式传入 `CMAKE_GENERATOR_INSTANCE`，不下载或更换 runner/toolchain。
+- 后续 HEAD `165adbf8525d91c19047c5937017fcfae6324669` 暴露 GitHub 实际 runner 已切到 `windows-2025-vs2026` image `20260728.188.1`，其 run 自报不可变清单路径显示 Visual Studio Enterprise 2026 位于 `C:/Program Files/Microsoft Visual Studio/18/Enterprise`；固定 CMake 4.1.2 只提供 VS 2022 generator，不能用 VS 2026 instance。下一候选通过该镜像的 `VsDevCmd.bat` 导入 x64 MSVC 环境，再由固定 CMake 4.1.2/Ninja 构建 Host 向量，不升级或下载工具；该 HEAD 的 Governance 已双平台 PASS，Ubuntu Build 仍完整 PASS。
+- HEAD `88a3b000379761a213243ec57d2e1c6d7a745225` 证明 VS 2026 x64 环境、CMake/Ninja 配置与 MSVC 19.51 编译器发现均成功；Windows 仅在编译最终不会链接的 TF-PSA `extras/pk_ecc.c`/`pk_rsa.c` 时因禁用全部 PK 类型形成的零长内部结构触发 MSVC `C2229`。同一最小配置已在 Ubuntu/Android Clang 通过，镜像清单同时固定 LLVM 20.1.8；下一候选保留 VS SDK/link 环境并显式用预装 `C:/Program Files/LLVM/bin/clang-cl.exe` 编译，不启用 PK/RSA/ECC、不放宽密码配置。
+- candidate `10a1862dbce4c1b6defbfa16ebd4bb49e8335e58` 已关闭 replacement 门禁：Build run `31132692644` 在 Ubuntu 24.04/Windows 2025 通过锁定归档、NIST AES-256-GCM、RFC 5869、根回归与四 ABI；Governance run `31132692665` 双平台 PASS；KVM run `31132692597` 在 API 29/36 x86_64 通过两遍 Release/R8 构建、有界设备验收、清理和证据上传。当前只允许提交精确远端证据并冻结新 SHA，再启动独立只读 M2-07 安全复核；PR #42 仍为 draft，M2-02 仍暂停。
+- 独立只读复核已废止冻结 `f428e4ac8cc12223ad6c6d2dabdf83c55f0f987a`：`P0=0/P1=3/P2=4` FAIL，结论归档于 `docs/evidence/M2-07/read-only-review-1.md`。当前修复只限 M2-07：归档先验 hash 后解析、空临时树完整 hash/stamp/原子提升；精确机器锁及官方 API/checksum 摘要；完整 AES/HKDF 参数矩阵；PSA 全事务 mutex 与八线程压力；Android Release ELF/本地符号门禁；Windows LLVM 20.1.8 断言；CVE-2026-25832 受影响但 TLS 不可达记录。PR #42 保持 draft，M2-02 继续 blocked。
 - 用户已明确启动 M1-06，并预先授权任务所需的推送、唯一草稿 PR、ready 与 expected-head 普通合并。Issue [#11](https://github.com/xiaokh31/androidAppHardening/issues/11) 为 OPEN、无 assignee；远程不存在固定分支或关联 PR。分支 `feat/m1-06-cli-and-json-report` 从已完成 M1-05 且 final main 双平台 CI 全绿的 `main@55ef3c57e631cde65d3e04d58aa75d26a7e75ba8` 创建。
 - M1-01 至 M1-05 依赖均已完成。M1-06 选择 `full-flow` 验证模式；实现计划归档于 `docs/evidence/M1-06/implementation-plan.md`。生产入口仅从后续 distribution 提供的固定 classpath RuntimeBundle 读取资源，不把 synthetic Runtime 打入产品；本任务集成测试使用 M1-05 已授权的合成 RuntimeBundle 合同 fixture。当前只修改 `host/cli`、REPORT_V1、M1-06 证据/CI 与根交接，不启动 M2、设备或模拟器。
 - M1-06 Host 实现与 Windows full-flow 已通过：唯一 `protect` CLI、REPORT_V1 及 Draft 2020-12 可执行 schema validator、七阶段状态机、M1-01 一基至 AHDC v2 零基 ordinal 边界适配、输入只读、未签名输出、报告原子 no-replace 发布/回滚、线程中断与 JVM shutdown 清理、路径/能力扫描均已闭环。Windows 离线 clean 根 `check verifyGovernance` 共 273 项任务退出 `0`；规范化成功报告、错误矩阵、清理矩阵和路径矩阵已固定到 Ubuntu/Windows CI，当前等待冻结提交、只读复核、唯一草稿 PR 和远端双平台门禁。
@@ -160,7 +166,9 @@ next_owner: /root
 | M1-07 | `/root` | `docs/m1-07-chunk-authenticated-container-contract` | done | M1-02 | PR #37、Issue #36、独立复核、双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-04 | `/root` | `feat/m1-04-encrypted-dex-container` | done | M1-01, M1-02, M1-07 | PR #38、Issue #9、独立复核、merger-ready 六项 CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-05 | `/root` | `feat/m1-05-apk-repacker-and-alignment` | done | M1-02, M1-03, M1-04 | PR #39、Issue #10、独立复核、merger-ready CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
-| M1-06 | `/root` | `feat/m1-06-cli-and-json-report` | done | M1-01, M1-02, M1-03, M1-04, M1-05 | PR #40、Issue #11、冻结复核、merger-ready 双平台 CI 与 expected-head 合并已关闭；等待 post-merge main 最终门禁，不启动 M2 |
+| M1-06 | `/root` | `feat/m1-06-cli-and-json-report` | done | M1-01, M1-02, M1-03, M1-04, M1-05 | PR #40、Issue #11、独立复核、merger-ready 与 post-merge main 双平台 CI、README 和 strict HandOff 均已关闭 |
+| M2-07 | `/root` | `chore/m2-07-native-crypto-backend` | in_progress | M0-03, M1-04 | 冻结 `7190a6e` 的 Build/Governance/KVM 全绿且第九轮最终独立复核 P0/P1/P2 全零；当前只允许归档该结论、运行 evidence-only successor 的最终 exact-head 门禁并合并 |
+| M2-02 | `/root` | `feat/m2-02-native-decrypt-loader` | blocked | M0-04, M1-04, M2-07 | `/root` 在 M2-07 合并且 final main 门禁通过后恢复 `40e3900` |
 
 ## Decisions and Invariants
 
@@ -285,7 +293,51 @@ next_owner: /root
 - On `d682c85125e11084cf023b5f523d715e28c74e75`, Governance run `30732725929` and Build run `30732725931` passed on Ubuntu 24.04 and Windows 2025, including strict HandOff on `main` with no exemption.
 - 该 M1-01 post-merge 动作已完成；当前恢复点为下述 M1-02 冻结实现与本地验收。
 
+- Remediation HEAD `14b8c8c8cddb6f4b29f5457975b31054f3c582b7` 的 Governance run `31135168773` 双平台 PASS；Build run `31135168838` 的 Ubuntu Host/根回归/四 ABI 全部 PASS，Windows 已通过 archive-before-parser 与完整树提升门禁，仅因 workflow 将发布清单 ref `20260803.193` 错当成 runtime `ImageVersion` 而失败关闭。当前修订精确固定实际 runtime `ImageVersion=20260803.193.1`，不放宽任何工具链或密码验收门禁；仍须 replacement exact-head Build/Governance/KVM 全绿后才可冻结第二轮独立只读复核输入。
+- HEAD `bb3893b43ec69bdca31b7019d011744a0537a39a` 的 Governance run `31135503992` 双平台 PASS，Build run `31135503969` 的 Ubuntu 全部门禁 PASS；Windows 已越过 runtime image 与供应链准备，仅因 `cl.exe` 自报精确版本 `19.51.36252` 而断言误带 `.0` 后缀失败关闭。当前候选改为精确匹配实际 runtime 字符串，不接受版本范围且不改变任何密码/工具链能力；该 HEAD 的 KVM run `31135503956` 仅作历史运行，下一提交仍须三套 exact-head 门禁重跑。
+- Implementation candidate `e471a74d02a1426ccd17542ea8bb9f4ee956f6bf` 的 Build `31135865293`、Governance `31135865277` 与 API 29/36 x86_64 KVM `31135865495` 全部 PASS：Ubuntu/Windows Host 完整密码边界与八线程矩阵、根回归、四 ABI Release ELF/符号门禁、双遍 Release/R8 设备验收及强制清理均已关闭。当前只允许提交 evidence-only successor 形成第二轮独立只读复核的唯一冻结 SHA；PR #42 继续 draft，M2-02 继续暂停，任何复核 finding 都使该冻结点失效。
+- 第二轮独立只读复核已永久废止 frozen SHA `699cbda469a85501294b7a83587ce89faaad7192`，结论 `P0=0/P1=0/P2=3`，归档于 `docs/evidence/M2-07/read-only-review-2.md`。首轮七项 finding 均已 CLOSED；新增三项为 Unix 零 symlink 失败开放、Ubuntu runner/GNU Host 未固定断言、README 错称 M2 未启动。当前修复严格限于平台精确 symlink 门禁、`ubuntu24/20260720.247.2` + GNU `13.3.0` 失败关闭断言和公开状态纠正；修复后必须新 SHA、exact-head Build/Governance/KVM 和第三轮完整独立复核，PR #42 仍 draft，M2-02 仍暂停。
+- 第二轮 P2 修复已在 Windows 本地通过依赖 self-test、Governance、strict HandOff 与 clean offline `check verifyGovernance :runtime:native:assembleRelease`；根回归共 `283` tasks、四 ABI Release 全部 PASS，未启动设备或模拟器。当前只允许 amend 本地证据形成新候选并推送 replacement CI；Ubuntu 必须实际证明 `ImageOS=ubuntu24`、runtime `20260720.247.2`、manifest ref `ubuntu24/20260720.247`、GNU `13.3.0` 和 Unix 147-link 门禁后才能再次冻结。
+- Remediation candidate `b80acc824708a5725831dcecf580e3633d312583` 的 Build `31137953160`、Governance `31137953050` 与 API 29/36 x86_64 KVM `31137952989` 全部 PASS：Ubuntu Build/KVM 均命中固定 image/GNU 与真实 147-link 门禁，双平台 Host/根回归/四 ABI 和设备验收/清理均通过。当前只允许提交 evidence-only successor，待该 exact HEAD 的三套 CI 也通过后启动第三轮完整独立只读复核；PR #42 仍 draft，M2-02 仍暂停。
+- Evidence freeze `7ac703e56e31869adf839242252368632c3cdd5d` 的 Governance `31138599573` 与 Ubuntu Build 全部 PASS，但 Windows Build `31138599592` 被同一托管池回派到已审查旧 runtime `20260728.188.1`，在精确 image 断言处失败关闭；单值固定因此被证实会随机失败。当前只接受 `20260728.188.1 -> win25-vs2026/20260728.188` 与 `20260803.193.1 -> win25-vs2026/20260803.193` 两个精确映射，继续断言两者相同的 LLVM/VS/x64-tools/`cl.exe`，拒绝范围、`latest` 和任何第三值；必须新 SHA 重跑三套 exact-head CI 后才能再次冻结。
+- Reviewed-pool candidate `4526729b678fe3238edd01f49a59d093b507b328` 的 Build `31138903978`、Governance `31138903915` 与 API 29/36 KVM `31138903927` 全部 PASS；两个平台的 image/compiler、Host 密码矩阵、Unix 147-link、四 ABI、设备验收与清理均关闭。当前只允许提交最后一个 evidence-only successor；该 exact HEAD 必须再次三套全绿后作为第三轮完整独立只读复核的唯一输入，PR #42 仍 draft，M2-02 仍暂停。
+- 第三轮独立只读复核永久废止 frozen SHA `0662b9e2ce22f5728bb7a757ada6b6bac8a94536`，结论 `P0=0/P1=0/P2=1`，归档于 `docs/evidence/M2-07/read-only-review-3.md`；前两轮十项 finding 已全部 CLOSED，三套 exact-SHA CI 也全绿。唯一新增 P2 是 self-test 未把一个实际 symlink 改到错误前缀；生产门禁已拒绝该情况。当前只补 Linux/Windows full-147 集合的 wrong-prefix 负例，保留零/partial 负例，不改变任何接受面；新 SHA 仍须三套 exact-head CI 与完整独立复核，PR #42 draft、M2-02 暂停。
+- Wrong-prefix remediation `ef8d26a6043e3d511ae8a59ff0f85378e54e98b1` 的 Governance `31140905977` PASS；Build `31140905972` 的 Windows 全部 PASS，但 Ubuntu 被新托管 runtime `20260804.265.1` 在精确镜像门禁处失败关闭，未进入业务测试。官方不可变 ref `ubuntu24/20260804.265` 仍提供 GNU `13.3.0`；当前只把它作为旧 `20260720.247.2 -> ubuntu24/20260720.247` 之外的第二个精确映射，锁定顺序并拒绝范围、`latest` 和第三值。必须新 SHA 重跑三套 exact-head CI 与完整独立复核，PR #42 仍 draft，M2-02 仍暂停。
+- Ubuntu reviewed-pool candidate `cd3b5ce8bfe50715e10b6d0967dbecb8c88bd1cf` 的 Build `31141373708`、Governance `31141373717` 与 API 29/36 KVM `31141373706` 全部 PASS；双平台 Host 密码矩阵、两个平台有限精确镜像映射、Unix 147-link、根回归、四 ABI、设备验收和清理均关闭。当前只允许提交 evidence-only successor，作为第四轮完整独立只读复核的唯一输入；PR #42 仍 draft，M2-02 仍暂停。
+- 第四轮独立只读复核永久废止 frozen SHA `a764d102492f4c6074d928a240ae1c62abc2d320`，结论 `P0=0/P1=0/P2=2`，归档于 `docs/evidence/M2-07/read-only-review-4.md`；此前十一项 finding 全部 CLOSED，冻结 SHA 的 Build `31141984739`、Governance `31141984713` 与 KVM `31141984706` 全绿。新增 P2 仅为 Windows 未在运行时消费锁定的 VS/x64-tools component 两个版本，以及 HandOff 恢复动作滞后；当前只补这两项，之后必须新 SHA、三套 exact-head CI 与第五轮完整独立复核。PR #42 保持 draft，M2-02 继续暂停。
+- Review-4 remediation `024d24eaf8bd82c07ebe67dfb7750762cb3c8400` 的 Build `31143103481`、Governance `31143103486` 与 API 29/36 KVM `31143103462` 全部 PASS；Windows 实际读取并打印 VS `18.8.12023.21` 和 selected x64-tools component `18.8.11901.359`，两个 mismatch 负例、双平台 Host、根回归、四 ABI、设备验收和清理均通过。包含本状态的当前 HEAD 仅在其自身 exact-head Build/Governance/KVM 全绿时才是第五轮复核唯一输入；reviewer 必须按该 SHA 独立解析 run IDs。PR #42 仍 draft，M2-02 仍暂停。
+- 第五轮独立只读复核永久废止 frozen SHA `a6497c2713e9025db11c4b5ccc657d42beb9236e`，结论 `P0=0/P1=0/P2=2`，归档于 `docs/evidence/M2-07/read-only-review-5.md`；此前十三项 finding 全部 CLOSED，冻结 SHA 的 Build `31143702806`、Governance `31143702757` 与 KVM `31143702763` 全绿。新增 P2 为四 ABI 实际保留十二个 TF-PSA 内部 AES block/CTR-DRBG/entropy/random lifecycle 本地符号但合同误称其不存在，以及 Active Workstreams 滞后。移除 DRBG 配置的有界实验以 `No DRBG module available for the psa_crypto module` 失败，故当前修复改为机器锁定配置 hash 和精确十二符号集合、逐 ABI 拒绝缺失/新增/动态导出，并按无 RSA/CBC/padding API/调用路径和仅认证 GCM 解密重新陈述 CVE 可达性；之后必须新 SHA、三套 exact-head CI 与第六轮完整独立复核。PR #42 保持 draft，M2-02 继续暂停。
+- 第六轮独立只读复核永久废止 frozen SHA `9c29fb63c8e54cb6d0670e6e01bdbfc88e113cc3`，结论 `P0=0/P1=0/P2=2`，归档于 `docs/evidence/M2-07/read-only-review-6.md`；十四项历史 finding 已 CLOSED，Build `31145662390`、Governance `31145662398` 与 KVM `31145662402` 在该 SHA 全绿。剩余 review-5 符号 finding 仅部分关闭：每个 ABI 实际还有三个无前缀 DRBG/entropy helper 和两个 platform entropy-hook 符号，总计十七个，其中十六个 local text (`t`) 和一个 local data (`d`)；旧门禁只捕获十二个名称且未核对类型。第二个 P2 为 Ordered Next Actions 再次滞后。当前最小修复锁定完整十七个 type+name 并让双平台逐 ABI 拒绝名称/数量/类型/导出漂移，同时把下一动作更新为新 SHA、replacement CI 与第七轮完整独立复核。PR #42 保持 draft，M2-02 继续暂停。
+- Review-6 remediation candidate `b7c120b7774bf788de750f35d0fbe946af6c2307` 的 Build `31147033042`、Governance `31147033069` 与 API 29/36 KVM `31147033086` 全部 PASS；Ubuntu/Windows 的四 ABI 步骤均执行完整十七项 local `t/d` type+name 精确比较。包含本状态的 evidence-only successor 仅在其自身 exact-head 三套 workflow 全绿时才是第七轮复核的唯一输入，reviewer 必须从该 SHA 独立解析 run IDs；不得仅为复制 run ID 再创建提交。PR #42 保持 draft，M2-02 继续暂停。
+- 第七轮独立只读复核永久废止 frozen SHA `4a4de2820308eb7adefa4f5cfbc76eed0dbb6031`，结论 `P0=0/P1=0/P2=2`，归档于 `docs/evidence/M2-07/read-only-review-7.md`；Build `31147638536`、Governance `31147638532` 与 KVM `31147638429` 在该 SHA 全绿，实际四 ABI 十七项集合与漏洞不可达性均成立。符号 gate finding 仍部分开放：Ubuntu 在精确比较前丢弃非 `t/d` 类型，而动态扫描未覆盖无前缀 `ctr_drbg_`/`entropy_`，未来大写/global helper 可绕过；第二个 P2 为 Active Workstreams 再次滞后。当前最小修复让双平台共用全类型 parser 和相同相关名称前缀，新增 local/global/hidden-global/缺失/类型变化/导出自测，并把 workstream 改为条件式检查点。PR #42 保持 draft，M2-02 继续暂停。
+- 第八轮独立只读复核永久废止 frozen SHA `dfda35fad30d7edf2ee1fdfe26d3248dacd15e91`，结论 `P0=0/P1=0/P2=1`，归档于 `docs/evidence/M2-07/read-only-review-8.md`；此前十九项 finding 全部 CLOSED，Build `31148877894`、Governance `31148877818` 与 KVM `31148877817` 在该 SHA 全绿。唯一 P2 是共享 parser 自测虽已覆盖 `t→d` 并经独立合成输入证明比较器拒绝 `d→t`，但没有显式的 `d→t` 自测用例。当前最小修复只补该反向类型变化负例；之后必须新 SHA、三套 exact-head CI 与第九轮完整独立复核。PR #42 保持 draft，M2-02 继续暂停。
+- 第九轮最终独立只读复核对 frozen SHA `7190a6ee61285fe065d5de6cbe836a648482d658` 给出 PASS：`P0=0/P1=0/P2=0`，结论归档于 `docs/evidence/M2-07/read-only-review-9.md`；前二十项 finding 全部 CLOSED 且无新增 finding。该 SHA 的 Build `31149909030`、Governance `31149909021` 与 API 29/36 KVM `31149909014` 全绿，双平台 Host 向量、四 ABI 精确十七项 surface、零相关动态导出、设备验收、强制清理和证据上传均通过。该复核是最终结论，除非出现真实接受面或安全边界缺陷，不再因措辞或可选增强开启新轮次。当前只允许 evidence-only 归档 successor、最终 exact-head 门禁与 expected-head 合并；PR #42 仍 draft，M2-02 在 final main 门禁前继续暂停。
+
 ## Verification Evidence
+
+### M2-07 independent security review 1
+
+- task_id: M2-07
+- git_commit: f428e4ac8cc12223ad6c6d2dabdf83c55f0f987a
+- command: independent full read-only supply-chain, crypto facade, vector/boundary, four-ABI, vulnerability, CI truthfulness and scope review
+- exit_code: 1
+- environment: Windows PowerShell; no file changes, device or emulator
+- timestamp: 2026-08-07T08:15:45+08:00
+- artifact: `docs/evidence/M2-07/read-only-review-1.md`
+- sha256: not_applicable
+- result: FAIL; P0=0, P1=3, P2=4; frozen SHA permanently rejected, all seven findings require remediation and a fresh complete independent review
+
+### M2-07 review-3 remediation replacement CI
+
+- task_id: M2-07
+- git_commit: cd3b5ce8bfe50715e10b6d0967dbecb8c88bd1cf
+- command: GitHub Actions Build run 31141373708, Governance run 31141373717 and M0-05 Linux KVM run 31141373706 on draft PR #42
+- exit_code: 0
+- environment: reviewed Ubuntu `20260720.247.2` or `20260804.265.1` with GNU 13.3.0; reviewed Windows `20260728.188.1` or `20260803.193.1` with LLVM 20.1.8 and cl.exe 19.51.36252; API 29 r8/API 36 r2 x86_64 KVM; no local emulator
+- timestamp: 2026-08-07T10:39:13+08:00
+- artifact: https://github.com/xiaokh31/androidAppHardening/actions/runs/31141373708 ; https://github.com/xiaokh31/androidAppHardening/actions/runs/31141373717 ; https://github.com/xiaokh31/androidAppHardening/actions/runs/31141373706
+- sha256: not_applicable
+- result: PASS; exact-head Build/Governance/KVM all passed the reviewed image/compiler, authenticated source, NIST/RFC/boundary/thread, full regression, four-ABI, device acceptance and cleanup gates; evidence-only successor must freeze this candidate before review 4
 
 ### M1-04 clean restart baseline
 
@@ -1205,8 +1257,10 @@ None
 
 ## Ordered Next Actions
 
-1. 在 main 提交 README/HandOff post-merge 状态，无豁免运行 Governance、strict HandOff 与 diff check并推送。
-2. 等待 post-merge main Ubuntu/Windows Build/Governance 与 M1-06 固定哈希全绿；完成 M1-06，不启动 M2。
+1. Commit this immutable review-9 archive as the sole evidence-only successor; do not change production code, dependency locks, ABI surface or workflow acceptance.
+2. Require that successor's exact-head Build, Governance and KVM workflows to succeed; no additional security-review round is required absent a real acceptance-surface or security-boundary defect.
+3. Mark PR #42 ready and merge with expected-head protection, then update task/README/HandOff on `main` and run final no-exemption strict/Governance/Build/KVM gates.
+4. After final `main` gates pass, restore and resume `feat/m2-02-native-decrypt-loader@40e3900` without starting M2-03 or adjacent work.
 
 ## Relevant Files and Artifacts
 

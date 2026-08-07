@@ -7,6 +7,7 @@ owner_role: runtime-security-agent
 depends_on:
   - M0-04
   - M1-04
+  - M2-07
 required_skills:
   - implement-runtime-protection
 security_sensitive: true
@@ -23,6 +24,7 @@ payload 不得以明文文件落盘。离线应用内密钥只能增加提取成
 ## Inputs
 
 - M1-04 的 `ContainerV2` 二进制规范、测试向量和顺序索引。
+- M2-07 固定并验收的 Mbed TLS/TF-PSA-Crypto Native AES-256-GCM 与 HKDF-SHA-256 facade。
 - ADR 0008 与 ADR 0006 规定的 AEAD、密钥封装和域分离参数。
 - M0-04 的 `InMemoryDexClassLoader` 可行性结果。
 - ADR 0003 冻结的 `ApplicationInfo.sourceDir` 早期只读输入与固定 asset 名称。

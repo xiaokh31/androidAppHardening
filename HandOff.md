@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-07T11:12:26+08:00
+updated_at: 2026-08-07T11:50:51+08:00
 updated_by: /root
 state: active
 source_branch: chore/m2-07-native-crypto-backend
@@ -166,8 +166,8 @@ next_owner: /root
 | M1-07 | `/root` | `docs/m1-07-chunk-authenticated-container-contract` | done | M1-02 | PR #37、Issue #36、独立复核、双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-04 | `/root` | `feat/m1-04-encrypted-dex-container` | done | M1-01, M1-02, M1-07 | PR #38、Issue #9、独立复核、merger-ready 六项 CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-05 | `/root` | `feat/m1-05-apk-repacker-and-alignment` | done | M1-02, M1-03, M1-04 | PR #39、Issue #10、独立复核、merger-ready CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
-| M1-06 | `/root` | `feat/m1-06-cli-and-json-report` | done | M1-01, M1-02, M1-03, M1-04, M1-05 | PR #40、Issue #11、冻结复核、merger-ready 双平台 CI 与 expected-head 合并已关闭；等待 post-merge main 最终门禁，不启动 M2 |
-| M2-07 | `/root` | `chore/m2-07-native-crypto-backend` | in_progress | M0-03, M1-04 | 第一冻结复核 P1=3/P2=4 FAIL 已归档并废止；七项修复正在本地重验，之后重新冻结并全量独立复核 |
+| M1-06 | `/root` | `feat/m1-06-cli-and-json-report` | done | M1-01, M1-02, M1-03, M1-04, M1-05 | PR #40、Issue #11、独立复核、merger-ready 与 post-merge main 双平台 CI、README 和 strict HandOff 均已关闭 |
+| M2-07 | `/root` | `chore/m2-07-native-crypto-backend` | in_progress | M0-03, M1-04 | 第五冻结复核 P2=2 FAIL 已归档并废止；此前十三项均关闭，当前锁定真实内部符号边界并修正交接，之后运行 replacement CI 与第六轮完整独立复核 |
 | M2-02 | `/root` | `feat/m2-02-native-decrypt-loader` | blocked | M0-04, M1-04, M2-07 | `/root` 在 M2-07 合并且 final main 门禁通过后恢复 `40e3900` |
 
 ## Decisions and Invariants
@@ -306,6 +306,7 @@ next_owner: /root
 - Ubuntu reviewed-pool candidate `cd3b5ce8bfe50715e10b6d0967dbecb8c88bd1cf` 的 Build `31141373708`、Governance `31141373717` 与 API 29/36 KVM `31141373706` 全部 PASS；双平台 Host 密码矩阵、两个平台有限精确镜像映射、Unix 147-link、根回归、四 ABI、设备验收和清理均关闭。当前只允许提交 evidence-only successor，作为第四轮完整独立只读复核的唯一输入；PR #42 仍 draft，M2-02 仍暂停。
 - 第四轮独立只读复核永久废止 frozen SHA `a764d102492f4c6074d928a240ae1c62abc2d320`，结论 `P0=0/P1=0/P2=2`，归档于 `docs/evidence/M2-07/read-only-review-4.md`；此前十一项 finding 全部 CLOSED，冻结 SHA 的 Build `31141984739`、Governance `31141984713` 与 KVM `31141984706` 全绿。新增 P2 仅为 Windows 未在运行时消费锁定的 VS/x64-tools component 两个版本，以及 HandOff 恢复动作滞后；当前只补这两项，之后必须新 SHA、三套 exact-head CI 与第五轮完整独立复核。PR #42 保持 draft，M2-02 继续暂停。
 - Review-4 remediation `024d24eaf8bd82c07ebe67dfb7750762cb3c8400` 的 Build `31143103481`、Governance `31143103486` 与 API 29/36 KVM `31143103462` 全部 PASS；Windows 实际读取并打印 VS `18.8.12023.21` 和 selected x64-tools component `18.8.11901.359`，两个 mismatch 负例、双平台 Host、根回归、四 ABI、设备验收和清理均通过。包含本状态的当前 HEAD 仅在其自身 exact-head Build/Governance/KVM 全绿时才是第五轮复核唯一输入；reviewer 必须按该 SHA 独立解析 run IDs。PR #42 仍 draft，M2-02 仍暂停。
+- 第五轮独立只读复核永久废止 frozen SHA `a6497c2713e9025db11c4b5ccc657d42beb9236e`，结论 `P0=0/P1=0/P2=2`，归档于 `docs/evidence/M2-07/read-only-review-5.md`；此前十三项 finding 全部 CLOSED，冻结 SHA 的 Build `31143702806`、Governance `31143702757` 与 KVM `31143702763` 全绿。新增 P2 为四 ABI 实际保留十二个 TF-PSA 内部 AES block/CTR-DRBG/entropy/random lifecycle 本地符号但合同误称其不存在，以及 Active Workstreams 滞后。移除 DRBG 配置的有界实验以 `No DRBG module available for the psa_crypto module` 失败，故当前修复改为机器锁定配置 hash 和精确十二符号集合、逐 ABI 拒绝缺失/新增/动态导出，并按无 RSA/CBC/padding API/调用路径和仅认证 GCM 解密重新陈述 CVE 可达性；之后必须新 SHA、三套 exact-head CI 与第六轮完整独立复核。PR #42 保持 draft，M2-02 继续暂停。
 
 ## Verification Evidence
 
@@ -1251,10 +1252,10 @@ None
 
 ## Ordered Next Actions
 
-1. Use the current HEAD as the sole review-5 freeze only after independently confirming its own exact-head Build, Governance and KVM all succeeded; do not create another evidence successor merely to copy those run IDs.
-2. Run the fifth complete independent read-only M2-07 review against that exact HEAD and require disposition of all thirteen findings with P0/P1/P2 all zero; otherwise remediate and re-freeze.
-3. On a zero-finding review, archive the immutable conclusion, rerun final exact-head gates, then continue the authorized ready/expected-head merge and post-merge sequence.
-4. After a zero-finding review and replacement exact-HEAD CI, mark PR #42 ready, merge with expected-head protection, run final `main` gates, update README/HandOff, then resume `feat/m2-02-native-decrypt-loader`.
+1. Commit and push the review-5 remediation that machine-locks the Native config and exact twelve-symbol internal boundary, adds four-ABI failure-closed comparisons, archives review 5 and reconciles this HandOff.
+2. Run exact-head Build, Governance and KVM on the replacement SHA; only a clean all-green SHA may become the sole review-6 freeze.
+3. Run the sixth complete independent read-only M2-07 review against that exact SHA and require disposition of all fifteen findings with P0/P1/P2 all zero; otherwise remediate and re-freeze.
+4. On a zero-finding review, archive the immutable conclusion, rerun final exact-head gates, mark PR #42 ready, merge with expected-head protection, run final `main` gates, update README/HandOff, then resume `feat/m2-02-native-decrypt-loader`.
 
 ## Relevant Files and Artifacts
 

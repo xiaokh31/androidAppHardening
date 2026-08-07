@@ -27,6 +27,8 @@ GitHub 自动生成的 `Source code (zip/tar.gz)` 不得使用；只有官方 re
 
 Runtime 只从归档的 `tf-psa-crypto` 子目录构建静态 target，不构建、不链接 Mbed TLS 的 TLS/X.509 库。内部 facade 固定为 AES-256-GCM authenticated decrypt、HKDF-SHA-256 与 secure zero；PSA 的 AES/GCM/SHA-256/HMAC/HKDF 之外不构成可消费能力，所有符号默认隐藏。
 
+TF-PSA-Crypto `1.1.1` 的 `MBEDTLS_PSA_CRYPTO_C` 初始化合同要求一个 DRBG。项目因此固定 built-in entropy + CTR-DRBG；GCM 与 CTR-DRBG 的 AES block operation 使本地、隐藏的 `mbedtls_aes_crypt_ecb` 实现保留在最终 ELF。这里的 `ecb` 是内部单块原语名称，不表示启用了 `PSA_ALG_ECB_NO_PADDING`，也不提供 ECB/CBC/padding、随机生成或通用 PSA facade。机器锁固定 `ah_crypto_config.h` 的 SHA-256 与四 ABI 恰好十二个内部 AES-block/CTR-DRBG/entropy/random lifecycle 本地符号；CI 对缺少、增加或导出失败关闭。
+
 TF-PSA-Crypto `1.1.1` 的 PSA Crypto API 不提供完整并发安全保证。facade 因此以进程内全局 mutex 串行化每个完整 AES-GCM/HKDF backend transaction，包括初始化、key import、operation、abort/destroy；对调用方保留多线程可调用合同，但不宣称后端内部并行。
 
 供应链准备严格分为认证前与认证后：网络归档必须先独立命中精确长度/SHA-256，随后才允许 archive parser 将其解压到新建空临时目录；完整常规文件树固定为 `3927` files、`60515866` bytes、SHA-256 `7c4ba6554fed6eb67c201054bc75b124fcdc0649e2f56cd762746e01a25d2140`。Unix 解包还必须恰有 `147` 个 symlink 且全部位于未启用的 ML-DSA examples 前缀；固定 Windows CMake 可安全跳过这些 symlink，因此也接受 `0`，其他数量或位置均失败。只有树、许可证和版本全部通过并写入归档/树身份 stamp 后才能原子提升为 CMake/Gradle 可消费目录，失败时清理归档、临时目录和候选目录。
@@ -39,9 +41,9 @@ TF-PSA-Crypto `1.1.1` 的 PSA Crypto API 不提供完整并发安全保证。fac
 
 - 4.1.0 受 2026-07 官方公告影响；4.1.1 包含同 LTS 分支修复，故拒绝 4.1.0。
 - bundled TF-PSA-Crypto 1.1.1 修复 CVE-2026-54435、CVE-2026-50584、CVE-2026-50587 等上游列出的 1.1.0 问题。
-- CVE-2025-66442 描述的 compiler-induced timing issue 影响 RSA 与 CBC/ECB decrypt，并要求特定 RISC-V/LLVM 条件；本项目不启用这些算法且 Android ABI 不含 RISC-V，因此当前不可达，但仍记录而非宣称库“无漏洞”。
+- CVE-2025-66442 描述的 compiler-induced timing issue 影响 RSA 与带 padding 的 CBC/ECB decrypt。项目虽因 GCM/CTR-DRBG 内部依赖保留 `mbedtls_aes_crypt_ecb` block 函数，但未启用 RSA/CBC/ECB PSA 算法、padding API 或对应 facade，唯一 decrypt 能力为 authenticated GCM；因此公告的 padding-decrypt oracle 路径不可达。四 ABI 也仅为 Arm/x86 且使用默认 `-O2`，但不可达结论以算法/API/call-path 边界为主，不以架构作为唯一理由。
 - CVE-2026-25832 明确影响 Mbed TLS 4.1.1 的 TLS 1.3 client HelloRetryRequest group-policy 校验，4.1.2 修复；本选择版本仍受影响，但本项目不构建或链接 TLS/SSL target，因此当前不可达。任何 TLS 能力启用都必须先阻断并升级/重做 ADR，而不能沿用本结论。
-- TLS、X.509、PKCS、RSA、ECC、ChaCha20、CBC/ECB 均不在构建消费与动态导出面；未来若扩大算法面，必须新增 ADR/任务并重做公告可达性分析。
+- TLS、X.509、PKCS、RSA、ECC、ChaCha20、CCM、CBC 与 PSA ECB 均不在构建消费或动态导出面；内部隐藏的 AES block/CTR-DRBG/entropy 集合仅用于 PSA 初始化、GCM 和 DRBG。未来若扩大可消费算法面或改变该精确内部集合，必须新增 ADR/任务并重做公告可达性分析。
 
 安全公告是 point-in-time 证据，不是永久保证。每次发布前和依赖公告出现时，M4-01 必须重新查询官方 advisory，任何可达问题触发独立升级 PR。
 

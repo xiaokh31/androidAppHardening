@@ -252,6 +252,12 @@ jobs:
             grep -q 'hkdfSha256' <<<"$symbols"
             grep -q 'secureZero' <<<"$symbols"
             grep -q 'ah_crypto_backend_anchor' <<<"$symbols"
+            expected_internal="$(node -e "const lock=require('./tools/validation/m2-07-native-crypto.json'); process.stdout.write([...lock.native_profile.required_internal_symbols].sort().join('\\n'))")"
+            actual_internal="$(awk '$3 ~ /^(mbedtls_aes_crypt_ecb|mbedtls_ctr_drbg_|mbedtls_entropy_|psa_random_internal_)/ { print $3 }' <<<"$symbols" | sort)"
+            if ! diff -u <(printf '%s\n' "$expected_internal") <(printf '%s\n' "$actual_internal"); then
+              echo "unexpected TF-PSA internal RNG/AES-block symbol surface in $unstripped" >&2
+              exit 1
+            fi
             if grep -Ei '(^|[_: ])(rsa|ecc|ecdsa|ecdh|chacha|ccm|cbc|x509|ssl|pkcs)([_: (]|$)' <<<"$symbols"; then
               echo "unexpected out-of-scope crypto symbol in $unstripped" >&2
               exit 1
@@ -573,6 +579,20 @@ jobs:
             $symbolsText = $symbols -join "`n"
             foreach ($required in @("aes256GcmDecrypt", "hkdfSha256", "secureZero", "ah_crypto_backend_anchor")) {
               if ($symbolsText -notmatch [regex]::Escape($required)) { throw "missing $required in $($unstripped.FullName)" }
+            }
+            $expectedInternal = @((Get-Content -Raw -LiteralPath "tools/validation/m2-07-native-crypto.json" | ConvertFrom-Json).native_profile.required_internal_symbols | Sort-Object)
+            $actualInternal = @($symbols | ForEach-Object {
+              if ($_ -match '^\S+\s+\S\s+(\S+)$') {
+                $symbolName = $Matches[1]
+                if ($symbolName -match '^(mbedtls_aes_crypt_ecb|mbedtls_ctr_drbg_|mbedtls_entropy_|psa_random_internal_)') {
+                  $symbolName
+                }
+              }
+            } | Sort-Object)
+            $internalDifference = @(Compare-Object -CaseSensitive -ReferenceObject $expectedInternal -DifferenceObject $actualInternal)
+            if ($internalDifference.Count -ne 0) {
+              $internalDifference | Format-Table | Out-String | Write-Error
+              throw "unexpected TF-PSA internal RNG/AES-block symbol surface in $($unstripped.FullName)"
             }
             if ($symbolsText -match "(?im)(^|[_: ])(rsa|ecc|ecdsa|ecdh|chacha|ccm|cbc|x509|ssl|pkcs)([_: (]|$)") {
               throw "unexpected out-of-scope crypto symbol in $($unstripped.FullName)"

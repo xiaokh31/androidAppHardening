@@ -44,6 +44,24 @@
     "HMAC-SHA-256",
     "SHA-256"
   ],
+  "native_profile": {
+    "config_path": "runtime/native/src/main/cpp/ah_crypto_config.h",
+    "config_sha256": "75094e9ef8dbb381cfadddc7e7c89eed9c622d471331ce95a30574e93156ef35",
+    "required_internal_symbols": [
+      "mbedtls_aes_crypt_ecb",
+      "mbedtls_ctr_drbg_free",
+      "mbedtls_ctr_drbg_init",
+      "mbedtls_ctr_drbg_reseed_internal",
+      "mbedtls_ctr_drbg_seed",
+      "mbedtls_entropy_free",
+      "mbedtls_entropy_func",
+      "mbedtls_entropy_init",
+      "mbedtls_entropy_poll_platform",
+      "psa_random_internal_free",
+      "psa_random_internal_init",
+      "psa_random_internal_seed"
+    ]
+  },
   "android_abis": [
     "armeabi-v7a",
     "arm64-v8a",

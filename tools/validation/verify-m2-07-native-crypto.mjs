@@ -63,6 +63,24 @@ const expectedLock = {
     "HMAC-SHA-256",
     "SHA-256",
   ],
+  native_profile: {
+    config_path: "runtime/native/src/main/cpp/ah_crypto_config.h",
+    config_sha256: "75094e9ef8dbb381cfadddc7e7c89eed9c622d471331ce95a30574e93156ef35",
+    required_internal_symbols: [
+      "mbedtls_aes_crypt_ecb",
+      "mbedtls_ctr_drbg_free",
+      "mbedtls_ctr_drbg_init",
+      "mbedtls_ctr_drbg_reseed_internal",
+      "mbedtls_ctr_drbg_seed",
+      "mbedtls_entropy_free",
+      "mbedtls_entropy_func",
+      "mbedtls_entropy_init",
+      "mbedtls_entropy_poll_platform",
+      "psa_random_internal_free",
+      "psa_random_internal_init",
+      "psa_random_internal_seed",
+    ],
+  },
   android_abis: ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"],
   ci_toolchains: {
     ubuntu: {
@@ -113,6 +131,14 @@ if (prePromote && sourceRootOverride === null) {
 
 function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
+}
+
+function verifyNativeProfileBytes(candidate, bytes) {
+  const actual = sha256(bytes);
+  if (actual !== candidate.native_profile.config_sha256) {
+    fail(`Native profile hash mismatch: expected ${candidate.native_profile.config_sha256}, got ${actual}`);
+  }
+  return actual;
 }
 
 function verifyLockContract(candidate) {
@@ -246,6 +272,12 @@ if (archiveBytes === null) {
 const archiveHash = verifyArchiveBytes(lock, archiveBytes);
 const sourceRoot = sourceRootOverride ?? path.join(root, ...lock.local_paths.source.split("/"));
 const sourceSummary = archiveOnly ? null : await verifySourceTree(lock, sourceRoot);
+const nativeProfilePath = path.join(root, ...lock.native_profile.config_path.split("/"));
+const nativeProfileBytes = await readFile(nativeProfilePath).catch(() => null);
+if (nativeProfileBytes === null) {
+  fail(`missing Native profile ${lock.native_profile.config_path}`);
+}
+const nativeProfileHash = verifyNativeProfileBytes(lock, nativeProfileBytes);
 
 if (selfTest) {
   const mutatedArchive = Buffer.from(archiveBytes);
@@ -253,6 +285,12 @@ if (selfTest) {
   await expectRejected(
     () => Promise.resolve(verifyArchiveBytes(lock, mutatedArchive)),
     "one archive byte",
+  );
+  const mutatedNativeProfile = Buffer.from(nativeProfileBytes);
+  mutatedNativeProfile[Math.floor(mutatedNativeProfile.length / 2)] ^= 1;
+  await expectRejected(
+    () => Promise.resolve(verifyNativeProfileBytes(lock, mutatedNativeProfile)),
+    "one Native profile byte",
   );
   await expectRejected(
     () => Promise.resolve(verifySymlinkSurface(lock, [], "linux")),
@@ -311,6 +349,10 @@ if (selfTest) {
     ["asset evidence", (candidate) => { candidate.official_evidence.archive_asset_digest = "sha256:changed"; }],
     ["checksum evidence", (candidate) => { candidate.official_evidence.checksum_entry += "changed"; }],
     ["algorithm list", (candidate) => { candidate.allowed_algorithms.push("RSA"); }],
+    ["Native profile path", (candidate) => { candidate.native_profile.config_path += ".changed"; }],
+    ["Native profile hash", (candidate) => { candidate.native_profile.config_sha256 = "0".repeat(64); }],
+    ["Native internal symbol", (candidate) => { candidate.native_profile.required_internal_symbols[0] += "_changed"; }],
+    ["Native internal symbol order", (candidate) => { candidate.native_profile.required_internal_symbols.reverse(); }],
     ["ABI list", (candidate) => { candidate.android_abis.reverse(); }],
     ["Ubuntu runner label", (candidate) => { candidate.ci_toolchains.ubuntu.runs_on = "ubuntu-latest"; }],
     ["Ubuntu image OS", (candidate) => { candidate.ci_toolchains.ubuntu.image_os = "changed"; }],
@@ -353,6 +395,7 @@ console.log(JSON.stringify({
   official_checksum_asset_digest: lock.official_evidence.checksum_asset_digest,
   bundled_tf_psa_crypto_version: lock.dependency.bundled_tf_psa_crypto_version,
   selected_license: lock.dependency.selected_license,
+  native_profile_sha256: nativeProfileHash,
   negative_self_test: selfTest ? "PASS" : "not_requested",
   phase: archiveOnly ? "archive_only" : "archive_and_source",
   verified_stamp: archiveOnly || prePromote ? "not_checked" : "PASS",

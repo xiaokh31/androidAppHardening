@@ -91,3 +91,15 @@ The exact Windows preparation route was also replayed in ignored repository stor
 Replacement Build run [`31135168838`](https://github.com/xiaokh31/androidAppHardening/actions/runs/31135168838) on remediation commit `14b8c8c8cddb6f4b29f5457975b31054f3c582b7` passed the complete Ubuntu Host boundary/thread matrix, root regression and Release four-ABI build/scan. Its Windows job first passed the authenticated archive-before-parser and full-tree promotion gates, then failed closed before compiling because the workflow asserted manifest ref value `20260803.193` while the runner environment correctly reported runtime `ImageVersion=20260803.193.1`. This is an exact immutable-image assertion correction only; no version range, latest alias, crypto feature or acceptance gate is relaxed. Replacement exact-head Build, Governance and KVM runs remain required before freezing a second review input.
 
 The next replacement Build run [`31135503969`](https://github.com/xiaokh31/androidAppHardening/actions/runs/31135503969) proved the exact runtime image assertion and source promotion gates, then failed closed before CMake because `cl.exe` self-reported `19.51.36252` while the workflow expected the same toolset version with a non-reported `.0` suffix. Ubuntu again passed the expanded Host vectors and all root/Release ABI gates. The next candidate asserts the exact `cl.exe` runtime string `19.51.36252`; it does not accept a range or change the pinned image, LLVM, VS component, SDK, CMake, crypto source or feature set.
+
+## Remediation review-freeze input
+
+Implementation candidate `e471a74d02a1426ccd17542ea8bb9f4ee956f6bf` closed every pre-review remote gate on `2026-08-07`:
+
+| Workflow | Run | Result | Relevant proof |
+| --- | ---: | --- | --- |
+| Build | [`31135865293`](https://github.com/xiaokh31/androidAppHardening/actions/runs/31135865293) | PASS | Ubuntu and Windows authenticated the archive before parsing, verified the full source tree, built and ran the expanded AES-256-GCM/RFC 5869 boundary and eight-thread Host matrix, passed the root regression, then built and scanned stripped/unstripped Release outputs for all four Android ABIs. Windows also matched exact runtime image `20260803.193.1`, LLVM `20.1.8` and `cl.exe` `19.51.36252`. |
+| Governance | [`31135865277`](https://github.com/xiaokh31/androidAppHardening/actions/runs/31135865277) | PASS | Ubuntu and Windows passed project-package validation, strict PR HandOff validation, negative HandOff tests and Git object verification. |
+| M0-05 Linux KVM | [`31135865495`](https://github.com/xiaokh31/androidAppHardening/actions/runs/31135865495) | PASS | API 29 and API 36 x86_64 both verified the locked Native source, completed two-pass signed Release/R8 fixture builds, bounded device acceptance, cleanup diagnostics and evidence upload. |
+
+The evidence-only successor commit freezes this candidate and these immutable run IDs as the sole input to the second full independent read-only M2-07 review. PR #42 remains draft and M2-02 remains paused; any review finding invalidates that freeze and requires remediation, a new SHA and replacement exact-head CI.

@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-07T09:18:00+08:00
+updated_at: 2026-08-07T08:58:00+08:00
 updated_by: /root
 state: active
 source_branch: chore/m2-07-native-crypto-backend
@@ -295,6 +295,7 @@ next_owner: /root
 
 - Remediation HEAD `14b8c8c8cddb6f4b29f5457975b31054f3c582b7` 的 Governance run `31135168773` 双平台 PASS；Build run `31135168838` 的 Ubuntu Host/根回归/四 ABI 全部 PASS，Windows 已通过 archive-before-parser 与完整树提升门禁，仅因 workflow 将发布清单 ref `20260803.193` 错当成 runtime `ImageVersion` 而失败关闭。当前修订精确固定实际 runtime `ImageVersion=20260803.193.1`，不放宽任何工具链或密码验收门禁；仍须 replacement exact-head Build/Governance/KVM 全绿后才可冻结第二轮独立只读复核输入。
 - HEAD `bb3893b43ec69bdca31b7019d011744a0537a39a` 的 Governance run `31135503992` 双平台 PASS，Build run `31135503969` 的 Ubuntu 全部门禁 PASS；Windows 已越过 runtime image 与供应链准备，仅因 `cl.exe` 自报精确版本 `19.51.36252` 而断言误带 `.0` 后缀失败关闭。当前候选改为精确匹配实际 runtime 字符串，不接受版本范围且不改变任何密码/工具链能力；该 HEAD 的 KVM run `31135503956` 仅作历史运行，下一提交仍须三套 exact-head 门禁重跑。
+- Implementation candidate `e471a74d02a1426ccd17542ea8bb9f4ee956f6bf` 的 Build `31135865293`、Governance `31135865277` 与 API 29/36 x86_64 KVM `31135865495` 全部 PASS：Ubuntu/Windows Host 完整密码边界与八线程矩阵、根回归、四 ABI Release ELF/符号门禁、双遍 Release/R8 设备验收及强制清理均已关闭。当前只允许提交 evidence-only successor 形成第二轮独立只读复核的唯一冻结 SHA；PR #42 继续 draft，M2-02 继续暂停，任何复核 finding 都使该冻结点失效。
 
 ## Verification Evidence
 

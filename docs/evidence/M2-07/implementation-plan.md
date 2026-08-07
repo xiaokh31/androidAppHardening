@@ -16,9 +16,9 @@
 
 ## Verification route
 
-1. Machine lock validates URL, size, SHA-256, license hashes and bundled version.
-2. Host Release self-test runs NIST AES-256-GCM and RFC 5869 HKDF-SHA-256 vectors plus authentication/argument negative paths on Ubuntu and Windows.
-3. Fixed NDK 29/CMake 4.1.2 builds four Android ABIs in CI; ELF scans reject dynamic crypto/TLS dependencies and upstream symbol exports.
+1. Machine lock validates every immutable identity field. Downloaded bytes are verified before parsing, extracted only into an empty temporary directory, bound to a complete regular-file tree hash, stamped and atomically promoted.
+2. Host Release self-test runs NIST AES-256-GCM and RFC 5869 HKDF-SHA-256 vectors, the complete required boundary/null matrix, and an eight-thread serialized-backend stress matrix on Ubuntu and Windows.
+3. Fixed NDK 29/CMake 4.1.2 builds four Android Release ABIs in CI; stripped and unstripped ELF scans reject dynamic crypto/TLS dependencies, upstream exports and out-of-scope local crypto objects.
 4. Governance, full root checks, diff/sensitive-data scans and evidence are frozen in a commit.
 5. A fresh independent read-only security-review Agent reviews the exact frozen SHA. Findings invalidate the freeze until fixed and re-reviewed.
 6. Only a passing frozen revision may be pushed as merger-ready, merged with expected-head protection, and followed by strict HandOff and final `main` CI.

@@ -12,6 +12,7 @@ constexpr std::size_t kGcmNonceBytes = 12;
 constexpr std::size_t kGcmTagBytes = 16;
 constexpr std::size_t kSha256Bytes = 32;
 constexpr std::size_t kHkdfMaxBytes = 255 * kSha256Bytes;
+std::mutex backendMutex;
 
 psa_status_t initializeBackend() noexcept {
     static std::once_flag once;
@@ -63,6 +64,11 @@ Status aes256GcmDecrypt(
         }
         return Status::kInvalidArgument;
     }
+    // TF-PSA-Crypto 1.1.1 does not provide a general thread-safety guarantee.
+    // Serialize the complete backend transaction, not only initialization or
+    // key-store mutation, so Runtime callers may safely use this facade from
+    // different Java/JNI threads.
+    const std::lock_guard<std::mutex> backendLock(backendMutex);
     if (initializeBackend() != PSA_SUCCESS) {
         secureZero(plaintext, plaintext_capacity);
         return Status::kBackendFailure;
@@ -152,6 +158,7 @@ Status hkdfSha256(
         }
         return Status::kInvalidArgument;
     }
+    const std::lock_guard<std::mutex> backendLock(backendMutex);
     if (initializeBackend() != PSA_SUCCESS) {
         secureZero(output, output_size);
         return Status::kBackendFailure;

@@ -139,13 +139,41 @@ jobs:
         run: |
           set -euo pipefail
           archive=".toolchains/native-crypto/downloads/mbedtls-4.1.1.tar.bz2"
-          source_root=".toolchains/native-crypto/src"
-          mkdir -p "$(dirname "$archive")" "$source_root"
+          source_parent=".toolchains/native-crypto/src"
+          source_root="$source_parent/mbedtls-4.1.1"
+          extract_root="$source_parent/.mbedtls-4.1.1.extract"
+          cleanup() {
+            rm -rf -- "$extract_root" "$source_root"
+            rm -f -- "$archive"
+          }
+          trap cleanup ERR
+          mkdir -p "$(dirname "$archive")" "$source_parent"
           curl --fail --location --retry 3 \
             --output "$archive" \
             "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-4.1.1/mbedtls-4.1.1.tar.bz2"
-          tar -xjf "$archive" -C "$source_root"
+          node tools/validation/verify-m2-07-native-crypto.mjs --archive-only
+          while IFS= read -r member; do
+            case "$member" in
+              mbedtls-4.1.1/*) ;;
+              *) echo "unsafe or unexpected archive member: $member" >&2; exit 1 ;;
+            esac
+            case "/$member/" in
+              */../*) echo "archive traversal member: $member" >&2; exit 1 ;;
+            esac
+          done < <(tar -tjf "$archive")
+          rm -rf -- "$extract_root" "$source_root"
+          mkdir "$extract_root"
+          tar -xjf "$archive" -C "$extract_root"
+          node tools/validation/verify-m2-07-native-crypto.mjs --self-test --pre-promote \
+            --source-root="$extract_root/mbedtls-4.1.1"
+          printf '%s\n' \
+            'archive_sha256=3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c' \
+            'source_tree_sha256=7c4ba6554fed6eb67c201054bc75b124fcdc0649e2f56cd762746e01a25d2140' \
+            > "$extract_root/mbedtls-4.1.1/.aah-m2-07-verified"
+          mv "$extract_root/mbedtls-4.1.1" "$source_root"
+          rmdir "$extract_root"
           node tools/validation/verify-m2-07-native-crypto.mjs --self-test
+          trap - ERR
 
       - name: Build signed Release/R8 fixtures in two passes
         shell: bash

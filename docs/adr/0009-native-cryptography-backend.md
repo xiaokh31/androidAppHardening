@@ -27,6 +27,10 @@ GitHub 自动生成的 `Source code (zip/tar.gz)` 不得使用；只有官方 re
 
 Runtime 只从归档的 `tf-psa-crypto` 子目录构建静态 target，不构建、不链接 Mbed TLS 的 TLS/X.509 库。内部 facade 固定为 AES-256-GCM authenticated decrypt、HKDF-SHA-256 与 secure zero；PSA 的 AES/GCM/SHA-256/HMAC/HKDF 之外不构成可消费能力，所有符号默认隐藏。
 
+TF-PSA-Crypto `1.1.1` 的 PSA Crypto API 不提供完整并发安全保证。facade 因此以进程内全局 mutex 串行化每个完整 AES-GCM/HKDF backend transaction，包括初始化、key import、operation、abort/destroy；对调用方保留多线程可调用合同，但不宣称后端内部并行。
+
+供应链准备严格分为认证前与认证后：网络归档必须先独立命中精确长度/SHA-256，随后才允许 archive parser 将其解压到新建空临时目录；完整常规文件树固定为 `3927` files、`60515866` bytes、SHA-256 `7c4ba6554fed6eb67c201054bc75b124fcdc0649e2f56cd762746e01a25d2140`。Unix 解包还必须恰有 `147` 个 symlink 且全部位于未启用的 ML-DSA examples 前缀；固定 Windows CMake 可安全跳过这些 symlink，因此也接受 `0`，其他数量或位置均失败。只有树、许可证和版本全部通过并写入归档/树身份 stamp 后才能原子提升为 CMake/Gradle 可消费目录，失败时清理归档、临时目录和候选目录。
+
 上游 4.1.1 release body 声称 bundled TF-PSA-Crypto 从 1.1.0 升级到 1.2.0，但官方完整归档的 `tf-psa-crypto/CMakeLists.txt` 与 `ChangeLog` 均明确为 1.1.1。构建和审计以已锁定归档的实际 bytes 为准；机器校验要求 1.1.1，并把 release-note 不一致保留为审计证据。
 
 ### Point-in-time vulnerability review
@@ -36,6 +40,7 @@ Runtime 只从归档的 `tf-psa-crypto` 子目录构建静态 target，不构建
 - 4.1.0 受 2026-07 官方公告影响；4.1.1 包含同 LTS 分支修复，故拒绝 4.1.0。
 - bundled TF-PSA-Crypto 1.1.1 修复 CVE-2026-54435、CVE-2026-50584、CVE-2026-50587 等上游列出的 1.1.0 问题。
 - CVE-2025-66442 描述的 compiler-induced timing issue 影响 RSA 与 CBC/ECB decrypt，并要求特定 RISC-V/LLVM 条件；本项目不启用这些算法且 Android ABI 不含 RISC-V，因此当前不可达，但仍记录而非宣称库“无漏洞”。
+- CVE-2026-25832 明确影响 Mbed TLS 4.1.1 的 TLS 1.3 client HelloRetryRequest group-policy 校验，4.1.2 修复；本选择版本仍受影响，但本项目不构建或链接 TLS/SSL target，因此当前不可达。任何 TLS 能力启用都必须先阻断并升级/重做 ADR，而不能沿用本结论。
 - TLS、X.509、PKCS、RSA、ECC、ChaCha20、CBC/ECB 均不在构建消费与动态导出面；未来若扩大算法面，必须新增 ADR/任务并重做公告可达性分析。
 
 安全公告是 point-in-time 证据，不是永久保证。每次发布前和依赖公告出现时，M4-01 必须重新查询官方 advisory，任何可达问题触发独立升级 PR。
@@ -65,7 +70,7 @@ Runtime 只从归档的 `tf-psa-crypto` 子目录构建静态 target，不构建
 
 ## Verification
 
-- 机器锁校验归档 bytes/SHA-256、tag/commit、license hashes、TF-PSA version 与允许的源 URL。
-- NIST AES-256-GCM 与 RFC 5869 case 1 在同一 C++ facade 上通过；tag/参数篡改失败并清零输出。
-- NDK 29/CMake 4.1.2 构建四 ABI；ELF scan 不出现 `libcrypto`、TLS/X.509 动态依赖或非预期导出。
+- 机器锁精确校验归档 bytes/SHA-256、tag/commit、license hashes、TF-PSA version、源 URL、算法/ABI 清单与完整解压树；归档校验发生在解包前。
+- NIST AES-256-GCM 与 RFC 5869 case 1 在同一 C++ facade 上通过；tag/nonce/key/output、零长度、HKDF 8160/8161、null/length 参数矩阵失败关闭，并通过多线程压力测试。
+- NDK 29/CMake 4.1.2 构建四 ABI Release；ELF scan 不出现 `libcrypto`、TLS/X.509 动态依赖、非预期导出或超范围本地密码符号。
 - Ubuntu/Windows Host Release self-test、独立只读安全复核、PR CI 和 post-merge `main` 门禁全部通过后，M2-02 才能恢复。

@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-07T08:04:48+08:00
+updated_at: 2026-08-07T08:25:26+08:00
 updated_by: /root
 state: active
 source_branch: chore/m2-07-native-crypto-backend
@@ -26,6 +26,7 @@ next_owner: /root
 - 后续 HEAD `165adbf8525d91c19047c5937017fcfae6324669` 暴露 GitHub 实际 runner 已切到 `windows-2025-vs2026` image `20260728.188.1`，其 run 自报不可变清单路径显示 Visual Studio Enterprise 2026 位于 `C:/Program Files/Microsoft Visual Studio/18/Enterprise`；固定 CMake 4.1.2 只提供 VS 2022 generator，不能用 VS 2026 instance。下一候选通过该镜像的 `VsDevCmd.bat` 导入 x64 MSVC 环境，再由固定 CMake 4.1.2/Ninja 构建 Host 向量，不升级或下载工具；该 HEAD 的 Governance 已双平台 PASS，Ubuntu Build 仍完整 PASS。
 - HEAD `88a3b000379761a213243ec57d2e1c6d7a745225` 证明 VS 2026 x64 环境、CMake/Ninja 配置与 MSVC 19.51 编译器发现均成功；Windows 仅在编译最终不会链接的 TF-PSA `extras/pk_ecc.c`/`pk_rsa.c` 时因禁用全部 PK 类型形成的零长内部结构触发 MSVC `C2229`。同一最小配置已在 Ubuntu/Android Clang 通过，镜像清单同时固定 LLVM 20.1.8；下一候选保留 VS SDK/link 环境并显式用预装 `C:/Program Files/LLVM/bin/clang-cl.exe` 编译，不启用 PK/RSA/ECC、不放宽密码配置。
 - candidate `10a1862dbce4c1b6defbfa16ebd4bb49e8335e58` 已关闭 replacement 门禁：Build run `31132692644` 在 Ubuntu 24.04/Windows 2025 通过锁定归档、NIST AES-256-GCM、RFC 5869、根回归与四 ABI；Governance run `31132692665` 双平台 PASS；KVM run `31132692597` 在 API 29/36 x86_64 通过两遍 Release/R8 构建、有界设备验收、清理和证据上传。当前只允许提交精确远端证据并冻结新 SHA，再启动独立只读 M2-07 安全复核；PR #42 仍为 draft，M2-02 仍暂停。
+- 独立只读复核已废止冻结 `f428e4ac8cc12223ad6c6d2dabdf83c55f0f987a`：`P0=0/P1=3/P2=4` FAIL，结论归档于 `docs/evidence/M2-07/read-only-review-1.md`。当前修复只限 M2-07：归档先验 hash 后解析、空临时树完整 hash/stamp/原子提升；精确机器锁及官方 API/checksum 摘要；完整 AES/HKDF 参数矩阵；PSA 全事务 mutex 与八线程压力；Android Release ELF/本地符号门禁；Windows LLVM 20.1.8 断言；CVE-2026-25832 受影响但 TLS 不可达记录。PR #42 保持 draft，M2-02 继续 blocked。
 - 用户已明确启动 M1-06，并预先授权任务所需的推送、唯一草稿 PR、ready 与 expected-head 普通合并。Issue [#11](https://github.com/xiaokh31/androidAppHardening/issues/11) 为 OPEN、无 assignee；远程不存在固定分支或关联 PR。分支 `feat/m1-06-cli-and-json-report` 从已完成 M1-05 且 final main 双平台 CI 全绿的 `main@55ef3c57e631cde65d3e04d58aa75d26a7e75ba8` 创建。
 - M1-01 至 M1-05 依赖均已完成。M1-06 选择 `full-flow` 验证模式；实现计划归档于 `docs/evidence/M1-06/implementation-plan.md`。生产入口仅从后续 distribution 提供的固定 classpath RuntimeBundle 读取资源，不把 synthetic Runtime 打入产品；本任务集成测试使用 M1-05 已授权的合成 RuntimeBundle 合同 fixture。当前只修改 `host/cli`、REPORT_V1、M1-06 证据/CI 与根交接，不启动 M2、设备或模拟器。
 - M1-06 Host 实现与 Windows full-flow 已通过：唯一 `protect` CLI、REPORT_V1 及 Draft 2020-12 可执行 schema validator、七阶段状态机、M1-01 一基至 AHDC v2 零基 ordinal 边界适配、输入只读、未签名输出、报告原子 no-replace 发布/回滚、线程中断与 JVM shutdown 清理、路径/能力扫描均已闭环。Windows 离线 clean 根 `check verifyGovernance` 共 273 项任务退出 `0`；规范化成功报告、错误矩阵、清理矩阵和路径矩阵已固定到 Ubuntu/Windows CI，当前等待冻结提交、只读复核、唯一草稿 PR 和远端双平台门禁。
@@ -166,7 +167,7 @@ next_owner: /root
 | M1-04 | `/root` | `feat/m1-04-encrypted-dex-container` | done | M1-01, M1-02, M1-07 | PR #38、Issue #9、独立复核、merger-ready 六项 CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-05 | `/root` | `feat/m1-05-apk-repacker-and-alignment` | done | M1-02, M1-03, M1-04 | PR #39、Issue #10、独立复核、merger-ready CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-06 | `/root` | `feat/m1-06-cli-and-json-report` | done | M1-01, M1-02, M1-03, M1-04, M1-05 | PR #40、Issue #11、冻结复核、merger-ready 双平台 CI 与 expected-head 合并已关闭；等待 post-merge main 最终门禁，不启动 M2 |
-| M2-07 | `/root` | `chore/m2-07-native-crypto-backend` | in_progress | M0-03, M1-04 | PR #42 exact-head Build/Governance/API 29+36 KVM 全绿；正在提交证据冻结 SHA，随后启动独立只读安全复核 |
+| M2-07 | `/root` | `chore/m2-07-native-crypto-backend` | in_progress | M0-03, M1-04 | 第一冻结复核 P1=3/P2=4 FAIL 已归档并废止；七项修复正在本地重验，之后重新冻结并全量独立复核 |
 | M2-02 | `/root` | `feat/m2-02-native-decrypt-loader` | blocked | M0-04, M1-04, M2-07 | `/root` 在 M2-07 合并且 final main 门禁通过后恢复 `40e3900` |
 
 ## Decisions and Invariants
@@ -293,6 +294,18 @@ next_owner: /root
 - 该 M1-01 post-merge 动作已完成；当前恢复点为下述 M1-02 冻结实现与本地验收。
 
 ## Verification Evidence
+
+### M2-07 independent security review 1
+
+- task_id: M2-07
+- git_commit: f428e4ac8cc12223ad6c6d2dabdf83c55f0f987a
+- command: independent full read-only supply-chain, crypto facade, vector/boundary, four-ABI, vulnerability, CI truthfulness and scope review
+- exit_code: 1
+- environment: Windows PowerShell; no file changes, device or emulator
+- timestamp: 2026-08-07T08:15:45+08:00
+- artifact: `docs/evidence/M2-07/read-only-review-1.md`
+- sha256: not_applicable
+- result: FAIL; P0=0, P1=3, P2=4; frozen SHA permanently rejected, all seven findings require remediation and a fresh complete independent review
 
 ### M1-04 clean restart baseline
 
@@ -1212,9 +1225,10 @@ None
 
 ## Ordered Next Actions
 
-1. Validate and commit the archived exact-head remote evidence, then freeze the resulting review SHA.
-2. Launch an independent read-only M2-07 security review against that exact SHA; remediate and re-freeze on any P0/P1/P2 finding.
-3. After a zero-finding review and replacement exact-HEAD CI, mark PR #42 ready, merge with expected-head protection, run final `main` gates, update README/HandOff, then resume `feat/m2-02-native-decrypt-loader`.
+1. Complete local root regression and inspect the seven-finding remediation diff; commit and push a new candidate while PR #42 remains draft.
+2. Require exact-head Ubuntu/Windows expanded Host matrix, machine-lock negative tests, four Android Release ABI scans, Governance and API 29/36 KVM.
+3. Freeze the fully green SHA and launch a fresh complete independent read-only M2-07 security review; remediate/re-freeze on any finding.
+4. After a zero-finding review and replacement exact-HEAD CI, mark PR #42 ready, merge with expected-head protection, run final `main` gates, update README/HandOff, then resume `feat/m2-02-native-decrypt-loader`.
 
 ## Relevant Files and Artifacts
 

@@ -57,6 +57,7 @@ NDK 29 提供 zlib，但不提供可供产品链接的稳定 AES-GCM/HKDF 公共
 - 构建只 `add_subdirectory` 官方归档中的 `tf-psa-crypto`，静态链接到隐藏符号的 `libah_runtime.so`；不构建或链接 `mbedtls` TLS 与 `mbedx509`。
 - C++ facade 只提供 `aes256GcmDecrypt`、`hkdfSha256` 和不可优化掉的 `secureZero`。认证失败必须清零调用方输出并返回独立错误；不得返回未认证 plaintext。
 - 下载与解压是显式准备步骤。Gradle/CMake 不访问网络，依赖缺失、版本/许可证不匹配或锁校验失败时立即失败。
+- 下载归档在任何 archive parser 处理前必须先核对精确机器锁；只能解压到新建空临时目录，完整常规文件树清单校验通过并写入锁定 stamp 后再原子提升。Gradle/CMake 只消费该 stamped 目录。
 - 上游 4.1.1 release note 把 bundled TF-PSA-Crypto 写为 `1.2.0`，但官方完整归档的 `tf-psa-crypto/CMakeLists.txt` 与 `ChangeLog` 均为 `1.1.1`；合同以锁定归档内容为准并把该不一致记录为供应链审计发现。
 
 ## Public Interfaces
@@ -64,6 +65,7 @@ NDK 29 提供 zlib，但不提供可供产品链接的稳定 AES-GCM/HKDF 公共
 - `ah::crypto::Status aes256GcmDecrypt(...)`：仅接受 32-byte key、12-byte nonce 和 16-byte tag；成功才保留输出。
 - `ah::crypto::Status hkdfSha256(...)`：RFC 5869 SHA-256，输出长度必须为 `1..8160`。
 - `void ah::crypto::secureZero(void*, size_t)`：不得被优化移除。
+- facade 允许多个 Runtime/JNI 线程调用，但 TF-PSA-Crypto `1.1.1` 的完整 AES/HKDF 后端事务必须由 facade 内部全局 mutex 串行化；不得只保护初始化或 key store。
 - 以上接口保持 Native 内部可见，不构成 Host CLI 或外部 SDK API。
 
 ## Security Constraints
@@ -85,6 +87,7 @@ NDK 29 提供 zlib，但不提供可供产品链接的稳定 AES-GCM/HKDF 公共
 
 - 机器锁与官方归档的 URL、字节数、SHA-256、tag object、commit、许可证哈希和 bundled TF-PSA 版本逐项匹配。
 - Ubuntu/Windows Host self-test 对 NIST AES-256-GCM 与 RFC 5869 case 1 逐字节通过；tag/nonce/key/output 边界负例失败关闭且输出全零。
+- Ubuntu/Windows 的同一 Release self-test 必须通过至少 8 线程的 AES/HKDF 并发压力矩阵，证明 facade 的串行化合同。
 - NDK 29/CMake 4.1.2 构建 `armeabi-v7a`、`arm64-v8a`、`x86`、`x86_64`；四个 `libah_runtime.so` 均无 `libcrypto`、TLS 或 X.509 动态依赖。
 - 最终链接只保留 facade 需要的 TF-PSA 对象；默认符号隐藏，无非预期 crypto 导出。
 - 官方公告 point-in-time 复核记录所有影响 4.1.0 的 2026-07 安全项已由 4.1.1 修复；CVE-2025-66442 仅影响未启用的 RSA/CBC/ECB 与 RISC-V 条件；后续新公告仍触发升级评估。
@@ -96,6 +99,7 @@ NDK 29 提供 zlib，但不提供可供产品链接的稳定 AES-GCM/HKDF 公共
 - NIST AES-256-GCM decrypt、错误 tag、错误 key/nonce/tag 长度、零长度与输出不足。
 - RFC 5869 case 1、最大长度边界、超过 `255 * HashLen`、空指针/长度组合。
 - Ubuntu/Windows Host Release self-test；四 ABI Android Release build 与 ELF dependency/export scan。
+- 多线程重复 AES/HKDF 调用；任何线程的状态码或结果漂移均失败。
 
 ## Required Evidence
 

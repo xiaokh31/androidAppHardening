@@ -14,7 +14,7 @@
 
 | Command | Exit | Result |
 | --- | ---: | --- |
-| `node tools/validation/verify-m2-07-native-crypto.mjs --self-test` | 0 | 7,099,934-byte archive, SHA-256 `3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c`, TF-PSA `1.1.1`, Apache-2.0 choice; hash/version/license mutations rejected |
+| `node tools/validation/verify-m2-07-native-crypto.mjs --self-test` | 0 | 7,099,934-byte archive, SHA-256 `3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c`; 3,927-file/60,515,866-byte extracted tree SHA-256 `7c4ba655...d2140`; 147 Unix symlinks confined to disabled ML-DSA examples; exact tag/commit/API/checksum/license/algorithm/ABI identity; one-byte and every locked-field mutation rejected |
 | `node tools/governance/validate-project-package.mjs` | 0 | 28 task cards, 11 core docs, 9 ADRs |
 | `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict` | 0 | strict HandOff valid |
 | `git diff --check` | 0 | no whitespace errors |
@@ -31,10 +31,10 @@ Exit `0`, 64 tasks. A deliberate first run exposed that the hidden facade was ga
 
 | ABI | ELF | Release stripped bytes | SHA-256 |
 | --- | --- | ---: | --- |
-| `armeabi-v7a` | ELF32 ARM | 142172 | `d91400347a996d882263a2ccd1aad9973f524fbe31381b707738ed4e17b08a74` |
-| `arm64-v8a` | ELF64 AArch64 | 225016 | `8375e0248f5d772f6fad27bfec28bf6016167504f8cf738501c2f25831692120` |
-| `x86` | ELF32 Intel 80386 | 218868 | `4d8076a5d15ce4c1db509ba8674c7d005f21b6c3705e391980545032e388d57b` |
-| `x86_64` | ELF64 AMD x86-64 | 226352 | `ba4efe2086e536071b12d897bee709e2c9880338aafd2eef9332d47c7b5fe16e` |
+| `armeabi-v7a` | ELF32 ARM | 147476 | `20f3c54a10a4ef4d2dd8ee0fea82c74111236e3c4333ba41c9084212dcfce8df` |
+| `arm64-v8a` | ELF64 AArch64 | 236304 | `5a49c4e91b87b50bbe880aec818168227608a366e99817a14ba3835dd29c8871` |
+| `x86` | ELF32 Intel 80386 | 229656 | `7a1f5c4954cf7f1d2e02beaec87bc9277637a4dabdcd55484ae6c9a31f7f5310` |
+| `x86_64` | ELF64 AMD x86-64 | 236760 | `6b3f33dc77fc2c890a111dd3be2dce043be7e8e1d7f828130ecf58091c8b3d0c` |
 
 `llvm-readelf` reports only `libm.so`, `libdl.so`, and `libc.so` as dynamic dependencies and `BIND_NOW` on all four artifacts. `llvm-nm -D --defined-only` finds no `psa_*` or `mbedtls_*` exports. Unstripped libraries contain local hidden `aes256GcmDecrypt`, `hkdfSha256`, `secureZero`, and `ah_crypto_backend_anchor` symbols for every ABI. The x86_64 local symbol scan finds no RSA, ECC/ECDSA, ChaCha, CCM, CBC, X.509, SSL or PKCS implementation surface; it does find the intended AES/GCM/SHA-256/PSA AEAD/key-derivation objects.
 
@@ -74,4 +74,16 @@ Candidate `10a1862dbce4c1b6defbfa16ebd4bb49e8335e58` closed every replacement ga
 | Governance | [`31132692665`](https://github.com/xiaokh31/androidAppHardening/actions/runs/31132692665) | PASS | Ubuntu 24.04 and Windows 2025 passed project-package validation, strict PR HandOff validation, negative HandOff tests, and Git object verification. |
 | M0-05 Linux KVM | [`31132692597`](https://github.com/xiaokh31/androidAppHardening/actions/runs/31132692597) | PASS | API 29 and API 36 x86_64 both verified the same Native source before two-pass Release/R8 fixture builds, completed bounded device acceptance, cleanup diagnostics, and evidence upload. |
 
+That successful Windows Build run self-reported immutable image `win25-vs2026/20260803.193`; its official manifest retains LLVM `20.1.8`, Visual Studio Enterprise 2026 `18.8.12023.21`, x64 tools `18.8.11901.359` and Windows SDK `10.0.26100.0`. The remediation workflow now fails closed unless the image, `clang-cl 20.1.8` and activated compiler environment `19.51.36252.0` all match.
+
 The GitHub annotation that `actions/upload-artifact` is being forced from Node.js 20 to Node.js 24 is a non-failing action-runtime deprecation warning; it does not change dependency bytes or test results. With all three exact-head workflows green, this evidence commit may freeze the input for independent read-only security review. PR #42 remains draft and M2-02 remains paused until that review has zero P0/P1/P2 findings and replacement exact-head CI passes.
+
+## Rejected freeze and remediation
+
+Independent read-only review of `f428e4ac8cc12223ad6c6d2dabdf83c55f0f987a` returned **FAIL** at `2026-08-07T08:15:45+08:00`: `P0=0`, `P1=3`, `P2=4`. The immutable findings are archived in `read-only-review-1.md`; that SHA can never be merger-ready.
+
+The remediation candidate verifies archive bytes before any parser, validates member paths and the complete regular-file tree in a new temporary directory, writes a locked archive/tree stamp, and atomically promotes only the verified tree. The machine verifier now exactly locks every field plus offline GitHub asset/checksum evidence. The facade serializes each complete PSA transaction and the Host test adds all required AES/HKDF boundaries, null/length semantics and an eight-thread stress matrix. CI now requires Android Release ELF, scans stripped and unstripped outputs, asserts LLVM `20.1.8`, and explicitly records CVE-2026-25832 as affecting 4.1.1 but unreachable while TLS is excluded.
+
+Local Windows `:runtime:native:assembleRelease` completed `34` tasks in `48s`; the four Release ELF rows above are the replacement outputs and passed `BIND_NOW`, dynamic dependency/export, required facade and forbidden local-symbol checks. A local Windows Host compiler is still unavailable, so the expanded Host executable must be compiled and run by the next Ubuntu/Windows CI before a new freeze.
+
+The exact Windows preparation route was also replayed in ignored repository storage: fixed CMake extracted the already authenticated archive to `.toolchains/native-crypto/validation-extract`, the pre-promotion tree matched all three tree invariants, UTF-8/LF stamp creation succeeded, post-stamp verification passed, and the temporary directory was removed. The replacement offline root command `check verifyGovernance :runtime:native:assembleRelease` then passed `283` tasks in `1m31s` with exit `0`.

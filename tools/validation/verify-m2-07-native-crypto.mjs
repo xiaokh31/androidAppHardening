@@ -1,44 +1,159 @@
 import { createHash } from "node:crypto";
-import { readFile, stat } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import { isDeepStrictEqual } from "node:util";
 
 const root = path.resolve(import.meta.dirname, "../..");
 const lockPath = path.join(root, "tools/validation/m2-07-native-crypto.json");
 const lock = JSON.parse(await readFile(lockPath, "utf8"));
+const archiveOnly = process.argv.includes("--archive-only");
+const selfTest = process.argv.includes("--self-test");
+const prePromote = process.argv.includes("--pre-promote");
+const sourceRootArgument = process.argv.find((argument) => argument.startsWith("--source-root="));
+const sourceRootOverride = sourceRootArgument === undefined
+  ? null
+  : path.resolve(root, sourceRootArgument.slice("--source-root=".length));
+const verifiedStampName = ".aah-m2-07-verified";
+const verifiedStamp = "archive_sha256=3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c\nsource_tree_sha256=7c4ba6554fed6eb67c201054bc75b124fcdc0649e2f56cd762746e01a25d2140\n";
+
+const expectedLock = {
+  schema_version: 1,
+  task: "M2-07",
+  reviewed_at: "2026-08-07",
+  dependency: {
+    name: "Mbed TLS",
+    version: "4.1.1",
+    release_url: "https://github.com/Mbed-TLS/mbedtls/releases/tag/mbedtls-4.1.1",
+    archive_url: "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-4.1.1/mbedtls-4.1.1.tar.bz2",
+    archive_name: "mbedtls-4.1.1.tar.bz2",
+    archive_bytes: 7099934,
+    archive_sha256: "3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c",
+    tag: "mbedtls-4.1.1",
+    tag_object: "783058d12831aedd3ef57a64577f6f8a88d23bd3",
+    commit: "0a8fda272a5a0abef3b47c91bed37185d5a726b1",
+    tag_signature: "unsigned",
+    bundled_tf_psa_crypto_version: "1.1.1",
+    license_expression: "Apache-2.0 OR GPL-2.0-or-later",
+    selected_license: "Apache-2.0",
+    root_license_sha256: "9b405ef4c89342f5eae1dd828882f931747f71001cfba7d114801039b52ad09b",
+    tf_psa_license_sha256: "da8c58f05f135a9d15e9ffad4ecf854cfcc1f014c8abfd75ba05f62630ccc118",
+    source_regular_files: 3927,
+    source_regular_bytes: 60515866,
+    source_tree_sha256: "7c4ba6554fed6eb67c201054bc75b124fcdc0649e2f56cd762746e01a25d2140",
+    source_symlinks_unix: 147,
+    source_symlink_prefix: "tf-psa-crypto/drivers/pqcp/mldsa-native/examples/",
+  },
+  local_paths: {
+    archive: ".toolchains/native-crypto/downloads/mbedtls-4.1.1.tar.bz2",
+    source: ".toolchains/native-crypto/src/mbedtls-4.1.1",
+  },
+  official_evidence: {
+    release_published_at: "2026-07-07T14:43:41Z",
+    archive_asset_id: 464486390,
+    archive_asset_digest: "sha256:3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c",
+    checksum_asset_name: "mbedtls-4.1.1-sha256sum.txt",
+    checksum_asset_bytes: 88,
+    checksum_asset_digest: "sha256:bbf04627efb60c5e3ad620d903994804c275681d1a1948c6b0c0a5acdc77d4a4",
+    checksum_entry: "3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c  mbedtls-4.1.1.tar.bz2\n",
+  },
+  allowed_algorithms: [
+    "AES-256-GCM-DECRYPT",
+    "HKDF-SHA-256",
+    "HMAC-SHA-256",
+    "SHA-256",
+  ],
+  android_abis: ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"],
+};
 
 function fail(message) {
   throw new Error(`M2-07 dependency verification failed: ${message}`);
+}
+
+if (prePromote && sourceRootOverride === null) {
+  fail("--pre-promote requires an explicit temporary --source-root");
 }
 
 function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
-async function verify(candidate) {
-  if (candidate.schema_version !== 1 || candidate.task !== "M2-07") {
-    fail("unexpected lock schema or task");
+function verifyLockContract(candidate) {
+  if (!isDeepStrictEqual(candidate, expectedLock)) {
+    fail("lock does not exactly match the reviewed immutable identity");
   }
-  if (!candidate.dependency.archive_url.startsWith(
-    "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-4.1.1/",
-  )) {
-    fail("archive URL is not the fixed official release asset");
-  }
+}
 
-  const archivePath = path.join(root, ...candidate.local_paths.archive.split("/"));
-  const archiveStat = await stat(archivePath).catch(() => null);
-  if (archiveStat === null) {
-    fail(`missing archive ${candidate.local_paths.archive}`);
+function verifyArchiveBytes(candidate, archiveBytes) {
+  if (archiveBytes.length !== candidate.dependency.archive_bytes) {
+    fail(`archive size ${archiveBytes.length} != ${candidate.dependency.archive_bytes}`);
   }
-  if (archiveStat.size !== candidate.dependency.archive_bytes) {
-    fail(`archive size ${archiveStat.size} != ${candidate.dependency.archive_bytes}`);
-  }
-  const archiveHash = sha256(await readFile(archivePath));
+  const archiveHash = sha256(archiveBytes);
   if (archiveHash !== candidate.dependency.archive_sha256) {
     fail(`archive SHA-256 ${archiveHash} != ${candidate.dependency.archive_sha256}`);
   }
+  const checksumBytes = Buffer.from(candidate.official_evidence.checksum_entry, "utf8");
+  if (checksumBytes.length !== candidate.official_evidence.checksum_asset_bytes ||
+      `sha256:${sha256(checksumBytes)}` !== candidate.official_evidence.checksum_asset_digest ||
+      candidate.official_evidence.archive_asset_digest !== `sha256:${archiveHash}`) {
+    fail("offline official release/checksum evidence summary mismatch");
+  }
+  return archiveHash;
+}
 
-  const sourceRoot = path.join(root, ...candidate.local_paths.source.split("/"));
+async function collectSourceEntries(directory, relative = "", inventory = { files: [], symlinks: [] }) {
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const absolute = path.join(directory, entry.name);
+    const normalized = relative === "" ? entry.name : `${relative}/${entry.name}`;
+    if (entry.isDirectory()) {
+      await collectSourceEntries(absolute, normalized, inventory);
+    } else if (entry.isFile()) {
+      if (normalized !== verifiedStampName) {
+        inventory.files.push({ absolute, normalized });
+      }
+    } else if (entry.isSymbolicLink()) {
+      inventory.symlinks.push(normalized);
+    } else {
+      fail(`unsupported source-tree entry ${normalized}`);
+    }
+  }
+  return inventory;
+}
+
+async function verifySourceTree(candidate, sourceRoot) {
+  const sourceStat = await stat(sourceRoot).catch(() => null);
+  if (sourceStat === null || !sourceStat.isDirectory()) {
+    fail(`missing extracted source ${candidate.local_paths.source}`);
+  }
+
+  const inventory = await collectSourceEntries(sourceRoot);
+  const { files, symlinks } = inventory;
+  const validSymlinkCount = symlinks.length === 0 ||
+    symlinks.length === candidate.dependency.source_symlinks_unix;
+  if (!validSymlinkCount ||
+      symlinks.some((entry) => !entry.startsWith(candidate.dependency.source_symlink_prefix))) {
+    fail(`unexpected source symlink surface count=${symlinks.length}`);
+  }
+  files.sort((left, right) => left.normalized < right.normalized ? -1 : left.normalized > right.normalized ? 1 : 0);
+  const treeHash = createHash("sha256");
+  let totalBytes = 0;
+  for (const file of files) {
+    const bytes = await readFile(file.absolute);
+    totalBytes += bytes.length;
+    treeHash.update(file.normalized, "utf8");
+    treeHash.update("\0");
+    treeHash.update(String(bytes.length), "utf8");
+    treeHash.update("\0");
+    treeHash.update(bytes);
+    treeHash.update("\0");
+  }
+  const treeDigest = treeHash.digest("hex");
+  if (files.length !== candidate.dependency.source_regular_files ||
+      totalBytes !== candidate.dependency.source_regular_bytes ||
+      treeDigest !== candidate.dependency.source_tree_sha256) {
+    fail(`source tree mismatch files=${files.length} bytes=${totalBytes} sha256=${treeDigest}`);
+  }
+
   const rootLicense = await readFile(path.join(sourceRoot, "LICENSE")).catch(() => null);
   const tfPsaLicense = await readFile(path.join(sourceRoot, "tf-psa-crypto/LICENSE")).catch(() => null);
   const tfPsaCmake = await readFile(
@@ -60,37 +175,99 @@ async function verify(candidate) {
   if (!versionPattern.test(tfPsaCmake)) {
     fail("bundled TF-PSA-Crypto version mismatch");
   }
-  return { archiveStat, archiveHash };
+  if (!prePromote) {
+    const stamp = await readFile(path.join(sourceRoot, verifiedStampName), "utf8").catch(() => null);
+    if (stamp !== verifiedStamp) {
+      fail("verified source stamp is missing or does not match the reviewed archive/tree identity");
+    }
+  }
+  return { files: files.length, totalBytes, treeDigest, symlinks: symlinks.length };
 }
 
-const { archiveStat, archiveHash } = await verify(lock);
-if (process.argv.includes("--self-test")) {
-  for (const mutation of [
-    (candidate) => { candidate.dependency.archive_sha256 = "0".repeat(64); },
-    (candidate) => { candidate.dependency.bundled_tf_psa_crypto_version = "9.9.9"; },
-    (candidate) => { candidate.dependency.root_license_sha256 = "f".repeat(64); },
-  ]) {
+async function expectRejected(action, label) {
+  try {
+    await action();
+  } catch {
+    return;
+  }
+  fail(`self-test mutation was accepted: ${label}`);
+}
+
+verifyLockContract(lock);
+const archivePath = path.join(root, ...lock.local_paths.archive.split("/"));
+const archiveBytes = await readFile(archivePath).catch(() => null);
+if (archiveBytes === null) {
+  fail(`missing archive ${lock.local_paths.archive}`);
+}
+const archiveHash = verifyArchiveBytes(lock, archiveBytes);
+const sourceRoot = sourceRootOverride ?? path.join(root, ...lock.local_paths.source.split("/"));
+const sourceSummary = archiveOnly ? null : await verifySourceTree(lock, sourceRoot);
+
+if (selfTest) {
+  const mutatedArchive = Buffer.from(archiveBytes);
+  mutatedArchive[Math.floor(mutatedArchive.length / 2)] ^= 1;
+  await expectRejected(
+    () => Promise.resolve(verifyArchiveBytes(lock, mutatedArchive)),
+    "one archive byte",
+  );
+
+  const mutations = [
+    ["schema", (candidate) => { candidate.schema_version = 2; }],
+    ["task", (candidate) => { candidate.task = "M2-XX"; }],
+    ["review date", (candidate) => { candidate.reviewed_at = "1970-01-01"; }],
+    ["name", (candidate) => { candidate.dependency.name = "replacement"; }],
+    ["version", (candidate) => { candidate.dependency.version = "4.1.2"; }],
+    ["release URL", (candidate) => { candidate.dependency.release_url += "?changed"; }],
+    ["archive URL", (candidate) => { candidate.dependency.archive_url += "?changed"; }],
+    ["archive name", (candidate) => { candidate.dependency.archive_name += ".changed"; }],
+    ["archive bytes", (candidate) => { candidate.dependency.archive_bytes += 1; }],
+    ["archive hash", (candidate) => { candidate.dependency.archive_sha256 = "0".repeat(64); }],
+    ["tag", (candidate) => { candidate.dependency.tag = "mbedtls-4.1.2"; }],
+    ["tag object", (candidate) => { candidate.dependency.tag_object = "0".repeat(40); }],
+    ["commit", (candidate) => { candidate.dependency.commit = "0".repeat(40); }],
+    ["tag signature", (candidate) => { candidate.dependency.tag_signature = "changed"; }],
+    ["TF-PSA version", (candidate) => { candidate.dependency.bundled_tf_psa_crypto_version = "9.9.9"; }],
+    ["license expression", (candidate) => { candidate.dependency.license_expression = "GPL-2.0-only"; }],
+    ["selected license", (candidate) => { candidate.dependency.selected_license = "GPL-2.0-or-later"; }],
+    ["root license", (candidate) => { candidate.dependency.root_license_sha256 = "f".repeat(64); }],
+    ["TF-PSA license", (candidate) => { candidate.dependency.tf_psa_license_sha256 = "f".repeat(64); }],
+    ["source file count", (candidate) => { candidate.dependency.source_regular_files += 1; }],
+    ["source bytes", (candidate) => { candidate.dependency.source_regular_bytes += 1; }],
+    ["source tree hash", (candidate) => { candidate.dependency.source_tree_sha256 = "0".repeat(64); }],
+    ["source symlink count", (candidate) => { candidate.dependency.source_symlinks_unix += 1; }],
+    ["source symlink prefix", (candidate) => { candidate.dependency.source_symlink_prefix = "changed/"; }],
+    ["archive path", (candidate) => { candidate.local_paths.archive += ".changed"; }],
+    ["source path", (candidate) => { candidate.local_paths.source += ".changed"; }],
+    ["release evidence", (candidate) => { candidate.official_evidence.release_published_at = "1970-01-01T00:00:00Z"; }],
+    ["asset evidence", (candidate) => { candidate.official_evidence.archive_asset_digest = "sha256:changed"; }],
+    ["checksum evidence", (candidate) => { candidate.official_evidence.checksum_entry += "changed"; }],
+    ["algorithm list", (candidate) => { candidate.allowed_algorithms.push("RSA"); }],
+    ["ABI list", (candidate) => { candidate.android_abis.reverse(); }],
+  ];
+  for (const [label, mutate] of mutations) {
     const candidate = structuredClone(lock);
-    mutation(candidate);
-    let rejected = false;
-    try {
-      await verify(candidate);
-    } catch {
-      rejected = true;
-    }
-    if (!rejected) {
-      fail("self-test mutation was accepted");
-    }
+    mutate(candidate);
+    await expectRejected(() => Promise.resolve(verifyLockContract(candidate)), label);
   }
 }
 
 console.log(JSON.stringify({
   task: lock.task,
   archive: lock.dependency.archive_name,
-  bytes: archiveStat.size,
+  bytes: archiveBytes.length,
   sha256: archiveHash,
-  source: lock.local_paths.source,
+  source: archiveOnly ? "not_checked" : sourceRoot,
+  source_regular_files: sourceSummary?.files ?? "not_checked",
+  source_regular_bytes: sourceSummary?.totalBytes ?? "not_checked",
+  source_tree_sha256: sourceSummary?.treeDigest ?? "not_checked",
+  source_symlinks: sourceSummary?.symlinks ?? "not_checked",
+  tag_object: lock.dependency.tag_object,
+  commit: lock.dependency.commit,
+  official_archive_asset_digest: lock.official_evidence.archive_asset_digest,
+  official_checksum_asset_digest: lock.official_evidence.checksum_asset_digest,
   bundled_tf_psa_crypto_version: lock.dependency.bundled_tf_psa_crypto_version,
   selected_license: lock.dependency.selected_license,
-  negative_self_test: process.argv.includes("--self-test") ? "PASS" : "not_requested",
+  negative_self_test: selfTest ? "PASS" : "not_requested",
+  phase: archiveOnly ? "archive_only" : "archive_and_source",
+  verified_stamp: archiveOnly || prePromote ? "not_checked" : "PASS",
 }, null, 2));

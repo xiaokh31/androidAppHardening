@@ -18,11 +18,25 @@
     "license_expression": "Apache-2.0 OR GPL-2.0-or-later",
     "selected_license": "Apache-2.0",
     "root_license_sha256": "9b405ef4c89342f5eae1dd828882f931747f71001cfba7d114801039b52ad09b",
-    "tf_psa_license_sha256": "da8c58f05f135a9d15e9ffad4ecf854cfcc1f014c8abfd75ba05f62630ccc118"
+    "tf_psa_license_sha256": "da8c58f05f135a9d15e9ffad4ecf854cfcc1f014c8abfd75ba05f62630ccc118",
+    "source_regular_files": 3927,
+    "source_regular_bytes": 60515866,
+    "source_tree_sha256": "7c4ba6554fed6eb67c201054bc75b124fcdc0649e2f56cd762746e01a25d2140",
+    "source_symlinks_unix": 147,
+    "source_symlink_prefix": "tf-psa-crypto/drivers/pqcp/mldsa-native/examples/"
   },
   "local_paths": {
     "archive": ".toolchains/native-crypto/downloads/mbedtls-4.1.1.tar.bz2",
     "source": ".toolchains/native-crypto/src/mbedtls-4.1.1"
+  },
+  "official_evidence": {
+    "release_published_at": "2026-07-07T14:43:41Z",
+    "archive_asset_id": 464486390,
+    "archive_asset_digest": "sha256:3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c",
+    "checksum_asset_name": "mbedtls-4.1.1-sha256sum.txt",
+    "checksum_asset_bytes": 88,
+    "checksum_asset_digest": "sha256:bbf04627efb60c5e3ad620d903994804c275681d1a1948c6b0c0a5acdc77d4a4",
+    "checksum_entry": "3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c  mbedtls-4.1.1.tar.bz2\n"
   },
   "allowed_algorithms": [
     "AES-256-GCM-DECRYPT",

@@ -88,9 +88,11 @@ M0-05 的 GitHub Linux/KVM 验收复用上述 API 29 revision 8 与 API 36 revis
 
 机器可读锁位于 `tools/validation/m0-05-linux-kvm-packages.json`。GitHub Actions 将固定归档下载到仓库根的 `.toolchains/android-m0-05-ci/`，先核对长度和 SHA-256，再启动 KVM；不得使用 `sdkmanager` 的浮动 `emulator` 或 system-image 版本代替。
 
-M2-07 的 Native 密码后端固定为 Mbed TLS `4.1.1` 官方 release asset `mbedtls-4.1.1.tar.bz2`：`7099934` bytes，SHA-256 `3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c`；annotated tag object 为 `783058d12831aedd3ef57a64577f6f8a88d23bd3`，指向 commit `0a8fda272a5a0abef3b47c91bed37185d5a726b1`。完整归档内 bundled TF-PSA-Crypto 的实际版本为 `1.1.1`。机器锁位于 `tools/validation/m2-07-native-crypto.json`；归档和解压源码只允许位于仓库根 `.toolchains/native-crypto/` 并保持 Git 忽略。`node tools/validation/verify-m2-07-native-crypto.mjs` 必须在任何 Native 配置前核对长度、SHA-256、许可证和 bundled 版本；Gradle/CMake 不得自行联网。
+M2-07 的 Native 密码后端固定为 Mbed TLS `4.1.1` 官方 release asset `mbedtls-4.1.1.tar.bz2`：`7099934` bytes，SHA-256 `3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c`；annotated tag object 为 `783058d12831aedd3ef57a64577f6f8a88d23bd3`，指向 commit `0a8fda272a5a0abef3b47c91bed37185d5a726b1`。完整归档内 bundled TF-PSA-Crypto 的实际版本为 `1.1.1`。机器锁位于 `tools/validation/m2-07-native-crypto.json`；归档和解压源码只允许位于仓库根 `.toolchains/native-crypto/` 并保持 Git 忽略。准备顺序固定为下载、解包前长度/SHA-256 校验、成员路径校验、空临时目录解压、完整常规文件树 `3927` files/`60515866` bytes/SHA-256 `7c4ba655...d2140` 与 Unix `147` 个限定前缀 symlink（Windows 固定 extractor 跳过时为 `0`）校验、写入双 hash stamp、原子提升；失败清理归档与候选树。`node tools/validation/verify-m2-07-native-crypto.mjs` 必须在任何 Native 配置前核对全部不可变锁字段、完整树、许可证和 bundled 版本；Gradle/CMake 不得自行联网且 CMake 拒绝无 stamp 目录。
 
 项目选择上游双许可证中的 Apache-2.0。构建只加入 `tf-psa-crypto` 子项目并静态链接 AES/GCM/SHA-256/HMAC/HKDF 所需对象；不构建或链接 TLS、X.509、RSA/ECC 或 Android 私有 BoringSSL。上游 4.1.1 release body 把 bundled TF-PSA-Crypto 写成 `1.2.0`，但官方完整归档的 CMake/ChangeLog 均为 `1.1.1`；该差异已在 ADR 0009 记录，锁定归档 bytes 是构建事实来源。
+
+M2-07 Windows Host 向量固定到最终通过 run 自报的 GitHub `windows-2025-vs2026` image `20260803.193` [不可变官方清单](https://github.com/actions/runner-images/blob/win25-vs2026/20260803.193/images/windows/Windows2025-VS2026-Readme.md)：LLVM/`clang-cl` `20.1.8`、Visual Studio Enterprise 2026 `18.8.12023.21`（x64 tools component `18.8.11901.359`、compiler environment `19.51.36252.0`）、Windows SDK `10.0.26100.0`，固定 CMake/Ninja `4.1.2`。workflow 逐项断言 image、编译器与环境版本；镜像滚动时失败关闭并要求独立工具链复核，不静默接受新版。
 
 Ubuntu 24.04 KVM runner 还固定安装 `libpulse0=1:16.1+dfsg1-2ubuntu10.1`，版本记录在同一机器可读锁的 `host_packages` 中。workflow 必须以精确版本安装并在启动 Emulator 前逐字比对 `dpkg-query` 结果，不得接受仓库候选版本漂移。
 

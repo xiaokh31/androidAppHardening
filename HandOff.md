@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-07T11:03:00+08:00
+updated_at: 2026-08-07T11:12:26+08:00
 updated_by: /root
 state: active
 source_branch: chore/m2-07-native-crypto-backend
@@ -305,6 +305,7 @@ next_owner: /root
 - Wrong-prefix remediation `ef8d26a6043e3d511ae8a59ff0f85378e54e98b1` 的 Governance `31140905977` PASS；Build `31140905972` 的 Windows 全部 PASS，但 Ubuntu 被新托管 runtime `20260804.265.1` 在精确镜像门禁处失败关闭，未进入业务测试。官方不可变 ref `ubuntu24/20260804.265` 仍提供 GNU `13.3.0`；当前只把它作为旧 `20260720.247.2 -> ubuntu24/20260720.247` 之外的第二个精确映射，锁定顺序并拒绝范围、`latest` 和第三值。必须新 SHA 重跑三套 exact-head CI 与完整独立复核，PR #42 仍 draft，M2-02 仍暂停。
 - Ubuntu reviewed-pool candidate `cd3b5ce8bfe50715e10b6d0967dbecb8c88bd1cf` 的 Build `31141373708`、Governance `31141373717` 与 API 29/36 KVM `31141373706` 全部 PASS；双平台 Host 密码矩阵、两个平台有限精确镜像映射、Unix 147-link、根回归、四 ABI、设备验收和清理均关闭。当前只允许提交 evidence-only successor，作为第四轮完整独立只读复核的唯一输入；PR #42 仍 draft，M2-02 仍暂停。
 - 第四轮独立只读复核永久废止 frozen SHA `a764d102492f4c6074d928a240ae1c62abc2d320`，结论 `P0=0/P1=0/P2=2`，归档于 `docs/evidence/M2-07/read-only-review-4.md`；此前十一项 finding 全部 CLOSED，冻结 SHA 的 Build `31141984739`、Governance `31141984713` 与 KVM `31141984706` 全绿。新增 P2 仅为 Windows 未在运行时消费锁定的 VS/x64-tools component 两个版本，以及 HandOff 恢复动作滞后；当前只补这两项，之后必须新 SHA、三套 exact-head CI 与第五轮完整独立复核。PR #42 保持 draft，M2-02 继续暂停。
+- Review-4 remediation `024d24eaf8bd82c07ebe67dfb7750762cb3c8400` 的 Build `31143103481`、Governance `31143103486` 与 API 29/36 KVM `31143103462` 全部 PASS；Windows 实际读取并打印 VS `18.8.12023.21` 和 selected x64-tools component `18.8.11901.359`，两个 mismatch 负例、双平台 Host、根回归、四 ABI、设备验收和清理均通过。包含本状态的当前 HEAD 仅在其自身 exact-head Build/Governance/KVM 全绿时才是第五轮复核唯一输入；reviewer 必须按该 SHA 独立解析 run IDs。PR #42 仍 draft，M2-02 仍暂停。
 
 ## Verification Evidence
 
@@ -1250,9 +1251,9 @@ None
 
 ## Ordered Next Actions
 
-1. Commit and push the review-4 remediation that consumes and prints exact VS `18.8.12023.21` plus x64 tools component `18.8.11901.359`, exercises mismatch negatives, archives review 4 and reconciles HandOff.
-2. Require the remediation exact-head Build/Governance/KVM to pass, then create an evidence-only successor and repeat those three workflows on its exact SHA.
-3. Launch fifth complete independent read-only M2-07 review against that sole frozen input; require disposition of all thirteen findings and P0/P1/P2 all zero, otherwise remediate and re-freeze.
+1. Use the current HEAD as the sole review-5 freeze only after independently confirming its own exact-head Build, Governance and KVM all succeeded; do not create another evidence successor merely to copy those run IDs.
+2. Run the fifth complete independent read-only M2-07 review against that exact HEAD and require disposition of all thirteen findings with P0/P1/P2 all zero; otherwise remediate and re-freeze.
+3. On a zero-finding review, archive the immutable conclusion, rerun final exact-head gates, then continue the authorized ready/expected-head merge and post-merge sequence.
 4. After a zero-finding review and replacement exact-HEAD CI, mark PR #42 ready, merge with expected-head protection, run final `main` gates, update README/HandOff, then resume `feat/m2-02-native-decrypt-loader`.
 
 ## Relevant Files and Artifacts

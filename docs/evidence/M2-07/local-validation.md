@@ -145,3 +145,13 @@ Replacement candidate `cd3b5ce8bfe50715e10b6d0967dbecb8c88bd1cf` passed every re
 The evidence-only successor freezes this candidate and these run IDs as the sole input to the fourth complete independent read-only M2-07 review. PR #42 remains draft and M2-02 remains paused; any finding invalidates the freeze and requires a new remediation SHA plus replacement exact-head gates.
 
 Independent review 4 rejected frozen SHA `a764d102492f4c6074d928a240ae1c62abc2d320` with `P0=0/P1=0/P2=2`, archived in `read-only-review-4.md`. All eleven earlier findings were independently closed. The new findings are limited to two truth/gate gaps: Windows did not consume the locked Visual Studio `18.8.12023.21` and x64 tools component `18.8.11901.359` values at runtime, and HandOff still described the already-pushed evidence successor as a future action. Remediation reads the exact installed Enterprise instance and selected x64-tools package, compares both against the authenticated machine lock, runs mismatch negatives, prints evidence, and reconciles HandOff. No dependency, algorithm, ABI or Runtime facade behavior changes; a new SHA, full exact-head gates and fifth complete independent review remain mandatory.
+
+Review-4 remediation candidate `024d24eaf8bd82c07ebe67dfb7750762cb3c8400` passed every required exact-head workflow:
+
+| Workflow | Run | Result | Scope |
+| --- | --- | --- | --- |
+| Build | [`31143103481`](https://github.com/xiaokh31/androidAppHardening/actions/runs/31143103481) | PASS | Ubuntu/Windows completed the full source, Host, root and four-ABI gates. Windows selected manifest `win25-vs2026/20260803.193`, then read and printed exact installed Visual Studio `18.8.12023.21` and selected x64 tools component `18.8.11901.359` before the Host tests. |
+| Governance | [`31143103486`](https://github.com/xiaokh31/androidAppHardening/actions/runs/31143103486) | PASS | Ubuntu and Windows passed project-package, strict PR HandOff, negative HandOff and Git object gates. |
+| M0-05 Linux KVM | [`31143103462`](https://github.com/xiaokh31/androidAppHardening/actions/runs/31143103462) | PASS | API 29 and API 36 passed reviewed Ubuntu/GNU, authenticated source, two-pass Release/R8, bounded device acceptance, diagnostics, cleanup and evidence upload. |
+
+The commit containing this record is the sole review-5 freeze only if its own exact-head Build, Governance and KVM workflows all succeed. The independent reviewer must resolve and verify those run IDs directly from that SHA; PR #42 remains draft and M2-02 remains paused.

@@ -429,13 +429,16 @@ Status inflateRecords(AuthenticatedContainer* value, memory::PayloadTransaction*
 Status openAuthenticatedPayload(
     const OpenRequest& request,
     memory::PayloadHandle* output,
+    AuthenticatedMetadata* metadata_output,
     bool* cleanup_failed) noexcept {
     if (cleanup_failed != nullptr) {
         *cleanup_failed = false;
     }
-    if (output == nullptr || cleanup_failed == nullptr || output->size() != 0) {
+    if (output == nullptr || metadata_output == nullptr || cleanup_failed == nullptr ||
+        output->size() != 0) {
         return Status::kInvalidArgument;
     }
+    *metadata_output = AuthenticatedMetadata{};
     AuthenticatedContainer value{};
     Status status = parseStructure(request, &value);
     if (status != Status::kSuccess) {
@@ -451,10 +454,61 @@ Status openAuthenticatedPayload(
         *cleanup_failed = transaction.rollback() == memory::Status::kCleanupFailed;
         return status;
     }
-    if (transaction.commit(output) != memory::Status::kSuccess) {
+    const memory::Status committed = transaction.commit(output);
+    if (committed != memory::Status::kSuccess) {
         *cleanup_failed = transaction.rollback() == memory::Status::kCleanupFailed;
-        return Status::kOutOfMemory;
+        return committed == memory::Status::kProtectionFailed
+                   ? Status::kMemoryProtection
+                   : Status::kOutOfMemory;
     }
+    metadata_output->container_major = value.config.container_major;
+    metadata_output->container_minor = 0;
+    metadata_output->signer_policy_version = value.config.signer_policy_version;
+    metadata_output->risk_policy_version = value.config.risk_policy_version;
+    metadata_output->build_id = value.config.build_id;
+    metadata_output->key_slot_id = value.config.key_slot_id;
+    metadata_output->package_name_sha256 = value.package_sha256;
+    metadata_output->current_signer_sha256 = value.signer.current_signer_sha256;
+    metadata_output->signer_lineage_count = value.signer.lineage_count;
+    metadata_output->original_factory_size = value.config.original_factory_size;
+    std::copy_n(value.config.original_factory.begin(), value.config.original_factory_size,
+                metadata_output->original_factory.begin());
+    std::copy_n(value.signer.lineage_sha256.begin(), value.signer.lineage_count,
+                metadata_output->signer_lineage_sha256.begin());
+    return Status::kSuccess;
+}
+
+Status inspectUntrustedBinding(
+    const zip::FixedAssets& assets,
+    UntrustedBinding* output) noexcept {
+    if (output == nullptr) {
+        return Status::kInvalidArgument;
+    }
+    *output = UntrustedBinding{};
+    static constexpr std::array<std::uint8_t, container::kDigestBytes> kPlaceholderSigner{};
+    static constexpr std::array<std::uint8_t, 1> kPlaceholderPackage{{'x'}};
+    OpenRequest request{
+        assets,
+        {nullptr, 0},
+        1,
+        {kPlaceholderSigner.data(), kPlaceholderSigner.size()},
+        {kPlaceholderPackage.data(), kPlaceholderPackage.size()},
+    };
+    AuthenticatedContainer value{};
+    const Status status = parseStructure(request, &value);
+    if (status != Status::kSuccess) {
+        return status;
+    }
+    if (!equal(value.header.build_id.data(), value.config.build_id.data(), container::kIdBytes) ||
+        !equal(value.header.key_slot_id.data(), value.config.key_slot_id.data(),
+               container::kIdBytes) ||
+        !equal(value.signer.current_signer_sha256.data(),
+               value.config.current_signer_sha256.data(), container::kDigestBytes)) {
+        return Status::kBinding;
+    }
+    output->build_id = value.config.build_id;
+    output->key_slot_id = value.config.key_slot_id;
+    output->current_signer_sha256 = value.config.current_signer_sha256;
     return Status::kSuccess;
 }
 

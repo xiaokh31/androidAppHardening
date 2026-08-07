@@ -6,6 +6,7 @@
 #include "zip_assets.hpp"
 
 #include <cstdint>
+#include <array>
 
 namespace ah::payload {
 
@@ -25,6 +26,7 @@ enum class Status : std::uint8_t {
     kLength = 12,
     kDigest = 13,
     kTrailingData = 14,
+    kMemoryProtection = 15,
 };
 
 struct OpenRequest {
@@ -35,9 +37,36 @@ struct OpenRequest {
     container::ByteView framework_package_utf8;
 };
 
+struct UntrustedBinding {
+    std::array<std::uint8_t, container::kIdBytes> build_id{};
+    std::array<std::uint8_t, container::kIdBytes> key_slot_id{};
+    std::array<std::uint8_t, container::kDigestBytes> current_signer_sha256{};
+};
+
+struct AuthenticatedMetadata {
+    std::uint16_t container_major{};
+    std::uint16_t container_minor{};
+    std::uint16_t signer_policy_version{};
+    std::uint16_t risk_policy_version{};
+    std::array<std::uint8_t, container::kIdBytes> build_id{};
+    std::array<std::uint8_t, container::kIdBytes> key_slot_id{};
+    std::array<std::uint8_t, container::kDigestBytes> package_name_sha256{};
+    std::array<std::uint8_t, container::kDigestBytes> current_signer_sha256{};
+    std::array<std::array<std::uint8_t, container::kDigestBytes>, container::kMaxLineage>
+        signer_lineage_sha256{};
+    std::array<char, 512> original_factory{};
+    std::uint16_t original_factory_size{};
+    std::uint16_t signer_lineage_count{};
+};
+
+Status inspectUntrustedBinding(
+    const zip::FixedAssets& assets,
+    UntrustedBinding* output) noexcept;
+
 Status openAuthenticatedPayload(
     const OpenRequest& request,
     memory::PayloadHandle* output,
+    AuthenticatedMetadata* metadata_output,
     bool* cleanup_failed) noexcept;
 
 }  // namespace ah::payload

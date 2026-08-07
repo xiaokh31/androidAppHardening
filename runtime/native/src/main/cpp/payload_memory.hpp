@@ -14,11 +14,13 @@ enum class Status : std::uint8_t {
     kInvalidArgument = 1,
     kOutOfMemory = 2,
     kCleanupFailed = 3,
+    kProtectionFailed = 4,
 };
 
 struct Mapping {
     std::uint8_t* data{};
     std::size_t size{};
+    bool read_only{};
 };
 
 class PayloadHandle final {
@@ -31,6 +33,7 @@ public:
     std::size_t size() const noexcept { return count_; }
     const Mapping& mapping(std::size_t index) const noexcept { return mappings_[index]; }
     Status close() noexcept;
+    Status transferTo(PayloadHandle* output) noexcept;
 
 private:
     friend class PayloadTransaction;

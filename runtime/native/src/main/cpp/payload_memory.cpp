@@ -26,15 +26,50 @@ bool releaseAnonymous(Mapping* mapping) noexcept {
     if (mapping == nullptr || mapping->data == nullptr || mapping->size == 0) {
         return true;
     }
-    ah::crypto::secureZero(mapping->data, mapping->size);
 #if defined(_WIN32)
+    bool writable = true;
+    if (mapping->read_only) {
+        DWORD prior = 0;
+        if (VirtualProtect(mapping->data, mapping->size, PAGE_READWRITE, &prior) == 0) {
+            writable = false;
+        }
+    }
+    if (writable) {
+        ah::crypto::secureZero(mapping->data, mapping->size);
+    }
     const bool released = VirtualFree(mapping->data, 0, MEM_RELEASE) != 0;
 #else
+    bool writable = true;
+    if (mapping->read_only && mprotect(mapping->data, mapping->size, PROT_READ | PROT_WRITE) != 0) {
+        writable = false;
+    }
+    if (writable) {
+        ah::crypto::secureZero(mapping->data, mapping->size);
+    }
     const bool released = munmap(mapping->data, mapping->size) == 0;
 #endif
     mapping->data = nullptr;
     mapping->size = 0;
-    return released;
+    mapping->read_only = false;
+    return released && writable;
+}
+
+bool makeReadOnly(Mapping* mapping) noexcept {
+    if (mapping == nullptr || mapping->data == nullptr || mapping->size == 0 || mapping->read_only) {
+        return false;
+    }
+#if defined(_WIN32)
+    DWORD prior = 0;
+    if (VirtualProtect(mapping->data, mapping->size, PAGE_READONLY, &prior) == 0) {
+        return false;
+    }
+#else
+    if (mprotect(mapping->data, mapping->size, PROT_READ) != 0) {
+        return false;
+    }
+#endif
+    mapping->read_only = true;
+    return true;
 }
 
 Status clearAll(std::array<Mapping, container::kMaxDex>* mappings,
@@ -62,6 +97,19 @@ Status PayloadHandle::close() noexcept {
     return clearAll(&mappings_, &count_);
 }
 
+Status PayloadHandle::transferTo(PayloadHandle* output) noexcept {
+    if (output == nullptr || output == this || output->count_ != 0 || count_ == 0) {
+        return Status::kInvalidArgument;
+    }
+    for (std::size_t index = 0; index < count_; ++index) {
+        output->mappings_[index] = mappings_[index];
+        mappings_[index] = Mapping{};
+    }
+    output->count_ = count_;
+    count_ = 0;
+    return Status::kSuccess;
+}
+
 PayloadTransaction::~PayloadTransaction() noexcept {
     if (!committed_) {
         (void) rollback();
@@ -80,7 +128,7 @@ Status PayloadTransaction::allocate(std::size_t size, Mapping** output) noexcept
     if (data == nullptr) {
         return Status::kOutOfMemory;
     }
-    mappings_[count_] = {data, size};
+    mappings_[count_] = {data, size, false};
     *output = &mappings_[count_++];
     return Status::kSuccess;
 }
@@ -95,6 +143,11 @@ Status PayloadTransaction::rollback() noexcept {
 Status PayloadTransaction::commit(PayloadHandle* output) noexcept {
     if (output == nullptr || committed_ || output->count_ != 0 || count_ == 0) {
         return Status::kInvalidArgument;
+    }
+    for (std::size_t index = 0; index < count_; ++index) {
+        if (!makeReadOnly(&mappings_[index])) {
+            return Status::kProtectionFailed;
+        }
     }
     for (std::size_t index = 0; index < count_; ++index) {
         output->mappings_[index] = mappings_[index];

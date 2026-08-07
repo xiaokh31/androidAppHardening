@@ -1,5 +1,6 @@
 #include "container_format.hpp"
 #include "crypto_backend.hpp"
+#include "payload_metadata.hpp"
 #include "payload_memory.hpp"
 #include "zip_assets.hpp"
 
@@ -171,6 +172,7 @@ int testMappingTransaction() {
     std::fill_n(second->data, second->size, static_cast<std::uint8_t>(0x5a));
     ah::memory::PayloadHandle handle{};
     if (transaction.commit(&handle) != ah::memory::Status::kSuccess || handle.size() != 2 ||
+        !handle.mapping(0).read_only || !handle.mapping(1).read_only ||
         handle.close() != ah::memory::Status::kSuccess || handle.size() != 0) {
         return 2;
     }
@@ -182,13 +184,64 @@ int testMappingTransaction() {
     return 0;
 }
 
+int testMetadataEncoding() {
+    ah::payload::UntrustedBinding binding{};
+    binding.build_id[0] = 1;
+    binding.key_slot_id[15] = 2;
+    binding.current_signer_sha256[31] = 3;
+    std::array<std::uint8_t, ah::metadata::kBindingBytes> binding_bytes{};
+    std::size_t written = 0;
+    if (ah::metadata::encodeUntrustedBinding(
+            binding, binding_bytes.data(), binding_bytes.size(), &written) !=
+            ah::metadata::Status::kSuccess ||
+        written != binding_bytes.size() ||
+        std::memcmp(binding_bytes.data(), "AHUB", 4) != 0 || binding_bytes[8] != 1 ||
+        binding_bytes[39] != 2 || binding_bytes[71] != 3) {
+        return 1;
+    }
+
+    ah::payload::AuthenticatedMetadata metadata{};
+    metadata.container_major = 2;
+    metadata.container_minor = 0;
+    metadata.signer_policy_version = 1;
+    metadata.risk_policy_version = 1;
+    metadata.build_id[0] = 4;
+    metadata.key_slot_id[0] = 5;
+    metadata.package_name_sha256[0] = 6;
+    metadata.current_signer_sha256[0] = 7;
+    metadata.original_factory_size = 20;
+    std::memcpy(metadata.original_factory.data(), "ah.fixture.RealClass", 20);
+    metadata.signer_lineage_count = 2;
+    metadata.signer_lineage_sha256[0][0] = 8;
+    metadata.signer_lineage_sha256[1][31] = 9;
+    std::array<std::uint8_t, ah::metadata::kMetadataMaxBytes> encoded{};
+    if (ah::metadata::encodeAuthenticatedMetadata(
+            metadata, encoded.data(), encoded.size(), &written) !=
+            ah::metadata::Status::kSuccess ||
+        written != ah::metadata::kMetadataFixedBytes + 20 + 64 ||
+        std::memcmp(encoded.data(), "AHMD", 4) != 0 || encoded[8] != 2 ||
+        encoded[24] != 4 || encoded[40] != 5 || encoded[56] != 6 || encoded[88] != 7 ||
+        encoded[ah::metadata::kMetadataFixedBytes + 20] != 8 ||
+        encoded[written - 1] != 9) {
+        return 2;
+    }
+    metadata.signer_lineage_count = 0;
+    if (ah::metadata::encodeAuthenticatedMetadata(
+            metadata, encoded.data(), encoded.size(), &written) !=
+        ah::metadata::Status::kInvalidArgument) {
+        return 3;
+    }
+    return 0;
+}
+
 }  // namespace
 
 int runM202FoundationSelfTests() {
     const int crypto = testCryptoExtensions();
     const int format = testSlotAndZip();
     const int mapping = testMappingTransaction();
-    return crypto == 0 && format == 0 && mapping == 0
+    const int metadata = testMetadataEncoding();
+    return crypto == 0 && format == 0 && mapping == 0 && metadata == 0
                ? 0
-               : 100 * crypto + 10 * format + mapping;
+               : 1000 * crypto + 100 * format + 10 * mapping + metadata;
 }

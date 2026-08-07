@@ -42,10 +42,11 @@ int openExpect(
     const std::vector<std::uint8_t>& slot,
     ah::payload::Status expected) {
     ah::memory::PayloadHandle handle{};
+    ah::payload::AuthenticatedMetadata metadata{};
     bool cleanup_failed = true;
     const ah::payload::Status status =
         ah::payload::openAuthenticatedPayload(requestFor(config, container, slot),
-                                              &handle, &cleanup_failed);
+                                              &handle, &metadata, &cleanup_failed);
     if (status != expected || cleanup_failed || handle.size() != 0) {
         return 1;
     }
@@ -89,9 +90,10 @@ int runM202PayloadVector(const char* config_path, const char* container_path,
     }
 
     ah::memory::PayloadHandle handle{};
+    ah::payload::AuthenticatedMetadata metadata{};
     bool cleanup_failed = true;
     if (ah::payload::openAuthenticatedPayload(requestFor(config, container, slot),
-                                               &handle, &cleanup_failed) !=
+                                               &handle, &metadata, &cleanup_failed) !=
             ah::payload::Status::kSuccess || cleanup_failed || handle.size() != 2 ||
         handle.mapping(0).size != 1024 || handle.mapping(1).size != 190000 ||
         handle.close() != ah::memory::Status::kSuccess) {

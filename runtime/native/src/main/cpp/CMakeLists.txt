@@ -62,9 +62,17 @@ set(
     container_format.cpp
     zip_assets.cpp
     payload_memory.cpp
+    payload_metadata.cpp
 )
 if(ANDROID OR UNIX)
-    list(APPEND AH_RUNTIME_SOURCES authenticated_payload.cpp)
+    list(APPEND AH_RUNTIME_SOURCES authenticated_payload.cpp mapped_apk.cpp)
+endif()
+if(ANDROID)
+    list(APPEND AH_RUNTIME_SOURCES
+        jni_bridge.cpp
+        native_share_slot.cpp
+        payload_handle_registry.cpp
+    )
 endif()
 add_library(ah_crypto_backend OBJECT ${AH_RUNTIME_SOURCES})
 

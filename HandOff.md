@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-07T16:12:00+08:00
+updated_at: 2026-08-08T00:10:17+08:00
 updated_by: /root
 state: active
 source_branch: feat/m2-02-native-decrypt-loader
@@ -168,7 +168,7 @@ next_owner: /root
 | M1-05 | `/root` | `feat/m1-05-apk-repacker-and-alignment` | done | M1-02, M1-03, M1-04 | PR #39、Issue #10、独立复核、merger-ready CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-06 | `/root` | `feat/m1-06-cli-and-json-report` | done | M1-01, M1-02, M1-03, M1-04, M1-05 | PR #40、Issue #11、独立复核、merger-ready 与 post-merge main 双平台 CI、README 和 strict HandOff 均已关闭 |
 | M2-07 | `/root` | `main` | done | M0-03, M1-04 | PR #42、Issue #41、最终独立复核、README、strict 与 post-merge Build/Governance/KVM 均已关闭 |
-| M2-02 | `/root` | `feat/m2-02-native-decrypt-loader` | in_progress | M0-04, M1-04, M2-07 | ZIP/share/CEK/manifest/GCM→zlib/匿名事务已实现并通过本地门禁；下一步 sourceDir/JNI/metadata/ClassLoader 双窗口 |
+| M2-02 | `/root` | `feat/m2-02-native-decrypt-loader` | in_progress | M0-04, M1-04, M2-07 | sourceDir/JNI/metadata/ClassLoader 双窗口已实现并通过本地编译门禁；下一步 failure injection/sanitizer/KVM/arm64 |
 
 ## Decisions and Invariants
 
@@ -316,6 +316,7 @@ next_owner: /root
 - Post-merge `main@e78fcaed58dd5211a465ea37a94db45dddc17dfa` 已在本地无豁免通过 strict HandOff、Governance 与 diff check，远端 Build `31151358692`、Governance `31151358963` 和手动 dispatch 的 API 29/36 KVM `31151403785` 全部 PASS。M2-07 正式结束；`feat/m2-02-native-decrypt-loader` 已从原冻结 `40e3900` 恢复并以 merge commit `d9af1fa785ef649b31bf387e2f058b6b0f986df1` 合入该 exact main，无冲突。M2-02 的先决阻塞已关闭，README 与实现计划切换为进行中；当前只实现 M2-02，不启动 M2-03。
 - M2-02 有界格式基础已实现：C++17 严格解析 HeaderV2/SPV1/RecordV2/ChunkV2/ConfigV2，逐 record/chunk 校验 canonical topology、checked arithmetic、64 DEX/16 lineage/65,536 chunk、512 MiB 单 DEX 与 4 GiB 总量、Factory/zero-fill/reserved/nonce/version。MSVC `/W4 /WX` 独立矩阵退出 `0`，Android NDK 四 ABI Release `assembleRelease` 在 30 秒内 PASS；证据归档于 `docs/evidence/M2-02/local-validation.md`。当前实现尚未声明完成，下一层只处理固定 ZIP asset、share/CEK/manifest、per-chunk GCM→zlib 与失败事务所有权。
 - M2-02 第二实现层已完成本地检查点：唯一规范 ZIP32 asset locator、104-byte Native share 校验、package/signer→KEK→CEK envelope→流式 manifest→config digest 完整认证链、逐 chunk 一次性 GCM 后连续 zlib，以及最多 64 个 completed/partial 匿名 mapping 的单一事务 owner 已接通。四 ABI Release 以 warnings-as-errors 编译并确认符号实际保留，根 `check` 249-task PASS；Linux Host golden vector/首中末 tag rollback 已加入 Build workflow，证据更新于 `docs/evidence/M2-02/local-validation.md`。任务仍未完成或发布；下一层仅实现只读 sourceDir/JNI primitive handle、认证 metadata、Java facade/ClassLoader 和双所有权窗口。
+- M2-02 第三实现层已完成本地检查点：同一 `sourceDir` 只读文件映射、OS 只读 DEX commit、generation+slot 类型化 JNI handle、同 handle `AHMD` 认证 metadata、精确五 JNI 方法、Java primitive/finally 交接窗口、幂等 `LoadedPayload` owner，以及 M0-05 等价 Native 搜索路径和三参数 API 29 `InMemoryDexClassLoader` 已接通。Java 17 编译/lint、NDK 四 ABI warnings-as-errors 与离线根 `assembleRelease check` 284-task 均 PASS，四个 ELF 都含唯一 104-byte alloc/read-only `.ah_share_v1`，未启动设备或模拟器。证据更新于 `docs/evidence/M2-02/local-validation.md`；任务仍未完成或发布，下一步仅补 failure injection、Host sanitizer/fuzz/OOM 与已授权 KVM/arm64 验收，不启动 M2-03。
 
 ## Verification Evidence
 

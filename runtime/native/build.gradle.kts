@@ -17,6 +17,7 @@ android {
 
     defaultConfig {
         minSdk = libs.versions.android.min.sdk.get().toInt()
+        consumerProguardFiles("consumer-rules.pro")
 
         ndk {
             abiFilters += listOf(

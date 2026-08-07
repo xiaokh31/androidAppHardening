@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-07T08:25:26+08:00
+updated_at: 2026-08-07T09:07:00+08:00
 updated_by: /root
 state: active
 source_branch: chore/m2-07-native-crypto-backend
@@ -292,6 +292,8 @@ next_owner: /root
 - Post-merge Governance run `30732622423` reproduced one HandOff-only source-branch mismatch on Ubuntu and Windows; coordinator commit `d682c85125e11084cf023b5f523d715e28c74e75` changed the resume point to `main` and marked M0-05 done. The later `main@e02954f8d4ff9bd9c1a9b643d5bc8c88cd295030` is the verified M1-01 base.
 - On `d682c85125e11084cf023b5f523d715e28c74e75`, Governance run `30732725929` and Build run `30732725931` passed on Ubuntu 24.04 and Windows 2025, including strict HandOff on `main` with no exemption.
 - 该 M1-01 post-merge 动作已完成；当前恢复点为下述 M1-02 冻结实现与本地验收。
+
+- Remediation HEAD `14b8c8c8cddb6f4b29f5457975b31054f3c582b7` 的 Governance run `31135168773` 双平台 PASS；Build run `31135168838` 的 Ubuntu Host/根回归/四 ABI 全部 PASS，Windows 已通过 archive-before-parser 与完整树提升门禁，仅因 workflow 将发布清单 ref `20260803.193` 错当成 runtime `ImageVersion` 而失败关闭。当前修订精确固定实际 runtime `ImageVersion=20260803.193.1`，不放宽任何工具链或密码验收门禁；仍须 replacement exact-head Build/Governance/KVM 全绿后才可冻结第二轮独立只读复核输入。
 
 ## Verification Evidence
 

@@ -344,7 +344,7 @@ jobs:
           $ninja = "$env:ANDROID_HOME/cmake/4.1.2/bin/ninja.exe"
           $vsDevCmd = "C:/Program Files/Microsoft Visual Studio/18/Enterprise/Common7/Tools/VsDevCmd.bat"
           $clangCl = "C:/Program Files/LLVM/bin/clang-cl.exe"
-          if ($env:ImageOS -ne "win25-vs2026" -or $env:ImageVersion -ne "20260803.193") {
+          if ($env:ImageOS -ne "win25-vs2026" -or $env:ImageVersion -ne "20260803.193.1") {
             throw "unexpected mutable runner image: ImageOS=$env:ImageOS ImageVersion=$env:ImageVersion"
           }
           if (-not (Test-Path -LiteralPath $vsDevCmd)) { throw "missing pinned runner compiler environment: $vsDevCmd" }

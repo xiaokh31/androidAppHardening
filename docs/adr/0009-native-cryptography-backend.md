@@ -27,7 +27,7 @@ GitHub 自动生成的 `Source code (zip/tar.gz)` 不得使用；只有官方 re
 
 Runtime 只从归档的 `tf-psa-crypto` 子目录构建静态 target，不构建、不链接 Mbed TLS 的 TLS/X.509 库。内部 facade 固定为 AES-256-GCM authenticated decrypt、HKDF-SHA-256 与 secure zero；PSA 的 AES/GCM/SHA-256/HMAC/HKDF 之外不构成可消费能力，所有符号默认隐藏。
 
-TF-PSA-Crypto `1.1.1` 的 `MBEDTLS_PSA_CRYPTO_C` 初始化合同要求一个 DRBG。项目因此固定 built-in entropy + CTR-DRBG；GCM 与 CTR-DRBG 的 AES block operation 使本地、隐藏的 `mbedtls_aes_crypt_ecb` 实现保留在最终 ELF。这里的 `ecb` 是内部单块原语名称，不表示启用了 `PSA_ALG_ECB_NO_PADDING`，也不提供 ECB/CBC/padding、随机生成或通用 PSA facade。机器锁固定 `ah_crypto_config.h` 的 SHA-256 与四 ABI 恰好十七个内部 AES-block/CTR-DRBG/entropy/platform-hook/random-lifecycle 符号，包括十六个 local text (`t`) 和一个 local data (`d`)；CI 对名称、数量、绑定类型、增加、删除或动态导出失败关闭。
+TF-PSA-Crypto `1.1.1` 的 `MBEDTLS_PSA_CRYPTO_C` 初始化合同要求一个 DRBG。项目因此固定 built-in entropy + CTR-DRBG；GCM 与 CTR-DRBG 的 AES block operation 使本地、隐藏的 `mbedtls_aes_crypt_ecb` 实现保留在最终 ELF。这里的 `ecb` 是内部单块原语名称，不表示启用了 `PSA_ALG_ECB_NO_PADDING`，也不提供 ECB/CBC/padding、随机生成或通用 PSA facade。机器锁固定 `ah_crypto_config.h` 的 SHA-256 与四 ABI 恰好十七个内部 AES-block/CTR-DRBG/entropy/platform-hook/random-lifecycle 符号，包括十六个 local text (`t`) 和一个 local data (`d`)；共享 parser 在类型过滤前收集全部相关名称，使新增 global/hidden-global 或任意其他类型也进入精确比较，CI 对名称、数量、绑定类型、增加、删除或动态导出失败关闭。
 
 TF-PSA-Crypto `1.1.1` 的 PSA Crypto API 不提供完整并发安全保证。facade 因此以进程内全局 mutex 串行化每个完整 AES-GCM/HKDF backend transaction，包括初始化、key import、operation、abort/destroy；对调用方保留多线程可调用合同，但不宣称后端内部并行。
 

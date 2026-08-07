@@ -229,6 +229,7 @@ jobs:
       - name: Verify four Native ABIs
         shell: bash
         run: |
+          node tools/validation/verify-m2-07-symbol-surface.mjs --self-test
           for abi in armeabi-v7a arm64-v8a x86 x86_64; do
             file="runtime/native/build/intermediates/stripped_native_libs/release/stripReleaseDebugSymbols/out/lib/$abi/libah_runtime.so"
             test -f "$file"
@@ -241,10 +242,12 @@ jobs:
               echo "unexpected dynamic crypto/TLS dependency in $file" >&2
               exit 1
             fi
-            if "$nm" -D --defined-only "$file" | grep -E '(^| )psa_|(^| )mbedtls_'; then
+            exports="$("$nm" -D --defined-only "$file")"
+            if grep -E '(^| )psa_|(^| )mbedtls_' <<<"$exports"; then
               echo "unexpected exported upstream crypto symbol in $file" >&2
               exit 1
             fi
+            printf '%s\n' "$exports" | node tools/validation/verify-m2-07-symbol-surface.mjs --reject-exports
             unstripped="$(find runtime/native/build/intermediates/cxx/RelWithDebInfo -path "*/obj/$abi/libah_runtime.so" -type f -print -quit)"
             test -n "$unstripped"
             symbols="$("$nm" -C --defined-only "$unstripped")"
@@ -252,12 +255,7 @@ jobs:
             grep -q 'hkdfSha256' <<<"$symbols"
             grep -q 'secureZero' <<<"$symbols"
             grep -q 'ah_crypto_backend_anchor' <<<"$symbols"
-            expected_internal="$(node -e "const lock=require('./tools/validation/m2-07-native-crypto.json'); process.stdout.write([...lock.native_profile.required_internal_symbols].sort().join('\\n'))")"
-            actual_internal="$(awk '$2 ~ /^[td]$/ && $3 ~ /^(mbedtls_aes_crypt_ecb|mbedtls_ctr_drbg_|mbedtls_entropy_|psa_random_internal_|ctr_drbg_|entropy_|mbedtls_platform_(get_entropy|dev_random))/ { print $2 " " $3 }' <<<"$symbols" | sort)"
-            if ! diff -u <(printf '%s\n' "$expected_internal") <(printf '%s\n' "$actual_internal"); then
-              echo "unexpected TF-PSA internal RNG/AES-block symbol surface in $unstripped" >&2
-              exit 1
-            fi
+            printf '%s\n' "$symbols" | node tools/validation/verify-m2-07-symbol-surface.mjs --verify
             if grep -Ei '(^|[_: ])(rsa|ecc|ecdsa|ecdh|chacha|ccm|cbc|x509|ssl|pkcs)([_: (]|$)' <<<"$symbols"; then
               echo "unexpected out-of-scope crypto symbol in $unstripped" >&2
               exit 1
@@ -552,6 +550,8 @@ jobs:
         shell: pwsh
         run: |
           $toolRoot = "$env:ANDROID_HOME/ndk/29.0.14206865/toolchains/llvm/prebuilt/windows-x86_64/bin"
+          & node tools/validation/verify-m2-07-symbol-surface.mjs --self-test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           foreach ($abi in @("armeabi-v7a", "arm64-v8a", "x86", "x86_64")) {
             $file = "runtime/native/build/intermediates/stripped_native_libs/release/stripReleaseDebugSymbols/out/lib/$abi/libah_runtime.so"
             if (-not (Test-Path -LiteralPath $file)) { throw "missing $file" }
@@ -569,6 +569,8 @@ jobs:
             if ($exports -match "(^| )psa_|(^| )mbedtls_") {
               throw "unexpected exported upstream crypto symbol in $file"
             }
+            ($exports -join "`n") | & node tools/validation/verify-m2-07-symbol-surface.mjs --reject-exports
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             $unstripped = Get-ChildItem -Recurse -Filter libah_runtime.so `
               "runtime/native/build/intermediates/cxx/RelWithDebInfo" | `
               Where-Object { $_.FullName -match "[\\/]obj[\\/]$([regex]::Escape($abi))[\\/]libah_runtime\.so$" } | `
@@ -580,21 +582,8 @@ jobs:
             foreach ($required in @("aes256GcmDecrypt", "hkdfSha256", "secureZero", "ah_crypto_backend_anchor")) {
               if ($symbolsText -notmatch [regex]::Escape($required)) { throw "missing $required in $($unstripped.FullName)" }
             }
-            $expectedInternal = @((Get-Content -Raw -LiteralPath "tools/validation/m2-07-native-crypto.json" | ConvertFrom-Json).native_profile.required_internal_symbols | Sort-Object)
-            $actualInternal = @($symbols | ForEach-Object {
-              if ($_ -match '^\S+\s+([td])\s+(\S+)$') {
-                $symbolType = $Matches[1]
-                $symbolName = $Matches[2]
-                if ($symbolName -match '^(mbedtls_aes_crypt_ecb|mbedtls_ctr_drbg_|mbedtls_entropy_|psa_random_internal_|ctr_drbg_|entropy_|mbedtls_platform_(get_entropy|dev_random))') {
-                  "$symbolType $symbolName"
-                }
-              }
-            } | Sort-Object)
-            $internalDifference = @(Compare-Object -CaseSensitive -ReferenceObject $expectedInternal -DifferenceObject $actualInternal)
-            if ($internalDifference.Count -ne 0) {
-              $internalDifference | Format-Table | Out-String | Write-Error
-              throw "unexpected TF-PSA internal RNG/AES-block symbol surface in $($unstripped.FullName)"
-            }
+            ($symbols -join "`n") | & node tools/validation/verify-m2-07-symbol-surface.mjs --verify
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             if ($symbolsText -match "(?im)(^|[_: ])(rsa|ecc|ecdsa|ecdh|chacha|ccm|cbc|x509|ssl|pkcs)([_: (]|$)") {
               throw "unexpected out-of-scope crypto symbol in $($unstripped.FullName)"
             }

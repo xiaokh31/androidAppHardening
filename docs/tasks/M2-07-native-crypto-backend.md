@@ -101,7 +101,7 @@ NDK 29 提供 zlib，但不提供可供产品链接的稳定 AES-GCM/HKDF 公共
 - archive/length/hash/license/version lock positive and one-byte/field tamper negative tests。
 - NIST AES-256-GCM decrypt、错误 tag、错误 key/nonce/tag 长度、零长度与输出不足。
 - RFC 5869 case 1、最大长度边界、超过 `255 * HashLen`、空指针/长度组合。
-- Ubuntu/Windows Host Release self-test；四 ABI Android Release build、ELF dependency/export scan 与精确内部符号集合比较。
+- Ubuntu/Windows Host Release self-test；四 ABI Android Release build、ELF dependency/export scan 与精确内部符号集合比较；共享 parser 自测必须拒绝新增 local/global/hidden-global、缺失、`t↔d`、`t→T` 和相关动态导出。
 - 多线程重复 AES/HKDF 调用；任何线程的状态码或结果漂移均失败。
 
 ## Required Evidence

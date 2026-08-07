@@ -56,9 +56,31 @@ add_subdirectory(
     EXCLUDE_FROM_ALL
 )
 
-add_library(ah_crypto_backend OBJECT crypto_backend.cpp container_format.cpp)
+set(
+    AH_RUNTIME_SOURCES
+    crypto_backend.cpp
+    container_format.cpp
+    zip_assets.cpp
+    payload_memory.cpp
+)
+if(ANDROID OR UNIX)
+    list(APPEND AH_RUNTIME_SOURCES authenticated_payload.cpp)
+endif()
+add_library(ah_crypto_backend OBJECT ${AH_RUNTIME_SOURCES})
+
+if(UNIX AND NOT ANDROID)
+    find_package(ZLIB REQUIRED)
+endif()
 target_compile_features(ah_crypto_backend PRIVATE cxx_std_17)
 target_link_libraries(ah_crypto_backend PRIVATE TF-PSA-Crypto::tfpsacrypto)
+if(MSVC)
+    target_compile_options(ah_crypto_backend PRIVATE /W4 /WX)
+else()
+    target_compile_options(ah_crypto_backend PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+if(UNIX AND NOT ANDROID)
+    target_link_libraries(ah_crypto_backend PRIVATE ZLIB::ZLIB)
+endif()
 set_target_properties(
     ah_crypto_backend
     PROPERTIES
@@ -68,7 +90,7 @@ set_target_properties(
 
 if(ANDROID)
     add_library(ah_runtime SHARED $<TARGET_OBJECTS:ah_crypto_backend>)
-    target_link_libraries(ah_runtime PRIVATE TF-PSA-Crypto::tfpsacrypto)
+    target_link_libraries(ah_runtime PRIVATE TF-PSA-Crypto::tfpsacrypto z)
     target_compile_options(ah_runtime PRIVATE -fstack-protector-strong -ffunction-sections -fdata-sections)
     target_link_options(
         ah_runtime
@@ -94,9 +116,32 @@ else()
         ah_crypto_self_test
         crypto_backend_test.cpp
         container_format_test.cpp
+        m2_02_foundation_test.cpp
         $<TARGET_OBJECTS:ah_crypto_backend>
     )
+    if(UNIX)
+        target_sources(ah_crypto_self_test PRIVATE m2_02_payload_vector_test.cpp)
+        target_compile_definitions(ah_crypto_self_test PRIVATE AH_M2_02_PAYLOAD_VECTOR_TEST=1)
+    endif()
     target_compile_features(ah_crypto_self_test PRIVATE cxx_std_17)
     target_link_libraries(ah_crypto_self_test PRIVATE TF-PSA-Crypto::tfpsacrypto Threads::Threads)
+    if(UNIX)
+        target_link_libraries(ah_crypto_self_test PRIVATE ZLIB::ZLIB)
+    endif()
     add_test(NAME m2_07_native_crypto_vectors COMMAND ah_crypto_self_test)
+    if(UNIX AND DEFINED AH_M2_02_VECTOR_ROOT AND NOT AH_M2_02_VECTOR_ROOT STREQUAL "")
+        if(NOT IS_ABSOLUTE "${AH_M2_02_VECTOR_ROOT}" OR
+           NOT EXISTS "${AH_M2_02_VECTOR_ROOT}/config.bin" OR
+           NOT EXISTS "${AH_M2_02_VECTOR_ROOT}/payload.ahdc" OR
+           NOT EXISTS "${AH_M2_02_VECTOR_ROOT}/slot-x86_64.bin")
+            message(FATAL_ERROR "AH_M2_02_VECTOR_ROOT must contain the prepared immutable vector")
+        endif()
+        add_test(
+            NAME m2_02_authenticated_payload_vector
+            COMMAND ah_crypto_self_test
+                "${AH_M2_02_VECTOR_ROOT}/config.bin"
+                "${AH_M2_02_VECTOR_ROOT}/payload.ahdc"
+                "${AH_M2_02_VECTOR_ROOT}/slot-x86_64.bin"
+        )
+    endif()
 endif()

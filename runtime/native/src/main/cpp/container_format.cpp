@@ -332,6 +332,33 @@ Status parseConfigV2(ByteView bytes, ConfigV2* output) noexcept {
     return Status::kSuccess;
 }
 
+Status parseNativeShareSlotV1(
+    ByteView bytes,
+    std::uint16_t expected_abi_id,
+    NativeShareSlotV1* output) noexcept {
+    if (output == nullptr || !exact(bytes, kNativeShareSlotBytes) ||
+        expected_abi_id == 0 || expected_abi_id > 4) {
+        return Status::kInvalidArgument;
+    }
+    *output = NativeShareSlotV1{};
+    if (!bytesEqual(bytes, 0, "AHS1", 4)) {
+        return Status::kFormat;
+    }
+    if (u16(bytes, 4) != 1) {
+        return Status::kVersion;
+    }
+    const std::uint16_t abi = u16(bytes, 6);
+    if (abi != expected_abi_id) {
+        return Status::kAuthenticationFailed;
+    }
+    output->abi_id = abi;
+    copyAt(bytes, 8, &output->key_slot_id);
+    copyAt(bytes, 24, &output->build_id);
+    copyAt(bytes, 40, &output->r_native);
+    copyAt(bytes, 72, &output->slot_sha256);
+    return Status::kSuccess;
+}
+
 Status validateTopology(
     const HeaderV2& header,
     const RecordV2* records,

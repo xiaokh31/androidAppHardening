@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-07T14:05:14+08:00
+updated_at: 2026-08-07T16:12:00+08:00
 updated_by: /root
 state: active
 source_branch: feat/m2-02-native-decrypt-loader
@@ -168,7 +168,7 @@ next_owner: /root
 | M1-05 | `/root` | `feat/m1-05-apk-repacker-and-alignment` | done | M1-02, M1-03, M1-04 | PR #39、Issue #10、独立复核、merger-ready CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-06 | `/root` | `feat/m1-06-cli-and-json-report` | done | M1-01, M1-02, M1-03, M1-04, M1-05 | PR #40、Issue #11、独立复核、merger-ready 与 post-merge main 双平台 CI、README 和 strict HandOff 均已关闭 |
 | M2-07 | `/root` | `main` | done | M0-03, M1-04 | PR #42、Issue #41、最终独立复核、README、strict 与 post-merge Build/Governance/KVM 均已关闭 |
-| M2-02 | `/root` | `feat/m2-02-native-decrypt-loader` | in_progress | M0-04, M1-04, M2-07 | 有界 AHDC/Config wire parser 与四 ABI 编译已通过；下一步固定 ZIP asset、认证/解压事务和匿名 mapping owner |
+| M2-02 | `/root` | `feat/m2-02-native-decrypt-loader` | in_progress | M0-04, M1-04, M2-07 | ZIP/share/CEK/manifest/GCM→zlib/匿名事务已实现并通过本地门禁；下一步 sourceDir/JNI/metadata/ClassLoader 双窗口 |
 
 ## Decisions and Invariants
 
@@ -315,6 +315,7 @@ next_owner: /root
 - Evidence-only merger-ready HEAD `0c741e76477a1b8885ae354747168c1145152e0a` 的 Build `31150620828`、Governance `31150620836` 与 API 29/36 KVM `31150620830` 六项全部 PASS；PR #42 已转 ready，并以 expected-head 保护的普通 merge commit `1ac8e308236078827ec3e4a8f438514dcf69b10c` 合并到 `main`，Issue #41 已关闭。README 已同步 M2-07 完成状态；当前只允许提交本 post-merge 协调状态并运行无豁免 strict/Governance/Build/KVM 最终 `main` 门禁，全部通过后恢复 `feat/m2-02-native-decrypt-loader@40e3900`。
 - Post-merge `main@e78fcaed58dd5211a465ea37a94db45dddc17dfa` 已在本地无豁免通过 strict HandOff、Governance 与 diff check，远端 Build `31151358692`、Governance `31151358963` 和手动 dispatch 的 API 29/36 KVM `31151403785` 全部 PASS。M2-07 正式结束；`feat/m2-02-native-decrypt-loader` 已从原冻结 `40e3900` 恢复并以 merge commit `d9af1fa785ef649b31bf387e2f058b6b0f986df1` 合入该 exact main，无冲突。M2-02 的先决阻塞已关闭，README 与实现计划切换为进行中；当前只实现 M2-02，不启动 M2-03。
 - M2-02 有界格式基础已实现：C++17 严格解析 HeaderV2/SPV1/RecordV2/ChunkV2/ConfigV2，逐 record/chunk 校验 canonical topology、checked arithmetic、64 DEX/16 lineage/65,536 chunk、512 MiB 单 DEX 与 4 GiB 总量、Factory/zero-fill/reserved/nonce/version。MSVC `/W4 /WX` 独立矩阵退出 `0`，Android NDK 四 ABI Release `assembleRelease` 在 30 秒内 PASS；证据归档于 `docs/evidence/M2-02/local-validation.md`。当前实现尚未声明完成，下一层只处理固定 ZIP asset、share/CEK/manifest、per-chunk GCM→zlib 与失败事务所有权。
+- M2-02 第二实现层已完成本地检查点：唯一规范 ZIP32 asset locator、104-byte Native share 校验、package/signer→KEK→CEK envelope→流式 manifest→config digest 完整认证链、逐 chunk 一次性 GCM 后连续 zlib，以及最多 64 个 completed/partial 匿名 mapping 的单一事务 owner 已接通。四 ABI Release 以 warnings-as-errors 编译并确认符号实际保留，根 `check` 249-task PASS；Linux Host golden vector/首中末 tag rollback 已加入 Build workflow，证据更新于 `docs/evidence/M2-02/local-validation.md`。任务仍未完成或发布；下一层仅实现只读 sourceDir/JNI primitive handle、认证 metadata、Java facade/ClassLoader 和双所有权窗口。
 
 ## Verification Evidence
 
@@ -1260,9 +1261,9 @@ None
 
 ## Ordered Next Actions
 
-1. Commit the M2-02 resumption state and prerequisite closure on the restored branch; keep the branch local until bounded implementation and independent review are complete.
-2. Implement the task-card interfaces and Native transaction in layers: bounded ZIP/Config/AHDC validation, per-chunk authenticated decrypt plus continuous zlib, anonymous DEX mappings/metadata ownership, then the Java 17 JNI/loader facade.
-3. Add the positive, tamper, compression, ZIP, ownership/OOM, metadata, lifecycle and no-plaintext-disk matrices before freezing any review candidate; do not start M2-03 or publish the branch prematurely.
+1. Commit the bounded ZIP/share/CEK/manifest/GCM-to-zlib/anonymous-transaction checkpoint; keep the branch local because M2-02 is not yet a review candidate.
+2. Implement the remaining task-card interface in one layer: read-only Framework `sourceDir` mapping, primitive JNI handle, authenticated metadata and DEX buffers, allocation-safe Java facade, ordered `InMemoryDexClassLoader` construction and both post-handle rollback windows.
+3. Complete sanitizer/fuzz, ZIP/zlib/OOM/cancellation/cleanup injection, metadata, lifecycle, no-plaintext-disk and API 29/36 plus arm64 matrices before freezing one independent review candidate; do not start M2-03 or publish prematurely.
 
 ## Relevant Files and Artifacts
 

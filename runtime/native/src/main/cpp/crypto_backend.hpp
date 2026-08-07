@@ -6,6 +6,11 @@
 
 namespace ah::crypto {
 
+struct BufferView {
+    const std::uint8_t* data;
+    std::size_t size;
+};
+
 enum class Status : std::uint8_t {
     kSuccess = 0,
     kInvalidArgument = 1,
@@ -35,6 +40,20 @@ Status hkdfSha256(
     std::size_t salt_size,
     const std::uint8_t* info,
     std::size_t info_size,
+    std::uint8_t* output,
+    std::size_t output_size) noexcept;
+
+Status sha256(
+    const std::uint8_t* input,
+    std::size_t input_size,
+    std::uint8_t* output,
+    std::size_t output_size) noexcept;
+
+Status hmacSha256(
+    const std::uint8_t* key,
+    std::size_t key_size,
+    const BufferView* inputs,
+    std::size_t input_count,
     std::uint8_t* output,
     std::size_t output_size) noexcept;
 

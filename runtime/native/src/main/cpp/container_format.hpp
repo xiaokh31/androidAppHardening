@@ -11,6 +11,7 @@ constexpr std::size_t kHeaderBytes = 160;
 constexpr std::size_t kRecordBytes = 128;
 constexpr std::size_t kChunkBytes = 32;
 constexpr std::size_t kConfigBytes = 768;
+constexpr std::size_t kNativeShareSlotBytes = 104;
 constexpr std::size_t kDigestBytes = 32;
 constexpr std::size_t kIdBytes = 16;
 constexpr std::size_t kMaxDex = 64;
@@ -90,11 +91,21 @@ struct ConfigV2 {
     std::uint16_t original_factory_size{};
 };
 
+struct NativeShareSlotV1 {
+    std::uint16_t abi_id{};
+    std::array<std::uint8_t, kIdBytes> key_slot_id{};
+    std::array<std::uint8_t, kIdBytes> build_id{};
+    std::array<std::uint8_t, kDigestBytes> r_native{};
+    std::array<std::uint8_t, kDigestBytes> slot_sha256{};
+};
+
 Status parseHeaderV2(ByteView bytes, HeaderV2* output) noexcept;
 Status parseSignerPolicyV1(ByteView bytes, SignerPolicyV1* output) noexcept;
 Status parseRecordV2(ByteView bytes, RecordV2* output) noexcept;
 Status parseChunkV2(ByteView bytes, ChunkV2* output) noexcept;
 Status parseConfigV2(ByteView bytes, ConfigV2* output) noexcept;
+Status parseNativeShareSlotV1(ByteView bytes, std::uint16_t expected_abi_id,
+                              NativeShareSlotV1* output) noexcept;
 
 Status validateTopology(
     const HeaderV2& header,

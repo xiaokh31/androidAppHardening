@@ -118,9 +118,11 @@ jobs:
           node tools/validation/verify-m2-07-native-crypto.mjs --self-test
           trap - ERR
 
-      - name: Run M2-07 Host crypto vectors
+      - name: Run Native host crypto and authenticated payload vectors
         shell: bash
         run: |
+          ./gradlew --no-daemon :host:container:test
+          node tools/validation/prepare-m2-02-native-vector.mjs
           cmake_bin="$ANDROID_HOME/cmake/4.1.2/bin/cmake"
           ctest_bin="$ANDROID_HOME/cmake/4.1.2/bin/ctest"
           "$cmake_bin" \
@@ -129,6 +131,7 @@ jobs:
             -G Ninja \
             -DCMAKE_MAKE_PROGRAM="$ANDROID_HOME/cmake/4.1.2/bin/ninja" \
             -DCMAKE_BUILD_TYPE=Release \
+            -DAH_M2_02_VECTOR_ROOT="$PWD/runtime/native/build/m2-02-vector" \
             -DAH_MBEDTLS_ROOT="$PWD/.toolchains/native-crypto/src/mbedtls-4.1.1"
           "$cmake_bin" --build runtime/native/build/m2-07-host --config Release
           "$ctest_bin" --test-dir runtime/native/build/m2-07-host --output-on-failure

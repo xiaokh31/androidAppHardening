@@ -1,5 +1,9 @@
 #include "crypto_backend.hpp"
 
+#if defined(__ANDROID__)
+#include "authenticated_payload.hpp"
+#endif
+
 #include <mutex>
 
 #include <psa/crypto.h>
@@ -190,6 +194,92 @@ Status hkdfSha256(
     return Status::kBackendFailure;
 }
 
+Status sha256(
+    const std::uint8_t* input,
+    std::size_t input_size,
+    std::uint8_t* output,
+    std::size_t output_size) noexcept {
+    if (!validBuffer(input, input_size) || output == nullptr || output_size != kSha256Bytes) {
+        if (output != nullptr) {
+            secureZero(output, output_size);
+        }
+        return Status::kInvalidArgument;
+    }
+    const std::lock_guard<std::mutex> backendLock(backendMutex);
+    if (initializeBackend() != PSA_SUCCESS) {
+        secureZero(output, output_size);
+        return Status::kBackendFailure;
+    }
+    std::size_t written = 0;
+    const psa_status_t status = psa_hash_compute(
+        PSA_ALG_SHA_256, input, input_size, output, output_size, &written);
+    if (status == PSA_SUCCESS && written == kSha256Bytes) {
+        return Status::kSuccess;
+    }
+    secureZero(output, output_size);
+    return Status::kBackendFailure;
+}
+
+Status hmacSha256(
+    const std::uint8_t* key,
+    std::size_t key_size,
+    const BufferView* inputs,
+    std::size_t input_count,
+    std::uint8_t* output,
+    std::size_t output_size) noexcept {
+    if (key_size == 0 || key == nullptr || output == nullptr || output_size != kSha256Bytes ||
+        (input_count != 0 && inputs == nullptr)) {
+        if (output != nullptr) {
+            secureZero(output, output_size);
+        }
+        return Status::kInvalidArgument;
+    }
+    for (std::size_t index = 0; index < input_count; ++index) {
+        if (!validBuffer(inputs[index].data, inputs[index].size)) {
+            secureZero(output, output_size);
+            return Status::kInvalidArgument;
+        }
+    }
+
+    const std::lock_guard<std::mutex> backendLock(backendMutex);
+    if (initializeBackend() != PSA_SUCCESS) {
+        secureZero(output, output_size);
+        return Status::kBackendFailure;
+    }
+    psa_key_attributes_t attributes = PSA_KEY_ATTRIBUTES_INIT;
+    psa_set_key_type(&attributes, PSA_KEY_TYPE_HMAC);
+    psa_set_key_bits(&attributes, key_size * 8U);
+    psa_set_key_usage_flags(&attributes, PSA_KEY_USAGE_SIGN_MESSAGE);
+    psa_set_key_algorithm(&attributes, PSA_ALG_HMAC(PSA_ALG_SHA_256));
+    psa_key_id_t key_id = 0;
+    psa_status_t status = psa_import_key(&attributes, key, key_size, &key_id);
+    psa_reset_key_attributes(&attributes);
+    if (status != PSA_SUCCESS) {
+        secureZero(output, output_size);
+        return Status::kBackendFailure;
+    }
+
+    psa_mac_operation_t operation = PSA_MAC_OPERATION_INIT;
+    status = psa_mac_sign_setup(&operation, key_id, PSA_ALG_HMAC(PSA_ALG_SHA_256));
+    for (std::size_t index = 0; status == PSA_SUCCESS && index < input_count; ++index) {
+        if (inputs[index].size != 0) {
+            status = psa_mac_update(&operation, inputs[index].data, inputs[index].size);
+        }
+    }
+    std::size_t written = 0;
+    if (status == PSA_SUCCESS) {
+        status = psa_mac_sign_finish(&operation, output, output_size, &written);
+    }
+    const psa_status_t abort_status = psa_mac_abort(&operation);
+    const psa_status_t destroy_status = psa_destroy_key(key_id);
+    if (status == PSA_SUCCESS && abort_status == PSA_SUCCESS &&
+        destroy_status == PSA_SUCCESS && written == kSha256Bytes) {
+        return Status::kSuccess;
+    }
+    secureZero(output, output_size);
+    return Status::kBackendFailure;
+}
+
 }  // namespace ah::crypto
 
 #if defined(__ANDROID__)
@@ -199,9 +289,15 @@ Status hkdfSha256(
 extern "C" __attribute__((visibility("hidden"))) void ah_crypto_backend_anchor() noexcept {
     volatile auto decrypt = &ah::crypto::aes256GcmDecrypt;
     volatile auto derive = &ah::crypto::hkdfSha256;
+    volatile auto hash = &ah::crypto::sha256;
+    volatile auto mac = &ah::crypto::hmacSha256;
     volatile auto zero = &ah::crypto::secureZero;
+    volatile auto open = &ah::payload::openAuthenticatedPayload;
     (void) decrypt;
     (void) derive;
+    (void) hash;
+    (void) mac;
     (void) zero;
+    (void) open;
 }
 #endif

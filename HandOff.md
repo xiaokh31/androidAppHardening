@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-07T09:24:10+08:00
+updated_at: 2026-08-07T09:36:08+08:00
 updated_by: /root
 state: active
 source_branch: chore/m2-07-native-crypto-backend
@@ -298,6 +298,7 @@ next_owner: /root
 - Implementation candidate `e471a74d02a1426ccd17542ea8bb9f4ee956f6bf` 的 Build `31135865293`、Governance `31135865277` 与 API 29/36 x86_64 KVM `31135865495` 全部 PASS：Ubuntu/Windows Host 完整密码边界与八线程矩阵、根回归、四 ABI Release ELF/符号门禁、双遍 Release/R8 设备验收及强制清理均已关闭。当前只允许提交 evidence-only successor 形成第二轮独立只读复核的唯一冻结 SHA；PR #42 继续 draft，M2-02 继续暂停，任何复核 finding 都使该冻结点失效。
 - 第二轮独立只读复核已永久废止 frozen SHA `699cbda469a85501294b7a83587ce89faaad7192`，结论 `P0=0/P1=0/P2=3`，归档于 `docs/evidence/M2-07/read-only-review-2.md`。首轮七项 finding 均已 CLOSED；新增三项为 Unix 零 symlink 失败开放、Ubuntu runner/GNU Host 未固定断言、README 错称 M2 未启动。当前修复严格限于平台精确 symlink 门禁、`ubuntu24/20260720.247.2` + GNU `13.3.0` 失败关闭断言和公开状态纠正；修复后必须新 SHA、exact-head Build/Governance/KVM 和第三轮完整独立复核，PR #42 仍 draft，M2-02 仍暂停。
 - 第二轮 P2 修复已在 Windows 本地通过依赖 self-test、Governance、strict HandOff 与 clean offline `check verifyGovernance :runtime:native:assembleRelease`；根回归共 `283` tasks、四 ABI Release 全部 PASS，未启动设备或模拟器。当前只允许 amend 本地证据形成新候选并推送 replacement CI；Ubuntu 必须实际证明 `ImageOS=ubuntu24`、runtime `20260720.247.2`、manifest ref `ubuntu24/20260720.247`、GNU `13.3.0` 和 Unix 147-link 门禁后才能再次冻结。
+- Remediation candidate `b80acc824708a5725831dcecf580e3633d312583` 的 Build `31137953160`、Governance `31137953050` 与 API 29/36 x86_64 KVM `31137952989` 全部 PASS：Ubuntu Build/KVM 均命中固定 image/GNU 与真实 147-link 门禁，双平台 Host/根回归/四 ABI 和设备验收/清理均通过。当前只允许提交 evidence-only successor，待该 exact HEAD 的三套 CI 也通过后启动第三轮完整独立只读复核；PR #42 仍 draft，M2-02 仍暂停。
 
 ## Verification Evidence
 

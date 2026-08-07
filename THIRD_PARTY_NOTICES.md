@@ -16,6 +16,7 @@
 | Android SDK Build Tools | `build-tools;36.1.0` | Android SDK Manager | Android SDK License | Android 构建和后续对齐验证；不随产品分发 |
 | Android NDK | `ndk;29.0.14206865` | Android SDK Manager | Apache-2.0 and bundled third-party notices | 四 ABI 空库构建；M0-03 产物不发布 |
 | CMake | `cmake;4.1.2` | Android SDK Manager / Kitware | BSD-3-Clause | Native 配置与构建；不随产品分发 |
+| Mbed TLS / TF-PSA-Crypto | Mbed TLS `4.1.1` tag object `783058d12831aedd3ef57a64577f6f8a88d23bd3`, commit `0a8fda272a5a0abef3b47c91bed37185d5a726b1`; bundled TF-PSA-Crypto `1.1.1` | 官方 `mbedtls-4.1.1.tar.bz2`, `7099934` bytes, SHA-256 `3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c` | Apache-2.0 OR GPL-2.0-or-later；本项目选择 Apache-2.0 | M2-07 仅把 TF-PSA-Crypto 的 AES-256-GCM、SHA-256/HMAC/HKDF 所需对象静态链接进 `libah_runtime.so`；随 Runtime object code 分发，许可证文本、来源与修改声明必须随发行包提供；Issue #41/ADR 0009 |
 | Node.js | `24.12.0` | `nodejs.org` official release | MIT | 治理和供应链脚本；不随产品分发 |
 | actions/checkout | `3d3c42e5aac5ba805825da76410c181273ba90b1` | `actions/checkout` | MIT | CI checkout，不随产品分发 |
 | actions/setup-node | `820762786026740c76f36085b0efc47a31fe5020` | `actions/setup-node` | MIT | CI Node.js 固定安装，不随产品分发 |

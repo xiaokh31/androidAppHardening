@@ -27,6 +27,24 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Verify pinned Ubuntu runner and Host compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${ImageOS:-}" = "ubuntu24"
+          case "${ImageVersion:-}" in
+            20260720.247.2) reviewed_manifest='ubuntu24/20260720.247' ;;
+            20260804.265.1) reviewed_manifest='ubuntu24/20260804.265' ;;
+            *) printf 'unexpected mutable runner image: ImageOS=%s ImageVersion=%s\n' "${ImageOS:-}" "${ImageVersion:-}" >&2; exit 1 ;;
+          esac
+          test "$(gcc -dumpfullversion -dumpversion)" = "13.3.0"
+          test "$(g++ -dumpfullversion -dumpversion)" = "13.3.0"
+          printf '%s\n' \
+            "runner_image=ubuntu24/${ImageVersion}" \
+            "runner_manifest_ref=${reviewed_manifest}" \
+            'host_c_compiler=gcc/13.3.0' \
+            'host_cxx_compiler=g++/13.3.0'
+
       - name: Set up Temurin JDK
         # actions/setup-java v5
         uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95
@@ -59,6 +77,62 @@ jobs:
             "ndk;29.0.14206865" \
             "cmake;4.1.2"
 
+      - name: Prepare verified M2-07 Native crypto source
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive=".toolchains/native-crypto/downloads/mbedtls-4.1.1.tar.bz2"
+          source_parent=".toolchains/native-crypto/src"
+          source_root="$source_parent/mbedtls-4.1.1"
+          extract_root="$source_parent/.mbedtls-4.1.1.extract"
+          cleanup() {
+            rm -rf -- "$extract_root" "$source_root"
+            rm -f -- "$archive"
+          }
+          trap cleanup ERR
+          mkdir -p "$(dirname "$archive")" "$source_parent"
+          curl --fail --location --retry 3 \
+            --output "$archive" \
+            "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-4.1.1/mbedtls-4.1.1.tar.bz2"
+          node tools/validation/verify-m2-07-native-crypto.mjs --archive-only
+          while IFS= read -r member; do
+            case "$member" in
+              mbedtls-4.1.1/*) ;;
+              *) echo "unsafe or unexpected archive member: $member" >&2; exit 1 ;;
+            esac
+            case "/$member/" in
+              */../*) echo "archive traversal member: $member" >&2; exit 1 ;;
+            esac
+          done < <(tar -tjf "$archive")
+          rm -rf -- "$extract_root" "$source_root"
+          mkdir "$extract_root"
+          tar -xjf "$archive" -C "$extract_root"
+          node tools/validation/verify-m2-07-native-crypto.mjs --self-test --pre-promote \
+            --source-root="$extract_root/mbedtls-4.1.1"
+          printf '%s\n' \
+            'archive_sha256=3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c' \
+            'source_tree_sha256=7c4ba6554fed6eb67c201054bc75b124fcdc0649e2f56cd762746e01a25d2140' \
+            > "$extract_root/mbedtls-4.1.1/.aah-m2-07-verified"
+          mv "$extract_root/mbedtls-4.1.1" "$source_root"
+          rmdir "$extract_root"
+          node tools/validation/verify-m2-07-native-crypto.mjs --self-test
+          trap - ERR
+
+      - name: Run M2-07 Host crypto vectors
+        shell: bash
+        run: |
+          cmake_bin="$ANDROID_HOME/cmake/4.1.2/bin/cmake"
+          ctest_bin="$ANDROID_HOME/cmake/4.1.2/bin/ctest"
+          "$cmake_bin" \
+            -S runtime/native/src/main/cpp \
+            -B runtime/native/build/m2-07-host \
+            -G Ninja \
+            -DCMAKE_MAKE_PROGRAM="$ANDROID_HOME/cmake/4.1.2/bin/ninja" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DAH_MBEDTLS_ROOT="$PWD/.toolchains/native-crypto/src/mbedtls-4.1.1"
+          "$cmake_bin" --build runtime/native/build/m2-07-host --config Release
+          "$ctest_bin" --test-dir runtime/native/build/m2-07-host --output-on-failure
+
       - name: Verify pinned entry points
         shell: bash
         run: |
@@ -69,7 +143,7 @@ jobs:
       - name: Run full Linux checks
         shell: bash
         run: >-
-          ./gradlew --no-daemon clean check lint verifyGovernance :runtime:native:assemble
+          ./gradlew --no-daemon clean check lint verifyGovernance :runtime:native:assembleRelease
           -Paapt2Executable="$ANDROID_HOME/build-tools/36.1.0/aapt2"
           -Paapt2AndroidJar="$ANDROID_HOME/platforms/android-36/android.jar"
 
@@ -155,10 +229,38 @@ jobs:
       - name: Verify four Native ABIs
         shell: bash
         run: |
+          node tools/validation/verify-m2-07-symbol-surface.mjs --self-test
           for abi in armeabi-v7a arm64-v8a x86 x86_64; do
-            file="runtime/native/build/intermediates/stripped_native_libs/debug/stripDebugDebugSymbols/out/lib/$abi/libah_runtime.so"
+            file="runtime/native/build/intermediates/stripped_native_libs/release/stripReleaseDebugSymbols/out/lib/$abi/libah_runtime.so"
             test -f "$file"
-            "$ANDROID_HOME/ndk/29.0.14206865/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf" -h "$file"
+            test "$(stat -c%s "$file")" -gt 100000
+            readelf="$ANDROID_HOME/ndk/29.0.14206865/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
+            nm="$ANDROID_HOME/ndk/29.0.14206865/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-nm"
+            "$readelf" -h -d "$file"
+            "$readelf" -d "$file" | grep -q BIND_NOW
+            if "$readelf" -d "$file" | grep -E 'libcrypto|libssl|mbedtls|mbedx509'; then
+              echo "unexpected dynamic crypto/TLS dependency in $file" >&2
+              exit 1
+            fi
+            exports="$("$nm" -D --defined-only "$file")"
+            if grep -E '(^| )psa_|(^| )mbedtls_' <<<"$exports"; then
+              echo "unexpected exported upstream crypto symbol in $file" >&2
+              exit 1
+            fi
+            printf '%s\n' "$exports" | node tools/validation/verify-m2-07-symbol-surface.mjs --reject-exports
+            unstripped="$(find runtime/native/build/intermediates/cxx/RelWithDebInfo -path "*/obj/$abi/libah_runtime.so" -type f -print -quit)"
+            test -n "$unstripped"
+            symbols="$("$nm" -C --defined-only "$unstripped")"
+            grep -q 'aes256GcmDecrypt' <<<"$symbols"
+            grep -q 'hkdfSha256' <<<"$symbols"
+            grep -q 'secureZero' <<<"$symbols"
+            grep -q 'ah_crypto_backend_anchor' <<<"$symbols"
+            printf '%s\n' "$symbols" | node tools/validation/verify-m2-07-symbol-surface.mjs --verify
+            if grep -Ei '(^|[_: ])(rsa|ecc|ecdsa|ecdh|chacha|ccm|cbc|x509|ssl|pkcs)([_: (]|$)' <<<"$symbols"; then
+              echo "unexpected out-of-scope crypto symbol in $unstripped" >&2
+              exit 1
+            fi
+            sha256sum "$file" "$unstripped"
           done
 
   windows:
@@ -204,6 +306,143 @@ jobs:
             "ndk;29.0.14206865" `
             "cmake;4.1.2"
 
+      - name: Prepare verified M2-07 Native crypto source
+        shell: pwsh
+        run: |
+          $archiveDir = Join-Path $pwd ".toolchains/native-crypto/downloads"
+          $sourceParent = Join-Path $pwd ".toolchains/native-crypto/src"
+          $sourceRoot = Join-Path $sourceParent "mbedtls-4.1.1"
+          $extractRoot = Join-Path $sourceParent ".mbedtls-4.1.1.extract"
+          $archive = Join-Path $archiveDir "mbedtls-4.1.1.tar.bz2"
+          $cmake = "$env:ANDROID_HOME/cmake/4.1.2/bin/cmake.exe"
+          New-Item -ItemType Directory -Force -Path $archiveDir, $sourceParent | Out-Null
+          try {
+            curl.exe --fail --location --retry 3 `
+              --output $archive `
+              "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-4.1.1/mbedtls-4.1.1.tar.bz2"
+            if ($LASTEXITCODE -ne 0) { throw "M2-07 archive download failed: $LASTEXITCODE" }
+            node tools/validation/verify-m2-07-native-crypto.mjs --archive-only
+            if ($LASTEXITCODE -ne 0) { throw "M2-07 archive verification failed: $LASTEXITCODE" }
+            $members = & $cmake -E tar tjf $archive
+            if ($LASTEXITCODE -ne 0) { throw "M2-07 verified archive listing failed: $LASTEXITCODE" }
+            foreach ($memberValue in $members) {
+              $member = "$memberValue".Replace('\', '/')
+              $segments = $member.Split('/', [System.StringSplitOptions]::RemoveEmptyEntries)
+              if (-not $member.StartsWith('mbedtls-4.1.1/') -or $member.StartsWith('/') -or $segments -contains '..') {
+                throw "unsafe or unexpected archive member: $member"
+              }
+            }
+            Remove-Item -Recurse -Force -LiteralPath $extractRoot, $sourceRoot -ErrorAction SilentlyContinue
+            New-Item -ItemType Directory -Path $extractRoot | Out-Null
+            Push-Location $extractRoot
+            try {
+              & $cmake -E tar xjf $archive
+              if ($LASTEXITCODE -ne 0) { throw "M2-07 verified archive extraction failed: $LASTEXITCODE" }
+            } finally {
+              Pop-Location
+            }
+            node tools/validation/verify-m2-07-native-crypto.mjs --self-test --pre-promote `
+              "--source-root=$extractRoot/mbedtls-4.1.1"
+            if ($LASTEXITCODE -ne 0) { throw "M2-07 temporary source-tree verification failed: $LASTEXITCODE" }
+            $stampPath = "$extractRoot/mbedtls-4.1.1/.aah-m2-07-verified"
+            $stamp = "archive_sha256=3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c`n" +
+              "source_tree_sha256=7c4ba6554fed6eb67c201054bc75b124fcdc0649e2f56cd762746e01a25d2140`n"
+            [IO.File]::WriteAllText($stampPath, $stamp, [Text.UTF8Encoding]::new($false))
+            Move-Item -LiteralPath "$extractRoot/mbedtls-4.1.1" -Destination $sourceRoot
+            Remove-Item -LiteralPath $extractRoot
+            node tools/validation/verify-m2-07-native-crypto.mjs --self-test
+            if ($LASTEXITCODE -ne 0) { throw "M2-07 promoted source-tree verification failed: $LASTEXITCODE" }
+          } catch {
+            Remove-Item -Recurse -Force -LiteralPath $extractRoot, $sourceRoot -ErrorAction SilentlyContinue
+            Remove-Item -Force -LiteralPath $archive -ErrorAction SilentlyContinue
+            throw
+          }
+
+      - name: Run M2-07 Host crypto vectors
+        shell: pwsh
+        run: |
+          $cmake = "$env:ANDROID_HOME/cmake/4.1.2/bin/cmake.exe"
+          $ctest = "$env:ANDROID_HOME/cmake/4.1.2/bin/ctest.exe"
+          $ninja = "$env:ANDROID_HOME/cmake/4.1.2/bin/ninja.exe"
+          $clangCl = "C:/Program Files/LLVM/bin/clang-cl.exe"
+          $vsWhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
+          $toolchainLock = (Get-Content -Raw -LiteralPath "tools/validation/m2-07-native-crypto.json" | ConvertFrom-Json).ci_toolchains.windows
+          function Assert-ExactVersion([string] $Actual, [string] $Expected, [string] $Label) {
+            if ($Actual -cne $Expected) { throw "unexpected $Label version: actual=$Actual expected=$Expected" }
+          }
+          function Assert-MutationRejected([string] $Expected, [string] $Label) {
+            $rejected = $false
+            try { Assert-ExactVersion "$Expected.changed" $Expected $Label } catch { $rejected = $true }
+            if (-not $rejected) { throw "$Label mismatch negative was accepted" }
+          }
+          $reviewedImages = @{}
+          foreach ($reviewedImage in $toolchainLock.reviewed_images) {
+            if ($reviewedImages.ContainsKey([string] $reviewedImage.image_version)) {
+              throw "duplicate reviewed Windows image version: $($reviewedImage.image_version)"
+            }
+            $reviewedImages[[string] $reviewedImage.image_version] = [string] $reviewedImage.manifest_ref
+          }
+          if ($env:ImageOS -ne "win25-vs2026" -or -not $reviewedImages.ContainsKey($env:ImageVersion)) {
+            throw "unexpected mutable runner image: ImageOS=$env:ImageOS ImageVersion=$env:ImageVersion"
+          }
+          Write-Output "runner_image=$env:ImageOS/$env:ImageVersion"
+          Write-Output "runner_manifest_ref=$($reviewedImages[$env:ImageVersion])"
+          if (-not (Test-Path -LiteralPath $vsWhere)) { throw "missing pinned runner Visual Studio locator: $vsWhere" }
+          $instanceJson = (& $vsWhere -all -products Microsoft.VisualStudio.Product.Enterprise -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -format json) -join "`n"
+          if ($LASTEXITCODE -ne 0) { throw "vswhere failed: $LASTEXITCODE" }
+          $instances = @($instanceJson | ConvertFrom-Json)
+          if ($instances.Count -ne 1) { throw "expected one reviewed Visual Studio Enterprise instance, found $($instances.Count)" }
+          $instance = $instances[0]
+          Assert-ExactVersion ([string] $instance.installationVersion) ([string] $toolchainLock.visual_studio_version) "Visual Studio"
+          Assert-MutationRejected ([string] $toolchainLock.visual_studio_version) "Visual Studio"
+          $installationPath = ([string] $instance.installationPath) -replace '\\', '/'
+          if ($installationPath -cne "C:/Program Files/Microsoft Visual Studio/18/Enterprise") {
+            throw "unexpected Visual Studio installation path: $installationPath"
+          }
+          $vsDevCmd = "$installationPath/Common7/Tools/VsDevCmd.bat"
+          $statePath = Join-Path $env:ProgramData "Microsoft/VisualStudio/Packages/_Instances/$($instance.instanceId)/state.json"
+          if (-not (Test-Path -LiteralPath $statePath)) { throw "missing Visual Studio instance state: $statePath" }
+          $instanceState = Get-Content -Raw -LiteralPath $statePath | ConvertFrom-Json
+          $x64ToolsPackages = @($instanceState.selectedPackages | Where-Object { $_.id -ceq "Microsoft.VisualStudio.Component.VC.Tools.x86.x64" })
+          if ($x64ToolsPackages.Count -ne 1) { throw "expected one selected x64 tools component, found $($x64ToolsPackages.Count)" }
+          $x64ToolsVersion = [string] $x64ToolsPackages[0].version
+          Assert-ExactVersion $x64ToolsVersion ([string] $toolchainLock.visual_studio_x64_tools) "Visual Studio x64 tools component"
+          Assert-MutationRejected ([string] $toolchainLock.visual_studio_x64_tools) "Visual Studio x64 tools component"
+          Write-Output "visual_studio_version=$($instance.installationVersion)"
+          Write-Output "visual_studio_x64_tools=$x64ToolsVersion"
+          if (-not (Test-Path -LiteralPath $vsDevCmd)) { throw "missing pinned runner compiler environment: $vsDevCmd" }
+          if (-not (Test-Path -LiteralPath $clangCl)) { throw "missing pinned runner clang-cl: $clangCl" }
+          $clangVersion = (& $clangCl --version) -join "`n"
+          if ($LASTEXITCODE -ne 0 -or $clangVersion -notmatch '(?m)^clang version 20\.1\.8(?:\s|$)') {
+            throw "unexpected clang-cl version: $clangVersion"
+          }
+          $vsEnvLines = & cmd.exe /d /s /c "`"$vsDevCmd`" -no_logo -arch=x64 -host_arch=x64 && set"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($line in $vsEnvLines) {
+            if ($line -match '^([^=]+)=(.*)$') {
+              [Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], 'Process')
+            }
+          }
+          if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) { throw "VS 2026 x64 compiler environment was not activated" }
+          $clVersion = (& cl.exe 2>&1) -join "`n"
+          $escapedClRuntimeVersion = [regex]::Escape([string] $toolchainLock.cl_runtime_version)
+          if ($clVersion -notmatch "Version $escapedClRuntimeVersion(?:\s|$)") {
+            throw "unexpected VS compiler environment: $clVersion"
+          }
+          & $cmake `
+            -S runtime/native/src/main/cpp `
+            -B runtime/native/build/m2-07-host `
+            -G Ninja `
+            "-DCMAKE_MAKE_PROGRAM=$ninja" `
+            "-DCMAKE_C_COMPILER=$clangCl" `
+            "-DCMAKE_CXX_COMPILER=$clangCl" `
+            -DCMAKE_BUILD_TYPE=Release `
+            "-DAH_MBEDTLS_ROOT=$pwd/.toolchains/native-crypto/src/mbedtls-4.1.1"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $cmake --build runtime/native/build/m2-07-host --config Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $ctest --test-dir runtime/native/build/m2-07-host --output-on-failure
+
       - name: Verify pinned entry points
         shell: pwsh
         run: |
@@ -215,7 +454,7 @@ jobs:
       - name: Run Windows checks
         shell: pwsh
         run: |
-          .\gradlew.bat --no-daemon clean check verifyGovernance `
+          .\gradlew.bat --no-daemon clean check verifyGovernance :runtime:native:assembleRelease `
             "-Paapt2Executable=$env:ANDROID_HOME\build-tools\36.1.0\aapt2.exe" `
             "-Paapt2AndroidJar=$env:ANDROID_HOME\platforms\android-36\android.jar"
 
@@ -305,4 +544,48 @@ jobs:
             $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $entry.Key).Hash.ToLowerInvariant()
             if ($actual -ne $entry.Value) { exit 1 }
             Write-Output "$actual  $($entry.Key)"
+          }
+
+      - name: Verify four Native ABIs
+        shell: pwsh
+        run: |
+          $toolRoot = "$env:ANDROID_HOME/ndk/29.0.14206865/toolchains/llvm/prebuilt/windows-x86_64/bin"
+          & node tools/validation/verify-m2-07-symbol-surface.mjs --self-test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($abi in @("armeabi-v7a", "arm64-v8a", "x86", "x86_64")) {
+            $file = "runtime/native/build/intermediates/stripped_native_libs/release/stripReleaseDebugSymbols/out/lib/$abi/libah_runtime.so"
+            if (-not (Test-Path -LiteralPath $file)) { throw "missing $file" }
+            if ((Get-Item -LiteralPath $file).Length -le 100000) { throw "crypto backend was not retained in $file" }
+            $dynamic = & "$toolRoot/llvm-readelf.exe" -h -d $file
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $dynamic
+            $dynamicText = $dynamic -join "`n"
+            if ($dynamicText -notmatch "BIND_NOW") { throw "missing BIND_NOW in $file" }
+            if ($dynamicText -match "libcrypto|libssl|mbedtls|mbedx509") {
+              throw "unexpected dynamic crypto/TLS dependency in $file"
+            }
+            $exports = & "$toolRoot/llvm-nm.exe" -D --defined-only $file
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            if ($exports -match "(^| )psa_|(^| )mbedtls_") {
+              throw "unexpected exported upstream crypto symbol in $file"
+            }
+            ($exports -join "`n") | & node tools/validation/verify-m2-07-symbol-surface.mjs --reject-exports
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $unstripped = Get-ChildItem -Recurse -Filter libah_runtime.so `
+              "runtime/native/build/intermediates/cxx/RelWithDebInfo" | `
+              Where-Object { $_.FullName -match "[\\/]obj[\\/]$([regex]::Escape($abi))[\\/]libah_runtime\.so$" } | `
+              Select-Object -First 1
+            if ($null -eq $unstripped) { throw "missing unstripped Release $abi ELF" }
+            $symbols = & "$toolRoot/llvm-nm.exe" -C --defined-only $unstripped.FullName
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $symbolsText = $symbols -join "`n"
+            foreach ($required in @("aes256GcmDecrypt", "hkdfSha256", "secureZero", "ah_crypto_backend_anchor")) {
+              if ($symbolsText -notmatch [regex]::Escape($required)) { throw "missing $required in $($unstripped.FullName)" }
+            }
+            ($symbols -join "`n") | & node tools/validation/verify-m2-07-symbol-surface.mjs --verify
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            if ($symbolsText -match "(?im)(^|[_: ])(rsa|ecc|ecdsa|ecdh|chacha|ccm|cbc|x509|ssl|pkcs)([_: (]|$)") {
+              throw "unexpected out-of-scope crypto symbol in $($unstripped.FullName)"
+            }
+            Get-FileHash -Algorithm SHA256 -LiteralPath $file, $unstripped.FullName
           }

@@ -52,6 +52,24 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Verify pinned Ubuntu runner and Host compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${ImageOS:-}" = "ubuntu24"
+          case "${ImageVersion:-}" in
+            20260720.247.2) reviewed_manifest='ubuntu24/20260720.247' ;;
+            20260804.265.1) reviewed_manifest='ubuntu24/20260804.265' ;;
+            *) printf 'unexpected mutable runner image: ImageOS=%s ImageVersion=%s\n' "${ImageOS:-}" "${ImageVersion:-}" >&2; exit 1 ;;
+          esac
+          test "$(gcc -dumpfullversion -dumpversion)" = "13.3.0"
+          test "$(g++ -dumpfullversion -dumpversion)" = "13.3.0"
+          printf '%s\n' \
+            "runner_image=ubuntu24/${ImageVersion}" \
+            "runner_manifest_ref=${reviewed_manifest}" \
+            'host_c_compiler=gcc/13.3.0' \
+            'host_cxx_compiler=g++/13.3.0'
+
       - name: Set up Temurin JDK
         # actions/setup-java v5
         uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95
@@ -133,6 +151,47 @@ jobs:
           echo "ANDROID_AVD_HOME=$sdk_root/avd" >> "$GITHUB_ENV"
           echo "$sdk_root/platform-tools" >> "$GITHUB_PATH"
           echo "$sdk_root/emulator" >> "$GITHUB_PATH"
+
+      - name: Prepare verified M2-07 Native crypto source
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive=".toolchains/native-crypto/downloads/mbedtls-4.1.1.tar.bz2"
+          source_parent=".toolchains/native-crypto/src"
+          source_root="$source_parent/mbedtls-4.1.1"
+          extract_root="$source_parent/.mbedtls-4.1.1.extract"
+          cleanup() {
+            rm -rf -- "$extract_root" "$source_root"
+            rm -f -- "$archive"
+          }
+          trap cleanup ERR
+          mkdir -p "$(dirname "$archive")" "$source_parent"
+          curl --fail --location --retry 3 \
+            --output "$archive" \
+            "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-4.1.1/mbedtls-4.1.1.tar.bz2"
+          node tools/validation/verify-m2-07-native-crypto.mjs --archive-only
+          while IFS= read -r member; do
+            case "$member" in
+              mbedtls-4.1.1/*) ;;
+              *) echo "unsafe or unexpected archive member: $member" >&2; exit 1 ;;
+            esac
+            case "/$member/" in
+              */../*) echo "archive traversal member: $member" >&2; exit 1 ;;
+            esac
+          done < <(tar -tjf "$archive")
+          rm -rf -- "$extract_root" "$source_root"
+          mkdir "$extract_root"
+          tar -xjf "$archive" -C "$extract_root"
+          node tools/validation/verify-m2-07-native-crypto.mjs --self-test --pre-promote \
+            --source-root="$extract_root/mbedtls-4.1.1"
+          printf '%s\n' \
+            'archive_sha256=3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c' \
+            'source_tree_sha256=7c4ba6554fed6eb67c201054bc75b124fcdc0649e2f56cd762746e01a25d2140' \
+            > "$extract_root/mbedtls-4.1.1/.aah-m2-07-verified"
+          mv "$extract_root/mbedtls-4.1.1" "$source_root"
+          rmdir "$extract_root"
+          node tools/validation/verify-m2-07-native-crypto.mjs --self-test
+          trap - ERR
 
       - name: Build signed Release/R8 fixtures in two passes
         shell: bash

@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "task": "M2-07",
+  "reviewed_at": "2026-08-07",
+  "dependency": {
+    "name": "Mbed TLS",
+    "version": "4.1.1",
+    "release_url": "https://github.com/Mbed-TLS/mbedtls/releases/tag/mbedtls-4.1.1",
+    "archive_url": "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-4.1.1/mbedtls-4.1.1.tar.bz2",
+    "archive_name": "mbedtls-4.1.1.tar.bz2",
+    "archive_bytes": 7099934,
+    "archive_sha256": "3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c",
+    "tag": "mbedtls-4.1.1",
+    "tag_object": "783058d12831aedd3ef57a64577f6f8a88d23bd3",
+    "commit": "0a8fda272a5a0abef3b47c91bed37185d5a726b1",
+    "tag_signature": "unsigned",
+    "bundled_tf_psa_crypto_version": "1.1.1",
+    "license_expression": "Apache-2.0 OR GPL-2.0-or-later",
+    "selected_license": "Apache-2.0",
+    "root_license_sha256": "9b405ef4c89342f5eae1dd828882f931747f71001cfba7d114801039b52ad09b",
+    "tf_psa_license_sha256": "da8c58f05f135a9d15e9ffad4ecf854cfcc1f014c8abfd75ba05f62630ccc118",
+    "source_regular_files": 3927,
+    "source_regular_bytes": 60515866,
+    "source_tree_sha256": "7c4ba6554fed6eb67c201054bc75b124fcdc0649e2f56cd762746e01a25d2140",
+    "source_symlinks_unix": 147,
+    "source_symlink_prefix": "tf-psa-crypto/drivers/pqcp/mldsa-native/examples/"
+  },
+  "local_paths": {
+    "archive": ".toolchains/native-crypto/downloads/mbedtls-4.1.1.tar.bz2",
+    "source": ".toolchains/native-crypto/src/mbedtls-4.1.1"
+  },
+  "official_evidence": {
+    "release_published_at": "2026-07-07T14:43:41Z",
+    "archive_asset_id": 464486390,
+    "archive_asset_digest": "sha256:3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c",
+    "checksum_asset_name": "mbedtls-4.1.1-sha256sum.txt",
+    "checksum_asset_bytes": 88,
+    "checksum_asset_digest": "sha256:bbf04627efb60c5e3ad620d903994804c275681d1a1948c6b0c0a5acdc77d4a4",
+    "checksum_entry": "3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c  mbedtls-4.1.1.tar.bz2\n"
+  },
+  "allowed_algorithms": [
+    "AES-256-GCM-DECRYPT",
+    "HKDF-SHA-256",
+    "HMAC-SHA-256",
+    "SHA-256"
+  ],
+  "native_profile": {
+    "config_path": "runtime/native/src/main/cpp/ah_crypto_config.h",
+    "config_sha256": "75094e9ef8dbb381cfadddc7e7c89eed9c622d471331ce95a30574e93156ef35",
+    "required_internal_symbols": [
+      "d mbedtls_platform_dev_random",
+      "t ctr_drbg_update_internal",
+      "t entropy_gather_internal",
+      "t entropy_update",
+      "t mbedtls_aes_crypt_ecb",
+      "t mbedtls_ctr_drbg_free",
+      "t mbedtls_ctr_drbg_init",
+      "t mbedtls_ctr_drbg_reseed_internal",
+      "t mbedtls_ctr_drbg_seed",
+      "t mbedtls_entropy_free",
+      "t mbedtls_entropy_func",
+      "t mbedtls_entropy_init",
+      "t mbedtls_entropy_poll_platform",
+      "t mbedtls_platform_get_entropy",
+      "t psa_random_internal_free",
+      "t psa_random_internal_init",
+      "t psa_random_internal_seed"
+    ]
+  },
+  "android_abis": [
+    "armeabi-v7a",
+    "arm64-v8a",
+    "x86",
+    "x86_64"
+  ],
+  "ci_toolchains": {
+    "ubuntu": {
+      "runs_on": "ubuntu-24.04",
+      "image_os": "ubuntu24",
+      "reviewed_images": [
+        {
+          "image_version": "20260720.247.2",
+          "manifest_ref": "ubuntu24/20260720.247"
+        },
+        {
+          "image_version": "20260804.265.1",
+          "manifest_ref": "ubuntu24/20260804.265"
+        }
+      ],
+      "c_compiler": "gcc",
+      "cxx_compiler": "g++",
+      "compiler_version": "13.3.0"
+    },
+    "windows": {
+      "runs_on": "windows-2025",
+      "image_os": "win25-vs2026",
+      "reviewed_images": [
+        {
+          "image_version": "20260728.188.1",
+          "manifest_ref": "win25-vs2026/20260728.188"
+        },
+        {
+          "image_version": "20260803.193.1",
+          "manifest_ref": "win25-vs2026/20260803.193"
+        }
+      ],
+      "clang_cl_version": "20.1.8",
+      "visual_studio_version": "18.8.12023.21",
+      "visual_studio_x64_tools": "18.8.11901.359",
+      "cl_runtime_version": "19.51.36252"
+    }
+  }
+}

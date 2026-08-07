@@ -74,6 +74,24 @@ const expectedLock = {
       cxx_compiler: "g++",
       compiler_version: "13.3.0",
     },
+    windows: {
+      runs_on: "windows-2025",
+      image_os: "win25-vs2026",
+      reviewed_images: [
+        {
+          image_version: "20260728.188.1",
+          manifest_ref: "win25-vs2026/20260728.188",
+        },
+        {
+          image_version: "20260803.193.1",
+          manifest_ref: "win25-vs2026/20260803.193",
+        },
+      ],
+      clang_cl_version: "20.1.8",
+      visual_studio_version: "18.8.12023.21",
+      visual_studio_x64_tools: "18.8.11901.359",
+      cl_runtime_version: "19.51.36252",
+    },
   },
 };
 
@@ -283,6 +301,15 @@ if (selfTest) {
     ["Ubuntu C compiler", (candidate) => { candidate.ci_toolchains.ubuntu.c_compiler = "clang"; }],
     ["Ubuntu CXX compiler", (candidate) => { candidate.ci_toolchains.ubuntu.cxx_compiler = "clang++"; }],
     ["Ubuntu compiler version", (candidate) => { candidate.ci_toolchains.ubuntu.compiler_version = "changed"; }],
+    ["Windows runner label", (candidate) => { candidate.ci_toolchains.windows.runs_on = "windows-latest"; }],
+    ["Windows image OS", (candidate) => { candidate.ci_toolchains.windows.image_os = "changed"; }],
+    ["Windows reviewed image", (candidate) => { candidate.ci_toolchains.windows.reviewed_images[0].image_version += ".changed"; }],
+    ["Windows manifest ref", (candidate) => { candidate.ci_toolchains.windows.reviewed_images[1].manifest_ref += ".changed"; }],
+    ["Windows reviewed image order", (candidate) => { candidate.ci_toolchains.windows.reviewed_images.reverse(); }],
+    ["Windows clang-cl", (candidate) => { candidate.ci_toolchains.windows.clang_cl_version = "changed"; }],
+    ["Windows Visual Studio", (candidate) => { candidate.ci_toolchains.windows.visual_studio_version = "changed"; }],
+    ["Windows x64 tools", (candidate) => { candidate.ci_toolchains.windows.visual_studio_x64_tools = "changed"; }],
+    ["Windows cl runtime", (candidate) => { candidate.ci_toolchains.windows.cl_runtime_version = "changed"; }],
   ];
   for (const [label, mutate] of mutations) {
     const candidate = structuredClone(lock);

@@ -88,7 +88,7 @@ NDK 29 提供 zlib，但不提供可供产品链接的稳定 AES-GCM/HKDF 公共
 - 机器锁与官方归档的 URL、字节数、SHA-256、tag object、commit、许可证哈希和 bundled TF-PSA 版本逐项匹配。
 - Ubuntu/Windows Host self-test 对 NIST AES-256-GCM 与 RFC 5869 case 1 逐字节通过；tag/nonce/key/output 边界负例失败关闭且输出全零。
 - Ubuntu/Windows 的同一 Release self-test 必须通过至少 8 线程的 AES/HKDF 并发压力矩阵，证明 facade 的串行化合同。
-- Ubuntu Host 与 KVM 必须失败关闭断言锁定的 runtime image、官方 manifest ref 和 GNU C/C++ 精确版本；Windows 保持对应 image、LLVM 与 `cl.exe` 精确断言，任何托管镜像漂移均要求重新审查。
+- Ubuntu Host 与 KVM 必须失败关闭断言锁定的 runtime image、官方 manifest ref 和 GNU C/C++ 精确版本；Windows 只接受机器锁中逐项审查的有限 runtime/manifest 映射，并保持 LLVM、VS/x64 tools 与 `cl.exe` 精确断言。任何未列入的托管镜像均要求重新审查。
 - NDK 29/CMake 4.1.2 构建 `armeabi-v7a`、`arm64-v8a`、`x86`、`x86_64`；四个 `libah_runtime.so` 均无 `libcrypto`、TLS 或 X.509 动态依赖。
 - 最终链接只保留 facade 需要的 TF-PSA 对象；默认符号隐藏，无非预期 crypto 导出。
 - 官方公告 point-in-time 复核记录所有影响 4.1.0 的 2026-07 安全项已由 4.1.1 修复；CVE-2025-66442 仅影响未启用的 RSA/CBC/ECB 与 RISC-V 条件；后续新公告仍触发升级评估。

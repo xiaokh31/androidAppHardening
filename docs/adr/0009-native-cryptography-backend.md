@@ -68,7 +68,7 @@ TF-PSA-Crypto `1.1.1` 的 PSA Crypto API 不提供完整并发安全保证。fac
 
 该选择不改变 AHDC v2 wire format、Host JCA 输出、`minSdk 29` 或输入 APK 的 ABI 范围。固定 facade 在同一源归档上构建 Android 四 ABI，并在 Windows/Ubuntu Host 运行标准向量；Mbed TLS/PSA 类型不进入产品公共 Java/JNI ABI。未来升级若改变结果、错误语义、尺寸或 ABI，必须通过独立任务和 ADR 重新批准。
 
-双平台 Host 向量必须同时固定执行环境。Ubuntu 固定 `runs-on: ubuntu-24.04` 并失败关闭断言 runtime `ImageOS=ubuntu24`、`ImageVersion=20260720.247.2`、官方 manifest ref `ubuntu24/20260720.247` 与 GNU C/C++ `13.3.0`；Windows 固定 ADR 所引用的 VS 2026 image、LLVM 与 `cl.exe` 精确版本。托管标签仍可能滚动，但任何 runtime 值漂移必须先使 CI 失败，再由独立工具链/供应链任务审查并更新 ADR，不得静默接受。
+双平台 Host 向量必须同时固定执行环境。Ubuntu 固定 `runs-on: ubuntu-24.04` 并失败关闭断言 runtime `ImageOS=ubuntu24`、`ImageVersion=20260720.247.2`、官方 manifest ref `ubuntu24/20260720.247` 与 GNU C/C++ `13.3.0`。GitHub 的 `windows-2025` 托管池实际在 `20260728.188.1` 与 `20260803.193.1` 两个已发布 VS 2026 镜像间异构调度；Windows 因此只接受这两个精确 runtime 值及其一一对应的不可变 manifest ref，并继续断言两者共有的 LLVM `20.1.8`、Visual Studio `18.8.12023.21`、x64 tools `18.8.11901.359` 与 `cl.exe 19.51.36252`。该有限 allowlist 不是版本范围；任何第三个 runtime 值必须失败关闭并由独立工具链/供应链任务审查，不能靠重跑或 `latest` 静默接受。
 
 ## Verification
 

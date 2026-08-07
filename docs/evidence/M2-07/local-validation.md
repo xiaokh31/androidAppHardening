@@ -119,3 +119,13 @@ Remediation candidate `b80acc824708a5725831dcecf580e3633d312583` closed every re
 The evidence-only successor freezes this candidate and the three run IDs for the third complete independent read-only review. Any finding invalidates the new freeze; PR #42 remains draft and M2-02 remains paused.
 
 The first exact-head run of evidence freeze `7ac703e56e31869adf839242252368632c3cdd5d` failed Windows Build `31138599592` before compiler invocation because GitHub assigned the previously reviewed runtime `20260728.188.1` instead of `20260803.193.1`; Ubuntu completed every Build gate, and Governance `31138599573` passed. This demonstrates that the hosted `windows-2025` pool is concurrently heterogeneous, so a single runtime assertion is nondeterministic even without repository changes. The replacement uses an exact two-entry runtime-to-immutable-manifest mapping for the only two independently observed/reviewed images, retains identical LLVM/VS/x64-tools/`cl.exe` assertions, and rejects any third image or version range. The failed freeze is invalid and replacement exact-head CI is required.
+
+Reviewed-pool candidate `4526729b678fe3238edd01f49a59d093b507b328` then passed all replacement gates:
+
+| Workflow | Run | Result | Relevant proof |
+| --- | ---: | --- | --- |
+| Build | [`31138903978`](https://github.com/xiaokh31/androidAppHardening/actions/runs/31138903978) | PASS | Ubuntu and Windows selected reviewed immutable image identities, verified compiler/runtime assertions and the locked source, ran the complete Host matrix/root regression, and scanned all four Release ABIs. |
+| Governance | [`31138903915`](https://github.com/xiaokh31/androidAppHardening/actions/runs/31138903915) | PASS | Both platforms passed project-package, strict HandOff, negative HandOff and Git object gates. |
+| M0-05 Linux KVM | [`31138903927`](https://github.com/xiaokh31/androidAppHardening/actions/runs/31138903927) | PASS | API 29 and API 36 passed the pinned Ubuntu/GNU gate, 147-link source identity, two-pass Release/R8 build, bounded acceptance, cleanup diagnostics and evidence upload. |
+
+The evidence-only successor is the sole third-review freeze. It must independently repeat these three workflows on its exact HEAD before review; PR #42 remains draft and M2-02 remains paused.

@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-07T09:43:00+08:00
+updated_at: 2026-08-07T09:56:38+08:00
 updated_by: /root
 state: active
 source_branch: chore/m2-07-native-crypto-backend
@@ -300,6 +300,7 @@ next_owner: /root
 - 第二轮 P2 修复已在 Windows 本地通过依赖 self-test、Governance、strict HandOff 与 clean offline `check verifyGovernance :runtime:native:assembleRelease`；根回归共 `283` tasks、四 ABI Release 全部 PASS，未启动设备或模拟器。当前只允许 amend 本地证据形成新候选并推送 replacement CI；Ubuntu 必须实际证明 `ImageOS=ubuntu24`、runtime `20260720.247.2`、manifest ref `ubuntu24/20260720.247`、GNU `13.3.0` 和 Unix 147-link 门禁后才能再次冻结。
 - Remediation candidate `b80acc824708a5725831dcecf580e3633d312583` 的 Build `31137953160`、Governance `31137953050` 与 API 29/36 x86_64 KVM `31137952989` 全部 PASS：Ubuntu Build/KVM 均命中固定 image/GNU 与真实 147-link 门禁，双平台 Host/根回归/四 ABI 和设备验收/清理均通过。当前只允许提交 evidence-only successor，待该 exact HEAD 的三套 CI 也通过后启动第三轮完整独立只读复核；PR #42 仍 draft，M2-02 仍暂停。
 - Evidence freeze `7ac703e56e31869adf839242252368632c3cdd5d` 的 Governance `31138599573` 与 Ubuntu Build 全部 PASS，但 Windows Build `31138599592` 被同一托管池回派到已审查旧 runtime `20260728.188.1`，在精确 image 断言处失败关闭；单值固定因此被证实会随机失败。当前只接受 `20260728.188.1 -> win25-vs2026/20260728.188` 与 `20260803.193.1 -> win25-vs2026/20260803.193` 两个精确映射，继续断言两者相同的 LLVM/VS/x64-tools/`cl.exe`，拒绝范围、`latest` 和任何第三值；必须新 SHA 重跑三套 exact-head CI 后才能再次冻结。
+- Reviewed-pool candidate `4526729b678fe3238edd01f49a59d093b507b328` 的 Build `31138903978`、Governance `31138903915` 与 API 29/36 KVM `31138903927` 全部 PASS；两个平台的 image/compiler、Host 密码矩阵、Unix 147-link、四 ABI、设备验收与清理均关闭。当前只允许提交最后一个 evidence-only successor；该 exact HEAD 必须再次三套全绿后作为第三轮完整独立只读复核的唯一输入，PR #42 仍 draft，M2-02 仍暂停。
 
 ## Verification Evidence
 

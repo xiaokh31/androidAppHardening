@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-07T09:56:38+08:00
+updated_at: 2026-08-07T10:18:00+08:00
 updated_by: /root
 state: active
 source_branch: chore/m2-07-native-crypto-backend
@@ -301,6 +301,7 @@ next_owner: /root
 - Remediation candidate `b80acc824708a5725831dcecf580e3633d312583` 的 Build `31137953160`、Governance `31137953050` 与 API 29/36 x86_64 KVM `31137952989` 全部 PASS：Ubuntu Build/KVM 均命中固定 image/GNU 与真实 147-link 门禁，双平台 Host/根回归/四 ABI 和设备验收/清理均通过。当前只允许提交 evidence-only successor，待该 exact HEAD 的三套 CI 也通过后启动第三轮完整独立只读复核；PR #42 仍 draft，M2-02 仍暂停。
 - Evidence freeze `7ac703e56e31869adf839242252368632c3cdd5d` 的 Governance `31138599573` 与 Ubuntu Build 全部 PASS，但 Windows Build `31138599592` 被同一托管池回派到已审查旧 runtime `20260728.188.1`，在精确 image 断言处失败关闭；单值固定因此被证实会随机失败。当前只接受 `20260728.188.1 -> win25-vs2026/20260728.188` 与 `20260803.193.1 -> win25-vs2026/20260803.193` 两个精确映射，继续断言两者相同的 LLVM/VS/x64-tools/`cl.exe`，拒绝范围、`latest` 和任何第三值；必须新 SHA 重跑三套 exact-head CI 后才能再次冻结。
 - Reviewed-pool candidate `4526729b678fe3238edd01f49a59d093b507b328` 的 Build `31138903978`、Governance `31138903915` 与 API 29/36 KVM `31138903927` 全部 PASS；两个平台的 image/compiler、Host 密码矩阵、Unix 147-link、四 ABI、设备验收与清理均关闭。当前只允许提交最后一个 evidence-only successor；该 exact HEAD 必须再次三套全绿后作为第三轮完整独立只读复核的唯一输入，PR #42 仍 draft，M2-02 仍暂停。
+- 第三轮独立只读复核永久废止 frozen SHA `0662b9e2ce22f5728bb7a757ada6b6bac8a94536`，结论 `P0=0/P1=0/P2=1`，归档于 `docs/evidence/M2-07/read-only-review-3.md`；前两轮十项 finding 已全部 CLOSED，三套 exact-SHA CI 也全绿。唯一新增 P2 是 self-test 未把一个实际 symlink 改到错误前缀；生产门禁已拒绝该情况。当前只补 Linux/Windows full-147 集合的 wrong-prefix 负例，保留零/partial 负例，不改变任何接受面；新 SHA 仍须三套 exact-head CI 与完整独立复核，PR #42 draft、M2-02 暂停。
 
 ## Verification Evidence
 

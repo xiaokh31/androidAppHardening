@@ -255,8 +255,18 @@ if (selfTest) {
     (_, index) => `${lock.dependency.source_symlink_prefix}synthetic-${index}`,
   );
   verifySymlinkSurface(lock, syntheticUnixSymlinks, "linux");
+  const wrongPrefixSymlinks = [...syntheticUnixSymlinks];
+  wrongPrefixSymlinks[0] = "outside-reviewed-prefix/synthetic-0";
+  await expectRejected(
+    () => Promise.resolve(verifySymlinkSurface(lock, wrongPrefixSymlinks, "linux")),
+    "wrong-prefix Unix symlink set",
+  );
   verifySymlinkSurface(lock, [], "win32");
   verifySymlinkSurface(lock, syntheticUnixSymlinks, "win32");
+  await expectRejected(
+    () => Promise.resolve(verifySymlinkSurface(lock, wrongPrefixSymlinks, "win32")),
+    "wrong-prefix Windows symlink set",
+  );
   await expectRejected(
     () => Promise.resolve(verifySymlinkSurface(lock, syntheticUnixSymlinks.slice(1), "win32")),
     "partial Windows symlink set",

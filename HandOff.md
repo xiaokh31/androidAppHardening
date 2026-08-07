@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-07T08:58:00+08:00
+updated_at: 2026-08-07T09:24:10+08:00
 updated_by: /root
 state: active
 source_branch: chore/m2-07-native-crypto-backend
@@ -296,6 +296,8 @@ next_owner: /root
 - Remediation HEAD `14b8c8c8cddb6f4b29f5457975b31054f3c582b7` 的 Governance run `31135168773` 双平台 PASS；Build run `31135168838` 的 Ubuntu Host/根回归/四 ABI 全部 PASS，Windows 已通过 archive-before-parser 与完整树提升门禁，仅因 workflow 将发布清单 ref `20260803.193` 错当成 runtime `ImageVersion` 而失败关闭。当前修订精确固定实际 runtime `ImageVersion=20260803.193.1`，不放宽任何工具链或密码验收门禁；仍须 replacement exact-head Build/Governance/KVM 全绿后才可冻结第二轮独立只读复核输入。
 - HEAD `bb3893b43ec69bdca31b7019d011744a0537a39a` 的 Governance run `31135503992` 双平台 PASS，Build run `31135503969` 的 Ubuntu 全部门禁 PASS；Windows 已越过 runtime image 与供应链准备，仅因 `cl.exe` 自报精确版本 `19.51.36252` 而断言误带 `.0` 后缀失败关闭。当前候选改为精确匹配实际 runtime 字符串，不接受版本范围且不改变任何密码/工具链能力；该 HEAD 的 KVM run `31135503956` 仅作历史运行，下一提交仍须三套 exact-head 门禁重跑。
 - Implementation candidate `e471a74d02a1426ccd17542ea8bb9f4ee956f6bf` 的 Build `31135865293`、Governance `31135865277` 与 API 29/36 x86_64 KVM `31135865495` 全部 PASS：Ubuntu/Windows Host 完整密码边界与八线程矩阵、根回归、四 ABI Release ELF/符号门禁、双遍 Release/R8 设备验收及强制清理均已关闭。当前只允许提交 evidence-only successor 形成第二轮独立只读复核的唯一冻结 SHA；PR #42 继续 draft，M2-02 继续暂停，任何复核 finding 都使该冻结点失效。
+- 第二轮独立只读复核已永久废止 frozen SHA `699cbda469a85501294b7a83587ce89faaad7192`，结论 `P0=0/P1=0/P2=3`，归档于 `docs/evidence/M2-07/read-only-review-2.md`。首轮七项 finding 均已 CLOSED；新增三项为 Unix 零 symlink 失败开放、Ubuntu runner/GNU Host 未固定断言、README 错称 M2 未启动。当前修复严格限于平台精确 symlink 门禁、`ubuntu24/20260720.247.2` + GNU `13.3.0` 失败关闭断言和公开状态纠正；修复后必须新 SHA、exact-head Build/Governance/KVM 和第三轮完整独立复核，PR #42 仍 draft，M2-02 仍暂停。
+- 第二轮 P2 修复已在 Windows 本地通过依赖 self-test、Governance、strict HandOff 与 clean offline `check verifyGovernance :runtime:native:assembleRelease`；根回归共 `283` tasks、四 ABI Release 全部 PASS，未启动设备或模拟器。当前只允许 amend 本地证据形成新候选并推送 replacement CI；Ubuntu 必须实际证明 `ImageOS=ubuntu24`、runtime `20260720.247.2`、manifest ref `ubuntu24/20260720.247`、GNU `13.3.0` 和 Unix 147-link 门禁后才能再次冻结。
 
 ## Verification Evidence
 

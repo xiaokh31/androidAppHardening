@@ -64,6 +64,17 @@ const expectedLock = {
     "SHA-256",
   ],
   android_abis: ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"],
+  ci_toolchains: {
+    ubuntu: {
+      runs_on: "ubuntu-24.04",
+      image_os: "ubuntu24",
+      image_version: "20260720.247.2",
+      manifest_ref: "ubuntu24/20260720.247",
+      c_compiler: "gcc",
+      cxx_compiler: "g++",
+      compiler_version: "13.3.0",
+    },
+  },
 };
 
 function fail(message) {
@@ -120,6 +131,18 @@ async function collectSourceEntries(directory, relative = "", inventory = { file
   return inventory;
 }
 
+function verifySymlinkSurface(candidate, symlinks, platform = process.platform) {
+  const unixCount = candidate.dependency.source_symlinks_unix;
+  const validCount = platform === "win32"
+    ? symlinks.length === 0 || symlinks.length === unixCount
+    : symlinks.length === unixCount;
+  if (!validCount ||
+      symlinks.some((entry) => !entry.startsWith(candidate.dependency.source_symlink_prefix))) {
+    const expected = platform === "win32" ? `0_or_${unixCount}` : String(unixCount);
+    fail(`unexpected source symlink surface platform=${platform} count=${symlinks.length} expected=${expected}`);
+  }
+}
+
 async function verifySourceTree(candidate, sourceRoot) {
   const sourceStat = await stat(sourceRoot).catch(() => null);
   if (sourceStat === null || !sourceStat.isDirectory()) {
@@ -128,12 +151,7 @@ async function verifySourceTree(candidate, sourceRoot) {
 
   const inventory = await collectSourceEntries(sourceRoot);
   const { files, symlinks } = inventory;
-  const validSymlinkCount = symlinks.length === 0 ||
-    symlinks.length === candidate.dependency.source_symlinks_unix;
-  if (!validSymlinkCount ||
-      symlinks.some((entry) => !entry.startsWith(candidate.dependency.source_symlink_prefix))) {
-    fail(`unexpected source symlink surface count=${symlinks.length}`);
-  }
+  verifySymlinkSurface(candidate, symlinks);
   files.sort((left, right) => left.normalized < right.normalized ? -1 : left.normalized > right.normalized ? 1 : 0);
   const treeHash = createHash("sha256");
   let totalBytes = 0;
@@ -210,6 +228,21 @@ if (selfTest) {
     () => Promise.resolve(verifyArchiveBytes(lock, mutatedArchive)),
     "one archive byte",
   );
+  await expectRejected(
+    () => Promise.resolve(verifySymlinkSurface(lock, [], "linux")),
+    "missing Unix symlink set",
+  );
+  const syntheticUnixSymlinks = Array.from(
+    { length: lock.dependency.source_symlinks_unix },
+    (_, index) => `${lock.dependency.source_symlink_prefix}synthetic-${index}`,
+  );
+  verifySymlinkSurface(lock, syntheticUnixSymlinks, "linux");
+  verifySymlinkSurface(lock, [], "win32");
+  verifySymlinkSurface(lock, syntheticUnixSymlinks, "win32");
+  await expectRejected(
+    () => Promise.resolve(verifySymlinkSurface(lock, syntheticUnixSymlinks.slice(1), "win32")),
+    "partial Windows symlink set",
+  );
 
   const mutations = [
     ["schema", (candidate) => { candidate.schema_version = 2; }],
@@ -243,6 +276,13 @@ if (selfTest) {
     ["checksum evidence", (candidate) => { candidate.official_evidence.checksum_entry += "changed"; }],
     ["algorithm list", (candidate) => { candidate.allowed_algorithms.push("RSA"); }],
     ["ABI list", (candidate) => { candidate.android_abis.reverse(); }],
+    ["Ubuntu runner label", (candidate) => { candidate.ci_toolchains.ubuntu.runs_on = "ubuntu-latest"; }],
+    ["Ubuntu image OS", (candidate) => { candidate.ci_toolchains.ubuntu.image_os = "changed"; }],
+    ["Ubuntu image version", (candidate) => { candidate.ci_toolchains.ubuntu.image_version += ".changed"; }],
+    ["Ubuntu manifest ref", (candidate) => { candidate.ci_toolchains.ubuntu.manifest_ref += ".changed"; }],
+    ["Ubuntu C compiler", (candidate) => { candidate.ci_toolchains.ubuntu.c_compiler = "clang"; }],
+    ["Ubuntu CXX compiler", (candidate) => { candidate.ci_toolchains.ubuntu.cxx_compiler = "clang++"; }],
+    ["Ubuntu compiler version", (candidate) => { candidate.ci_toolchains.ubuntu.compiler_version = "changed"; }],
   ];
   for (const [label, mutate] of mutations) {
     const candidate = structuredClone(lock);

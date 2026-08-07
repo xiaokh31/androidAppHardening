@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-M0 基础建设与可行性验证以及 M1 Host 处理链已经完成。M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换器、M1-07 AHDC v2 分块认证容器合同、M1-04 AHDC v2 Host 实现、M1-05 APK 重打包与对齐、M1-06 CLI 与 JSON 报告均已合并并通过双平台门禁。生产 RuntimeBundle 与可发布端到端发行包仍属于后续任务；M2 尚未启动。
+M0 基础建设与可行性验证以及 M1 Host 处理链已经完成。M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换器、M1-07 AHDC v2 分块认证容器合同、M1-04 AHDC v2 Host 实现、M1-05 APK 重打包与对齐、M1-06 CLI 与 JSON 报告均已合并并通过双平台门禁。M2 已启动：独立前置任务 M2-07 正在固定并复核 Native 密码后端；M2-02 保持暂停，只有 M2-07 合并且 `main` 门禁通过后才恢复。生产 RuntimeBundle 与可发布端到端发行包仍属于后续任务。
 
 开发者和 Agent 从 [`docs/README_FIRST.md`](docs/README_FIRST.md) 开始。项目统筹状态以 [`HandOff.md`](HandOff.md) 为准。
 
@@ -22,7 +22,9 @@ M0 基础建设与可行性验证以及 M1 Host 处理链已经完成。M1-01 �
 | [M1-04](docs/tasks/M1-04-encrypted-dex-container.md) | 已完成 | AHDC v2 Host 容器实现；PR #38、Issue #9、独立安全复核、merger-ready 与 post-merge `main` 门禁均已关闭 |
 | [M1-05](docs/tasks/M1-05-apk-repacker-and-alignment.md) | 已完成 | PR #39、Issue #10、四轮独立安全复核、merger-ready 与 post-merge `main` 双平台 CI、README 和 strict HandOff 均已关闭 |
 | [M1-06](docs/tasks/M1-06-cli-and-json-report.md) | 已完成 | PR #40、Issue #11、冻结只读复核、Ubuntu/Windows full-flow/字节一致性 CI、expected-head 普通合并与 post-merge strict HandOff 均已关闭 |
-| M2 ～ M4 | 未启动 | Runtime、验证矩阵与发布阶段不得提前实现 |
+| [M2-07](docs/tasks/M2-07-native-crypto-backend.md) | 进行中 | Native 密码后端 ADR、不可变供应链、双平台 Host/四 ABI/KVM 与独立安全复核；Issue #41、draft PR #42 |
+| [M2-02](docs/tasks/M2-02-native-decrypt-and-inmemory-loader.md) | 已暂停 | 等待 M2-07 合并并通过 `main` 门禁后恢复原冻结分支 |
+| M2-03 ～ M4 | 未启动 | 后续 Runtime、验证矩阵与发布阶段不得提前实现 |
 
 任务按 [`docs/tasks/INDEX.md`](docs/tasks/INDEX.md) 的依赖顺序执行。每个任务只有在 PR 合并、合并后门禁与证据完成后才在本表标记“已完成”；每个任务的收尾协调提交必须同步本 README，避免公开进度长期滞后。
 

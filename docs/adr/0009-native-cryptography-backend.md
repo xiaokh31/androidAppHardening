@@ -68,6 +68,8 @@ TF-PSA-Crypto `1.1.1` 的 PSA Crypto API 不提供完整并发安全保证。fac
 
 该选择不改变 AHDC v2 wire format、Host JCA 输出、`minSdk 29` 或输入 APK 的 ABI 范围。固定 facade 在同一源归档上构建 Android 四 ABI，并在 Windows/Ubuntu Host 运行标准向量；Mbed TLS/PSA 类型不进入产品公共 Java/JNI ABI。未来升级若改变结果、错误语义、尺寸或 ABI，必须通过独立任务和 ADR 重新批准。
 
+双平台 Host 向量必须同时固定执行环境。Ubuntu 固定 `runs-on: ubuntu-24.04` 并失败关闭断言 runtime `ImageOS=ubuntu24`、`ImageVersion=20260720.247.2`、官方 manifest ref `ubuntu24/20260720.247` 与 GNU C/C++ `13.3.0`；Windows 固定 ADR 所引用的 VS 2026 image、LLVM 与 `cl.exe` 精确版本。托管标签仍可能滚动，但任何 runtime 值漂移必须先使 CI 失败，再由独立工具链/供应链任务审查并更新 ADR，不得静默接受。
+
 ## Verification
 
 - 机器锁精确校验归档 bytes/SHA-256、tag/commit、license hashes、TF-PSA version、源 URL、算法/ABI 清单与完整解压树；归档校验发生在解包前。

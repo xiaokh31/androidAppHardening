@@ -27,6 +27,20 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Verify pinned Ubuntu runner and Host compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${ImageOS:-}" = "ubuntu24"
+          test "${ImageVersion:-}" = "20260720.247.2"
+          test "$(gcc -dumpfullversion -dumpversion)" = "13.3.0"
+          test "$(g++ -dumpfullversion -dumpversion)" = "13.3.0"
+          printf '%s\n' \
+            'runner_image=ubuntu24/20260720.247.2' \
+            'runner_manifest_ref=ubuntu24/20260720.247' \
+            'host_c_compiler=gcc/13.3.0' \
+            'host_cxx_compiler=g++/13.3.0'
+
       - name: Set up Temurin JDK
         # actions/setup-java v5
         uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95

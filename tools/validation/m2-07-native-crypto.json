@@ -49,5 +49,16 @@
     "arm64-v8a",
     "x86",
     "x86_64"
-  ]
+  ],
+  "ci_toolchains": {
+    "ubuntu": {
+      "runs_on": "ubuntu-24.04",
+      "image_os": "ubuntu24",
+      "image_version": "20260720.247.2",
+      "manifest_ref": "ubuntu24/20260720.247",
+      "c_compiler": "gcc",
+      "cxx_compiler": "g++",
+      "compiler_version": "13.3.0"
+    }
+  }
 }

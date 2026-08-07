@@ -94,6 +94,8 @@ M2-07 的 Native 密码后端固定为 Mbed TLS `4.1.1` 官方 release asset `mb
 
 M2-07 Windows Host 向量固定到最终通过 run 自报的 GitHub `windows-2025-vs2026` runtime `ImageVersion=20260803.193.1`；对应发布 ref 为 `win25-vs2026/20260803.193` 的[不可变官方清单](https://github.com/actions/runner-images/blob/win25-vs2026/20260803.193/images/windows/Windows2025-VS2026-Readme.md)：LLVM/`clang-cl` `20.1.8`、Visual Studio Enterprise 2026 `18.8.12023.21`（x64 tools component `18.8.11901.359`、`cl.exe` runtime `19.51.36252`）、Windows SDK `10.0.26100.0`，固定 CMake/Ninja `4.1.2`。workflow 逐项断言 runtime image、编译器与环境版本；镜像滚动时失败关闭并要求独立工具链复核，不静默接受新版。
 
+M2-07 Ubuntu Host 与 KVM 固定到 run 自报的 `ImageOS=ubuntu24`、runtime `ImageVersion=20260720.247.2` 及发布 ref `ubuntu24/20260720.247` 的[不可变官方清单](https://github.com/actions/runner-images/blob/ubuntu24/20260720.247/images/ubuntu/Ubuntu2404-Readme.md)。Host C/C++ 固定并断言 GNU `13.3.0`；workflow 同时打印清单 ref。机器锁 `ci_toolchains.ubuntu` 精确记录 runner label、runtime identity、manifest ref、编译器命令与版本，字段变更由负例拒绝。托管标签滚动时必须失败关闭并重新审查，不能静默使用新镜像或编译器。
+
 Ubuntu 24.04 KVM runner 还固定安装 `libpulse0=1:16.1+dfsg1-2ubuntu10.1`，版本记录在同一机器可读锁的 `host_packages` 中。workflow 必须以精确版本安装并在启动 Emulator 前逐字比对 `dpkg-query` 结果，不得接受仓库候选版本漂移。
 
 ## 6. GitHub Actions

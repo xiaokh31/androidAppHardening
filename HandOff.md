@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-07T13:52:09+08:00
+updated_at: 2026-08-07T14:05:14+08:00
 updated_by: /root
 state: active
 source_branch: feat/m2-02-native-decrypt-loader
@@ -168,7 +168,7 @@ next_owner: /root
 | M1-05 | `/root` | `feat/m1-05-apk-repacker-and-alignment` | done | M1-02, M1-03, M1-04 | PR #39、Issue #10、独立复核、merger-ready CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-06 | `/root` | `feat/m1-06-cli-and-json-report` | done | M1-01, M1-02, M1-03, M1-04, M1-05 | PR #40、Issue #11、独立复核、merger-ready 与 post-merge main 双平台 CI、README 和 strict HandOff 均已关闭 |
 | M2-07 | `/root` | `main` | done | M0-03, M1-04 | PR #42、Issue #41、最终独立复核、README、strict 与 post-merge Build/Governance/KVM 均已关闭 |
-| M2-02 | `/root` | `feat/m2-02-native-decrypt-loader` | in_progress | M0-04, M1-04, M2-07 | 已恢复并合入 `main@e78fcae`；按冻结实现计划从有界 ZIP/Config/AHDC parser 与事务 owner 开始 |
+| M2-02 | `/root` | `feat/m2-02-native-decrypt-loader` | in_progress | M0-04, M1-04, M2-07 | 有界 AHDC/Config wire parser 与四 ABI 编译已通过；下一步固定 ZIP asset、认证/解压事务和匿名 mapping owner |
 
 ## Decisions and Invariants
 
@@ -314,6 +314,7 @@ next_owner: /root
 - 第九轮最终独立只读复核对 frozen SHA `7190a6ee61285fe065d5de6cbe836a648482d658` 给出 PASS：`P0=0/P1=0/P2=0`，结论归档于 `docs/evidence/M2-07/read-only-review-9.md`；前二十项 finding 全部 CLOSED 且无新增 finding。该 SHA 的 Build `31149909030`、Governance `31149909021` 与 API 29/36 KVM `31149909014` 全绿，双平台 Host 向量、四 ABI 精确十七项 surface、零相关动态导出、设备验收、强制清理和证据上传均通过。该复核是最终结论，除非出现真实接受面或安全边界缺陷，不再因措辞或可选增强开启新轮次。当前只允许 evidence-only 归档 successor、最终 exact-head 门禁与 expected-head 合并；PR #42 仍 draft，M2-02 在 final main 门禁前继续暂停。
 - Evidence-only merger-ready HEAD `0c741e76477a1b8885ae354747168c1145152e0a` 的 Build `31150620828`、Governance `31150620836` 与 API 29/36 KVM `31150620830` 六项全部 PASS；PR #42 已转 ready，并以 expected-head 保护的普通 merge commit `1ac8e308236078827ec3e4a8f438514dcf69b10c` 合并到 `main`，Issue #41 已关闭。README 已同步 M2-07 完成状态；当前只允许提交本 post-merge 协调状态并运行无豁免 strict/Governance/Build/KVM 最终 `main` 门禁，全部通过后恢复 `feat/m2-02-native-decrypt-loader@40e3900`。
 - Post-merge `main@e78fcaed58dd5211a465ea37a94db45dddc17dfa` 已在本地无豁免通过 strict HandOff、Governance 与 diff check，远端 Build `31151358692`、Governance `31151358963` 和手动 dispatch 的 API 29/36 KVM `31151403785` 全部 PASS。M2-07 正式结束；`feat/m2-02-native-decrypt-loader` 已从原冻结 `40e3900` 恢复并以 merge commit `d9af1fa785ef649b31bf387e2f058b6b0f986df1` 合入该 exact main，无冲突。M2-02 的先决阻塞已关闭，README 与实现计划切换为进行中；当前只实现 M2-02，不启动 M2-03。
+- M2-02 有界格式基础已实现：C++17 严格解析 HeaderV2/SPV1/RecordV2/ChunkV2/ConfigV2，逐 record/chunk 校验 canonical topology、checked arithmetic、64 DEX/16 lineage/65,536 chunk、512 MiB 单 DEX 与 4 GiB 总量、Factory/zero-fill/reserved/nonce/version。MSVC `/W4 /WX` 独立矩阵退出 `0`，Android NDK 四 ABI Release `assembleRelease` 在 30 秒内 PASS；证据归档于 `docs/evidence/M2-02/local-validation.md`。当前实现尚未声明完成，下一层只处理固定 ZIP asset、share/CEK/manifest、per-chunk GCM→zlib 与失败事务所有权。
 
 ## Verification Evidence
 

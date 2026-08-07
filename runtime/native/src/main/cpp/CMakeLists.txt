@@ -56,7 +56,7 @@ add_subdirectory(
     EXCLUDE_FROM_ALL
 )
 
-add_library(ah_crypto_backend OBJECT crypto_backend.cpp)
+add_library(ah_crypto_backend OBJECT crypto_backend.cpp container_format.cpp)
 target_compile_features(ah_crypto_backend PRIVATE cxx_std_17)
 target_link_libraries(ah_crypto_backend PRIVATE TF-PSA-Crypto::tfpsacrypto)
 set_target_properties(
@@ -90,7 +90,12 @@ if(ANDROID)
 else()
     enable_testing()
     find_package(Threads REQUIRED)
-    add_executable(ah_crypto_self_test crypto_backend_test.cpp $<TARGET_OBJECTS:ah_crypto_backend>)
+    add_executable(
+        ah_crypto_self_test
+        crypto_backend_test.cpp
+        container_format_test.cpp
+        $<TARGET_OBJECTS:ah_crypto_backend>
+    )
     target_compile_features(ah_crypto_self_test PRIVATE cxx_std_17)
     target_link_libraries(ah_crypto_self_test PRIVATE TF-PSA-Crypto::tfpsacrypto Threads::Threads)
     add_test(NAME m2_07_native_crypto_vectors COMMAND ah_crypto_self_test)

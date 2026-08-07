@@ -9,6 +9,8 @@
 #include <utility>
 #include <vector>
 
+int runContainerFormatSelfTests();
+
 namespace {
 
 using ah::crypto::Status;
@@ -291,11 +293,13 @@ int main() {
     const int gcm = testNistAes256Gcm();
     const int hkdf = testRfc5869AndBoundaries();
     const int concurrent = testConcurrentFacade();
-    if (gcm != 0 || hkdf != 0 || concurrent != 0) {
+    const int containerFormat = runContainerFormatSelfTests();
+    if (gcm != 0 || hkdf != 0 || concurrent != 0 || containerFormat != 0) {
         std::cerr << "M2-07 native crypto self-test failed: gcm=" << gcm
-                  << " hkdf=" << hkdf << " concurrent=" << concurrent << '\n';
+                  << " hkdf=" << hkdf << " concurrent=" << concurrent
+                  << " container_format=" << containerFormat << '\n';
         return 1;
     }
-    std::cout << "M2-07 NIST AES-256-GCM, RFC 5869, boundary and concurrency matrix: PASS\n";
+    std::cout << "M2-07 crypto matrix and M2-02 bounded container format matrix: PASS\n";
     return 0;
 }

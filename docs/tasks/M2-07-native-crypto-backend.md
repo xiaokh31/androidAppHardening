@@ -55,7 +55,7 @@ NDK 29 提供 zlib，但不提供可供产品链接的稳定 AES-GCM/HKDF 公共
 - 唯一来源为 Mbed TLS `4.1.1` release 的 `mbedtls-4.1.1.tar.bz2`；拒绝 GitHub 自动生成的 source archives，因为它们不包含完整 submodule/generated 内容。
 - 归档必须同时命中字节数 `7099934` 与 SHA-256 `3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c`；tag object、commit 与 bundled TF-PSA 版本也必须匹配锁文件。
 - 构建只 `add_subdirectory` 官方归档中的 `tf-psa-crypto`，静态链接到隐藏符号的 `libah_runtime.so`；不构建或链接 `mbedtls` TLS 与 `mbedx509`。
-- `ah_crypto_config.h` 的精确 SHA-256 和四 ABI 必须保留的内部 CTR-DRBG/entropy/AES-block 本地符号列表进入机器锁；这些符号仅为 PSA 初始化、GCM 与 DRBG 内部依赖，不构成 facade 或 PSA ECB/CBC/随机密钥生成能力。任何增加、删除或导出均失败关闭并要求重新做可达性复核。
+- `ah_crypto_config.h` 的精确 SHA-256 和四 ABI 必须保留的内部 CTR-DRBG/entropy/AES-block/platform-hook 本地符号名称与 `t/d` 绑定类型进入机器锁；这些符号仅为 PSA 初始化、GCM 与 DRBG 内部依赖，不构成 facade 或 PSA ECB/CBC/随机密钥生成能力。任何名称、数量、类型增加/删除/变化或动态导出均失败关闭并要求重新做可达性复核。
 - C++ facade 只提供 `aes256GcmDecrypt`、`hkdfSha256` 和不可优化掉的 `secureZero`。认证失败必须清零调用方输出并返回独立错误；不得返回未认证 plaintext。
 - 下载与解压是显式准备步骤。Gradle/CMake 不访问网络，依赖缺失、版本/许可证不匹配或锁校验失败时立即失败。
 - 下载归档在任何 archive parser 处理前必须先核对精确机器锁；只能解压到新建空临时目录，完整常规文件树清单校验通过并写入锁定 stamp 后再原子提升。Gradle/CMake 只消费该 stamped 目录。
@@ -92,7 +92,7 @@ NDK 29 提供 zlib，但不提供可供产品链接的稳定 AES-GCM/HKDF 公共
 - Ubuntu Host 与 KVM 必须失败关闭断言锁定的 runtime image、官方 manifest ref 和 GNU C/C++ 精确版本；Windows 只接受机器锁中逐项审查的有限 runtime/manifest 映射，并保持 LLVM、VS/x64 tools 与 `cl.exe` 精确断言。任何未列入的托管镜像均要求重新审查。
 - NDK 29/CMake 4.1.2 构建 `armeabi-v7a`、`arm64-v8a`、`x86`、`x86_64`；四个 `libah_runtime.so` 均无 `libcrypto`、TLS 或 X.509 动态依赖。
 - 最终链接只保留 facade 需要的 TF-PSA 对象；默认符号隐藏，无非预期 crypto 导出。
-- 四 ABI 的未剥离 Release ELF 必须逐字匹配机器锁中的内部 CTR-DRBG/entropy/AES-block 本地符号集合；PSA ECB/CBC 算法仍不得启用，上游符号不得动态导出。
+- 四 ABI 的未剥离 Release ELF 必须逐字匹配机器锁中的十七个内部 CTR-DRBG/entropy/AES-block/platform-hook 符号名称和 local `t/d` 类型；PSA ECB/CBC 算法仍不得启用，上游符号不得动态导出。
 - 官方公告 point-in-time 复核记录所有影响 4.1.0 的 2026-07 安全项已由 4.1.1 修复；CVE-2025-66442 的 padding-decrypt 路径在本 facade 不可达：无 RSA/CBC/ECB PSA 算法、无 padding API、仅 GCM authenticated decrypt，内部 `mbedtls_aes_crypt_ecb` 仅提供 GCM/CTR-DRBG 所需 block operation；后续新公告仍触发升级评估。
 - 独立只读安全复核 P0/P1/P2 为零后才允许合并；M2-02 只在本任务合并且 `main` 门禁通过后恢复。
 

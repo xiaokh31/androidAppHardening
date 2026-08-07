@@ -253,7 +253,7 @@ jobs:
             grep -q 'secureZero' <<<"$symbols"
             grep -q 'ah_crypto_backend_anchor' <<<"$symbols"
             expected_internal="$(node -e "const lock=require('./tools/validation/m2-07-native-crypto.json'); process.stdout.write([...lock.native_profile.required_internal_symbols].sort().join('\\n'))")"
-            actual_internal="$(awk '$3 ~ /^(mbedtls_aes_crypt_ecb|mbedtls_ctr_drbg_|mbedtls_entropy_|psa_random_internal_)/ { print $3 }' <<<"$symbols" | sort)"
+            actual_internal="$(awk '$2 ~ /^[td]$/ && $3 ~ /^(mbedtls_aes_crypt_ecb|mbedtls_ctr_drbg_|mbedtls_entropy_|psa_random_internal_|ctr_drbg_|entropy_|mbedtls_platform_(get_entropy|dev_random))/ { print $2 " " $3 }' <<<"$symbols" | sort)"
             if ! diff -u <(printf '%s\n' "$expected_internal") <(printf '%s\n' "$actual_internal"); then
               echo "unexpected TF-PSA internal RNG/AES-block symbol surface in $unstripped" >&2
               exit 1
@@ -582,10 +582,11 @@ jobs:
             }
             $expectedInternal = @((Get-Content -Raw -LiteralPath "tools/validation/m2-07-native-crypto.json" | ConvertFrom-Json).native_profile.required_internal_symbols | Sort-Object)
             $actualInternal = @($symbols | ForEach-Object {
-              if ($_ -match '^\S+\s+\S\s+(\S+)$') {
-                $symbolName = $Matches[1]
-                if ($symbolName -match '^(mbedtls_aes_crypt_ecb|mbedtls_ctr_drbg_|mbedtls_entropy_|psa_random_internal_)') {
-                  $symbolName
+              if ($_ -match '^\S+\s+([td])\s+(\S+)$') {
+                $symbolType = $Matches[1]
+                $symbolName = $Matches[2]
+                if ($symbolName -match '^(mbedtls_aes_crypt_ecb|mbedtls_ctr_drbg_|mbedtls_entropy_|psa_random_internal_|ctr_drbg_|entropy_|mbedtls_platform_(get_entropy|dev_random))') {
+                  "$symbolType $symbolName"
                 }
               }
             } | Sort-Object)

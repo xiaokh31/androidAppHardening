@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260805-130636
-updated_at: 2026-08-07T10:27:21+08:00
+updated_at: 2026-08-07T10:39:13+08:00
 updated_by: /root
 state: active
 source_branch: chore/m2-07-native-crypto-backend
@@ -303,6 +303,7 @@ next_owner: /root
 - Reviewed-pool candidate `4526729b678fe3238edd01f49a59d093b507b328` 的 Build `31138903978`、Governance `31138903915` 与 API 29/36 KVM `31138903927` 全部 PASS；两个平台的 image/compiler、Host 密码矩阵、Unix 147-link、四 ABI、设备验收与清理均关闭。当前只允许提交最后一个 evidence-only successor；该 exact HEAD 必须再次三套全绿后作为第三轮完整独立只读复核的唯一输入，PR #42 仍 draft，M2-02 仍暂停。
 - 第三轮独立只读复核永久废止 frozen SHA `0662b9e2ce22f5728bb7a757ada6b6bac8a94536`，结论 `P0=0/P1=0/P2=1`，归档于 `docs/evidence/M2-07/read-only-review-3.md`；前两轮十项 finding 已全部 CLOSED，三套 exact-SHA CI 也全绿。唯一新增 P2 是 self-test 未把一个实际 symlink 改到错误前缀；生产门禁已拒绝该情况。当前只补 Linux/Windows full-147 集合的 wrong-prefix 负例，保留零/partial 负例，不改变任何接受面；新 SHA 仍须三套 exact-head CI 与完整独立复核，PR #42 draft、M2-02 暂停。
 - Wrong-prefix remediation `ef8d26a6043e3d511ae8a59ff0f85378e54e98b1` 的 Governance `31140905977` PASS；Build `31140905972` 的 Windows 全部 PASS，但 Ubuntu 被新托管 runtime `20260804.265.1` 在精确镜像门禁处失败关闭，未进入业务测试。官方不可变 ref `ubuntu24/20260804.265` 仍提供 GNU `13.3.0`；当前只把它作为旧 `20260720.247.2 -> ubuntu24/20260720.247` 之外的第二个精确映射，锁定顺序并拒绝范围、`latest` 和第三值。必须新 SHA 重跑三套 exact-head CI 与完整独立复核，PR #42 仍 draft，M2-02 仍暂停。
+- Ubuntu reviewed-pool candidate `cd3b5ce8bfe50715e10b6d0967dbecb8c88bd1cf` 的 Build `31141373708`、Governance `31141373717` 与 API 29/36 KVM `31141373706` 全部 PASS；双平台 Host 密码矩阵、两个平台有限精确镜像映射、Unix 147-link、根回归、四 ABI、设备验收和清理均关闭。当前只允许提交 evidence-only successor，作为第四轮完整独立只读复核的唯一输入；PR #42 仍 draft，M2-02 仍暂停。
 
 ## Verification Evidence
 
@@ -317,6 +318,18 @@ next_owner: /root
 - artifact: `docs/evidence/M2-07/read-only-review-1.md`
 - sha256: not_applicable
 - result: FAIL; P0=0, P1=3, P2=4; frozen SHA permanently rejected, all seven findings require remediation and a fresh complete independent review
+
+### M2-07 review-3 remediation replacement CI
+
+- task_id: M2-07
+- git_commit: cd3b5ce8bfe50715e10b6d0967dbecb8c88bd1cf
+- command: GitHub Actions Build run 31141373708, Governance run 31141373717 and M0-05 Linux KVM run 31141373706 on draft PR #42
+- exit_code: 0
+- environment: reviewed Ubuntu `20260720.247.2` or `20260804.265.1` with GNU 13.3.0; reviewed Windows `20260728.188.1` or `20260803.193.1` with LLVM 20.1.8 and cl.exe 19.51.36252; API 29 r8/API 36 r2 x86_64 KVM; no local emulator
+- timestamp: 2026-08-07T10:39:13+08:00
+- artifact: https://github.com/xiaokh31/androidAppHardening/actions/runs/31141373708 ; https://github.com/xiaokh31/androidAppHardening/actions/runs/31141373717 ; https://github.com/xiaokh31/androidAppHardening/actions/runs/31141373706
+- sha256: not_applicable
+- result: PASS; exact-head Build/Governance/KVM all passed the reviewed image/compiler, authenticated source, NIST/RFC/boundary/thread, full regression, four-ABI, device acceptance and cleanup gates; evidence-only successor must freeze this candidate before review 4
 
 ### M1-04 clean restart baseline
 
@@ -1236,9 +1249,9 @@ None
 
 ## Ordered Next Actions
 
-1. Complete local root regression and inspect the seven-finding remediation diff; commit and push a new candidate while PR #42 remains draft.
-2. Require exact-head Ubuntu/Windows expanded Host matrix, machine-lock negative tests, four Android Release ABI scans, Governance and API 29/36 KVM.
-3. Freeze the fully green SHA and launch a fresh complete independent read-only M2-07 security review; remediate/re-freeze on any finding.
+1. Commit and push the evidence-only successor that freezes `cd3b5ce8bfe50715e10b6d0967dbecb8c88bd1cf` and exact run IDs `31141373708`/`31141373717`/`31141373706`.
+2. Require the evidence successor's exact-head Build/Governance/KVM to pass, then launch fourth complete independent read-only M2-07 review against that sole frozen input.
+3. Require review 4 to disposition all eleven earlier findings and return P0/P1/P2 all zero; remediate and re-freeze on any finding.
 4. After a zero-finding review and replacement exact-HEAD CI, mark PR #42 ready, merge with expected-head protection, run final `main` gates, update README/HandOff, then resume `feat/m2-02-native-decrypt-loader`.
 
 ## Relevant Files and Artifacts

@@ -360,17 +360,52 @@ jobs:
           $cmake = "$env:ANDROID_HOME/cmake/4.1.2/bin/cmake.exe"
           $ctest = "$env:ANDROID_HOME/cmake/4.1.2/bin/ctest.exe"
           $ninja = "$env:ANDROID_HOME/cmake/4.1.2/bin/ninja.exe"
-          $vsDevCmd = "C:/Program Files/Microsoft Visual Studio/18/Enterprise/Common7/Tools/VsDevCmd.bat"
           $clangCl = "C:/Program Files/LLVM/bin/clang-cl.exe"
-          $reviewedImages = @{
-            "20260728.188.1" = "win25-vs2026/20260728.188"
-            "20260803.193.1" = "win25-vs2026/20260803.193"
+          $vsWhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
+          $toolchainLock = (Get-Content -Raw -LiteralPath "tools/validation/m2-07-native-crypto.json" | ConvertFrom-Json).ci_toolchains.windows
+          function Assert-ExactVersion([string] $Actual, [string] $Expected, [string] $Label) {
+            if ($Actual -cne $Expected) { throw "unexpected $Label version: actual=$Actual expected=$Expected" }
+          }
+          function Assert-MutationRejected([string] $Expected, [string] $Label) {
+            $rejected = $false
+            try { Assert-ExactVersion "$Expected.changed" $Expected $Label } catch { $rejected = $true }
+            if (-not $rejected) { throw "$Label mismatch negative was accepted" }
+          }
+          $reviewedImages = @{}
+          foreach ($reviewedImage in $toolchainLock.reviewed_images) {
+            if ($reviewedImages.ContainsKey([string] $reviewedImage.image_version)) {
+              throw "duplicate reviewed Windows image version: $($reviewedImage.image_version)"
+            }
+            $reviewedImages[[string] $reviewedImage.image_version] = [string] $reviewedImage.manifest_ref
           }
           if ($env:ImageOS -ne "win25-vs2026" -or -not $reviewedImages.ContainsKey($env:ImageVersion)) {
             throw "unexpected mutable runner image: ImageOS=$env:ImageOS ImageVersion=$env:ImageVersion"
           }
           Write-Output "runner_image=$env:ImageOS/$env:ImageVersion"
           Write-Output "runner_manifest_ref=$($reviewedImages[$env:ImageVersion])"
+          if (-not (Test-Path -LiteralPath $vsWhere)) { throw "missing pinned runner Visual Studio locator: $vsWhere" }
+          $instanceJson = (& $vsWhere -all -products Microsoft.VisualStudio.Product.Enterprise -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -format json) -join "`n"
+          if ($LASTEXITCODE -ne 0) { throw "vswhere failed: $LASTEXITCODE" }
+          $instances = @($instanceJson | ConvertFrom-Json)
+          if ($instances.Count -ne 1) { throw "expected one reviewed Visual Studio Enterprise instance, found $($instances.Count)" }
+          $instance = $instances[0]
+          Assert-ExactVersion ([string] $instance.installationVersion) ([string] $toolchainLock.visual_studio_version) "Visual Studio"
+          Assert-MutationRejected ([string] $toolchainLock.visual_studio_version) "Visual Studio"
+          $installationPath = ([string] $instance.installationPath) -replace '\\', '/'
+          if ($installationPath -cne "C:/Program Files/Microsoft Visual Studio/18/Enterprise") {
+            throw "unexpected Visual Studio installation path: $installationPath"
+          }
+          $vsDevCmd = "$installationPath/Common7/Tools/VsDevCmd.bat"
+          $statePath = Join-Path $env:ProgramData "Microsoft/VisualStudio/Packages/_Instances/$($instance.instanceId)/state.json"
+          if (-not (Test-Path -LiteralPath $statePath)) { throw "missing Visual Studio instance state: $statePath" }
+          $instanceState = Get-Content -Raw -LiteralPath $statePath | ConvertFrom-Json
+          $x64ToolsPackages = @($instanceState.selectedPackages | Where-Object { $_.id -ceq "Microsoft.VisualStudio.Component.VC.Tools.x86.x64" })
+          if ($x64ToolsPackages.Count -ne 1) { throw "expected one selected x64 tools component, found $($x64ToolsPackages.Count)" }
+          $x64ToolsVersion = [string] $x64ToolsPackages[0].version
+          Assert-ExactVersion $x64ToolsVersion ([string] $toolchainLock.visual_studio_x64_tools) "Visual Studio x64 tools component"
+          Assert-MutationRejected ([string] $toolchainLock.visual_studio_x64_tools) "Visual Studio x64 tools component"
+          Write-Output "visual_studio_version=$($instance.installationVersion)"
+          Write-Output "visual_studio_x64_tools=$x64ToolsVersion"
           if (-not (Test-Path -LiteralPath $vsDevCmd)) { throw "missing pinned runner compiler environment: $vsDevCmd" }
           if (-not (Test-Path -LiteralPath $clangCl)) { throw "missing pinned runner clang-cl: $clangCl" }
           $clangVersion = (& $clangCl --version) -join "`n"
@@ -386,7 +421,8 @@ jobs:
           }
           if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) { throw "VS 2026 x64 compiler environment was not activated" }
           $clVersion = (& cl.exe 2>&1) -join "`n"
-          if ($clVersion -notmatch 'Version 19\.51\.36252(?:\s|$)') {
+          $escapedClRuntimeVersion = [regex]::Escape([string] $toolchainLock.cl_runtime_version)
+          if ($clVersion -notmatch "Version $escapedClRuntimeVersion(?:\s|$)") {
             throw "unexpected VS compiler environment: $clVersion"
           }
           & $cmake `

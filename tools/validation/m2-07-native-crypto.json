@@ -54,8 +54,16 @@
     "ubuntu": {
       "runs_on": "ubuntu-24.04",
       "image_os": "ubuntu24",
-      "image_version": "20260720.247.2",
-      "manifest_ref": "ubuntu24/20260720.247",
+      "reviewed_images": [
+        {
+          "image_version": "20260720.247.2",
+          "manifest_ref": "ubuntu24/20260720.247"
+        },
+        {
+          "image_version": "20260804.265.1",
+          "manifest_ref": "ubuntu24/20260804.265"
+        }
+      ],
       "c_compiler": "gcc",
       "cxx_compiler": "g++",
       "compiler_version": "13.3.0"

@@ -68,8 +68,16 @@ const expectedLock = {
     ubuntu: {
       runs_on: "ubuntu-24.04",
       image_os: "ubuntu24",
-      image_version: "20260720.247.2",
-      manifest_ref: "ubuntu24/20260720.247",
+      reviewed_images: [
+        {
+          image_version: "20260720.247.2",
+          manifest_ref: "ubuntu24/20260720.247",
+        },
+        {
+          image_version: "20260804.265.1",
+          manifest_ref: "ubuntu24/20260804.265",
+        },
+      ],
       c_compiler: "gcc",
       cxx_compiler: "g++",
       compiler_version: "13.3.0",
@@ -306,8 +314,9 @@ if (selfTest) {
     ["ABI list", (candidate) => { candidate.android_abis.reverse(); }],
     ["Ubuntu runner label", (candidate) => { candidate.ci_toolchains.ubuntu.runs_on = "ubuntu-latest"; }],
     ["Ubuntu image OS", (candidate) => { candidate.ci_toolchains.ubuntu.image_os = "changed"; }],
-    ["Ubuntu image version", (candidate) => { candidate.ci_toolchains.ubuntu.image_version += ".changed"; }],
-    ["Ubuntu manifest ref", (candidate) => { candidate.ci_toolchains.ubuntu.manifest_ref += ".changed"; }],
+    ["Ubuntu reviewed image", (candidate) => { candidate.ci_toolchains.ubuntu.reviewed_images[0].image_version += ".changed"; }],
+    ["Ubuntu manifest ref", (candidate) => { candidate.ci_toolchains.ubuntu.reviewed_images[1].manifest_ref += ".changed"; }],
+    ["Ubuntu reviewed image order", (candidate) => { candidate.ci_toolchains.ubuntu.reviewed_images.reverse(); }],
     ["Ubuntu C compiler", (candidate) => { candidate.ci_toolchains.ubuntu.c_compiler = "clang"; }],
     ["Ubuntu CXX compiler", (candidate) => { candidate.ci_toolchains.ubuntu.cxx_compiler = "clang++"; }],
     ["Ubuntu compiler version", (candidate) => { candidate.ci_toolchains.ubuntu.compiler_version = "changed"; }],

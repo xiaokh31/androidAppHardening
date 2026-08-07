@@ -32,12 +32,16 @@ jobs:
         run: |
           set -euo pipefail
           test "${ImageOS:-}" = "ubuntu24"
-          test "${ImageVersion:-}" = "20260720.247.2"
+          case "${ImageVersion:-}" in
+            20260720.247.2) reviewed_manifest='ubuntu24/20260720.247' ;;
+            20260804.265.1) reviewed_manifest='ubuntu24/20260804.265' ;;
+            *) printf 'unexpected mutable runner image: ImageOS=%s ImageVersion=%s\n' "${ImageOS:-}" "${ImageVersion:-}" >&2; exit 1 ;;
+          esac
           test "$(gcc -dumpfullversion -dumpversion)" = "13.3.0"
           test "$(g++ -dumpfullversion -dumpversion)" = "13.3.0"
           printf '%s\n' \
-            'runner_image=ubuntu24/20260720.247.2' \
-            'runner_manifest_ref=ubuntu24/20260720.247' \
+            "runner_image=ubuntu24/${ImageVersion}" \
+            "runner_manifest_ref=${reviewed_manifest}" \
             'host_c_compiler=gcc/13.3.0' \
             'host_cxx_compiler=g++/13.3.0'
 

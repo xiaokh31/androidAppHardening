@@ -28,6 +28,7 @@ permissions:
   contents: read
 
 concurrency:
+  # The M2-02 branch push is the pre-review frozen-SHA KVM gate.
   group: m0-05-kvm-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 

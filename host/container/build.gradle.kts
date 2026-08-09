@@ -1,5 +1,35 @@
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Input
+import org.gradle.process.CommandLineArgumentProvider
+
 plugins {
     alias(libs.plugins.kotlin.jvm)
+}
+
+abstract class M202DeviceVectorArguments : CommandLineArgumentProvider {
+    @get:Input
+    abstract val primaryDex: Property<String>
+
+    @get:Input
+    abstract val secondaryDex: Property<String>
+
+    @get:Input
+    abstract val outputRoot: Property<String>
+
+    @get:Input
+    abstract val packageName: Property<String>
+
+    @get:Input
+    abstract val signerSha256: Property<String>
+
+    override fun asArguments(): Iterable<String> =
+        listOf(
+            primaryDex.get(),
+            secondaryDex.get(),
+            outputRoot.get(),
+            packageName.get(),
+            signerSha256.get(),
+        )
 }
 
 dependencies {
@@ -21,15 +51,15 @@ val prepareM202DeviceVector by tasks.registering(JavaExec::class) {
     dependsOn(tasks.named("testClasses"))
     classpath = sourceSets["test"].runtimeClasspath
     mainClass.set("ah.host.container.M202DeviceVectorMain")
-    doFirst {
-        args(
-            providers.gradleProperty("m202PrimaryDex").get(),
-            providers.gradleProperty("m202SecondaryDex").get(),
-            providers.gradleProperty("m202VectorOutput").get(),
-            providers.gradleProperty("m202PackageName").get(),
-            providers.gradleProperty("m202SignerSha256").get(),
-        )
-    }
+    argumentProviders.add(
+        objects.newInstance<M202DeviceVectorArguments>().apply {
+            primaryDex.set(providers.gradleProperty("m202PrimaryDex"))
+            secondaryDex.set(providers.gradleProperty("m202SecondaryDex"))
+            outputRoot.set(providers.gradleProperty("m202VectorOutput"))
+            packageName.set(providers.gradleProperty("m202PackageName"))
+            signerSha256.set(providers.gradleProperty("m202SignerSha256"))
+        },
+    )
 }
 
 tasks.named<Test>("test") {

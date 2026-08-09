@@ -74,6 +74,10 @@ const char* payloadCode(ah::payload::Status status) noexcept {
             return "AAH-RUNTIME-CONTAINER-TRAILING-DATA";
         case ah::payload::Status::kMemoryProtection:
             return "AAH-RUNTIME-CONTAINER-MEMORY-PROTECTION";
+        case ah::payload::Status::kIo:
+            return "AAH-RUNTIME-CONTAINER-IO";
+        case ah::payload::Status::kCancelled:
+            return "AAH-RUNTIME-CONTAINER-CANCELLED";
         case ah::payload::Status::kSuccess:
             return "AAH-RUNTIME-CONTAINER-INTERNAL";
     }

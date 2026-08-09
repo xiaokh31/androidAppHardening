@@ -24,7 +24,10 @@ final class PayloadClassLoaders {
 
     private PayloadClassLoaders() {}
 
-    static ByteBuffer[] requireReadOnlyDirect(ByteBuffer[] buffers) {
+    static ByteBuffer[] requireReadOnlyDirect(
+            ByteBuffer[] buffers,
+            PayloadRuntime.OpenFailureProbe failureProbe,
+            long nativeHandle) {
         if (buffers == null || buffers.length == 0 || buffers.length > 64) {
             throw PayloadLoadException.create("BUFFER");
         }
@@ -37,6 +40,9 @@ final class PayloadClassLoaders {
             ByteBuffer readOnly = buffer.asReadOnlyBuffer();
             readOnly.position(0);
             result[index] = readOnly;
+            if (failureProbe != null) {
+                failureProbe.hit(PayloadRuntime.OpenStage.BUFFER_ELEMENT, nativeHandle);
+            }
         }
         return result;
     }

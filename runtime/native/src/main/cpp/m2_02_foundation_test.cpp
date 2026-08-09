@@ -234,6 +234,54 @@ int testMetadataEncoding() {
     return 0;
 }
 
+int testDeterministicParserFuzz() {
+    std::uint64_t state = 0x9e3779b97f4a7c15ULL;
+    const auto next = [&state]() -> std::uint64_t {
+        state ^= state << 13U;
+        state ^= state >> 7U;
+        state ^= state << 17U;
+        return state;
+    };
+    std::array<std::uint8_t, 2048> bytes{};
+    std::size_t accepted = 0;
+    for (std::size_t iteration = 0; iteration < 20'000; ++iteration) {
+        const std::size_t size = static_cast<std::size_t>(next() % (bytes.size() + 1U));
+        for (std::size_t index = 0; index < size; ++index) {
+            bytes[index] = static_cast<std::uint8_t>(next());
+        }
+        const ah::container::ByteView view{bytes.data(), size};
+        ah::container::HeaderV2 header{};
+        ah::container::SignerPolicyV1 signer{};
+        ah::container::RecordV2 record{};
+        ah::container::ChunkV2 chunk{};
+        ah::container::ConfigV2 config{};
+        ah::container::NativeShareSlotV1 slot{};
+        ah::zip::FixedAssets assets{};
+        accepted += ah::container::parseHeaderV2(view, &header) ==
+                    ah::container::Status::kSuccess;
+        accepted += ah::container::parseSignerPolicyV1(view, &signer) ==
+                    ah::container::Status::kSuccess;
+        accepted += ah::container::parseRecordV2(view, &record) ==
+                    ah::container::Status::kSuccess;
+        accepted += ah::container::parseChunkV2(view, &chunk) ==
+                    ah::container::Status::kSuccess;
+        accepted += ah::container::parseConfigV2(view, &config) ==
+                    ah::container::Status::kSuccess;
+        accepted += ah::container::parseNativeShareSlotV1(
+                        view, static_cast<std::uint16_t>((next() % 4U) + 1U), &slot) ==
+                    ah::container::Status::kSuccess;
+        accepted += ah::zip::locateFixedAssets(view, &assets) == ah::zip::Status::kSuccess;
+    }
+    ah::container::HeaderV2 output{};
+    if (ah::container::parseHeaderV2({nullptr, 1}, &output) !=
+            ah::container::Status::kInvalidArgument ||
+        ah::zip::locateFixedAssets({nullptr, 1}, nullptr) !=
+            ah::zip::Status::kInvalidArgument) {
+        return 1;
+    }
+    return accepted <= 20'000U * 7U ? 0 : 2;
+}
+
 }  // namespace
 
 int runM202FoundationSelfTests() {
@@ -241,7 +289,8 @@ int runM202FoundationSelfTests() {
     const int format = testSlotAndZip();
     const int mapping = testMappingTransaction();
     const int metadata = testMetadataEncoding();
-    return crypto == 0 && format == 0 && mapping == 0 && metadata == 0
+    const int fuzz = testDeterministicParserFuzz();
+    return crypto == 0 && format == 0 && mapping == 0 && metadata == 0 && fuzz == 0
                ? 0
-               : 1000 * crypto + 100 * format + 10 * mapping + metadata;
+               : 10000 * crypto + 1000 * format + 100 * mapping + 10 * metadata + fuzz;
 }

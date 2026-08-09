@@ -9,4 +9,10 @@
 -keep class ah.runtime.bootstrap.NativeLibrarySearchPathResolver { public *; }
 -keep class ah.fixtures.android.CompatibilityPocRunner { public *; }
 -keep class ah.fixtures.android.ProbeSignal { public *; }
+-keep class ah.runtime.loader.PayloadRuntime { *; }
+-keep class ah.runtime.loader.PayloadRuntime$* { *; }
+-keep class ah.runtime.loader.LoadedPayload { *; }
+-keep class ah.runtime.loader.AuthenticatedPayloadMetadata { *; }
+-keep class ah.runtime.loader.NativePayloadBridge { *; }
+-keep class ah.fixtures.android.m202.M202ColdStartActivity { *; }
 -keepattributes *Annotation*,InnerClasses,EnclosingMethod

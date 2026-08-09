@@ -11,6 +11,23 @@ public final class PayloadRuntime {
 
     private PayloadRuntime() {}
 
+    enum OpenStage {
+        NATIVE_HANDLE,
+        METADATA_BYTES,
+        METADATA_PARSE,
+        METADATA_OBJECT,
+        BUFFER_ARRAY,
+        BUFFER_ELEMENT,
+        SEARCH_PATH,
+        CLASS_LOADER,
+        LOADED_PAYLOAD,
+        BEFORE_RETURN,
+    }
+
+    interface OpenFailureProbe {
+        void hit(OpenStage stage, long nativeHandle);
+    }
+
     /** Reads explicitly untrusted binding hints without recovering or authenticating payload data. */
     public static UntrustedPayloadBinding inspectBinding(ApplicationInfo applicationInfo) {
         validateApplicationInfo(applicationInfo);
@@ -27,6 +44,27 @@ public final class PayloadRuntime {
             ClassLoader shellLoader,
             ApplicationInfo applicationInfo,
             byte[] installedSignerSha256) {
+        return openVerifiedInternal(
+                shellLoader, applicationInfo, installedSignerSha256, null);
+    }
+
+    static LoadedPayload openVerifiedForTesting(
+            ClassLoader shellLoader,
+            ApplicationInfo applicationInfo,
+            byte[] installedSignerSha256,
+            OpenFailureProbe failureProbe) {
+        if (failureProbe == null) {
+            throw PayloadLoadException.create("ARGUMENT");
+        }
+        return openVerifiedInternal(
+                shellLoader, applicationInfo, installedSignerSha256, failureProbe);
+    }
+
+    private static LoadedPayload openVerifiedInternal(
+            ClassLoader shellLoader,
+            ApplicationInfo applicationInfo,
+            byte[] installedSignerSha256,
+            OpenFailureProbe failureProbe) {
         validateApplicationInfo(applicationInfo);
         if (shellLoader == null
                 || installedSignerSha256 == null
@@ -50,19 +88,30 @@ public final class PayloadRuntime {
                     applicationInfo.sourceDir,
                     applicationInfo.packageName,
                     signerCopy);
+            hit(failureProbe, OpenStage.NATIVE_HANDLE, nativeHandle);
             metadataBytes = NativePayloadBridge.nativeAuthenticatedMetadata(nativeHandle);
+            hit(failureProbe, OpenStage.METADATA_BYTES, nativeHandle);
+            hit(failureProbe, OpenStage.METADATA_PARSE, nativeHandle);
             metadata = AuthenticatedPayloadMetadata.parse(metadataBytes);
+            hit(failureProbe, OpenStage.METADATA_OBJECT, nativeHandle);
             nativeBuffers = NativePayloadBridge.nativeDexBuffers(nativeHandle);
-            readOnlyBuffers = PayloadClassLoaders.requireReadOnlyDirect(nativeBuffers);
+            hit(failureProbe, OpenStage.BUFFER_ARRAY, nativeHandle);
+            readOnlyBuffers =
+                    PayloadClassLoaders.requireReadOnlyDirect(
+                            nativeBuffers, failureProbe, nativeHandle);
             nativeSearchPath =
                     PayloadClassLoaders.resolveNativeLibrarySearchPath(applicationInfo);
+            hit(failureProbe, OpenStage.SEARCH_PATH, nativeHandle);
             provisionalLoader =
                     PayloadClassLoaders.create(readOnlyBuffers, nativeSearchPath, shellLoader);
+            hit(failureProbe, OpenStage.CLASS_LOADER, nativeHandle);
             result = new LoadedPayload(
                     nativeHandle,
                     readOnlyBuffers,
                     provisionalLoader,
                     metadata);
+            hit(failureProbe, OpenStage.LOADED_PAYLOAD, nativeHandle);
+            hit(failureProbe, OpenStage.BEFORE_RETURN, nativeHandle);
             committed = true;
             return result;
         } catch (RuntimeException | Error failure) {
@@ -93,6 +142,15 @@ public final class PayloadRuntime {
             if (!committed) {
                 result = null;
             }
+        }
+    }
+
+    private static void hit(
+            OpenFailureProbe failureProbe,
+            OpenStage stage,
+            long nativeHandle) {
+        if (failureProbe != null) {
+            failureProbe.hit(stage, nativeHandle);
         }
     }
 

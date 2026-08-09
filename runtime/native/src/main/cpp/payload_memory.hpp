@@ -59,6 +59,15 @@ private:
     bool committed_{};
 };
 
+#if defined(AH_M2_02_HOST_TESTING)
+void resetFailureInjectionForTesting() noexcept;
+void failAllocationAfterForTesting(std::int64_t successful_allocations) noexcept;
+void failProtectionAfterForTesting(std::int64_t successful_protections) noexcept;
+void failReleaseAfterForTesting(std::int64_t successful_releases) noexcept;
+std::size_t liveMappingCountForTesting() noexcept;
+std::size_t zeroizedReleaseCountForTesting() noexcept;
+#endif
+
 }  // namespace ah::memory
 
 #endif

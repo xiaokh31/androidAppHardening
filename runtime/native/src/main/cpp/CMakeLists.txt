@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 4.1.2)
 
 project(ah_runtime_native_crypto LANGUAGES C CXX)
 
+option(AH_M2_02_SANITIZERS "Enable Host ASan and UBSan for M2-02" OFF)
+
 set(AH_MBEDTLS_ROOT "" CACHE PATH "Path to the verified Mbed TLS 4.1.1 source tree")
 if(NOT IS_ABSOLUTE "${AH_MBEDTLS_ROOT}")
     message(FATAL_ERROR "AH_MBEDTLS_ROOT must be an absolute path to the verified source tree")
@@ -76,6 +78,10 @@ if(ANDROID)
 endif()
 add_library(ah_crypto_backend OBJECT ${AH_RUNTIME_SOURCES})
 
+if(NOT ANDROID)
+    target_compile_definitions(ah_crypto_backend PRIVATE AH_M2_02_HOST_TESTING=1)
+endif()
+
 if(UNIX AND NOT ANDROID)
     find_package(ZLIB REQUIRED)
 endif()
@@ -127,6 +133,7 @@ else()
         m2_02_foundation_test.cpp
         $<TARGET_OBJECTS:ah_crypto_backend>
     )
+    target_compile_definitions(ah_crypto_self_test PRIVATE AH_M2_02_HOST_TESTING=1)
     if(UNIX)
         target_sources(ah_crypto_self_test PRIVATE m2_02_payload_vector_test.cpp)
         target_compile_definitions(ah_crypto_self_test PRIVATE AH_M2_02_PAYLOAD_VECTOR_TEST=1)
@@ -135,6 +142,16 @@ else()
     target_link_libraries(ah_crypto_self_test PRIVATE TF-PSA-Crypto::tfpsacrypto Threads::Threads)
     if(UNIX)
         target_link_libraries(ah_crypto_self_test PRIVATE ZLIB::ZLIB)
+    endif()
+    if(AH_M2_02_SANITIZERS)
+        if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+            message(FATAL_ERROR "M2-02 sanitizers require Clang or GCC")
+        endif()
+        target_compile_options(ah_crypto_backend PRIVATE
+            -fsanitize=address,undefined -fno-omit-frame-pointer)
+        target_compile_options(ah_crypto_self_test PRIVATE
+            -fsanitize=address,undefined -fno-omit-frame-pointer)
+        target_link_options(ah_crypto_self_test PRIVATE -fsanitize=address,undefined)
     endif()
     add_test(NAME m2_07_native_crypto_vectors COMMAND ah_crypto_self_test)
     if(UNIX AND DEFINED AH_M2_02_VECTOR_ROOT AND NOT AH_M2_02_VECTOR_ROOT STREQUAL "")

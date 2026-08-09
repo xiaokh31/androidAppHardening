@@ -245,7 +245,11 @@ Status chunkStatus(int zlib_status) noexcept {
     return Status::kZlibChecksum;
 }
 
-Status inflateRecords(AuthenticatedContainer* value, memory::PayloadTransaction* transaction) noexcept {
+Status inflateRecords(const OpenRequest& request, AuthenticatedContainer* value,
+                      memory::PayloadTransaction* transaction) noexcept {
+#if !defined(AH_M2_02_HOST_TESTING)
+    (void) request;
+#endif
     std::array<std::uint8_t, container::kChunkPlaintextMax> compressed{};
     std::array<std::uint8_t, kChunkAadBytes> aad{};
     std::array<std::uint8_t, 32> record_key{};
@@ -286,6 +290,17 @@ Status inflateRecords(AuthenticatedContainer* value, memory::PayloadTransaction*
         std::uint8_t overflow_byte = 0;
         for (std::size_t local_chunk = 0; local_chunk < record.chunk_count; ++local_chunk) {
             const std::size_t global_chunk = record.first_chunk_index + local_chunk;
+#if defined(AH_M2_02_HOST_TESTING)
+            if (request.failure_probe != nullptr) {
+                const Status injected = request.failure_probe(
+                    global_chunk, FailureStage::kBeforeAuthentication,
+                    request.failure_context);
+                if (injected != Status::kSuccess) {
+                    result = injected;
+                    break;
+                }
+            }
+#endif
             const container::ByteView encoded_chunk{
                 value->encoded_chunks.data + global_chunk * container::kChunkBytes,
                 container::kChunkBytes};
@@ -330,6 +345,16 @@ Status inflateRecords(AuthenticatedContainer* value, memory::PayloadTransaction*
                              : Status::kCrypto;
                 break;
             }
+#if defined(AH_M2_02_HOST_TESTING)
+            if (request.failure_probe != nullptr) {
+                const Status injected = request.failure_probe(
+                    global_chunk, FailureStage::kBeforeInflate,
+                    request.failure_context);
+                if (injected != Status::kSuccess) {
+                    result = injected;
+                }
+            }
+#endif
 
             stream.next_in = compressed.data();
             stream.avail_in = static_cast<uInt>(plaintext_size);
@@ -381,6 +406,16 @@ Status inflateRecords(AuthenticatedContainer* value, memory::PayloadTransaction*
                 }
             }
             crypto::secureZero(compressed.data(), compressed.size());
+#if defined(AH_M2_02_HOST_TESTING)
+            if (result == Status::kSuccess && request.failure_probe != nullptr) {
+                const Status injected = request.failure_probe(
+                    global_chunk, FailureStage::kAfterInflate,
+                    request.failure_context);
+                if (injected != Status::kSuccess) {
+                    result = injected;
+                }
+            }
+#endif
             if (result != Status::kSuccess || ended) {
                 if (result == Status::kSuccess && local_chunk + 1 != record.chunk_count) {
                     result = Status::kTrailingData;
@@ -449,7 +484,7 @@ Status openAuthenticatedPayload(
         return status;
     }
     memory::PayloadTransaction transaction{};
-    status = inflateRecords(&value, &transaction);
+    status = inflateRecords(request, &value, &transaction);
     if (status != Status::kSuccess) {
         *cleanup_failed = transaction.rollback() == memory::Status::kCleanupFailed;
         return status;

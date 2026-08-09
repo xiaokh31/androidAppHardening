@@ -315,7 +315,9 @@ int main(int argc, char** argv) {
             std::cerr << "M2-02 authenticated payload vector failed: " << vector << '\n';
             return 1;
         }
-        std::cout << "M2-02 authenticated payload vector and tamper rollback matrix: PASS\n";
+        std::cout << "M2-02 authenticated payload vector: PASS "
+                     "failure-injection=18 allocator-oom=2 protection-rollback=1 "
+                     "parser-fuzz=20000\n";
         return 0;
     }
 #else

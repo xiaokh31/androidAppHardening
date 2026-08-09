@@ -53,6 +53,48 @@ int openExpect(
     return 0;
 }
 
+struct InjectedFailure {
+    std::size_t chunk;
+    ah::payload::FailureStage stage;
+    ah::payload::Status status;
+};
+
+ah::payload::Status injectAt(
+    std::size_t chunk,
+    ah::payload::FailureStage stage,
+    void* context) noexcept {
+    const auto* injected = static_cast<const InjectedFailure*>(context);
+    return injected != nullptr && injected->chunk == chunk && injected->stage == stage
+               ? injected->status
+               : ah::payload::Status::kSuccess;
+}
+
+int openInjected(
+    const std::vector<std::uint8_t>& config,
+    const std::vector<std::uint8_t>& container,
+    const std::vector<std::uint8_t>& slot,
+    const InjectedFailure& injected,
+    bool inject_cleanup_failure = false) {
+    ah::memory::resetFailureInjectionForTesting();
+    if (inject_cleanup_failure) {
+        ah::memory::failReleaseAfterForTesting(0);
+    }
+    ah::payload::OpenRequest request = requestFor(config, container, slot);
+    request.failure_probe = injectAt;
+    request.failure_context = const_cast<InjectedFailure*>(&injected);
+    ah::memory::PayloadHandle handle{};
+    ah::payload::AuthenticatedMetadata metadata{};
+    bool cleanup_failed = false;
+    const ah::payload::Status status = ah::payload::openAuthenticatedPayload(
+        request, &handle, &metadata, &cleanup_failed);
+    ah::memory::resetFailureInjectionForTesting();
+    if (status != injected.status || cleanup_failed != inject_cleanup_failure ||
+        handle.size() != 0 || ah::memory::liveMappingCountForTesting() != 0) {
+        return 1;
+    }
+    return 0;
+}
+
 bool mutateChunkTag(std::vector<std::uint8_t>* bytes, std::size_t chunk_index) {
     ah::container::HeaderV2 header{};
     if (bytes == nullptr || bytes->size() < ah::container::kHeaderBytes ||
@@ -122,6 +164,70 @@ int runM202PayloadVector(const char* config_path, const char* container_path,
             openExpect(config, tampered_tag, slot, ah::payload::Status::kAuthentication) != 0) {
             return 6 + static_cast<int>(index);
         }
+    }
+
+    struct FailureKind {
+        ah::payload::FailureStage stage;
+        ah::payload::Status status;
+    };
+    constexpr std::array<FailureKind, 6> kFailureKinds{{
+        {ah::payload::FailureStage::kBeforeAuthentication,
+         ah::payload::Status::kAuthentication},
+        {ah::payload::FailureStage::kBeforeAuthentication, ah::payload::Status::kIo},
+        {ah::payload::FailureStage::kBeforeAuthentication,
+         ah::payload::Status::kCancelled},
+        {ah::payload::FailureStage::kBeforeAuthentication,
+         ah::payload::Status::kOutOfMemory},
+        {ah::payload::FailureStage::kBeforeInflate,
+         ah::payload::Status::kZlibChecksum},
+        {ah::payload::FailureStage::kAfterInflate, ah::payload::Status::kDigest},
+    }};
+    for (std::size_t chunk : kFirstMiddleLast) {
+        for (const FailureKind& kind : kFailureKinds) {
+            const InjectedFailure injected{chunk, kind.stage, kind.status};
+            if (openInjected(config, container, slot, injected) != 0) {
+                return 20 + static_cast<int>(chunk);
+            }
+        }
+    }
+
+    const InjectedFailure cleanup_injected{
+        2, ah::payload::FailureStage::kBeforeAuthentication,
+        ah::payload::Status::kAuthentication};
+    if (openInjected(config, container, slot, cleanup_injected, true) != 0) {
+        return 30;
+    }
+
+    for (std::int64_t successful_allocations : {std::int64_t{0}, std::int64_t{1}}) {
+        ah::memory::resetFailureInjectionForTesting();
+        ah::memory::failAllocationAfterForTesting(successful_allocations);
+        ah::memory::PayloadHandle oom_handle{};
+        ah::payload::AuthenticatedMetadata oom_metadata{};
+        bool oom_cleanup_failed = false;
+        const ah::payload::Status oom = ah::payload::openAuthenticatedPayload(
+            requestFor(config, container, slot), &oom_handle, &oom_metadata,
+            &oom_cleanup_failed);
+        ah::memory::resetFailureInjectionForTesting();
+        if (oom != ah::payload::Status::kOutOfMemory || oom_cleanup_failed ||
+            oom_handle.size() != 0 || ah::memory::liveMappingCountForTesting() != 0) {
+            return 31 + static_cast<int>(successful_allocations);
+        }
+    }
+
+    ah::memory::resetFailureInjectionForTesting();
+    ah::memory::failProtectionAfterForTesting(0);
+    ah::memory::PayloadHandle protection_handle{};
+    ah::payload::AuthenticatedMetadata protection_metadata{};
+    bool protection_cleanup_failed = false;
+    const ah::payload::Status protection = ah::payload::openAuthenticatedPayload(
+        requestFor(config, container, slot), &protection_handle, &protection_metadata,
+        &protection_cleanup_failed);
+    ah::memory::resetFailureInjectionForTesting();
+    if (protection != ah::payload::Status::kMemoryProtection ||
+        protection_cleanup_failed || protection_handle.size() != 0 ||
+        ah::memory::liveMappingCountForTesting() != 0 ||
+        ah::memory::zeroizedReleaseCountForTesting() == 0) {
+        return 33;
     }
     return 0;
 }

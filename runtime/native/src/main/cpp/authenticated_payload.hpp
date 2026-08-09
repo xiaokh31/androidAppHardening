@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <array>
+#include <cstddef>
 
 namespace ah::payload {
 
@@ -27,7 +28,22 @@ enum class Status : std::uint8_t {
     kDigest = 13,
     kTrailingData = 14,
     kMemoryProtection = 15,
+    kIo = 16,
+    kCancelled = 17,
 };
+
+#if defined(AH_M2_02_HOST_TESTING)
+enum class FailureStage : std::uint8_t {
+    kBeforeAuthentication = 0,
+    kBeforeInflate = 1,
+    kAfterInflate = 2,
+};
+
+using FailureProbe = Status (*)(
+    std::size_t global_chunk,
+    FailureStage stage,
+    void* context) noexcept;
+#endif
 
 struct OpenRequest {
     zip::FixedAssets assets;
@@ -35,6 +51,10 @@ struct OpenRequest {
     std::uint16_t expected_abi_id;
     container::ByteView measured_signer_sha256;
     container::ByteView framework_package_utf8;
+#if defined(AH_M2_02_HOST_TESTING)
+    FailureProbe failure_probe{};
+    void* failure_context{};
+#endif
 };
 
 struct UntrustedBinding {

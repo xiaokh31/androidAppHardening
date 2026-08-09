@@ -136,6 +136,37 @@ jobs:
           "$cmake_bin" --build runtime/native/build/m2-07-host --config Release
           "$ctest_bin" --test-dir runtime/native/build/m2-07-host --output-on-failure
 
+      - name: Run M2-02 ASan UBSan parser fuzz and failure injection
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake_bin="$ANDROID_HOME/cmake/4.1.2/bin/cmake"
+          ctest_bin="$ANDROID_HOME/cmake/4.1.2/bin/ctest"
+          sanitizer_root="runtime/native/build/m2-02-sanitizer"
+          "$cmake_bin" \
+            -S runtime/native/src/main/cpp \
+            -B "$sanitizer_root" \
+            -G Ninja \
+            -DCMAKE_MAKE_PROGRAM="$ANDROID_HOME/cmake/4.1.2/bin/ninja" \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DAH_M2_02_SANITIZERS=ON \
+            -DAH_M2_02_VECTOR_ROOT="$PWD/runtime/native/build/m2-02-vector" \
+            -DAH_MBEDTLS_ROOT="$PWD/.toolchains/native-crypto/src/mbedtls-4.1.1"
+          "$cmake_bin" --build "$sanitizer_root" --config RelWithDebInfo
+          ASAN_OPTIONS='detect_leaks=1:halt_on_error=1:strict_string_checks=1' \
+          UBSAN_OPTIONS='halt_on_error=1:print_stacktrace=1' \
+            "$ctest_bin" --test-dir "$sanitizer_root" --verbose --output-on-failure \
+              | tee "$sanitizer_root/ctest-sanitizer.txt"
+
+      - name: Upload M2-02 sanitizer evidence
+        # actions/upload-artifact v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: m2-02-ubuntu-sanitizer-evidence
+          if-no-files-found: error
+          retention-days: 7
+          path: runtime/native/build/m2-02-sanitizer/ctest-sanitizer.txt
+
       - name: Verify pinned entry points
         shell: bash
         run: |

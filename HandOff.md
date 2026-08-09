@@ -1,25 +1,27 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260809-223000
-updated_at: 2026-08-09T22:30:00+08:00
+handoff_id: HO-20260809-225921
+updated_at: 2026-08-09T22:59:21+08:00
 updated_by: /root
-state: active
-source_branch: feat/m2-02-native-decrypt-loader
-base_commit: 73208102f13330bc062b6d64e1808254005feb3c
+state: ready
+source_branch: main
+base_commit: b4f680f55a39d3f030fa2d1c6d627baed712964b
 working_tree: clean
 current_milestone: M2
-active_task: M2-02
-next_owner: /root
+active_task: NONE
+next_owner: unassigned
 ---
 
 # Project HandOff
 
 ## Objective
 
-在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内执行 M2-02：使用 M2-07 固定密码后端完成 AHDC v2 Native 认证解密、有界 zlib、匿名 DEX 映射和 API 29 公共 InMemoryDexClassLoader；不启动 M2-03 或相邻任务。
+M2-02 已在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内完成 AHDC v2 Native 认证解密、有界 zlib、匿名 DEX 映射和 API 29 公共 InMemoryDexClassLoader。当前只关闭 post-merge `main` 门禁；不启动 M2-03 或相邻任务。
 
 ## Current State
+
+- PR [#43](https://github.com/xiaokh31/androidAppHardening/pull/43) 已在 exact HEAD `84f11ed3aa38315c84b15eae531fb1e7f82693b7` 的 Ubuntu/Windows Build/Governance 与 API 29/36 x86_64 KVM 全绿后转为 ready，并以 expected-head 保护的普通 merge commit `b4f680f55a39d3f030fa2d1c6d627baed712964b` 合并到 `main`；Issue #13 已关闭。本地 main 已同步，当前只提交 post-merge README/HandOff 并等待最终 main 门禁，不启动 M2-03。
 
 - 用户已授权独立 M2-07 ADR/任务合同与供应链修订，并要求合并后恢复 M2-02。Issue #41 和分支 `chore/m2-07-native-crypto-backend` 已从 `main@1bce1f6` 建立；M2-02 本地分支 `feat/m2-02-native-decrypt-loader@40e3900` 保持暂停且未发布。候选已从受 2026-07 官方安全公告影响的 Mbed TLS 4.1.0 提升为 4.1.1 LTS；官方完整归档已下载到忽略的仓库根 `.toolchains/native-crypto/` 并命中 `7099934` bytes/SHA-256 `3359a349...5c98c`，未向 C 盘下载大体积程序。首个 CI 候选 `dcd27f1e141222d7af81f4289034dc1c1a5c5310` 已通过本地 296-task 根回归和四 ABI ELF/符号检查，固定分支已推送并创建关联关闭 Issue #41 的唯一草稿 PR [#42](https://github.com/xiaokh31/androidAppHardening/pull/42)。GitHub 延迟补发的旧 HEAD `f2ebbbef7784ea9aea3100ad2242160bb5da2454` 已证明 Ubuntu Host NIST/RFC 向量、依赖负例、完整回归和四 ABI 全部 PASS；Governance 仅因 HandOff dirty 声明失败，Windows Build 仅因 7-Zip 拒绝未启用 PQC examples 的 147 个符号链接失败，API 36 KVM 仅因未准备 fail-closed 密码源失败。当前候选已声明 clean、把 Windows 解包切到固定 CMake 4.1.2，并在 KVM 构建前校验同一锁定归档；等待 replacement CI。PR 保持 draft，M2-02 不恢复。
 - replacement HEAD `c7499b5a8045c02ff7095b78d79b0811761be68b` 的 Governance `31131750917` 双平台 PASS，Ubuntu Build `31131751261` 再次完整 PASS，KVM `31131755538` 已在 API 29/36 两个 job 中通过密码源准备并继续运行。Windows Build 已通过归档准备，但固定 CMake 无法自动发现镜像内 Visual Studio；GitHub 官方 Windows 2025 镜像清单固定安装路径为 `C:/Program Files/Microsoft Visual Studio/2022/Enterprise`，下一候选显式传入 `CMAKE_GENERATOR_INSTANCE`，不下载或更换 runner/toolchain。
@@ -168,7 +170,7 @@ next_owner: /root
 | M1-05 | `/root` | `feat/m1-05-apk-repacker-and-alignment` | done | M1-02, M1-03, M1-04 | PR #39、Issue #10、独立复核、merger-ready CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-06 | `/root` | `feat/m1-06-cli-and-json-report` | done | M1-01, M1-02, M1-03, M1-04, M1-05 | PR #40、Issue #11、独立复核、merger-ready 与 post-merge main 双平台 CI、README 和 strict HandOff 均已关闭 |
 | M2-07 | `/root` | `main` | done | M0-03, M1-04 | PR #42、Issue #41、最终独立复核、README、strict 与 post-merge Build/Governance/KVM 均已关闭 |
-| M2-02 | `/root` | `feat/m2-02-native-decrypt-loader` | review | M0-04, M1-04, M2-07 | 冻结 `7320810` 的第三轮独立复核 P0/P1/P2 全零；归档结论、完成唯一 PR/CI/合并与 post-merge 门禁 |
+| M2-02 | `/root` | `main` | done | M0-04, M1-04, M2-07 | PR #43、Issue #13、全零复核、双平台 CI、API 29/36 KVM、arm64 真机、README 与 strict HandOff 已关闭 |
 
 ## Decisions and Invariants
 
@@ -191,6 +193,9 @@ next_owner: /root
 - 根 `README.md` 必须维护公开任务进度表；任务仅在合并后门禁完成时标记“已完成”，每个任务的收尾协调提交必须同步该表，不能以 README 替代 `HandOff.md` 的证据。
 
 ## Changes Since Previous Handoff
+
+- PR #43 replacement HEAD `84f11ed3aa38315c84b15eae531fb1e7f82693b7` 的 Governance run `31319256459`、Build runs `31319254096`/`31319256463` 与 KVM run `31319256453` 全部 PASS。API 29/36 KVM 分别在 `11m50s`/`13m21s` 完成非空 connected tests、两套 Release/R8、冷启动、内存、零明文 DEX 和清理。
+- PR #43 已按用户预授权转为 ready，并以 expected-head 保护的普通 merge commit `b4f680f55a39d3f030fa2d1c6d627baed712964b` 合并；Issue #13 关闭。本地 main 快进同步后，README 标记 M2-02 完成，HandOff 切换到 `main`/`NONE`；M2-03 未启动。
 
 - M2-02 implementation parent `39a883f75cde6ef510f10e24eefe089fbd08b142` 已通过 Build run `31304148760` 的 Ubuntu/Windows jobs 与 KVM run `31304148764` 的 API 29/36 x86_64 jobs；两个 KVM 平台均执行非空 Native/Bootstrap connected tests、extracted/direct Release/R8、外部 metadata golden、JNI cleanup injection、各 20 次冷启动、内存、零明文 DEX 和强制清理。
 - 用户允许普通 MIUI USB 安装后，同一候选的 API 29 arm64 非 root 真机 review4 在一个有界 `all` 命令中退出 `0`。extracted/direct 均通过 instrumentation、十个失败窗口、跨 DEX、JNI、metadata、各 20 次冷启动、内存、零明文 DEX 与卸载清理；证据归档于 `docs/evidence/M2-02/local-validation.md`。
@@ -1290,9 +1295,8 @@ None
 
 ## Ordered Next Actions
 
-1. Commit and push the archived third-review/README/HandOff coordination snapshot, then confirm frozen-head Build success.
-2. Verify there is no existing M2-02 PR, create the unique draft PR for Issue #13, and require the exact PR HEAD to pass repository CI.
-3. Under the user's standing authorization, transition the clean exact-head PR to ready and merge with expected-head protection; then update `main` README/HandOff, run strict/Governance without exemptions, and close final main CI before declaring M2-02 done. Do not start M2-03.
+1. Commit and push this post-merge README/HandOff snapshot on `main`, then require the final main Build and Governance jobs to pass.
+2. After final main CI is green, report M2-02 complete and remain idle. Do not start M2-03 without an explicit user instruction.
 
 ## Relevant Files and Artifacts
 
@@ -1362,7 +1366,8 @@ None
 - [x] M2-02 implementation parent `39a883f` passed Ubuntu/Windows Build and API 29/36 x86_64 KVM with non-empty connected tests and both Release/R8 variants.
 - [x] API 29 arm64 non-root review4 passed both variants, 20 cold starts each, instrumentation, JNI/metadata/negative paths, memory, no plaintext DEX and package cleanup.
 - [x] Third independent read-only review of frozen `7320810` returned PASS with P0/P1/P2 all zero; both rejected reviews and all findings are archived.
-- [ ] Create the unique Issue #13 draft PR, pass exact-head CI, merge with expected-head protection, and complete post-merge main README/HandOff/strict/Governance/CI before marking M2-02 done.
+- [x] Unique PR #43 passed replacement exact-head Build/Governance/KVM, merged with expected-head protection, and closed Issue #13.
+- [ ] Push the post-merge main README/HandOff snapshot and confirm final main Build/Governance before declaring the task fully closed.
 
 - [x] 用户明确启动 M1-06 并预授权推送、唯一 PR、ready 与合并；Issue #11、依赖、无远程冲突和 final main CI 已核验。
 - [x] 从 `main@55ef3c5` 创建固定分支，选择 full-flow 模式并归档 CLI/report 实施计划。
@@ -1459,6 +1464,8 @@ None
 - [x] 对当前 clean 冻结提交完成新的独立 parser/security 复核；P0/P1/P2 全零。
 
 ## Handoff Sign-off
+
+- `/root` verified PR #43 replacement exact-head CI, expected-head merge commit `b4f680f55a39d3f030fa2d1c6d627baed712964b`, closed Issue #13 and clean synchronized `main`. M2-02 is marked done in the post-merge coordination snapshot; final main CI remains the only closing action, and M2-03 has not started.
 
 - `/root` independently verified the final API 29 arm64 report/transcript hashes, package cleanup, successful Build `31304148760`, successful KVM `31304148764`, and the third read-only review PASS for frozen `73208102f13330bc062b6d64e1808254005feb3c`. M2-02 remains in review until its unique Issue #13 PR and post-merge main gates close; M2-03 has not started.
 

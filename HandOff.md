@@ -324,15 +324,19 @@ next_owner: /root
 
 ## Verification Evidence
 
+### M2-02 API 29 arm64 final acceptance
+
 - task_id: M2-02
 - git_commit: 39a883f75cde6ef510f10e24eefe089fbd08b142
 - command: `node tools/validation/run-m2-02-device-acceptance.mjs --serial <authorized-device> --platform api29-arm64-nonroot-review4 --cold-starts 20 --command-timeout-ms 60000 --variant all <final extracted/direct inputs>`
 - exit_code: 0
 - environment: Xiaomi sirius API 29 arm64-v8a user/release-keys, 64-bit, shell UID 2000, `ro.secure=1`, `ro.debuggable=0`; no local emulator
 - timestamp: 2026-08-09T22:22:03+08:00
-- artifact: ignored `build/m2-02/device-api29-arm64-review4/report.json`; extracted/direct targets and instrumentation APKs remain ignored
-- sha256: report `c15151c51d7952e3ae347fee9bc63ff1fb85410ab250015b51f27b7a4c96a609`; commands `ff9008c804f5d304ed3974bd8dd03597ebc4040685c33e680aee18236d85d36a`; instrumentation `74acf92d908cc5743d0b164137f1a49a3aee22be7521ffd53bae3278299087ed`
-- result: PASS; extracted/direct instrumentation, ten failure windows, cross-DEX, JNI, authenticated metadata, exactly 20 cold starts each, memory, zero plaintext DEX and cleanup passed
+- artifact: ignored `build/m2-02/device-api29-arm64-review4/report.json`; commands SHA-256 `ff9008c804f5d304ed3974bd8dd03597ebc4040685c33e680aee18236d85d36a`; instrumentation SHA-256 `74acf92d908cc5743d0b164137f1a49a3aee22be7521ffd53bae3278299087ed`; target/test APKs remain ignored
+- sha256: c15151c51d7952e3ae347fee9bc63ff1fb85410ab250015b51f27b7a4c96a609
+- result: PASS; report hash above; extracted/direct instrumentation, ten failure windows, cross-DEX, JNI, authenticated metadata, exactly 20 cold starts each, memory, zero plaintext DEX and cleanup passed
+
+### M2-02 third independent security review
 
 - task_id: M2-02
 - git_commit: 73208102f13330bc062b6d64e1808254005feb3c

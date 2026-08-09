@@ -26,12 +26,14 @@ const allVariants = [
     packageName: "ah.fixtures.android.m202.extracted",
     target: artifact(required("extracted-target-apk")),
     test: artifact(required("extracted-test-apk")),
+    golden: vectorGolden(required("extracted-vector-report")),
   },
   {
     name: "direct",
     packageName: "ah.fixtures.android.m202.direct",
     target: artifact(required("direct-target-apk")),
     test: artifact(required("direct-test-apk")),
+    golden: vectorGolden(required("direct-vector-report")),
   },
 ];
 const variants = selectedVariant === "all"
@@ -78,12 +80,16 @@ function runVariant(variant) {
   runAdb(["install", "-r", "-t", "--no-streaming", variant.test]);
   const instrumentation = runAdb([
     "shell", "am", "instrument", "-w",
+    "-e", "m202_expected_build_id_hex", variant.golden.buildId,
+    "-e", "m202_expected_key_slot_id_hex", variant.golden.keySlotId,
     `${variant.packageName}.test/ah.runtime.loader.M202DeviceRunner`,
   ], 120000);
   if (!instrumentation.stdout.includes("OK (1 test)") ||
       !instrumentation.stdout.includes("failure_injection=10") ||
       !instrumentation.stdout.includes("metadata_negative=true") ||
+      !instrumentation.stdout.includes("metadata_golden=true") ||
       !instrumentation.stdout.includes("cross_handle=true") ||
+      !instrumentation.stdout.includes("jni_cleanup=true") ||
       !instrumentation.stdout.includes("plaintext_dex_files=0") ||
       instrumentation.stdout.includes("FAILURES!!!")) {
     fail(`${variant.name} instrumentation failed:\n${instrumentation.stdout}\n${instrumentation.stderr}`);
@@ -126,6 +132,22 @@ function runVariant(variant) {
     cold_start_p95_ms: percentile(sorted, 0.95),
     peak_total_pss_kb: Math.max(...pss),
   };
+}
+
+function vectorGolden(argument) {
+  const reportPath = artifact(argument);
+  let report;
+  try {
+    report = JSON.parse(readFileSync(reportPath, "utf8"));
+  } catch (error) {
+    fail(`invalid vector report ${reportPath}: ${error}`);
+  }
+  for (const name of ["build_id_hex", "key_slot_id_hex"]) {
+    if (typeof report[name] !== "string" || !/^[0-9a-f]{32}$/u.test(report[name])) {
+      fail(`vector report has invalid ${name}`);
+    }
+  }
+  return { buildId: report.build_id_hex, keySlotId: report.key_slot_id_hex };
 }
 
 function collectEnvironment() {

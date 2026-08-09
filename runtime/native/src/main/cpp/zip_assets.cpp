@@ -179,8 +179,9 @@ Status inspectTarget(container::ByteView apk, std::size_t central_offset,
 }
 
 bool overlaps(const Entry& left, const Entry& right) noexcept {
-    return left.data_offset < right.data_offset + right.size &&
-           right.data_offset < left.data_offset + left.size;
+    const std::size_t left_end = left.data_offset + left.size;
+    const std::size_t right_end = right.data_offset + right.size;
+    return left.local_offset < right_end && right.local_offset < left_end;
 }
 
 }  // namespace

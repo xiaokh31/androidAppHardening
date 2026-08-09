@@ -66,12 +66,16 @@ object M202DeviceVectorMain {
         val signerPolicy = SignerPolicyV1(signer, listOf(signer), setOf(VerifiedScheme.V2))
         val container = outputRoot.resolve("payload.ahdc")
         val result = DexContainerBuilder(input).build(inspection, signerPolicy, container)
+        var expectedBuildIdHex: String? = null
+        var expectedKeySlotIdHex: String? = null
         result.keyPackagingPlan.consume { material ->
             Files.write(outputRoot.resolve("config.bin"), material.configV2().copyBytes())
             val rNative = material.rNative().copyBytes()
             val buildId = material.buildId().copyBytes()
             val keySlotId = material.keySlotId().copyBytes()
             try {
+                expectedBuildIdHex = buildId.hex()
+                expectedKeySlotIdHex = keySlotId.hex()
                 material.targetAbis.forEach { abi ->
                     Files.write(
                         outputRoot.resolve("slot-${abi.directoryName}.bin"),
@@ -94,6 +98,10 @@ object M202DeviceVectorMain {
             append("  \"container_sha256\": \"").append(sha256(container).hex()).append("\",\n")
             append("  \"config_sha256\": \"")
             append(sha256(outputRoot.resolve("config.bin")).hex()).append("\",\n")
+            append("  \"build_id_hex\": \"").append(requireNotNull(expectedBuildIdHex))
+                .append("\",\n")
+            append("  \"key_slot_id_hex\": \"").append(requireNotNull(expectedKeySlotIdHex))
+                .append("\",\n")
             append("  \"result\": \"PASS\"\n")
             append("}\n")
         }

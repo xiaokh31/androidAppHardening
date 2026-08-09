@@ -206,9 +206,38 @@ int testSlotAndZip() {
     auto bad_local_offset = valid_apk;
     put32(&bad_local_offset, central + 42, static_cast<std::uint32_t>(central));
     if (!expect(std::move(bad_local_offset), ah::zip::Status::kFormat)) return 14;
+
+    auto local_header_overlap = valid_apk;
+    const std::size_t payload_central =
+        central + 46U + std::strlen(config.name);
+    const std::uint32_t payload_local = get32(local_header_overlap, payload_central + 42);
+    const std::size_t payload_name_size = get16(local_header_overlap, payload_local + 26);
+    const std::size_t payload_extra_size = get16(local_header_overlap, payload_local + 28);
+    const std::size_t payload_data =
+        payload_local + 30U + payload_name_size + payload_extra_size;
+    const std::size_t overlapping_local = config_offset;
+    const std::size_t overlapping_prefix = overlapping_local + 30U + payload_name_size;
+    if (payload_data <= overlapping_prefix || payload_data - overlapping_prefix > 0xffffU) {
+        return 15;
+    }
+    std::copy_n(local_header_overlap.begin() + payload_local,
+                30U + payload_name_size,
+                local_header_overlap.begin() + overlapping_local);
+    put16(&local_header_overlap, overlapping_local + 28,
+          static_cast<std::uint16_t>(payload_data - overlapping_prefix));
+    put32(&local_header_overlap, payload_central + 42,
+          static_cast<std::uint32_t>(overlapping_local));
+    const std::vector<std::uint8_t> modified_config(
+        local_header_overlap.begin() + config_offset,
+        local_header_overlap.begin() + config_offset + config.data.size());
+    const std::uint32_t modified_config_crc = crc32(modified_config);
+    put32(&local_header_overlap, config_local + 14, modified_config_crc);
+    put32(&local_header_overlap, central + 16, modified_config_crc);
+    if (!expect(std::move(local_header_overlap), ah::zip::Status::kFormat)) return 16;
+
     auto truncated = valid_apk;
     truncated.pop_back();
-    if (!expect(std::move(truncated), ah::zip::Status::kFormat)) return 15;
+    if (!expect(std::move(truncated), ah::zip::Status::kFormat)) return 17;
     return 0;
 }
 

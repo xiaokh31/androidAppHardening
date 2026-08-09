@@ -15,6 +15,7 @@ android {
 
     defaultConfig {
         minSdk = libs.versions.android.min.sdk.get().toInt()
+        testInstrumentationRunner = "ah.runtime.bootstrap.BootstrapConnectedRunner"
         buildConfigField(
             "String",
             "M005_EXPECTED_SIGNER_SHA256_HEX",

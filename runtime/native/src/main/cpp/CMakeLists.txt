@@ -71,6 +71,7 @@ if(ANDROID OR UNIX)
 endif()
 if(ANDROID)
     list(APPEND AH_RUNTIME_SOURCES
+        jni_exception.cpp
         jni_bridge.cpp
         native_share_slot.cpp
         payload_handle_registry.cpp

@@ -511,8 +511,10 @@ jobs:
             --command-timeout-ms 60000 \
             --extracted-target-apk build/m2-02/m2-02-extracted.apk \
             --extracted-test-apk fixtures/android/build/outputs/apk/androidTest/m202Extracted/debug/android-m202Extracted-debug-androidTest.apk \
+            --extracted-vector-report build/m2-02/vector-extracted/vector-report.json \
             --direct-target-apk build/m2-02/m2-02-direct.apk \
             --direct-test-apk fixtures/android/build/outputs/apk/androidTest/m202Direct/debug/android-m202Direct-debug-androidTest.apk \
+            --direct-vector-report build/m2-02/vector-direct/vector-report.json \
             --evidence "build/m2-02/device-api${API}-x86_64"
           cat "build/m2-02/device-api${API}-x86_64/report.json"
 

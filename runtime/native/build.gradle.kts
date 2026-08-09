@@ -17,6 +17,7 @@ android {
 
     defaultConfig {
         minSdk = libs.versions.android.min.sdk.get().toInt()
+        testInstrumentationRunner = "ah.runtime.nativebridge.NativeConnectedRunner"
         consumerProguardFiles("consumer-rules.pro")
 
         ndk {

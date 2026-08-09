@@ -7,12 +7,14 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.os.Bundle;
+import ah.fixtures.android.m202.M202NativeTestHooks;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.util.Arrays;
 
@@ -21,9 +23,11 @@ public final class M202DeviceRunner extends Instrumentation {
     private static final String TEST_CLASS = "ah.runtime.loader.M202DeviceAcceptance";
     private static final String TEST_NAME = "authenticatedLoaderTransaction";
     private static final byte[] DEX_MAGIC = {'d', 'e', 'x', '\n'};
+    private Bundle arguments;
 
     @Override
     public void onCreate(Bundle arguments) {
+        this.arguments = arguments;
         super.onCreate(arguments);
         start();
     }
@@ -51,6 +55,8 @@ public final class M202DeviceRunner extends Instrumentation {
         byte[] expectedPackage =
                 MessageDigest.getInstance("SHA-256")
                         .digest(applicationInfo.packageName.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        byte[] expectedBuildId = expectedHexArgument("m202_expected_build_id_hex", 16);
+        byte[] expectedKeySlotId = expectedHexArgument("m202_expected_key_slot_id_hex", 16);
 
         int injected = 0;
         for (PayloadRuntime.OpenStage stage : PayloadRuntime.OpenStage.values()) {
@@ -90,15 +96,8 @@ public final class M202DeviceRunner extends Instrumentation {
         ClassLoader loader = payload.classLoader();
         require(loader.getParent() == target.getClassLoader(), "payload parent loader changed");
         AuthenticatedPayloadMetadata metadata = payload.authenticatedMetadata();
-        require(metadata.containerMajor() == 2 && metadata.containerMinor() == 0,
-                "container version mismatch");
-        require(metadata.signerPolicyVersion() == 1 && metadata.riskPolicyVersion() == 1,
-                "policy version mismatch");
-        require(Arrays.equals(metadata.packageNameSha256(), expectedPackage),
-                "package digest mismatch");
-        require(Arrays.equals(metadata.currentSignerSha256(), signer), "signer digest mismatch");
-        byte[][] lineage = metadata.signerLineageSha256();
-        require(lineage.length == 1 && Arrays.equals(lineage[0], signer), "lineage mismatch");
+        verifyMetadataGolden(
+                metadata, signer, expectedPackage, expectedBuildId, expectedKeySlotId);
         byte[] buildCopy = metadata.buildId();
         byte original = buildCopy[0];
         buildCopy[0] ^= 1;
@@ -137,15 +136,19 @@ public final class M202DeviceRunner extends Instrumentation {
                 "closing one handle invalidated an independent handle");
         independent.close();
         independent.close();
+        verifyJniCleanupBoundaries(target, applicationInfo, signer);
         requireNoPlaintextDex(applicationInfo.dataDir, 0);
         if (applicationInfo.deviceProtectedDataDir != null) {
             requireNoPlaintextDex(applicationInfo.deviceProtectedDataDir, 0);
         }
         Arrays.fill(signer, (byte) 0);
         Arrays.fill(expectedPackage, (byte) 0);
+        Arrays.fill(expectedBuildId, (byte) 0);
+        Arrays.fill(expectedKeySlotId, (byte) 0);
         return "failure_injection=" + injected
                 + " multidex=true jni=true native_path=true metadata=true"
-                + " metadata_negative=true cross_handle=true plaintext_dex_files=0";
+                + " metadata_negative=true metadata_golden=true cross_handle=true"
+                + " jni_cleanup=true plaintext_dex_files=0";
     }
 
     private static Object invoke(Method method) throws Exception {
@@ -164,12 +167,87 @@ public final class M202DeviceRunner extends Instrumentation {
     }
 
     private static void requireClosedHandle(long handle, PayloadRuntime.OpenStage stage) {
+        requireClosedHandle(handle, stage.name());
+    }
+
+    private static void requireClosedHandle(long handle, String context) {
         try {
             NativePayloadBridge.nativeAuthenticatedMetadata(handle);
-            throw new AssertionError("native handle survived injected stage: " + stage);
+            throw new AssertionError("native handle survived: " + context);
         } catch (PayloadLoadException expected) {
-            require(expected.getMessage().contains("HANDLE"), "unexpected handle error: " + stage);
+            require(expected.code().equals("AAH-RUNTIME-CONTAINER-HANDLE"),
+                    "unexpected handle error: " + context);
         }
+    }
+
+    private static void verifyJniCleanupBoundaries(
+            Context target,
+            ApplicationInfo applicationInfo,
+            byte[] signer) {
+        try {
+            M202NativeTestHooks.throwWithCleanup();
+            throw new AssertionError("JNI cleanup aggregation returned");
+        } catch (PayloadLoadException primary) {
+            require(primary.code().equals("AAH-RUNTIME-CONTAINER-INJECTED"),
+                    "JNI aggregation replaced the primary code");
+            requireCleanupSuppressed(primary, "JNI aggregation");
+        }
+
+        final long[] rollbackHandle = {0};
+        try {
+            PayloadRuntime.openVerifiedForTesting(
+                    target.getClassLoader(),
+                    applicationInfo,
+                    signer,
+                    (stage, nativeHandle) -> {
+                        rollbackHandle[0] = nativeHandle;
+                        if (stage == PayloadRuntime.OpenStage.BEFORE_RETURN) {
+                            ByteBuffer[] buffers =
+                                    NativePayloadBridge.nativeDexBuffers(nativeHandle);
+                            M202NativeTestHooks.unmapDirectBuffer(buffers[0]);
+                            Arrays.fill(buffers, null);
+                            throw PayloadLoadException.create("INJECTED");
+                        }
+                    });
+            throw new AssertionError("cleanup-suppressed rollback returned");
+        } catch (PayloadLoadException primary) {
+            require(primary.code().equals("AAH-RUNTIME-CONTAINER-INJECTED"),
+                    "rollback cleanup replaced the primary code");
+            requireCleanupSuppressed(primary, "rollback cleanup");
+        }
+        require(rollbackHandle[0] != 0, "rollback cleanup did not capture a handle");
+        requireClosedHandle(rollbackHandle[0], "rollback cleanup");
+
+        final long[] closeHandle = {0};
+        LoadedPayload damaged =
+                PayloadRuntime.openVerifiedForTesting(
+                        target.getClassLoader(),
+                        applicationInfo,
+                        signer,
+                        (stage, nativeHandle) -> closeHandle[0] = nativeHandle);
+        ByteBuffer[] buffers = NativePayloadBridge.nativeDexBuffers(closeHandle[0]);
+        M202NativeTestHooks.unmapDirectBuffer(buffers[0]);
+        Arrays.fill(buffers, null);
+        try {
+            damaged.close();
+            throw new AssertionError("explicit cleanup failure returned");
+        } catch (PayloadLoadException cleanup) {
+            require(cleanup.code().equals("AAH-RUNTIME-CONTAINER-CLEANUP"),
+                    "explicit close did not expose the cleanup code");
+            require(cleanup.getSuppressed().length == 0,
+                    "explicit cleanup failure unexpectedly had suppressed errors");
+        }
+        requireClosedHandle(closeHandle[0], "explicit cleanup");
+        damaged.close();
+    }
+
+    private static void requireCleanupSuppressed(Throwable primary, String context) {
+        Throwable[] suppressed = primary.getSuppressed();
+        require(suppressed.length == 1 && suppressed[0] instanceof PayloadLoadException,
+                context + " did not attach exactly one stable cleanup failure");
+        require(((PayloadLoadException) suppressed[0]).code()
+                        .equals("AAH-RUNTIME-CONTAINER-CLEANUP"),
+                context + " attached the wrong cleanup code");
     }
 
     private static byte[] installedSigner(Context context) throws Exception {
@@ -277,6 +355,45 @@ public final class M202DeviceRunner extends Instrumentation {
                         && Arrays.deepEquals(
                                 left.signerLineageSha256(), right.signerLineageSha256()),
                 "cross-handle metadata mismatch");
+    }
+
+    private static void verifyMetadataGolden(
+            AuthenticatedPayloadMetadata metadata,
+            byte[] signer,
+            byte[] expectedPackage,
+            byte[] expectedBuildId,
+            byte[] expectedKeySlotId) {
+        byte[][] lineage = metadata.signerLineageSha256();
+        require(metadata.containerMajor() == 2, "golden container major mismatch");
+        require(metadata.containerMinor() == 0, "golden container minor mismatch");
+        require(metadata.signerPolicyVersion() == 1, "golden signer policy mismatch");
+        require(metadata.riskPolicyVersion() == 1, "golden risk policy mismatch");
+        require(metadata.originalFactoryClassNameOrNull() == null,
+                "golden original Factory mismatch");
+        require(Arrays.equals(metadata.buildId(), expectedBuildId),
+                "golden build ID mismatch");
+        require(Arrays.equals(metadata.keySlotId(), expectedKeySlotId),
+                "golden key-slot ID mismatch");
+        require(Arrays.equals(metadata.packageNameSha256(), expectedPackage),
+                "golden package digest mismatch");
+        require(Arrays.equals(metadata.currentSignerSha256(), signer),
+                "golden current signer mismatch");
+        require(lineage.length == 1 && Arrays.equals(lineage[0], signer),
+                "golden signer lineage mismatch");
+    }
+
+    private byte[] expectedHexArgument(String name, int expectedBytes) {
+        String value = arguments == null ? null : arguments.getString(name);
+        require(value != null && value.length() == expectedBytes * 2,
+                "missing golden argument: " + name);
+        byte[] decoded = new byte[expectedBytes];
+        for (int index = 0; index < decoded.length; index++) {
+            int high = Character.digit(value.charAt(index * 2), 16);
+            int low = Character.digit(value.charAt(index * 2 + 1), 16);
+            require(high >= 0 && low >= 0, "invalid golden argument: " + name);
+            decoded[index] = (byte) ((high << 4) | low);
+        }
+        return decoded;
     }
 
     private static int u16(byte[] value, int offset) {

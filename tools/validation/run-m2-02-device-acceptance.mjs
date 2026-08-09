@@ -13,12 +13,14 @@ const platform = required("platform");
 const evidence = path.resolve(required("evidence"));
 const coldStarts = Number(options.get("cold-starts") ?? "20");
 const timeout = Number(options.get("command-timeout-ms") ?? "60000");
+const selectedVariant = options.get("variant") ?? "all";
 if (!Number.isInteger(coldStarts) || coldStarts < 1 || coldStarts > 20) fail("invalid cold-start count");
 if (!Number.isInteger(timeout) || timeout < 1000 || timeout > 120000) fail("invalid command timeout");
+if (!["all", "extracted", "direct"].includes(selectedVariant)) fail("invalid variant selection");
 assertIgnored(evidence);
 mkdirSync(evidence, { recursive: true });
 
-const variants = [
+const allVariants = [
   {
     name: "extracted",
     packageName: "ah.fixtures.android.m202.extracted",
@@ -32,6 +34,9 @@ const variants = [
     test: artifact(required("direct-test-apk")),
   },
 ];
+const variants = selectedVariant === "all"
+  ? allVariants
+  : allVariants.filter((variant) => variant.name === selectedVariant);
 const transcript = [];
 let cleanupPassed = false;
 
@@ -46,6 +51,7 @@ try {
     platform,
     serial_sha256: sha256(Buffer.from(serial)),
     environment,
+    variant_selection: selectedVariant,
     cold_start_count: coldStarts,
     variants: results,
     cleanup_passed: true,

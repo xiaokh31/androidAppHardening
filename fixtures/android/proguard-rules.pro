@@ -14,5 +14,8 @@
 -keep class ah.runtime.loader.LoadedPayload { *; }
 -keep class ah.runtime.loader.AuthenticatedPayloadMetadata { *; }
 -keep class ah.runtime.loader.NativePayloadBridge { *; }
+# The separately installed M2-02 instrumentation fixture asserts the exact
+# public-API Native search path selected by this package-private helper.
+-keep class ah.runtime.loader.PayloadClassLoaders { *; }
 -keep class ah.fixtures.android.m202.M202ColdStartActivity { *; }
 -keepattributes *Annotation*,InnerClasses,EnclosingMethod

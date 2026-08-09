@@ -178,9 +178,12 @@ async function packageFixture(baselineArgument, vectorArgument, outputArgument) 
   const aligned = output.replace(/\.apk$/u, "-aligned.apk");
   await writeFile(unsigned, rebuild(entries, replacements));
   const android = tools();
-  run(android.zipalign, ["-f", "-P", "16", "4", unsigned, aligned]);
+  // Native opens both fixed STORED assets directly from sourceDir and requires
+  // their data offsets to retain the production 4 KiB alignment contract.
+  run(android.zipalign, ["-f", "-P", "16", "4096", unsigned, aligned]);
   run(android.apksigner, [
     "sign", "--v4-signing-enabled", "false",
+    "--alignment-preserved", "true",
     "--ks", process.env.M005_TEST_KEYSTORE,
     "--ks-key-alias", process.env.M005_TEST_KEY_ALIAS,
     "--ks-pass", "env:M005_TEST_STORE_PASSWORD",
@@ -188,6 +191,7 @@ async function packageFixture(baselineArgument, vectorArgument, outputArgument) 
     "--out", output,
     aligned,
   ]);
+  run(android.zipalign, ["-c", "-P", "16", "4096", output]);
   run(android.apksigner, ["verify", "--min-sdk-version", "29", output]);
   const outputBytes = await readFile(output);
   process.stdout.write(`${JSON.stringify({

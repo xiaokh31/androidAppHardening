@@ -307,7 +307,7 @@ int runM202PayloadVector(const char* config_path, const char* container_path,
         return 12;
     }
     auto invalid_table = container;
-    invalid_table[20] = 0;
+    invalid_table[20] ^= 1;
     if (openExpect(config, invalid_table, slot, ah::payload::Status::kFormat) != 0) {
         return 13;
     }

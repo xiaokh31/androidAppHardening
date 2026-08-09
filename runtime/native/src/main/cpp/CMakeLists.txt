@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 4.1.2)
 
 project(ah_runtime_native_crypto LANGUAGES C CXX)
 
+option(AH_M2_02_SANITIZERS "Enable Host ASan and UBSan for M2-02" OFF)
+
 set(AH_MBEDTLS_ROOT "" CACHE PATH "Path to the verified Mbed TLS 4.1.1 source tree")
 if(NOT IS_ABSOLUTE "${AH_MBEDTLS_ROOT}")
     message(FATAL_ERROR "AH_MBEDTLS_ROOT must be an absolute path to the verified source tree")
@@ -56,9 +58,44 @@ add_subdirectory(
     EXCLUDE_FROM_ALL
 )
 
-add_library(ah_crypto_backend OBJECT crypto_backend.cpp)
+set(
+    AH_RUNTIME_SOURCES
+    crypto_backend.cpp
+    container_format.cpp
+    zip_assets.cpp
+    payload_memory.cpp
+    payload_metadata.cpp
+)
+if(ANDROID OR UNIX)
+    list(APPEND AH_RUNTIME_SOURCES authenticated_payload.cpp mapped_apk.cpp)
+endif()
+if(ANDROID)
+    list(APPEND AH_RUNTIME_SOURCES
+        jni_exception.cpp
+        jni_bridge.cpp
+        native_share_slot.cpp
+        payload_handle_registry.cpp
+    )
+endif()
+add_library(ah_crypto_backend OBJECT ${AH_RUNTIME_SOURCES})
+
+if(NOT ANDROID)
+    target_compile_definitions(ah_crypto_backend PRIVATE AH_M2_02_HOST_TESTING=1)
+endif()
+
+if(UNIX AND NOT ANDROID)
+    find_package(ZLIB REQUIRED)
+endif()
 target_compile_features(ah_crypto_backend PRIVATE cxx_std_17)
 target_link_libraries(ah_crypto_backend PRIVATE TF-PSA-Crypto::tfpsacrypto)
+if(MSVC)
+    target_compile_options(ah_crypto_backend PRIVATE /W4 /WX)
+else()
+    target_compile_options(ah_crypto_backend PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+if(UNIX AND NOT ANDROID)
+    target_link_libraries(ah_crypto_backend PRIVATE ZLIB::ZLIB)
+endif()
 set_target_properties(
     ah_crypto_backend
     PROPERTIES
@@ -68,7 +105,7 @@ set_target_properties(
 
 if(ANDROID)
     add_library(ah_runtime SHARED $<TARGET_OBJECTS:ah_crypto_backend>)
-    target_link_libraries(ah_runtime PRIVATE TF-PSA-Crypto::tfpsacrypto)
+    target_link_libraries(ah_runtime PRIVATE TF-PSA-Crypto::tfpsacrypto z)
     target_compile_options(ah_runtime PRIVATE -fstack-protector-strong -ffunction-sections -fdata-sections)
     target_link_options(
         ah_runtime
@@ -90,8 +127,47 @@ if(ANDROID)
 else()
     enable_testing()
     find_package(Threads REQUIRED)
-    add_executable(ah_crypto_self_test crypto_backend_test.cpp $<TARGET_OBJECTS:ah_crypto_backend>)
+    add_executable(
+        ah_crypto_self_test
+        crypto_backend_test.cpp
+        container_format_test.cpp
+        m2_02_foundation_test.cpp
+        $<TARGET_OBJECTS:ah_crypto_backend>
+    )
+    target_compile_definitions(ah_crypto_self_test PRIVATE AH_M2_02_HOST_TESTING=1)
+    if(UNIX)
+        target_sources(ah_crypto_self_test PRIVATE m2_02_payload_vector_test.cpp)
+        target_compile_definitions(ah_crypto_self_test PRIVATE AH_M2_02_PAYLOAD_VECTOR_TEST=1)
+    endif()
     target_compile_features(ah_crypto_self_test PRIVATE cxx_std_17)
     target_link_libraries(ah_crypto_self_test PRIVATE TF-PSA-Crypto::tfpsacrypto Threads::Threads)
+    if(UNIX)
+        target_link_libraries(ah_crypto_self_test PRIVATE ZLIB::ZLIB)
+    endif()
+    if(AH_M2_02_SANITIZERS)
+        if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+            message(FATAL_ERROR "M2-02 sanitizers require Clang or GCC")
+        endif()
+        target_compile_options(ah_crypto_backend PRIVATE
+            -fsanitize=address,undefined -fno-omit-frame-pointer)
+        target_compile_options(ah_crypto_self_test PRIVATE
+            -fsanitize=address,undefined -fno-omit-frame-pointer)
+        target_link_options(ah_crypto_self_test PRIVATE -fsanitize=address,undefined)
+    endif()
     add_test(NAME m2_07_native_crypto_vectors COMMAND ah_crypto_self_test)
+    if(UNIX AND DEFINED AH_M2_02_VECTOR_ROOT AND NOT AH_M2_02_VECTOR_ROOT STREQUAL "")
+        if(NOT IS_ABSOLUTE "${AH_M2_02_VECTOR_ROOT}" OR
+           NOT EXISTS "${AH_M2_02_VECTOR_ROOT}/config.bin" OR
+           NOT EXISTS "${AH_M2_02_VECTOR_ROOT}/payload.ahdc" OR
+           NOT EXISTS "${AH_M2_02_VECTOR_ROOT}/slot-x86_64.bin")
+            message(FATAL_ERROR "AH_M2_02_VECTOR_ROOT must contain the prepared immutable vector")
+        endif()
+        add_test(
+            NAME m2_02_authenticated_payload_vector
+            COMMAND ah_crypto_self_test
+                "${AH_M2_02_VECTOR_ROOT}/config.bin"
+                "${AH_M2_02_VECTOR_ROOT}/payload.ahdc"
+                "${AH_M2_02_VECTOR_ROOT}/slot-x86_64.bin"
+        )
+    endif()
 endif()

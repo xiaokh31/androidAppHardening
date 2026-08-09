@@ -9,6 +9,13 @@
 #include <utility>
 #include <vector>
 
+int runContainerFormatSelfTests();
+int runM202FoundationSelfTests();
+#if defined(AH_M2_02_PAYLOAD_VECTOR_TEST)
+int runM202PayloadVector(const char* config_path, const char* container_path,
+                         const char* slot_path);
+#endif
+
 namespace {
 
 using ah::crypto::Status;
@@ -287,15 +294,36 @@ int testConcurrentFacade() {
 
 }  // namespace
 
-int main() {
+int main(int argc, char** argv) {
     const int gcm = testNistAes256Gcm();
     const int hkdf = testRfc5869AndBoundaries();
     const int concurrent = testConcurrentFacade();
-    if (gcm != 0 || hkdf != 0 || concurrent != 0) {
+    const int containerFormat = runContainerFormatSelfTests();
+    const int m202Foundation = runM202FoundationSelfTests();
+    if (gcm != 0 || hkdf != 0 || concurrent != 0 || containerFormat != 0 ||
+        m202Foundation != 0) {
         std::cerr << "M2-07 native crypto self-test failed: gcm=" << gcm
-                  << " hkdf=" << hkdf << " concurrent=" << concurrent << '\n';
+                  << " hkdf=" << hkdf << " concurrent=" << concurrent
+                  << " container_format=" << containerFormat
+                  << " m2_02_foundation=" << m202Foundation << '\n';
         return 1;
     }
-    std::cout << "M2-07 NIST AES-256-GCM, RFC 5869, boundary and concurrency matrix: PASS\n";
+#if defined(AH_M2_02_PAYLOAD_VECTOR_TEST)
+    if (argc == 4) {
+        const int vector = runM202PayloadVector(argv[1], argv[2], argv[3]);
+        if (vector != 0) {
+            std::cerr << "M2-02 authenticated payload vector failed: " << vector << '\n';
+            return 1;
+        }
+        std::cout << "M2-02 authenticated payload vector: PASS "
+                     "failure-injection=18 allocator-oom=2 protection-rollback=1 "
+                     "parser-fuzz=20000\n";
+        return 0;
+    }
+#else
+    (void) argc;
+    (void) argv;
+#endif
+    std::cout << "M2-07 crypto and M2-02 ZIP/auth/mapping foundation matrix: PASS\n";
     return 0;
 }

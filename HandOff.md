@@ -1,15 +1,15 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260805-130636
-updated_at: 2026-08-07T13:37:58+08:00
+handoff_id: HO-20260809-223000
+updated_at: 2026-08-09T22:30:00+08:00
 updated_by: /root
 state: active
-source_branch: main
-base_commit: 1bce1f61a3edcebdf94a511c495006a38edb6cb4
+source_branch: feat/m2-02-native-decrypt-loader
+base_commit: 73208102f13330bc062b6d64e1808254005feb3c
 working_tree: clean
 current_milestone: M2
-active_task: M2-07
+active_task: M2-02
 next_owner: /root
 ---
 
@@ -17,7 +17,7 @@ next_owner: /root
 
 ## Objective
 
-在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内完成 M2-07 合并后 README/HandOff 与最终 `main` 门禁；门禁通过后恢复既有 M2-02 分支，不启动 M2-03 或相邻任务。
+在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内执行 M2-02：使用 M2-07 固定密码后端完成 AHDC v2 Native 认证解密、有界 zlib、匿名 DEX 映射和 API 29 公共 InMemoryDexClassLoader；不启动 M2-03 或相邻任务。
 
 ## Current State
 
@@ -167,8 +167,8 @@ next_owner: /root
 | M1-04 | `/root` | `feat/m1-04-encrypted-dex-container` | done | M1-01, M1-02, M1-07 | PR #38、Issue #9、独立复核、merger-ready 六项 CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-05 | `/root` | `feat/m1-05-apk-repacker-and-alignment` | done | M1-02, M1-03, M1-04 | PR #39、Issue #10、独立复核、merger-ready CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-06 | `/root` | `feat/m1-06-cli-and-json-report` | done | M1-01, M1-02, M1-03, M1-04, M1-05 | PR #40、Issue #11、独立复核、merger-ready 与 post-merge main 双平台 CI、README 和 strict HandOff 均已关闭 |
-| M2-07 | `/root` | `main` | in_progress | M0-03, M1-04 | PR #42 与 Issue #41 已关闭；README 已同步，等待 post-merge `main` 无豁免 strict 与 Build/Governance/KVM 最终门禁 |
-| M2-02 | `/root` | `feat/m2-02-native-decrypt-loader` | blocked | M0-04, M1-04, M2-07 | `/root` 在 M2-07 合并且 final main 门禁通过后恢复 `40e3900` |
+| M2-07 | `/root` | `main` | done | M0-03, M1-04 | PR #42、Issue #41、最终独立复核、README、strict 与 post-merge Build/Governance/KVM 均已关闭 |
+| M2-02 | `/root` | `feat/m2-02-native-decrypt-loader` | review | M0-04, M1-04, M2-07 | 冻结 `7320810` 的第三轮独立复核 P0/P1/P2 全零；归档结论、完成唯一 PR/CI/合并与 post-merge 门禁 |
 
 ## Decisions and Invariants
 
@@ -191,6 +191,10 @@ next_owner: /root
 - 根 `README.md` 必须维护公开任务进度表；任务仅在合并后门禁完成时标记“已完成”，每个任务的收尾协调提交必须同步该表，不能以 README 替代 `HandOff.md` 的证据。
 
 ## Changes Since Previous Handoff
+
+- M2-02 implementation parent `39a883f75cde6ef510f10e24eefe089fbd08b142` 已通过 Build run `31304148760` 的 Ubuntu/Windows jobs 与 KVM run `31304148764` 的 API 29/36 x86_64 jobs；两个 KVM 平台均执行非空 Native/Bootstrap connected tests、extracted/direct Release/R8、外部 metadata golden、JNI cleanup injection、各 20 次冷启动、内存、零明文 DEX 和强制清理。
+- 用户允许普通 MIUI USB 安装后，同一候选的 API 29 arm64 非 root 真机 review4 在一个有界 `all` 命令中退出 `0`。extracted/direct 均通过 instrumentation、十个失败窗口、跨 DEX、JNI、metadata、各 20 次冷启动、内存、零明文 DEX 与卸载清理；证据归档于 `docs/evidence/M2-02/local-validation.md`。
+- 证据冻结 SHA `73208102f13330bc062b6d64e1808254005feb3c` 的第三轮独立只读安全复核为 PASS，`P0=0/P1=0/P2=0`。空 connected tests、跨 JNI cleanup primary/suppressed、十 getter 外部 golden 和完整 ZIP local-entry overlap 等第二轮发现均关闭；结论归档于 `docs/evidence/M2-02/security-review-3.md`。当前只允许完成唯一 Issue #13 PR、exact-head CI、expected-head 普通合并和 post-merge main 门禁，不启动 M2-03。
 
 - 用户启动 M1-06 并预授权完整发布/合并流程；协调者核验 Issue #11、依赖、无分支/PR 冲突与 `main@55ef3c5` final 双平台 CI 后创建固定分支。
 - 新增 M1-06 full-flow 实施计划，固定唯一 protect 命令、schema discriminator、报告自哈希边界、RuntimeBundle distribution/test fixture 分离、原子 report 回滚语义与验收矩阵；不改变上游算法或启动 M2。
@@ -313,8 +317,36 @@ next_owner: /root
 - 第八轮独立只读复核永久废止 frozen SHA `dfda35fad30d7edf2ee1fdfe26d3248dacd15e91`，结论 `P0=0/P1=0/P2=1`，归档于 `docs/evidence/M2-07/read-only-review-8.md`；此前十九项 finding 全部 CLOSED，Build `31148877894`、Governance `31148877818` 与 KVM `31148877817` 在该 SHA 全绿。唯一 P2 是共享 parser 自测虽已覆盖 `t→d` 并经独立合成输入证明比较器拒绝 `d→t`，但没有显式的 `d→t` 自测用例。当前最小修复只补该反向类型变化负例；之后必须新 SHA、三套 exact-head CI 与第九轮完整独立复核。PR #42 保持 draft，M2-02 继续暂停。
 - 第九轮最终独立只读复核对 frozen SHA `7190a6ee61285fe065d5de6cbe836a648482d658` 给出 PASS：`P0=0/P1=0/P2=0`，结论归档于 `docs/evidence/M2-07/read-only-review-9.md`；前二十项 finding 全部 CLOSED 且无新增 finding。该 SHA 的 Build `31149909030`、Governance `31149909021` 与 API 29/36 KVM `31149909014` 全绿，双平台 Host 向量、四 ABI 精确十七项 surface、零相关动态导出、设备验收、强制清理和证据上传均通过。该复核是最终结论，除非出现真实接受面或安全边界缺陷，不再因措辞或可选增强开启新轮次。当前只允许 evidence-only 归档 successor、最终 exact-head 门禁与 expected-head 合并；PR #42 仍 draft，M2-02 在 final main 门禁前继续暂停。
 - Evidence-only merger-ready HEAD `0c741e76477a1b8885ae354747168c1145152e0a` 的 Build `31150620828`、Governance `31150620836` 与 API 29/36 KVM `31150620830` 六项全部 PASS；PR #42 已转 ready，并以 expected-head 保护的普通 merge commit `1ac8e308236078827ec3e4a8f438514dcf69b10c` 合并到 `main`，Issue #41 已关闭。README 已同步 M2-07 完成状态；当前只允许提交本 post-merge 协调状态并运行无豁免 strict/Governance/Build/KVM 最终 `main` 门禁，全部通过后恢复 `feat/m2-02-native-decrypt-loader@40e3900`。
+- Post-merge `main@e78fcaed58dd5211a465ea37a94db45dddc17dfa` 已在本地无豁免通过 strict HandOff、Governance 与 diff check，远端 Build `31151358692`、Governance `31151358963` 和手动 dispatch 的 API 29/36 KVM `31151403785` 全部 PASS。M2-07 正式结束；`feat/m2-02-native-decrypt-loader` 已从原冻结 `40e3900` 恢复并以 merge commit `d9af1fa785ef649b31bf387e2f058b6b0f986df1` 合入该 exact main，无冲突。M2-02 的先决阻塞已关闭，README 与实现计划切换为进行中；当前只实现 M2-02，不启动 M2-03。
+- M2-02 有界格式基础已实现：C++17 严格解析 HeaderV2/SPV1/RecordV2/ChunkV2/ConfigV2，逐 record/chunk 校验 canonical topology、checked arithmetic、64 DEX/16 lineage/65,536 chunk、512 MiB 单 DEX 与 4 GiB 总量、Factory/zero-fill/reserved/nonce/version。MSVC `/W4 /WX` 独立矩阵退出 `0`，Android NDK 四 ABI Release `assembleRelease` 在 30 秒内 PASS；证据归档于 `docs/evidence/M2-02/local-validation.md`。当前实现尚未声明完成，下一层只处理固定 ZIP asset、share/CEK/manifest、per-chunk GCM→zlib 与失败事务所有权。
+- M2-02 第二实现层已完成本地检查点：唯一规范 ZIP32 asset locator、104-byte Native share 校验、package/signer→KEK→CEK envelope→流式 manifest→config digest 完整认证链、逐 chunk 一次性 GCM 后连续 zlib，以及最多 64 个 completed/partial 匿名 mapping 的单一事务 owner 已接通。四 ABI Release 以 warnings-as-errors 编译并确认符号实际保留，根 `check` 249-task PASS；Linux Host golden vector/首中末 tag rollback 已加入 Build workflow，证据更新于 `docs/evidence/M2-02/local-validation.md`。任务仍未完成或发布；下一层仅实现只读 sourceDir/JNI primitive handle、认证 metadata、Java facade/ClassLoader 和双所有权窗口。
+- M2-02 第三实现层已完成本地检查点：同一 `sourceDir` 只读文件映射、OS 只读 DEX commit、generation+slot 类型化 JNI handle、同 handle `AHMD` 认证 metadata、精确五 JNI 方法、Java primitive/finally 交接窗口、幂等 `LoadedPayload` owner，以及 M0-05 等价 Native 搜索路径和三参数 API 29 `InMemoryDexClassLoader` 已接通。Java 17 编译/lint、NDK 四 ABI warnings-as-errors 与离线根 `assembleRelease check` 284-task 均 PASS，四个 ELF 都含唯一 104-byte alloc/read-only `.ah_share_v1`，未启动设备或模拟器。证据更新于 `docs/evidence/M2-02/local-validation.md`；任务仍未完成或发布，下一步仅补 failure injection、Host sanitizer/fuzz/OOM 与已授权 KVM/arm64 验收，不启动 M2-03。
 
 ## Verification Evidence
+
+### M2-02 API 29 arm64 final acceptance
+
+- task_id: M2-02
+- git_commit: 39a883f75cde6ef510f10e24eefe089fbd08b142
+- command: `node tools/validation/run-m2-02-device-acceptance.mjs --serial <authorized-device> --platform api29-arm64-nonroot-review4 --cold-starts 20 --command-timeout-ms 60000 --variant all <final extracted/direct inputs>`
+- exit_code: 0
+- environment: Xiaomi sirius API 29 arm64-v8a user/release-keys, 64-bit, shell UID 2000, `ro.secure=1`, `ro.debuggable=0`; no local emulator
+- timestamp: 2026-08-09T22:22:03+08:00
+- artifact: ignored `build/m2-02/device-api29-arm64-review4/report.json`; commands SHA-256 `ff9008c804f5d304ed3974bd8dd03597ebc4040685c33e680aee18236d85d36a`; instrumentation SHA-256 `74acf92d908cc5743d0b164137f1a49a3aee22be7521ffd53bae3278299087ed`; target/test APKs remain ignored
+- sha256: c15151c51d7952e3ae347fee9bc63ff1fb85410ab250015b51f27b7a4c96a609
+- result: PASS; report hash above; extracted/direct instrumentation, ten failure windows, cross-DEX, JNI, authenticated metadata, exactly 20 cold starts each, memory, zero plaintext DEX and cleanup passed
+
+### M2-02 third independent security review
+
+- task_id: M2-02
+- git_commit: 73208102f13330bc062b6d64e1808254005feb3c
+- command: independent read-only full security review of merge-base-to-freeze diff, task/ADR/threat/test contracts, local evidence, Build `31304148760`, KVM `31304148764` and API 29 arm64 review4
+- exit_code: 0
+- environment: read-only repository review; no edit, download, emulator, device install or push
+- timestamp: 2026-08-09T22:30:00+08:00
+- artifact: `docs/evidence/M2-02/security-review-3.md`
+- sha256: not_applicable
+- result: PASS; P0=0, P1=0, P2=0; all second-review findings and complete acceptance contract independently closed
 
 ### M2-07 independent security review 1
 
@@ -1258,14 +1290,20 @@ None
 
 ## Ordered Next Actions
 
-1. Commit and push this README/HandOff-only post-merge coordination update on `main`; do not change production code, dependency locks, ABI surface or workflow acceptance.
-2. Require that exact `main` HEAD to pass local no-exemption strict HandOff/Governance and remote Build, Governance and API 29/36 KVM.
-3. After all final `main` gates pass, merge `main` into and resume `feat/m2-02-native-decrypt-loader@40e3900`, update HandOff for the restored task, and continue only M2-02.
+1. Commit and push the archived third-review/README/HandOff coordination snapshot, then confirm frozen-head Build success.
+2. Verify there is no existing M2-02 PR, create the unique draft PR for Issue #13, and require the exact PR HEAD to pass repository CI.
+3. Under the user's standing authorization, transition the clean exact-head PR to ready and merge with expected-head protection; then update `main` README/HandOff, run strict/Governance without exemptions, and close final main CI before declaring M2-02 done. Do not start M2-03.
 
 ## Relevant Files and Artifacts
 
 - `HandOff.md`
 - `README.md`
+- `docs/tasks/M2-02-native-decrypt-and-inmemory-loader.md`
+- `docs/evidence/M2-02/local-validation.md`
+- `docs/evidence/M2-02/security-review-1.md`
+- `docs/evidence/M2-02/security-review-2.md`
+- `docs/evidence/M2-02/security-review-3.md`
+- ignored `build/m2-02/device-api29-arm64-review4/`
 - `docs/tasks/M0-05-application-factory-provider-jni-poc.md`
 - `docs/tasks/M1-01-untrusted-apk-inspector.md`
 - `docs/tasks/M1-02-signer-policy.md`
@@ -1320,6 +1358,11 @@ None
 - `.github/workflows/m0-05-linux-kvm.yml`
 
 ## Resume Checklist
+
+- [x] M2-02 implementation parent `39a883f` passed Ubuntu/Windows Build and API 29/36 x86_64 KVM with non-empty connected tests and both Release/R8 variants.
+- [x] API 29 arm64 non-root review4 passed both variants, 20 cold starts each, instrumentation, JNI/metadata/negative paths, memory, no plaintext DEX and package cleanup.
+- [x] Third independent read-only review of frozen `7320810` returned PASS with P0/P1/P2 all zero; both rejected reviews and all findings are archived.
+- [ ] Create the unique Issue #13 draft PR, pass exact-head CI, merge with expected-head protection, and complete post-merge main README/HandOff/strict/Governance/CI before marking M2-02 done.
 
 - [x] 用户明确启动 M1-06 并预授权推送、唯一 PR、ready 与合并；Issue #11、依赖、无远程冲突和 final main CI 已核验。
 - [x] 从 `main@55ef3c5` 创建固定分支，选择 full-flow 模式并归档 CLI/report 实施计划。
@@ -1416,6 +1459,8 @@ None
 - [x] 对当前 clean 冻结提交完成新的独立 parser/security 复核；P0/P1/P2 全零。
 
 ## Handoff Sign-off
+
+- `/root` independently verified the final API 29 arm64 report/transcript hashes, package cleanup, successful Build `31304148760`, successful KVM `31304148764`, and the third read-only review PASS for frozen `73208102f13330bc062b6d64e1808254005feb3c`. M2-02 remains in review until its unique Issue #13 PR and post-merge main gates close; M2-03 has not started.
 
 - `/root` 已核验 M1-06 冻结 `e882691`、merger-ready `7029957` 的本地/双平台门禁和全零复核；PR #40 已 expected-head 普通合并且 Issue #11 关闭。当前只允许 main 的 README/HandOff、strict/Governance 和最终双平台门禁，synthetic RuntimeBundle 仅限测试，不启动 M2、设备或模拟器。
 - `/root` 已核验 M1-05 的唯一 Issue #10、固定分支、依赖和 main 双平台基线；当前只允许 `host/repacker` 与合成 `pre-cli` 验收，不启动 M1-06/M2、设备或本机模拟器。用户已预授权本任务后续发布与合并，但技术门禁和独立复核不得跳过。

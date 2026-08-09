@@ -129,6 +129,21 @@ constructor(private val execOperations: ExecOperations) : DefaultTask() {
 }
 
 @CacheableTask
+abstract class GenerateM202Placeholders : DefaultTask() {
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun generate() {
+        val assetRoot = outputDirectory.get().asFile.resolve("ah/runtime")
+        assetRoot.deleteRecursively()
+        assetRoot.mkdirs()
+        assetRoot.resolve("config.bin").writeBytes(ByteArray(768))
+        assetRoot.resolve("payload.ahdc").writeBytes(ByteArray(160))
+    }
+}
+
+@CacheableTask
 abstract class GenerateCompatibilityPocPayload
 @Inject
 constructor(private val execOperations: ExecOperations) : DefaultTask() {
@@ -396,6 +411,16 @@ android {
             applicationIdSuffix = ".m005.direct"
             testInstrumentationRunner = "ah.fixtures.android.CompatibilityPocRunner"
         }
+        create("m202Extracted") {
+            dimension = "poc"
+            applicationIdSuffix = ".m202.extracted"
+            testInstrumentationRunner = "ah.runtime.loader.M202DeviceRunner"
+        }
+        create("m202Direct") {
+            dimension = "poc"
+            applicationIdSuffix = ".m202.direct"
+            testInstrumentationRunner = "ah.runtime.loader.M202DeviceRunner"
+        }
     }
 
     androidResources {
@@ -436,6 +461,20 @@ android {
         }
         getByName("androidTestCompatDirect") {
             java.srcDir("src/androidTestCompatFixture/java")
+        }
+        getByName("m202Extracted") {
+            manifest.srcFile("src/m202Fixture/AndroidManifest.xml")
+            java.srcDir("src/m202Fixture/java")
+        }
+        getByName("m202Direct") {
+            manifest.srcFile("src/m202Fixture/AndroidManifest.xml")
+            java.srcDir("src/m202Fixture/java")
+        }
+        getByName("androidTestM202Extracted") {
+            java.srcDir("src/androidTestM202Fixture/java")
+        }
+        getByName("androidTestM202Direct") {
+            java.srcDir("src/androidTestM202Fixture/java")
         }
     }
 
@@ -500,6 +539,29 @@ androidComponents {
         variant.packaging.jniLibs.useLegacyPackaging.set(false)
         registerCompatibilityPayload(variant)
     }
+    onVariants(selector().withFlavor("poc" to "m202Extracted")) { variant ->
+        variant.packaging.jniLibs.useLegacyPackaging.set(true)
+        registerM202Placeholders(variant)
+    }
+    onVariants(selector().withFlavor("poc" to "m202Direct")) { variant ->
+        variant.packaging.jniLibs.useLegacyPackaging.set(false)
+        registerM202Placeholders(variant)
+    }
+}
+
+fun registerM202Placeholders(variant: com.android.build.api.variant.ApplicationVariant) {
+    val taskName =
+        "generate${variant.name.replaceFirstChar { character -> character.uppercase() }}M202Placeholders"
+    val generate =
+        tasks.register<GenerateM202Placeholders>(taskName) {
+            outputDirectory.set(
+                layout.buildDirectory.dir("generated/m2-02/${variant.name}/assets"),
+            )
+        }
+    variant.sources.assets?.addGeneratedSourceDirectory(
+        generate,
+        GenerateM202Placeholders::outputDirectory,
+    )
 }
 
 fun registerCompatibilityPayload(variant: com.android.build.api.variant.ApplicationVariant) {
@@ -538,4 +600,7 @@ dependencies {
     add("classloaderPocImplementation", project(":runtime:bootstrap"))
     add("compatExtractedImplementation", project(":runtime:bootstrap"))
     add("compatDirectImplementation", project(":runtime:bootstrap"))
+    add("m202ExtractedImplementation", project(":runtime:native"))
+    add("m202DirectImplementation", project(":runtime:native"))
+    add("androidTestCompileOnly", project(":runtime:native"))
 }

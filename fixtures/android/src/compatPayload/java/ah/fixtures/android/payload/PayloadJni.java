@@ -1,5 +1,7 @@
 package ah.fixtures.android.payload;
 
+import java.nio.ByteBuffer;
+
 final class PayloadJni {
     private PayloadJni() {}
 
@@ -12,5 +14,17 @@ final class PayloadJni {
         }
     }
 
+    static void throwWithCleanupForTesting() {
+        nativeThrowWithCleanupForTesting();
+    }
+
+    static void unmapDirectBufferForTesting(ByteBuffer buffer) {
+        nativeUnmapDirectBufferForTesting(buffer);
+    }
+
     private static native String nativeMarker();
+
+    private static native void nativeThrowWithCleanupForTesting();
+
+    private static native void nativeUnmapDirectBufferForTesting(ByteBuffer buffer);
 }

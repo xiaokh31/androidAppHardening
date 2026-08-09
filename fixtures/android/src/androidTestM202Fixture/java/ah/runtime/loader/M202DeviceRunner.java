@@ -7,7 +7,6 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.os.Bundle;
-import ah.fixtures.android.m202.M202NativeTestHooks;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.PrintWriter;
@@ -136,7 +135,7 @@ public final class M202DeviceRunner extends Instrumentation {
                 "closing one handle invalidated an independent handle");
         independent.close();
         independent.close();
-        verifyJniCleanupBoundaries(target, applicationInfo, signer);
+        verifyJniCleanupBoundaries(loader, target, applicationInfo, signer);
         requireNoPlaintextDex(applicationInfo.dataDir, 0);
         if (applicationInfo.deviceProtectedDataDir != null) {
             requireNoPlaintextDex(applicationInfo.deviceProtectedDataDir, 0);
@@ -151,9 +150,9 @@ public final class M202DeviceRunner extends Instrumentation {
                 + " jni_cleanup=true plaintext_dex_files=0";
     }
 
-    private static Object invoke(Method method) throws Exception {
+    private static Object invoke(Method method, Object... arguments) throws Exception {
         try {
-            return method.invoke(null);
+            return method.invoke(null, arguments);
         } catch (InvocationTargetException failure) {
             Throwable cause = failure.getCause();
             if (cause instanceof Exception) {
@@ -181,11 +180,18 @@ public final class M202DeviceRunner extends Instrumentation {
     }
 
     private static void verifyJniCleanupBoundaries(
+            ClassLoader payloadLoader,
             Context target,
             ApplicationInfo applicationInfo,
-            byte[] signer) {
+            byte[] signer) throws Exception {
+        Class<?> hooks = payloadLoader.loadClass("ah.fixtures.android.payload.PayloadJni");
+        Method throwWithCleanup = hooks.getDeclaredMethod("throwWithCleanupForTesting");
+        Method unmapDirectBuffer =
+                hooks.getDeclaredMethod("unmapDirectBufferForTesting", ByteBuffer.class);
+        throwWithCleanup.setAccessible(true);
+        unmapDirectBuffer.setAccessible(true);
         try {
-            M202NativeTestHooks.throwWithCleanup();
+            invoke(throwWithCleanup);
             throw new AssertionError("JNI cleanup aggregation returned");
         } catch (PayloadLoadException primary) {
             require(primary.code().equals("AAH-RUNTIME-CONTAINER-INJECTED"),
@@ -204,7 +210,7 @@ public final class M202DeviceRunner extends Instrumentation {
                         if (stage == PayloadRuntime.OpenStage.BEFORE_RETURN) {
                             ByteBuffer[] buffers =
                                     NativePayloadBridge.nativeDexBuffers(nativeHandle);
-                            M202NativeTestHooks.unmapDirectBuffer(buffers[0]);
+                            invokeUnmap(unmapDirectBuffer, buffers[0]);
                             Arrays.fill(buffers, null);
                             throw PayloadLoadException.create("INJECTED");
                         }
@@ -226,7 +232,7 @@ public final class M202DeviceRunner extends Instrumentation {
                         signer,
                         (stage, nativeHandle) -> closeHandle[0] = nativeHandle);
         ByteBuffer[] buffers = NativePayloadBridge.nativeDexBuffers(closeHandle[0]);
-        M202NativeTestHooks.unmapDirectBuffer(buffers[0]);
+        invokeUnmap(unmapDirectBuffer, buffers[0]);
         Arrays.fill(buffers, null);
         try {
             damaged.close();
@@ -248,6 +254,14 @@ public final class M202DeviceRunner extends Instrumentation {
         require(((PayloadLoadException) suppressed[0]).code()
                         .equals("AAH-RUNTIME-CONTAINER-CLEANUP"),
                 context + " attached the wrong cleanup code");
+    }
+
+    private static void invokeUnmap(Method method, ByteBuffer buffer) {
+        try {
+            invoke(method, buffer);
+        } catch (Exception failure) {
+            throw new AssertionError("direct-buffer unmap injection failed", failure);
+        }
     }
 
     private static byte[] installedSigner(Context context) throws Exception {

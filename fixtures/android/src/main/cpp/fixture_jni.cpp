@@ -11,14 +11,14 @@ Java_ah_fixtures_android_payload_PayloadJni_nativeMarker(JNIEnv* env, jclass) {
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_ah_fixtures_android_m202_M202NativeTestHooks_nativeThrowWithCleanupForTesting(
+Java_ah_fixtures_android_payload_PayloadJni_nativeThrowWithCleanupForTesting(
     JNIEnv* environment, jclass) {
     ah::jni::throwCodeWithCleanup(
         environment, "AAH-RUNTIME-CONTAINER-INJECTED", true);
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_ah_fixtures_android_m202_M202NativeTestHooks_nativeUnmapDirectBufferForTesting(
+Java_ah_fixtures_android_payload_PayloadJni_nativeUnmapDirectBufferForTesting(
     JNIEnv* environment, jclass, jobject buffer) {
     void* address = buffer == nullptr ? nullptr : environment->GetDirectBufferAddress(buffer);
     const jlong size = buffer == nullptr ? -1 : environment->GetDirectBufferCapacity(buffer);

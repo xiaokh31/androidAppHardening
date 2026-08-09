@@ -1,5 +1,6 @@
 package ah.runtime.bootstrap;
 
+import android.app.Activity;
 import android.app.Instrumentation;
 import android.content.pm.ApplicationInfo;
 import android.os.Bundle;
@@ -35,13 +36,13 @@ public final class BootstrapConnectedRunner extends Instrumentation {
             }
             sendStatus(0, status("."));
             result.putString("stream", "\nTime: 0\n\nOK (1 test)\nbootstrap_connected=true\n");
-            finish(0, result);
+            finish(Activity.RESULT_OK, result);
         } catch (Throwable failure) {
             Bundle failed = status("F");
             failed.putString("stack", android.util.Log.getStackTraceString(failure));
             sendStatus(-2, failed);
             result.putString("stream", "\nFAILURES!!!\n" + android.util.Log.getStackTraceString(failure));
-            finish(-1, result);
+            finish(Activity.RESULT_CANCELED, result);
         }
     }
 

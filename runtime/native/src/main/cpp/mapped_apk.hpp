@@ -7,6 +7,8 @@
 
 namespace ah::apk {
 
+inline constexpr std::uint64_t kMaxSourceApkBytes = 2'147'483'647ULL;
+
 enum class Status : std::uint8_t {
     kSuccess = 0,
     kInvalidArgument = 1,

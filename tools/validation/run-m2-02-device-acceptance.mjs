@@ -82,6 +82,8 @@ function runVariant(variant) {
   ], 120000);
   if (!instrumentation.stdout.includes("OK (1 test)") ||
       !instrumentation.stdout.includes("failure_injection=10") ||
+      !instrumentation.stdout.includes("metadata_negative=true") ||
+      !instrumentation.stdout.includes("cross_handle=true") ||
       !instrumentation.stdout.includes("plaintext_dex_files=0") ||
       instrumentation.stdout.includes("FAILURES!!!")) {
     fail(`${variant.name} instrumentation failed:\n${instrumentation.stdout}\n${instrumentation.stderr}`);

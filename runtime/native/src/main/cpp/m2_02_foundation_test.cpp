@@ -8,6 +8,7 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -21,6 +22,18 @@ void put32(std::vector<std::uint8_t>* bytes, std::size_t offset, std::uint32_t v
     for (std::size_t index = 0; index < 4; ++index) {
         (*bytes)[offset + index] = static_cast<std::uint8_t>(value >> (index * 8U));
     }
+}
+
+std::uint16_t get16(const std::vector<std::uint8_t>& bytes, std::size_t offset) {
+    return static_cast<std::uint16_t>(bytes[offset]) |
+           static_cast<std::uint16_t>(bytes[offset + 1]) << 8U;
+}
+
+std::uint32_t get32(const std::vector<std::uint8_t>& bytes, std::size_t offset) {
+    return static_cast<std::uint32_t>(bytes[offset]) |
+           static_cast<std::uint32_t>(bytes[offset + 1]) << 8U |
+           static_cast<std::uint32_t>(bytes[offset + 2]) << 16U |
+           static_cast<std::uint32_t>(bytes[offset + 3]) << 24U;
 }
 
 std::uint32_t crc32(const std::vector<std::uint8_t>& bytes) {
@@ -139,7 +152,8 @@ int testSlotAndZip() {
                          std::vector<std::uint8_t>(ah::container::kConfigBytes, 0x41)};
     const ZipSpec payload{"assets/ah/runtime/payload.ahdc",
                           std::vector<std::uint8_t>(ah::container::kHeaderBytes, 0x42)};
-    auto apk = buildZip({config, payload});
+    const auto valid_apk = buildZip({config, payload});
+    auto apk = valid_apk;
     ah::zip::FixedAssets assets{};
     if (ah::zip::locateFixedAssets({apk.data(), apk.size()}, &assets) != ah::zip::Status::kSuccess ||
         assets.config.size != ah::container::kConfigBytes ||
@@ -156,6 +170,45 @@ int testSlotAndZip() {
     if (ah::zip::locateFixedAssets({apk.data(), apk.size()}, &assets) != ah::zip::Status::kCrcMismatch) {
         return 5;
     }
+
+    const std::size_t central = get32(valid_apk, valid_apk.size() - 6);
+    const std::uint32_t config_local = get32(valid_apk, central + 42);
+    const auto expect = [&assets](std::vector<std::uint8_t> candidate, ah::zip::Status expected) {
+        return ah::zip::locateFixedAssets({candidate.data(), candidate.size()}, &assets) == expected;
+    };
+    if (!expect(buildZip({config}), ah::zip::Status::kMissing)) return 6;
+
+    auto encrypted = valid_apk;
+    put16(&encrypted, central + 8, 1);
+    put16(&encrypted, config_local + 6, 1);
+    if (!expect(std::move(encrypted), ah::zip::Status::kUnsupported)) return 7;
+    auto descriptor = valid_apk;
+    put16(&descriptor, central + 8, 1U << 3U);
+    put16(&descriptor, config_local + 6, 1U << 3U);
+    if (!expect(std::move(descriptor), ah::zip::Status::kUnsupported)) return 8;
+    auto deflated = valid_apk;
+    put16(&deflated, central + 10, 8);
+    put16(&deflated, config_local + 8, 8);
+    if (!expect(std::move(deflated), ah::zip::Status::kUnsupported)) return 9;
+    auto local_mismatch = valid_apk;
+    put16(&local_mismatch, config_local + 6, 1);
+    if (!expect(std::move(local_mismatch), ah::zip::Status::kFormat)) return 10;
+    auto misaligned = valid_apk;
+    const std::uint16_t extra = get16(misaligned, config_local + 28);
+    put16(&misaligned, config_local + 28, static_cast<std::uint16_t>(extra - 1U));
+    if (!expect(std::move(misaligned), ah::zip::Status::kFormat)) return 11;
+    auto zip64 = valid_apk;
+    put32(&zip64, central + 20, 0xffffffffU);
+    if (!expect(std::move(zip64), ah::zip::Status::kUnsupported)) return 12;
+    auto multi_disk = valid_apk;
+    put16(&multi_disk, central + 34, 1);
+    if (!expect(std::move(multi_disk), ah::zip::Status::kUnsupported)) return 13;
+    auto bad_local_offset = valid_apk;
+    put32(&bad_local_offset, central + 42, static_cast<std::uint32_t>(central));
+    if (!expect(std::move(bad_local_offset), ah::zip::Status::kFormat)) return 14;
+    auto truncated = valid_apk;
+    truncated.pop_back();
+    if (!expect(std::move(truncated), ah::zip::Status::kFormat)) return 15;
     return 0;
 }
 

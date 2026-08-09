@@ -89,6 +89,15 @@ Status openAuthenticatedPayload(
     AuthenticatedMetadata* metadata_output,
     bool* cleanup_failed) noexcept;
 
+#if defined(AH_M2_02_HOST_TESTING)
+void resetZlibCleanupEvidenceForTesting() noexcept;
+std::size_t zlibLiveAllocationCountForTesting() noexcept;
+std::size_t zlibTotalFreeCountForTesting() noexcept;
+std::size_t zlibZeroizedFreeCountForTesting() noexcept;
+Status inflateCompressedForTesting(
+    container::ByteView compressed, std::uint8_t* output, std::size_t output_size) noexcept;
+#endif
+
 }  // namespace ah::payload
 
 #endif

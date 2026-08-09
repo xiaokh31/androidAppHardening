@@ -467,6 +467,10 @@ jobs:
             _ "$serial"
           adb -s "$serial" shell input keyevent 82
 
+          ANDROID_SERIAL="$serial" timeout 300s ./gradlew --no-daemon --console=plain \
+            :runtime:native:connectedCheck \
+            :runtime:bootstrap:connectedCheck
+
           timeout 900s node tools/validation/run-m0-05-device-acceptance.mjs \
             --adb "$ANDROID_HOME/platform-tools/adb" \
             --serial "$serial" \

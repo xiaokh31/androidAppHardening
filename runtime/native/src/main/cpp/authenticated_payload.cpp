@@ -6,8 +6,13 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <limits>
+
+#if defined(AH_M2_02_HOST_TESTING)
+#include <atomic>
+#endif
 
 #include <zlib.h>
 
@@ -22,6 +27,62 @@ constexpr char kRecordDomain[] = "AHDC record v2";
 constexpr char kChunkDomain[] = "AHDC-GCM-V2";
 constexpr std::size_t kChunkAadBytes = sizeof(kChunkDomain) - 1 + 4 + 16 + 16 + 32 + 32 +
                                        container::kRecordBytes + container::kChunkBytes;
+
+struct alignas(std::max_align_t) ZlibAllocationHeader {
+    std::size_t payload_size;
+};
+
+#if defined(AH_M2_02_HOST_TESTING)
+std::atomic<std::size_t> g_zlib_live_allocations{0};
+std::atomic<std::size_t> g_zlib_total_frees{0};
+std::atomic<std::size_t> g_zlib_zeroized_frees{0};
+#endif
+
+voidpf zlibAllocate(voidpf, uInt items, uInt size) noexcept {
+    if (items == 0 || size == 0 ||
+        static_cast<std::size_t>(items) >
+            std::numeric_limits<std::size_t>::max() / static_cast<std::size_t>(size)) {
+        return nullptr;
+    }
+    const std::size_t payload_size =
+        static_cast<std::size_t>(items) * static_cast<std::size_t>(size);
+    if (payload_size > std::numeric_limits<std::size_t>::max() -
+                           sizeof(ZlibAllocationHeader)) {
+        return nullptr;
+    }
+    auto* allocation = static_cast<ZlibAllocationHeader*>(
+        std::calloc(1, sizeof(ZlibAllocationHeader) + payload_size));
+    if (allocation == nullptr) {
+        return nullptr;
+    }
+    allocation->payload_size = payload_size;
+#if defined(AH_M2_02_HOST_TESTING)
+    g_zlib_live_allocations.fetch_add(1, std::memory_order_relaxed);
+#endif
+    return allocation + 1;
+}
+
+void zlibRelease(voidpf, voidpf address) noexcept {
+    if (address == nullptr) {
+        return;
+    }
+    auto* allocation = static_cast<ZlibAllocationHeader*>(address) - 1;
+    const std::size_t total = sizeof(ZlibAllocationHeader) + allocation->payload_size;
+    crypto::secureZero(allocation, total);
+#if defined(AH_M2_02_HOST_TESTING)
+    bool all_zero = true;
+    const auto* bytes = reinterpret_cast<const std::uint8_t*>(allocation);
+    for (std::size_t index = 0; index < total; ++index) {
+        all_zero = all_zero && bytes[index] == 0;
+    }
+    g_zlib_total_frees.fetch_add(1, std::memory_order_relaxed);
+    if (all_zero) {
+        g_zlib_zeroized_frees.fetch_add(1, std::memory_order_relaxed);
+    }
+    g_zlib_live_allocations.fetch_sub(1, std::memory_order_relaxed);
+#endif
+    std::free(allocation);
+}
 
 struct AuthenticatedContainer {
     container::HeaderV2 header{};
@@ -245,6 +306,115 @@ Status chunkStatus(int zlib_status) noexcept {
     return Status::kZlibChecksum;
 }
 
+class RecordInflater final {
+public:
+    explicit RecordInflater(memory::Mapping* mapping) noexcept : mapping_(mapping) {}
+
+    ~RecordInflater() noexcept {
+        if (initialized_) {
+            (void) inflateEnd(&stream_);
+        }
+        crypto::secureZero(&overflow_byte_, sizeof(overflow_byte_));
+    }
+
+    Status initialize() noexcept {
+        if (mapping_ == nullptr || mapping_->data == nullptr || mapping_->size == 0 ||
+            initialized_) {
+            return Status::kInvalidArgument;
+        }
+        stream_.zalloc = zlibAllocate;
+        stream_.zfree = zlibRelease;
+        stream_.opaque = Z_NULL;
+        if (inflateInit(&stream_) != Z_OK) {
+            return Status::kOutOfMemory;
+        }
+        initialized_ = true;
+        return Status::kSuccess;
+    }
+
+    Status consume(container::ByteView compressed, bool final_chunk) noexcept {
+        if (!initialized_ || ended_ || compressed.data == nullptr || compressed.size == 0 ||
+            compressed.size > std::numeric_limits<uInt>::max()) {
+            return ended_ ? Status::kTrailingData : Status::kInvalidArgument;
+        }
+        if (first_input_) {
+            if (compressed.size < 2 || (compressed.data[0] & 0x0fU) != Z_DEFLATED ||
+                (compressed.data[0] >> 4U) > 7U ||
+                ((static_cast<unsigned>(compressed.data[0]) << 8U) + compressed.data[1]) %
+                        31U !=
+                    0) {
+                return Status::kZlibWrapper;
+            }
+            if ((compressed.data[1] & 0x20U) != 0) {
+                return Status::kZlibDictionary;
+            }
+        }
+        stream_.next_in = const_cast<Bytef*>(compressed.data);
+        stream_.avail_in = static_cast<uInt>(compressed.size);
+        while (stream_.avail_in != 0 && !ended_) {
+            const bool at_limit = output_offset_ == mapping_->size;
+            stream_.next_out = at_limit ? &overflow_byte_ : mapping_->data + output_offset_;
+            stream_.avail_out = at_limit
+                                    ? 1U
+                                    : static_cast<uInt>(std::min<std::size_t>(
+                                          mapping_->size - output_offset_,
+                                          std::numeric_limits<uInt>::max()));
+            const uInt before_out = stream_.avail_out;
+            const uInt before_in = stream_.avail_in;
+            const int zlib_status = inflate(&stream_, Z_NO_FLUSH);
+            const uInt produced = before_out - stream_.avail_out;
+            first_input_ = false;
+            if (at_limit && produced != 0) {
+                return Status::kLength;
+            }
+            output_offset_ += produced;
+            if (zlib_status == Z_STREAM_END) {
+                ended_ = true;
+                return stream_.avail_in == 0 && final_chunk
+                           ? Status::kSuccess
+                           : Status::kTrailingData;
+            }
+            if (zlib_status != Z_OK) {
+                return chunkStatus(zlib_status);
+            }
+            if (before_out == stream_.avail_out && before_in == stream_.avail_in &&
+                stream_.avail_in != 0) {
+                return Status::kZlibChecksum;
+            }
+        }
+        return Status::kSuccess;
+    }
+
+    Status finish(Status primary) noexcept {
+        int end_status = Z_OK;
+        if (initialized_) {
+            end_status = inflateEnd(&stream_);
+            initialized_ = false;
+        }
+        crypto::secureZero(&overflow_byte_, sizeof(overflow_byte_));
+        if (primary != Status::kSuccess) {
+            return primary;
+        }
+        if (end_status != Z_OK) {
+            return Status::kZlibChecksum;
+        }
+        return ended_ && output_offset_ == mapping_->size
+                   ? Status::kSuccess
+                   : Status::kLength;
+    }
+
+    bool ended() const noexcept { return ended_; }
+
+private:
+    memory::Mapping* mapping_{};
+    z_stream stream_{};
+    std::size_t output_offset_{};
+    std::uint8_t overflow_byte_{};
+    bool initialized_{};
+    bool ended_{};
+    bool first_input_{true};
+};
+
 Status inflateRecords(const OpenRequest& request, AuthenticatedContainer* value,
                       memory::PayloadTransaction* transaction) noexcept {
 #if !defined(AH_M2_02_HOST_TESTING)
@@ -278,16 +448,11 @@ Status inflateRecords(const OpenRequest& request, AuthenticatedContainer* value,
             break;
         }
 
-        z_stream stream{};
-        if (inflateInit(&stream) != Z_OK) {
-            result = Status::kOutOfMemory;
+        RecordInflater inflater(mapping);
+        result = inflater.initialize();
+        if (result != Status::kSuccess) {
             break;
         }
-        bool stream_initialized = true;
-        bool ended = false;
-        bool first_input = true;
-        std::size_t output_offset = 0;
-        std::uint8_t overflow_byte = 0;
         for (std::size_t local_chunk = 0; local_chunk < record.chunk_count; ++local_chunk) {
             const std::size_t global_chunk = record.first_chunk_index + local_chunk;
 #if defined(AH_M2_02_HOST_TESTING)
@@ -356,54 +521,10 @@ Status inflateRecords(const OpenRequest& request, AuthenticatedContainer* value,
             }
 #endif
 
-            stream.next_in = compressed.data();
-            stream.avail_in = static_cast<uInt>(plaintext_size);
-            if (first_input) {
-                if (plaintext_size < 2 || (compressed[0] & 0x0fU) != Z_DEFLATED ||
-                    (compressed[0] >> 4U) > 7U ||
-                    ((static_cast<unsigned>(compressed[0]) << 8U) + compressed[1]) % 31U != 0) {
-                    result = Status::kZlibWrapper;
-                } else if ((compressed[1] & 0x20U) != 0) {
-                    result = Status::kZlibDictionary;
-                }
-            }
-            while (stream.avail_in != 0 && !ended) {
-                if (result != Status::kSuccess) {
-                    break;
-                }
-                const bool at_limit = output_offset == mapping->size;
-                stream.next_out = at_limit ? &overflow_byte : mapping->data + output_offset;
-                stream.avail_out = at_limit
-                                       ? 1U
-                                       : static_cast<uInt>(std::min<std::size_t>(
-                                             mapping->size - output_offset,
-                                             std::numeric_limits<uInt>::max()));
-                const uInt before_out = stream.avail_out;
-                const uInt before_in = stream.avail_in;
-                const int z = inflate(&stream, Z_NO_FLUSH);
-                const uInt produced = before_out - stream.avail_out;
-                if (at_limit && produced != 0) {
-                    result = Status::kLength;
-                } else {
-                    output_offset += produced;
-                }
-                if (result != Status::kSuccess) {
-                    // Preserve the length failure even if zlib also reports an end/error.
-                } else if (z == Z_STREAM_END) {
-                    ended = true;
-                    if (stream.avail_in != 0 || local_chunk + 1 != record.chunk_count) {
-                        result = Status::kTrailingData;
-                    }
-                } else if (z != Z_OK) {
-                    result = chunkStatus(z);
-                } else if (before_out == stream.avail_out && before_in == stream.avail_in &&
-                           stream.avail_in != 0) {
-                    result = Status::kZlibChecksum;
-                }
-                first_input = false;
-                if (result != Status::kSuccess) {
-                    break;
-                }
+            if (result == Status::kSuccess) {
+                result = inflater.consume(
+                    {compressed.data(), plaintext_size},
+                    local_chunk + 1 == record.chunk_count);
             }
             crypto::secureZero(compressed.data(), compressed.size());
 #if defined(AH_M2_02_HOST_TESTING)
@@ -416,27 +537,13 @@ Status inflateRecords(const OpenRequest& request, AuthenticatedContainer* value,
                 }
             }
 #endif
-            if (result != Status::kSuccess || ended) {
-                if (result == Status::kSuccess && local_chunk + 1 != record.chunk_count) {
-                    result = Status::kTrailingData;
-                }
-                if (result != Status::kSuccess || ended) {
-                    break;
-                }
+            if (result != Status::kSuccess || inflater.ended()) {
+                break;
             }
         }
-        if (stream_initialized) {
-            const int end_status = inflateEnd(&stream);
-            if (result == Status::kSuccess && end_status != Z_OK) {
-                result = Status::kZlibChecksum;
-            }
-        }
+        result = inflater.finish(result);
         crypto::secureZero(record_key.data(), record_key.size());
         crypto::secureZero(record_info.data(), record_info.size());
-        crypto::secureZero(&overflow_byte, sizeof(overflow_byte));
-        if (result == Status::kSuccess && (!ended || output_offset != mapping->size)) {
-            result = Status::kLength;
-        }
         if (result != Status::kSuccess) {
             break;
         }
@@ -460,6 +567,38 @@ Status inflateRecords(const OpenRequest& request, AuthenticatedContainer* value,
 }
 
 }  // namespace
+
+#if defined(AH_M2_02_HOST_TESTING)
+void resetZlibCleanupEvidenceForTesting() noexcept {
+    if (g_zlib_live_allocations.load(std::memory_order_relaxed) == 0) {
+        g_zlib_total_frees.store(0, std::memory_order_relaxed);
+        g_zlib_zeroized_frees.store(0, std::memory_order_relaxed);
+    }
+}
+
+std::size_t zlibLiveAllocationCountForTesting() noexcept {
+    return g_zlib_live_allocations.load(std::memory_order_relaxed);
+}
+
+std::size_t zlibTotalFreeCountForTesting() noexcept {
+    return g_zlib_total_frees.load(std::memory_order_relaxed);
+}
+
+std::size_t zlibZeroizedFreeCountForTesting() noexcept {
+    return g_zlib_zeroized_frees.load(std::memory_order_relaxed);
+}
+
+Status inflateCompressedForTesting(
+    container::ByteView compressed, std::uint8_t* output, std::size_t output_size) noexcept {
+    memory::Mapping mapping{output, output_size, false};
+    RecordInflater inflater(&mapping);
+    Status status = inflater.initialize();
+    if (status == Status::kSuccess) {
+        status = inflater.consume(compressed, true);
+    }
+    return inflater.finish(status);
+}
+#endif
 
 Status openAuthenticatedPayload(
     const OpenRequest& request,

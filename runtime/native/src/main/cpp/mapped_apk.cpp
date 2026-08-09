@@ -32,8 +32,7 @@ Status ReadOnlyMapping::openAbsolute(const char* absolute_path) noexcept {
         return Status::kNotRegular;
     }
     if (attributes.st_size <= 0 ||
-        static_cast<std::uint64_t>(attributes.st_size) >
-            static_cast<std::uint64_t>(std::numeric_limits<std::uint32_t>::max())) {
+        static_cast<std::uint64_t>(attributes.st_size) > kMaxSourceApkBytes) {
         (void) close();
         return Status::kLength;
     }

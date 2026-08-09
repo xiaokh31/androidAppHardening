@@ -74,8 +74,18 @@ public final class M202DeviceRunner extends Instrumentation {
             }
         }
 
+        final long[] committedHandle = {0};
         LoadedPayload payload =
-                PayloadRuntime.openVerified(target.getClassLoader(), applicationInfo, signer);
+                PayloadRuntime.openVerifiedForTesting(
+                        target.getClassLoader(),
+                        applicationInfo,
+                        signer,
+                        (current, nativeHandle) -> committedHandle[0] = nativeHandle);
+        require(committedHandle[0] != 0, "committed handle was not captured");
+        byte[] encodedMetadata =
+                NativePayloadBridge.nativeAuthenticatedMetadata(committedHandle[0]);
+        verifyMetadataParserMatrix(encodedMetadata);
+        Arrays.fill(encodedMetadata, (byte) 0);
         verifyNativeSearchPath(applicationInfo);
         ClassLoader loader = payload.classLoader();
         require(loader.getParent() == target.getClassLoader(), "payload parent loader changed");
@@ -93,6 +103,15 @@ public final class M202DeviceRunner extends Instrumentation {
         byte original = buildCopy[0];
         buildCopy[0] ^= 1;
         require(metadata.buildId()[0] == original, "metadata array is not defensive");
+        byte[][] lineageCopy = metadata.signerLineageSha256();
+        byte lineageOriginal = lineageCopy[0][0];
+        lineageCopy[0][0] ^= 1;
+        require(metadata.signerLineageSha256()[0][0] == lineageOriginal,
+                "metadata lineage is not deeply defensive");
+
+        LoadedPayload independent =
+                PayloadRuntime.openVerified(target.getClassLoader(), applicationInfo, signer);
+        requireMetadataEqual(metadata, independent.authenticatedMetadata());
 
         Class<?> secondary = loader.loadClass("ah.fixtures.android.payload.SecondaryApi");
         Method marker = secondary.getMethod("marker", String.class);
@@ -111,6 +130,13 @@ public final class M202DeviceRunner extends Instrumentation {
         } catch (PayloadLoadException expected) {
             require(expected.getMessage().contains("CLOSED"), "unexpected closed error");
         }
+        Class<?> independentSecondary =
+                independent.classLoader().loadClass("ah.fixtures.android.payload.SecondaryApi");
+        Method independentMarker = independentSecondary.getMethod("marker", String.class);
+        require("M0-05-CLASSES2:M2-02".equals(independentMarker.invoke(null, "M2-02")),
+                "closing one handle invalidated an independent handle");
+        independent.close();
+        independent.close();
         requireNoPlaintextDex(applicationInfo.dataDir, 0);
         if (applicationInfo.deviceProtectedDataDir != null) {
             requireNoPlaintextDex(applicationInfo.deviceProtectedDataDir, 0);
@@ -118,7 +144,8 @@ public final class M202DeviceRunner extends Instrumentation {
         Arrays.fill(signer, (byte) 0);
         Arrays.fill(expectedPackage, (byte) 0);
         return "failure_injection=" + injected
-                + " multidex=true jni=true native_path=true metadata=true plaintext_dex_files=0";
+                + " multidex=true jni=true native_path=true metadata=true"
+                + " metadata_negative=true cross_handle=true plaintext_dex_files=0";
     }
 
     private static Object invoke(Method method) throws Exception {
@@ -173,6 +200,92 @@ public final class M202DeviceRunner extends Instrumentation {
         } else {
             require(searchPath.matches(apkPathPattern), "direct Native path mismatch");
         }
+    }
+
+    private static void verifyMetadataParserMatrix(byte[] encoded) {
+        require(AuthenticatedPayloadMetadata.parse(encoded) != null, "valid metadata rejected");
+        expectMetadataReject(null);
+        expectMetadataReject(Arrays.copyOf(encoded, encoded.length - 1));
+        for (int offset : new int[] {0, 4, 6, 8, 10, 12, 14, 16, 18, 20}) {
+            byte[] mutated = encoded.clone();
+            mutated[offset] ^= 1;
+            expectMetadataReject(mutated);
+        }
+        byte[] zeroLineage = encoded.clone();
+        putU16(zeroLineage, 18, 0);
+        expectMetadataReject(zeroLineage);
+        byte[] excessiveLineage = encoded.clone();
+        putU16(excessiveLineage, 18, 17);
+        expectMetadataReject(excessiveLineage);
+        expectMetadataReject(withFactory(encoded, new byte[] {(byte) 0xc3, 0x28}));
+        expectMetadataReject(withFactory(encoded, new byte[] {'a', 0, 'b'}));
+        expectMetadataReject(withFactory(
+                encoded,
+                "ah.runtime.bootstrap.ShellAppComponentFactory"
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        byte[] validFactory = withFactory(
+                encoded,
+                "ah.fixture.RealFactory".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        require("ah.fixture.RealFactory".equals(
+                        AuthenticatedPayloadMetadata.parse(validFactory)
+                                .originalFactoryClassNameOrNull()),
+                "valid Factory metadata rejected");
+        Arrays.fill(validFactory, (byte) 0);
+    }
+
+    private static byte[] withFactory(byte[] encoded, byte[] factory) {
+        int oldFactoryLength = u16(encoded, 16);
+        int lineageCount = u16(encoded, 18);
+        int lineageBytes = lineageCount * 32;
+        byte[] result = new byte[120 + factory.length + lineageBytes];
+        System.arraycopy(encoded, 0, result, 0, 120);
+        putU16(result, 6, result.length);
+        putU16(result, 16, factory.length);
+        System.arraycopy(factory, 0, result, 120, factory.length);
+        System.arraycopy(encoded, 120 + oldFactoryLength,
+                result, 120 + factory.length, lineageBytes);
+        return result;
+    }
+
+    private static void expectMetadataReject(byte[] encoded) {
+        try {
+            AuthenticatedPayloadMetadata.parse(encoded);
+            throw new AssertionError("invalid metadata was accepted");
+        } catch (PayloadLoadException expected) {
+            require(expected.getMessage().contains("METADATA"), "unexpected metadata error");
+        } finally {
+            if (encoded != null) {
+                Arrays.fill(encoded, (byte) 0);
+            }
+        }
+    }
+
+    private static void requireMetadataEqual(
+            AuthenticatedPayloadMetadata left,
+            AuthenticatedPayloadMetadata right) {
+        require(left.containerMajor() == right.containerMajor()
+                        && left.containerMinor() == right.containerMinor()
+                        && left.signerPolicyVersion() == right.signerPolicyVersion()
+                        && left.riskPolicyVersion() == right.riskPolicyVersion()
+                        && java.util.Objects.equals(
+                                left.originalFactoryClassNameOrNull(),
+                                right.originalFactoryClassNameOrNull())
+                        && Arrays.equals(left.buildId(), right.buildId())
+                        && Arrays.equals(left.keySlotId(), right.keySlotId())
+                        && Arrays.equals(left.packageNameSha256(), right.packageNameSha256())
+                        && Arrays.equals(left.currentSignerSha256(), right.currentSignerSha256())
+                        && Arrays.deepEquals(
+                                left.signerLineageSha256(), right.signerLineageSha256()),
+                "cross-handle metadata mismatch");
+    }
+
+    private static int u16(byte[] value, int offset) {
+        return (value[offset] & 0xff) | ((value[offset + 1] & 0xff) << 8);
+    }
+
+    private static void putU16(byte[] value, int offset, int number) {
+        value[offset] = (byte) number;
+        value[offset + 1] = (byte) (number >>> 8);
     }
 
     private static void requireNoPlaintextDex(String path, int depth) throws Exception {

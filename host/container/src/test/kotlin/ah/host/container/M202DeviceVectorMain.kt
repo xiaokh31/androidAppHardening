@@ -18,15 +18,17 @@ import java.util.zip.ZipOutputStream
 object M202DeviceVectorMain {
     @JvmStatic
     fun main(arguments: Array<String>) {
-        require(arguments.size == 5) {
-            "usage: <classes.dex> <classes2.dex> <output-root> <package-name> <signer-sha256>"
+        require(arguments.size == 6) {
+            "usage: <classes.dex> <classes2.dex> <output-root> <package-name> <signer-sha256> <original-factory-or-dash>"
         }
         val primary = Path.of(arguments[0]).toAbsolutePath().normalize()
         val secondary = Path.of(arguments[1]).toAbsolutePath().normalize()
         val outputRoot = Path.of(arguments[2]).toAbsolutePath().normalize()
         val packageName = arguments[3]
         val signer = hex(arguments[4])
+        val originalFactory = arguments[5].takeUnless { it == "-" }
         require(signer.size == 32 && packageName.matches(Regex("[a-zA-Z][a-zA-Z0-9_.]{2,254}")))
+        require(originalFactory == null || originalFactory.matches(Regex("[a-zA-Z_$][a-zA-Z0-9_$.]{2,511}")))
         val root = findRoot()
         val allowed = listOf(root.resolve("build"), root.resolve("artifacts"))
         require(allowed.any { outputRoot == it || outputRoot.startsWith(it) }) {
@@ -47,7 +49,7 @@ object M202DeviceVectorMain {
         val packageHash = sha256(packageName.toByteArray(Charsets.UTF_8))
         val inspection = ApkInspection(
             inputHash,
-            ManifestSummary(packageName, packageHash, 29, 36, null, null, null),
+            ManifestSummary(packageName, packageHash, 29, 36, null, originalFactory, null),
             emptyList(),
             dexFiles.mapIndexed { index, path ->
                 DexSummary(
@@ -92,6 +94,9 @@ object M202DeviceVectorMain {
             append("{\n")
             append("  \"task_id\": \"M2-02\",\n")
             append("  \"package_name\": \"").append(packageName).append("\",\n")
+            append("  \"original_factory\": ")
+            if (originalFactory == null) append("null,\n")
+            else append("\"").append(originalFactory).append("\",\n")
             append("  \"source_dex_sha256\": [\"")
             append(sha256(primary).hex()).append("\", \"")
             append(sha256(secondary).hex()).append("\"],\n")

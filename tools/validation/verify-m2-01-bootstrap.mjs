@@ -27,6 +27,13 @@ const shell = await readFile(path.join(sourceRoot,
   "ah", "runtime", "bootstrap", "ShellAppComponentFactory.java"), "utf8");
 const bootstrap = await readFile(path.join(sourceRoot,
   "ah", "runtime", "bootstrap", "HardeningBootstrap.java"), "utf8");
+const deviceRunner = await readFile(path.join(root, "fixtures", "android", "src",
+  "androidTestM201Fixture", "java", "ah", "fixtures", "android", "m201",
+  "M201DeviceRunner.java"), "utf8");
+const deviceManifest = await readFile(path.join(root, "fixtures", "android", "src",
+  "m201Fixture", "AndroidManifest.xml"), "utf8");
+const kvmWorkflow = await readFile(path.join(root, ".github", "workflows",
+  "m0-05-linux-kvm.yml"), "utf8");
 
 requireCondition(bootstrap.includes("RuntimeStartupGuard.openVerifiedPayload(applicationInfo, shellLoader)"),
   "frozen Guard call is absent");
@@ -57,6 +64,17 @@ for (const state of ["INSTALLING", "READY", "FAILED"]) {
 }
 requireCondition(shell.includes("AAH-RUNTIME-BOOT-") || combined.includes("AAH-RUNTIME-BOOT-"),
   "stable bootstrap error prefix absent");
+for (const marker of ["platform_callbacks=6", "main_install=1", "secondary_install=1",
+  "custom_application=true", "early_provider=true", "multidex=true", "jni=true",
+  "metadata_null=true", "plaintext_dex_files=0"]) {
+  requireCondition(deviceRunner.includes(marker), `device acceptance marker absent: ${marker}`);
+}
+requireCondition(deviceManifest.includes('android:process=":m201secondary"'),
+  "independent-process component is absent");
+requireCondition(kvmWorkflow.includes("run-m2-01-device-acceptance.mjs")
+    && kvmWorkflow.includes("assembleM201ExtractedRelease")
+    && kvmWorkflow.includes("assembleM201DirectRelease"),
+  "API 29/36 KVM Release/R8 acceptance is not wired");
 
 console.log(JSON.stringify({
   task: "M2-01",
@@ -67,4 +85,7 @@ console.log(JSON.stringify({
   direct_loader_api_patterns: 0,
   metadata_reads: 0,
   plaintext_dex_outputs: 0,
+  real_device_acceptance_wired: true,
+  process_modes: 2,
+  release_r8_variants: 2,
 }, null, 2));

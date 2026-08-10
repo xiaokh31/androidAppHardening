@@ -397,6 +397,10 @@ jobs:
             --out build/m0-05/test-apks/extracted/signed/m2-03-valid-rotation.apk \
             build/m0-05/test-apks/extracted/unsigned/m0-05-config-major-unsigned.apk
           ./gradlew --no-daemon --console=plain \
+            :fixtures:android:assembleM201ExtractedRelease \
+            :fixtures:android:assembleM201DirectRelease \
+            :fixtures:android:assembleM201ExtractedDebugAndroidTest \
+            :fixtures:android:assembleM201DirectDebugAndroidTest \
             :fixtures:android:assembleM202ExtractedRelease \
             :fixtures:android:assembleM202DirectRelease \
             :fixtures:android:assembleM202ExtractedDebugAndroidTest \
@@ -410,6 +414,22 @@ jobs:
             fixtures/android/build/generated/m0-05/compatExtractedRelease/assets/ah/runtime/payload.ahdc \
             build/m2-02/source-dex \
             | tee build/m2-02/source-dex-report.json
+          mkdir -p build/m2-01
+          for variant in extracted direct; do
+            package_name="ah.fixtures.android.m201.${variant}"
+            vector_root="build/m2-01/vector-${variant}"
+            baseline="fixtures/android/build/outputs/apk/m201${variant^}/release/android-m201${variant^}-release.apk"
+            ./gradlew --no-daemon --console=plain :host:container:prepareM202DeviceVector \
+              "-Pm202PrimaryDex=$PWD/build/m2-02/source-dex/classes.dex" \
+              "-Pm202SecondaryDex=$PWD/build/m2-02/source-dex/classes2.dex" \
+              "-Pm202VectorOutput=$PWD/$vector_root" \
+              "-Pm202PackageName=$package_name" \
+              "-Pm202SignerSha256=$signer_digest" \
+              "-Pm202OriginalFactory=ah.fixtures.android.payload.OriginalAppComponentFactory"
+            node tools/validation/prepare-m2-02-device-fixture.mjs package \
+              "$baseline" "$vector_root" "build/m2-01/m2-01-${variant}.apk" \
+              | tee "build/m2-01/${variant}-package-report.json"
+          done
           for variant in extracted direct; do
             package_name="ah.fixtures.android.m202.${variant}"
             vector_root="build/m2-02/vector-${variant}"
@@ -521,6 +541,10 @@ jobs:
             adb -s "$serial" uninstall ah.fixtures.android.m203.extracted >/dev/null 2>&1
             adb -s "$serial" uninstall ah.fixtures.android.m203.direct.test >/dev/null 2>&1
             adb -s "$serial" uninstall ah.fixtures.android.m203.direct >/dev/null 2>&1
+            adb -s "$serial" uninstall ah.fixtures.android.m201.extracted.test >/dev/null 2>&1
+            adb -s "$serial" uninstall ah.fixtures.android.m201.extracted >/dev/null 2>&1
+            adb -s "$serial" uninstall ah.fixtures.android.m201.direct.test >/dev/null 2>&1
+            adb -s "$serial" uninstall ah.fixtures.android.m201.direct >/dev/null 2>&1
             adb -s "$serial" shell run-as ah.runtime.policy.test rm -f \
               files/m2-03-process.apk >/dev/null 2>&1
             adb -s "$serial" uninstall ah.runtime.policy.test >/dev/null 2>&1
@@ -674,6 +698,20 @@ jobs:
           cat "build/m0-05/device-api${API}-x86_64/startup-negative-extracted/startup-negative-report.json"
           cat "build/m0-05/device-api${API}-x86_64/startup-negative-direct/startup-negative-report.json"
 
+          timeout 300s node tools/validation/run-m2-01-device-acceptance.mjs \
+            --adb "$ANDROID_HOME/platform-tools/adb" \
+            --serial "$serial" \
+            --platform "api${API}-x86_64-linux-kvm" \
+            --command-timeout-ms 60000 \
+            --extracted-target-apk build/m2-01/m2-01-extracted.apk \
+            --extracted-test-apk fixtures/android/build/outputs/apk/androidTest/m201Extracted/debug/android-m201Extracted-debug-androidTest.apk \
+            --extracted-vector-report build/m2-01/vector-extracted/vector-report.json \
+            --direct-target-apk build/m2-01/m2-01-direct.apk \
+            --direct-test-apk fixtures/android/build/outputs/apk/androidTest/m201Direct/debug/android-m201Direct-debug-androidTest.apk \
+            --direct-vector-report build/m2-01/vector-direct/vector-report.json \
+            --evidence "build/m2-01/device-api${API}-x86_64"
+          cat "build/m2-01/device-api${API}-x86_64/report.json"
+
           timeout 1200s node tools/validation/run-m2-02-device-acceptance.mjs \
             --adb "$ANDROID_HOME/platform-tools/adb" \
             --serial "$serial" \
@@ -712,6 +750,7 @@ jobs:
           adb devices -l || true
           ps -ef | grep -E '[e]mulator|[q]emu-system' || true
           find build/m0-05 -maxdepth 2 -type f -print -exec sha256sum {} \; || true
+          find build/m2-01 -maxdepth 2 -type f -print -exec sha256sum {} \; || true
           find build/m2-02 -maxdepth 2 -type f -print -exec sha256sum {} \; || true
           find build/m2-03 -maxdepth 2 -type f -print -exec sha256sum {} \; || true
 
@@ -731,6 +770,8 @@ jobs:
             build/m0-05/device-api${{ matrix.api }}-x86_64/**/*.json
             build/m0-05/device-api${{ matrix.api }}-x86_64/**/*.txt
             build/m0-05/device-api${{ matrix.api }}-x86_64/**/*.xml
+            build/m2-01/**/*.json
+            build/m2-01/**/*.txt
             build/m2-02/**/*.json
             build/m2-02/**/*.txt
             build/m2-03/**/*.json
@@ -739,3 +780,7 @@ jobs:
             fixtures/android/build/outputs/mapping/compatExtractedRelease/usage.txt
             fixtures/android/build/outputs/mapping/compatDirectRelease/mapping.txt
             fixtures/android/build/outputs/mapping/compatDirectRelease/usage.txt
+            fixtures/android/build/outputs/mapping/m201ExtractedRelease/mapping.txt
+            fixtures/android/build/outputs/mapping/m201ExtractedRelease/usage.txt
+            fixtures/android/build/outputs/mapping/m201DirectRelease/mapping.txt
+            fixtures/android/build/outputs/mapping/m201DirectRelease/usage.txt

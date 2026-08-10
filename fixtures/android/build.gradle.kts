@@ -447,6 +447,16 @@ android {
             applicationIdSuffix = ".m203.direct"
             testInstrumentationRunner = "ah.runtime.guard.M203DeviceRunner"
         }
+        create("m201Extracted") {
+            dimension = "poc"
+            applicationIdSuffix = ".m201.extracted"
+            testInstrumentationRunner = "ah.fixtures.android.m201.M201DeviceRunner"
+        }
+        create("m201Direct") {
+            dimension = "poc"
+            applicationIdSuffix = ".m201.direct"
+            testInstrumentationRunner = "ah.fixtures.android.m201.M201DeviceRunner"
+        }
     }
 
     androidResources {
@@ -480,11 +490,13 @@ android {
         getByName("compatExtracted") {
             manifest.srcFile("src/compatFixture/AndroidManifest.xml")
             java.srcDir("src/compatFixture/java")
+            java.srcDir("src/sharedCompatFixture/java")
             java.srcDir("src/legacyBootstrap/java")
         }
         getByName("compatDirect") {
             manifest.srcFile("src/compatFixture/AndroidManifest.xml")
             java.srcDir("src/compatFixture/java")
+            java.srcDir("src/sharedCompatFixture/java")
             java.srcDir("src/legacyBootstrap/java")
         }
         getByName("androidTestCompatExtracted") {
@@ -515,6 +527,20 @@ android {
             manifest.srcFile("src/m203Fixture/AndroidManifest.xml")
             java.srcDir("src/m203Fixture/java")
         }
+        getByName("m201Extracted") {
+            manifest.srcFile("src/m201Fixture/AndroidManifest.xml")
+            java.srcDir("src/sharedCompatFixture/java")
+        }
+        getByName("m201Direct") {
+            manifest.srcFile("src/m201Fixture/AndroidManifest.xml")
+            java.srcDir("src/sharedCompatFixture/java")
+        }
+        getByName("androidTestM201Extracted") {
+            java.srcDir("src/androidTestM201Fixture/java")
+        }
+        getByName("androidTestM201Direct") {
+            java.srcDir("src/androidTestM201Fixture/java")
+        }
         getByName("androidTestM203Extracted") {
             java.srcDir("src/androidTestM203Fixture/java")
         }
@@ -535,6 +561,7 @@ android {
         disable += setOf(
             "GradleDependency", // M0-03 intentionally pins compileSdk 36.
             "MissingApplicationIcon", // The empty M0-03 fixture has no UI assets.
+            "MissingClass", // Payload components are intentionally supplied by generated in-memory DEX fixtures.
             "OldTargetApi", // M0-03 intentionally pins fixture targetSdk 36.
         )
         warningsAsErrors = true
@@ -600,6 +627,14 @@ androidComponents {
         variant.packaging.jniLibs.useLegacyPackaging.set(false)
         registerM202Placeholders(variant)
     }
+    onVariants(selector().withFlavor("poc" to "m201Extracted")) { variant ->
+        variant.packaging.jniLibs.useLegacyPackaging.set(true)
+        registerM202Placeholders(variant)
+    }
+    onVariants(selector().withFlavor("poc" to "m201Direct")) { variant ->
+        variant.packaging.jniLibs.useLegacyPackaging.set(false)
+        registerM202Placeholders(variant)
+    }
 }
 
 fun registerM202Placeholders(variant: com.android.build.api.variant.ApplicationVariant) {
@@ -625,7 +660,7 @@ fun registerCompatibilityPayload(variant: com.android.build.api.variant.Applicat
             sources.from(
                 layout.projectDirectory.dir("src/compatPayload/java").asFileTree,
                 layout.projectDirectory
-                    .file("src/compatFixture/java/ah/fixtures/android/ProbeSignal.java"),
+                    .file("src/sharedCompatFixture/java/ah/fixtures/android/ProbeSignal.java"),
             )
             androidJar.set(androidJarFile)
             d8Executable.set(d8ExecutableFile)
@@ -659,6 +694,8 @@ dependencies {
     add("m202DirectImplementation", project(":runtime:native"))
     add("m203ExtractedImplementation", project(":runtime:policy"))
     add("m203DirectImplementation", project(":runtime:policy"))
+    add("m201ExtractedImplementation", project(":runtime:bootstrap"))
+    add("m201DirectImplementation", project(":runtime:bootstrap"))
     add("androidTestCompileOnly", project(":runtime:native"))
     add("androidTestCompileOnly", project(":runtime:policy"))
 }

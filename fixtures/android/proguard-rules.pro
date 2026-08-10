@@ -34,4 +34,5 @@
 -keep class ah.runtime.guard.VerifiedSignerIdentity { *; }
 -keep class ah.runtime.guard.VerifiedStartupConfiguration { *; }
 -keep class ah.fixtures.android.m203.M203ColdStartActivity { *; }
+-keep class ah.fixtures.android.m201.M201DeviceRunner { *; }
 -keepattributes *Annotation*,InnerClasses,EnclosingMethod

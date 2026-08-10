@@ -26,21 +26,10 @@ public final class ProbeSignal {
         return count == null ? 0 : count;
     }
 
-    public static synchronized void recordProviderMarker(String marker) {
-        providerMarker = marker;
-    }
-
-    public static synchronized void recordActivityMarker(String marker) {
-        activityMarker = marker;
-    }
-
-    public static synchronized String providerMarker() {
-        return providerMarker;
-    }
-
-    public static synchronized String activityMarker() {
-        return activityMarker;
-    }
+    public static synchronized void recordProviderMarker(String marker) { providerMarker = marker; }
+    public static synchronized void recordActivityMarker(String marker) { activityMarker = marker; }
+    public static synchronized String providerMarker() { return providerMarker; }
+    public static synchronized String activityMarker() { return activityMarker; }
 
     public static synchronized void applicationOnCreate(Class<?> applicationClass) {
         ClassLoaderProbe.recordApplicationOnCreate(applicationClass);
@@ -51,41 +40,15 @@ public final class ProbeSignal {
         ClassLoaderProbe.recordJniLoaded(callerClass);
     }
 
-    public static synchronized String jniMarker() {
-        return jniMarker;
-    }
-
-    public static synchronized void setFailActivityDelegation(boolean fail) {
-        failActivityDelegation = fail;
-    }
-
-    public static synchronized boolean shouldFailActivityDelegation() {
-        return failActivityDelegation;
-    }
-
-    public static synchronized void setFailFactoryConstruction(boolean fail) {
-        failFactoryConstruction = fail;
-    }
-
-    public static synchronized boolean shouldFailFactoryConstruction() {
-        return failFactoryConstruction;
-    }
-
-    public static synchronized void setClassLoaderHookMode(String mode) {
-        classLoaderHookMode = mode;
-    }
-
-    public static synchronized String classLoaderHookMode() {
-        return classLoaderHookMode;
-    }
-
-    public static synchronized void setComponentDelegationMode(String mode) {
-        componentDelegationMode = mode;
-    }
-
-    public static synchronized String componentDelegationMode() {
-        return componentDelegationMode;
-    }
+    public static synchronized String jniMarker() { return jniMarker; }
+    public static synchronized void setFailActivityDelegation(boolean fail) { failActivityDelegation = fail; }
+    public static synchronized boolean shouldFailActivityDelegation() { return failActivityDelegation; }
+    public static synchronized void setFailFactoryConstruction(boolean fail) { failFactoryConstruction = fail; }
+    public static synchronized boolean shouldFailFactoryConstruction() { return failFactoryConstruction; }
+    public static synchronized void setClassLoaderHookMode(String mode) { classLoaderHookMode = mode; }
+    public static synchronized String classLoaderHookMode() { return classLoaderHookMode; }
+    public static synchronized void setComponentDelegationMode(String mode) { componentDelegationMode = mode; }
+    public static synchronized String componentDelegationMode() { return componentDelegationMode; }
 
     public static synchronized void resetFailureInjection() {
         failActivityDelegation = false;

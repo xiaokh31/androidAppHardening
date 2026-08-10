@@ -1,4 +1,7 @@
 -keep class ah.runtime.bootstrap.ShellAppComponentFactory { public *; }
+-keep class ah.runtime.bootstrap.LegacyShellAppComponentFactory { public *; }
+-keep class ah.runtime.bootstrap.EarlyConfigProbe { public *; }
+-keep class ah.runtime.bootstrap.EarlyConfigResult { public *; }
 # The Release/R8 target and separately installed instrumentation APK share these
 # bounded PoC diagnostics by binary name. They are not product Runtime APIs.
 -keep class ah.runtime.bootstrap.ClassLoaderProbe { public *; }

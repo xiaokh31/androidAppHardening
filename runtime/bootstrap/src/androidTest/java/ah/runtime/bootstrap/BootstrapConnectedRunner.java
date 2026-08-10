@@ -35,7 +35,7 @@ public final class BootstrapConnectedRunner extends Instrumentation {
         sendStatus(1, status("\n" + TEST_CLASS + ":"));
         Bundle result = new Bundle();
         try {
-            ProbeSummary main = runProcessProbe(getTargetContext().getApplicationInfo());
+            ProbeSummary main = runMainProcessProbe();
             require(main.installCount == 1, "main process installed more than once");
             require(main.classLoaderHookCount == 1, "original factory hook count changed");
             require(main.componentCount == 5, "five component delegation count changed");
@@ -61,6 +61,26 @@ public final class BootstrapConnectedRunner extends Instrumentation {
                     + android.util.Log.getStackTraceString(failure));
             finish(Activity.RESULT_CANCELED, result);
         }
+    }
+
+    private ProbeSummary runMainProcessProbe() throws Exception {
+        ProbeSummary[] summary = new ProbeSummary[1];
+        Throwable[] failure = new Throwable[1];
+        ApplicationInfo applicationInfo = getTargetContext().getApplicationInfo();
+        runOnMainSync(() -> {
+            try {
+                summary[0] = runProcessProbe(applicationInfo);
+            } catch (Throwable caught) {
+                failure[0] = caught;
+            }
+        });
+        if (failure[0] != null) {
+            if (failure[0] instanceof Exception) throw (Exception) failure[0];
+            if (failure[0] instanceof Error) throw (Error) failure[0];
+            throw new AssertionError(failure[0]);
+        }
+        require(summary[0] != null, "main process result absent");
+        return summary[0];
     }
 
     static ProbeSummary runProcessProbe(ApplicationInfo applicationInfo) throws Exception {

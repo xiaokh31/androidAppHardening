@@ -85,9 +85,7 @@ final class RuntimeSignerVerifier {
         if (!before.equals(after)) {
             throw RuntimeIntegrityFailure.create("INPUT_CHANGED");
         }
-        Measurement measurement =
-                new Measurement(current, lineage, apkMetadata.versionCode, after.modifiedMillis);
-        remember(
+        CacheKey cacheKey =
                 new CacheKey(
                         applicationInfo.packageName,
                         apkMetadata.versionCode,
@@ -95,8 +93,10 @@ final class RuntimeSignerVerifier {
                         after.size,
                         current,
                         lineage,
-                        processStartId()));
-        return measurement;
+                        processStartId());
+        boolean cacheHit = remember(cacheKey);
+        return new Measurement(
+                current, lineage, apkMetadata.versionCode, after.modifiedMillis, cacheHit);
     }
 
     private static ApkMetadata readApkMetadata(File sourceApk) {
@@ -171,8 +171,10 @@ final class RuntimeSignerVerifier {
         }
     }
 
-    private static synchronized void remember(CacheKey key) {
+    private static synchronized boolean remember(CacheKey key) {
+        boolean hit = VERIFIED_RECORDS.containsKey(key);
         VERIFIED_RECORDS.put(key, Boolean.TRUE);
+        return hit;
     }
 
     private static String processStartId() {
@@ -192,23 +194,50 @@ final class RuntimeSignerVerifier {
         return VERIFIED_RECORDS.size();
     }
 
+    static synchronized void clearCacheForTesting() {
+        VERIFIED_RECORDS.clear();
+    }
+
+    static boolean rememberForTesting(
+            String packageName,
+            long versionCode,
+            long modifiedMillis,
+            long size,
+            byte[] current,
+            byte[][] lineage,
+            String processStartId) {
+        return remember(new CacheKey(
+                packageName, versionCode, modifiedMillis, size, current, lineage, processStartId));
+    }
+
     static final class Measurement {
         private final byte[] currentSignerSha256;
         private final byte[][] signerLineageSha256;
         private final long versionCode;
         private final long apkLastModified;
+        private final boolean cacheHit;
 
         Measurement(
                 byte[] currentSignerSha256,
                 byte[][] signerLineageSha256,
                 long versionCode,
                 long apkLastModified) {
+            this(currentSignerSha256, signerLineageSha256, versionCode, apkLastModified, false);
+        }
+
+        Measurement(
+                byte[] currentSignerSha256,
+                byte[][] signerLineageSha256,
+                long versionCode,
+                long apkLastModified,
+                boolean cacheHit) {
             IntegrityChecks.requireValidLineage(
                     signerLineageSha256, currentSignerSha256, "LINEAGE_INVALID");
             this.currentSignerSha256 = currentSignerSha256.clone();
             this.signerLineageSha256 = IntegrityChecks.deepCopy(signerLineageSha256);
             this.versionCode = versionCode;
             this.apkLastModified = apkLastModified;
+            this.cacheHit = cacheHit;
         }
 
         byte[] currentSignerSha256() {
@@ -225,6 +254,10 @@ final class RuntimeSignerVerifier {
 
         long apkLastModified() {
             return apkLastModified;
+        }
+
+        boolean cacheHit() {
+            return cacheHit;
         }
     }
 

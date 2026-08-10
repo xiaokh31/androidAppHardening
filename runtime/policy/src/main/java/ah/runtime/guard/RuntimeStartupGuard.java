@@ -27,6 +27,23 @@ public final class RuntimeStartupGuard {
             payload.close();
         }
 
+        default UntrustedPayloadBinding binding(UntrustedPayloadBinding binding) {
+            return binding;
+        }
+
+        default AuthenticatedPayloadMetadata metadata(LoadedPayload payload) {
+            return payload.authenticatedMetadata();
+        }
+
+        default void verifyMetadata(
+                AuthenticatedPayloadMetadata metadata,
+                UntrustedPayloadBinding binding,
+                byte[] packageNameSha256,
+                RuntimeSignerVerifier.Measurement measurement) {
+            IntegrityChecks.verifyAuthenticatedMetadata(
+                    metadata, binding, packageNameSha256, measurement);
+        }
+
         default void closed() {}
     }
 
@@ -62,6 +79,9 @@ public final class RuntimeStartupGuard {
         } catch (RuntimeException failure) {
             throw RuntimeIntegrityFailure.create("CONTAINER", failure);
         }
+        if (failureProbe != null) {
+            binding = failureProbe.binding(binding);
+        }
         IntegrityChecks.verifyPreReadSigner(binding, measurement.currentSignerSha256());
 
         LoadedPayload loadedPayload = null;
@@ -73,9 +93,19 @@ public final class RuntimeStartupGuard {
                     PayloadRuntime.openVerified(
                             shellLoader, applicationInfo, measurement.currentSignerSha256());
             hit(failureProbe, GuardStage.LOADED_PAYLOAD);
-            AuthenticatedPayloadMetadata metadata = loadedPayload.authenticatedMetadata();
-            IntegrityChecks.verifyAuthenticatedMetadata(
-                    metadata, binding, packageNameSha256, measurement);
+            AuthenticatedPayloadMetadata ownedMetadata = loadedPayload.authenticatedMetadata();
+            AuthenticatedPayloadMetadata metadata = failureProbe == null
+                    ? ownedMetadata
+                    : failureProbe.metadata(loadedPayload);
+            if (metadata != ownedMetadata) {
+                throw RuntimeIntegrityFailure.create("METADATA_HANDLE");
+            }
+            if (failureProbe == null) {
+                IntegrityChecks.verifyAuthenticatedMetadata(
+                        metadata, binding, packageNameSha256, measurement);
+            } else {
+                failureProbe.verifyMetadata(metadata, binding, packageNameSha256, measurement);
+            }
             hit(failureProbe, GuardStage.METADATA);
             VerifiedSignerIdentity identity =
                     new VerifiedSignerIdentity(

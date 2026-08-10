@@ -101,22 +101,39 @@ check(statSync(path.join(root, "runtime/policy/src/test/java/ah/runtime/guard/Po
 const connectedRunner = read("runtime/policy/src/androidTest/java/ah/runtime/guard/PolicyConnectedRunner.java");
 const kvmWorkflow = read(".github/workflows/m0-05-linux-kvm.yml");
 check(
-  connectedRunner.includes("policy_connected=true cases=8") &&
+  connectedRunner.includes("policy_connected=true cases=15") &&
     connectedRunner.includes("RuntimeSignerVerifier.verify(self)") &&
+    connectedRunner.includes("verifyAcrossProcesses(self)") &&
+    connectedRunner.includes("m2-03-secondary-ready") &&
     kvmWorkflow.includes("ah.runtime.policy.test/ah.runtime.guard.PolicyConnectedRunner") &&
-    kvmWorkflow.includes("grep -F 'policy_connected=true cases=8'") &&
-    kvmWorkflow.includes('test "$policy_signer_one" = "$policy_signer_two"') &&
+    kvmWorkflow.includes("grep -F 'policy_connected=true cases=15'") &&
+    kvmWorkflow.includes("primary_cache_hit=true secondary_cache_hit=true") &&
     kvmWorkflow.includes('test "$policy_pid_one" != "$policy_pid_two"'),
   "non-empty connected policy runner",
 );
-check(statSync(path.join(root, "fixtures/android/src/androidTestM203Fixture/java/ah/runtime/guard/M203DeviceRunner.java")).size > 0, "non-empty Guard device runner");
+const guardRunner = read("fixtures/android/src/androidTestM203Fixture/java/ah/runtime/guard/M203DeviceRunner.java");
+const fixtureProguard = read("fixtures/android/proguard-rules.pro");
+check(
+  guardRunner.includes("guard_failure_injection=") &&
+    guardRunner.includes("captureNativeHandle") &&
+    guardRunner.includes("requireNativeHandleClosed") &&
+    guardRunner.includes("captureLoadedPayload") &&
+    fixtureProguard.includes("-keep class ah.runtime.loader.PayloadMemoryHandle { *; }") &&
+    fixtureProguard.includes("-keep class ah.runtime.loader.UntrustedPayloadBinding { *; }") &&
+    fixtureProguard.includes("-keep class ah.runtime.guard.RuntimeSignerVerifier { *; }") &&
+    fixtureProguard.includes("-keep class ah.runtime.guard.IntegrityChecks { *; }"),
+  "non-empty Guard device runner with R8-safe Native ownership observer",
+);
 const signerMatrix = read("tools/validation/run-m2-03-signer-matrix.mjs");
 check(
   signerMatrix.includes('verifyFixture("valid-rotation"') &&
     signerMatrix.includes('verifyFixture("multiple-current"') &&
     signerMatrix.includes('verifyStartup("historical-only"') &&
+    signerMatrix.includes("lookup_count=0 session_published=false") &&
+    signerMatrix.includes("unexpected install failure") &&
+    signerMatrix.includes("assertNoSensitiveEvidence") &&
     kvmWorkflow.includes("run-m2-03-signer-matrix.mjs"),
-  "device signer and rotation rejection matrix",
+  "device signer, tamper, publication and evidence-safety matrix",
 );
 
 const report = {

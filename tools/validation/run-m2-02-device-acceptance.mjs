@@ -96,8 +96,12 @@ function runVariant(variant) {
   instrumentationArguments.push(`${variant.packageName}.test/${runnerClass}`);
   const instrumentation = runAdb(instrumentationArguments, 120000);
   const taskSpecificPassed = isM203
-    ? instrumentation.stdout.includes("guard_failure_injection=6") &&
+    ? instrumentation.stdout.includes("guard_failure_injection=12") &&
+      instrumentation.stdout.includes("guard_metadata_rejections=12") &&
       instrumentation.stdout.includes("signer=true") &&
+      instrumentation.stdout.includes("framework_package_rejection=true") &&
+      instrumentation.stdout.includes("cleanup_suppressed=true") &&
+      instrumentation.stdout.includes("mapping_cleanup=true") &&
       instrumentation.stdout.includes("session_close=true")
     : instrumentation.stdout.includes("failure_injection=10") &&
       instrumentation.stdout.includes("metadata_negative=true") &&
@@ -137,7 +141,8 @@ function runVariant(variant) {
     target_apk: fileEvidence(variant.target),
     test_apk: fileEvidence(variant.test),
     instrumentation_passed: true,
-    failure_injection_windows: isM203 ? 6 : 10,
+    failure_injection_windows: isM203 ? 12 : 10,
+    guard_metadata_rejections: isM203 ? 12 : 0,
     multidex_verified: true,
     jni_verified: true,
     authenticated_metadata_verified: true,

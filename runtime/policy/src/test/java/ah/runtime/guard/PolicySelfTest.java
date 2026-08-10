@@ -4,8 +4,12 @@ import ah.runtime.loader.AuthenticatedPayloadMetadata;
 import ah.runtime.loader.UntrustedPayloadBinding;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /** Dependency-free JVM matrix executed by :runtime:policy:test. */
 public final class PolicySelfTest {
@@ -52,6 +56,12 @@ public final class PolicySelfTest {
         check(rejected.status() == IntegrityResult.Status.REJECTED, "rejected-status");
         check(rejected.code().equals("AAH-RUNTIME-INTEGRITY-PACKAGE_MISMATCH"), "rejected-code");
         check(IntegrityResult.rejected("bad-value").code().endsWith("INTERNAL"), "code-normalize");
+        check(IntegrityResult.rejected("AAH-RUNTIME-INTEGRITY-secret/path")
+                        .code().equals("AAH-RUNTIME-INTEGRITY-INTERNAL"),
+                "prefixed-code-normalize");
+        check(IntegrityResult.rejected("UNRECOGNIZED_CATEGORY")
+                        .code().equals("AAH-RUNTIME-INTEGRITY-INTERNAL"),
+                "code-allowlist");
         check("UNSIGNED".equals(RuntimeSignerVerifier.classifyRejectedCategory(
                 0, List.of("JAR_SIG_NO_SIGNATURES"))), "unsigned-map");
         check("MULTIPLE_CURRENT".equals(RuntimeSignerVerifier.classifyRejectedCategory(
@@ -79,6 +89,37 @@ public final class PolicySelfTest {
                 new byte[][] {digest(0x11), current}, "100:1")), "cache-lineage-invalidate");
         check(!cacheBase.equals(cacheKey("example.package", 7L, 11L, 101L, current,
                 new byte[][] {old, current}, "101:1")), "cache-process-invalidate");
+        RuntimeSignerVerifier.clearCacheForTesting();
+        check(!RuntimeSignerVerifier.rememberForTesting("example.package", 7L, 11L, 101L,
+                current, new byte[][] {old, current}, "100:1"), "cache-first-miss");
+        check(RuntimeSignerVerifier.rememberForTesting("example.package", 7L, 11L, 101L,
+                current, new byte[][] {old, current}, "100:1"), "cache-idempotent-hit");
+        for (int index = 0; index < 9; index++) {
+            RuntimeSignerVerifier.rememberForTesting("example.package." + index, 7L, 11L, 101L,
+                    current, new byte[][] {old, current}, "100:1");
+        }
+        check(RuntimeSignerVerifier.cacheSizeForTesting() == 8, "cache-bounded");
+        RuntimeSignerVerifier.clearCacheForTesting();
+        ExecutorService workers = Executors.newFixedThreadPool(8);
+        try {
+            List<Future<Boolean>> hits = new ArrayList<>();
+            for (int index = 0; index < 16; index++) {
+                hits.add(workers.submit(() -> RuntimeSignerVerifier.rememberForTesting(
+                        "concurrent.package", 9L, 13L, 103L, current,
+                        new byte[][] {old, current}, "200:2")));
+            }
+            int hitCount = 0;
+            for (Future<Boolean> hit : hits) {
+                if (hit.get()) {
+                    hitCount++;
+                }
+            }
+            check(hitCount == 15 && RuntimeSignerVerifier.cacheSizeForTesting() == 1,
+                    "cache-concurrent-idempotent");
+        } finally {
+            workers.shutdownNow();
+            RuntimeSignerVerifier.clearCacheForTesting();
+        }
 
         byte[] buildId = Arrays.copyOf(old, 16);
         byte[] keySlotId = Arrays.copyOf(current, 16);

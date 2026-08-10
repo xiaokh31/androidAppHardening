@@ -227,7 +227,7 @@ jobs:
             fixtures/android/build/outputs/apk/compatExtracted/release/android-compatExtracted-release.apk \
             | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')"
           test "${#signer_digest}" = 64
-          echo "$signer_digest" > build/m0-05/signer-sha256.txt
+          echo "$signer_digest" > "$RUNNER_TEMP/m0-05-signing/signer-sha256.txt"
 
           ./gradlew --no-daemon --console=plain "-Pm005ExpectedSignerSha256=$signer_digest" \
             :tools:validation:testM005ConfigParser \
@@ -396,12 +396,6 @@ jobs:
             --lineage "$rotation_lineage" \
             --out build/m0-05/test-apks/extracted/signed/m2-03-valid-rotation.apk \
             build/m0-05/test-apks/extracted/unsigned/m0-05-config-major-unsigned.apk
-          alternate_digest="$("$ANDROID_HOME/build-tools/36.1.0/apksigner" verify --print-certs \
-            build/m0-05/test-apks/extracted/signed/m0-05-wrong-signer.apk \
-            | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')"
-          test "${#alternate_digest}" = 64
-          printf '%s\n' "$alternate_digest" > build/m0-05/alternate-signer-sha256.txt
-
           ./gradlew --no-daemon --console=plain \
             :fixtures:android:assembleM202ExtractedRelease \
             :fixtures:android:assembleM202DirectRelease \
@@ -444,6 +438,20 @@ jobs:
             node tools/validation/prepare-m2-02-device-fixture.mjs package \
               "$baseline" "$vector_root" "build/m2-03/m2-03-${variant}.apk" \
               | tee "build/m2-03/${variant}-package-report.json"
+          done
+          mkdir -p build/m2-03/tamper-unsigned build/m2-03/tamper-signed
+          node tools/validation/create-m0-05-test-apks.mjs \
+            build/m2-03/m2-03-extracted.apk build/m2-03/tamper-unsigned \
+            | tee build/m2-03/tamper-creation-report.json
+          for name in config-major config-factory-flags config-slot-tail payload-corrupt; do
+            "$ANDROID_HOME/build-tools/36.1.0/apksigner" sign \
+              --v4-signing-enabled false \
+              --ks "$M005_TEST_KEYSTORE" \
+              --ks-key-alias "$M005_TEST_KEY_ALIAS" \
+              --ks-pass env:M005_TEST_STORE_PASSWORD \
+              --key-pass env:M005_TEST_KEY_PASSWORD \
+              --out "build/m2-03/tamper-signed/m2-03-${name}.apk" \
+              "build/m2-03/tamper-unsigned/m0-05-${name}-unsigned.apk"
           done
           "$ANDROID_HOME/build-tools/36.1.0/apksigner" sign \
             --v4-signing-enabled false \
@@ -507,7 +515,10 @@ jobs:
             adb -s "$serial" uninstall ah.fixtures.android.m203.extracted >/dev/null 2>&1
             adb -s "$serial" uninstall ah.fixtures.android.m203.direct.test >/dev/null 2>&1
             adb -s "$serial" uninstall ah.fixtures.android.m203.direct >/dev/null 2>&1
+            adb -s "$serial" shell run-as ah.runtime.policy.test rm -f \
+              files/m2-03-process.apk >/dev/null 2>&1
             adb -s "$serial" uninstall ah.runtime.policy.test >/dev/null 2>&1
+            adb -s "$serial" shell rm -f /data/local/tmp/m2-03-process.apk >/dev/null 2>&1
             adb -s "$serial" emu kill >/dev/null 2>&1
             if [[ -n "$emulator_pid" ]]; then
               kill -TERM "$emulator_pid" >/dev/null 2>&1
@@ -573,29 +584,37 @@ jobs:
 
           adb -s "$serial" install -r -t --no-streaming \
             runtime/policy/build/outputs/apk/androidTest/debug/policy-debug-androidTest.apk
-          policy_output_one="$(timeout 60s adb -s "$serial" shell am instrument -w \
+          adb -s "$serial" push build/m0-05/test-apks/extracted/signed/m0-05-config-major.apk \
+            /data/local/tmp/m2-03-process.apk
+          policy_root="$(adb -s "$serial" shell run-as ah.runtime.policy.test pwd | tr -d '\r')"
+          test "${policy_root#/data/}" != "$policy_root"
+          adb -s "$serial" shell run-as ah.runtime.policy.test mkdir -p files
+          adb -s "$serial" shell run-as ah.runtime.policy.test cp \
+            /data/local/tmp/m2-03-process.apk files/m2-03-process.apk
+          policy_output="$(timeout 60s adb -s "$serial" shell am instrument -w \
+            -e verify_process_apk "$policy_root/files/m2-03-process.apk" \
+            -e verify_process_package ah.fixtures.android.m005.extracted \
             ah.runtime.policy.test/ah.runtime.guard.PolicyConnectedRunner)"
-          adb -s "$serial" shell am force-stop ah.runtime.policy.test
-          policy_output_two="$(timeout 60s adb -s "$serial" shell am instrument -w \
-            ah.runtime.policy.test/ah.runtime.guard.PolicyConnectedRunner)"
-          printf '%s\n%s\n' "$policy_output_one" "$policy_output_two"
-          grep -F 'policy_connected=true cases=8' <<<"$policy_output_one"
-          grep -F 'policy_connected=true cases=8' <<<"$policy_output_two"
-          grep -F 'INSTRUMENTATION_CODE: -1' <<<"$policy_output_one"
-          grep -F 'INSTRUMENTATION_CODE: -1' <<<"$policy_output_two"
-          policy_signer_one="$(sed -n 's/.*policy_signer=\([0-9a-f]\{64\}\).*/\1/p' <<<"$policy_output_one" | head -n1)"
-          policy_signer_two="$(sed -n 's/.*policy_signer=\([0-9a-f]\{64\}\).*/\1/p' <<<"$policy_output_two" | head -n1)"
-          policy_pid_one="$(sed -n 's/.*policy_pid=\([0-9][0-9]*\).*/\1/p' <<<"$policy_output_one" | head -n1)"
-          policy_pid_two="$(sed -n 's/.*policy_pid=\([0-9][0-9]*\).*/\1/p' <<<"$policy_output_two" | head -n1)"
-          test -n "$policy_signer_one"
-          test "$policy_signer_one" = "$policy_signer_two"
+          printf '%s\n' "$policy_output"
+          grep -F 'policy_connected=true cases=15' <<<"$policy_output"
+          grep -F 'primary_cache_hit=true secondary_cache_hit=true' <<<"$policy_output"
+          grep -F 'INSTRUMENTATION_CODE: -1' <<<"$policy_output"
+          policy_signer_prefix="$(sed -n 's/.*signer_prefix=\([0-9a-f]\{12\}\).*/\1/p' <<<"$policy_output" | head -n1)"
+          policy_pid_one="$(sed -n 's/.*primary_pid=\([0-9][0-9]*\).*/\1/p' <<<"$policy_output" | head -n1)"
+          policy_pid_two="$(sed -n 's/.*secondary_pid=\([0-9][0-9]*\).*/\1/p' <<<"$policy_output" | head -n1)"
+          test "${#policy_signer_prefix}" = 12
           test -n "$policy_pid_one"
+          test -n "$policy_pid_two"
           test "$policy_pid_one" != "$policy_pid_two"
+          adb -s "$serial" shell run-as ah.runtime.policy.test rm -f files/m2-03-process.apk
+          adb -s "$serial" shell run-as ah.runtime.policy.test test ! -e files/m2-03-process.apk
+          adb -s "$serial" shell rm -f /data/local/tmp/m2-03-process.apk
+          adb -s "$serial" shell test ! -e /data/local/tmp/m2-03-process.apk
           timeout 300s node tools/validation/run-m2-03-signer-matrix.mjs \
             --adb "$ANDROID_HOME/platform-tools/adb" \
             --serial "$serial" \
             --policy-apk runtime/policy/build/outputs/apk/androidTest/debug/policy-debug-androidTest.apk \
-            --signer-sha256 "$(cat build/m0-05/signer-sha256.txt)" \
+            --signer-sha256 "$(cat "$RUNNER_TEMP/m0-05-signing/signer-sha256.txt")" \
             --same-apk build/m0-05/test-apks/extracted/signed/m0-05-config-major.apk \
             --wrong-apk build/m0-05/test-apks/extracted/signed/m0-05-wrong-signer.apk \
             --multi-apk build/m0-05/test-apks/extracted/signed/m0-05-multi-signer.apk \
@@ -604,6 +623,10 @@ jobs:
             --wrong-target-apk build/m2-03/m2-03-wrong-signer-extracted.apk \
             --multi-target-apk build/m2-03/m2-03-multi-signer-extracted.apk \
             --historical-target-apk build/m2-03/m2-03-historical-only-extracted.apk \
+            --config-target-apk build/m2-03/tamper-signed/m2-03-config-major.apk \
+            --factory-target-apk build/m2-03/tamper-signed/m2-03-config-factory-flags.apk \
+            --binding-target-apk build/m2-03/tamper-signed/m2-03-config-slot-tail.apk \
+            --container-target-apk build/m2-03/tamper-signed/m2-03-payload-corrupt.apk \
             --evidence "build/m2-03/device-api${API}-x86_64/signer-matrix" \
             --command-timeout-ms 60000
 

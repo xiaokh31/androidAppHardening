@@ -12,7 +12,9 @@
 -keep class ah.runtime.loader.PayloadRuntime { *; }
 -keep class ah.runtime.loader.PayloadRuntime$* { *; }
 -keep class ah.runtime.loader.LoadedPayload { *; }
+-keep class ah.runtime.loader.PayloadMemoryHandle { *; }
 -keep class ah.runtime.loader.AuthenticatedPayloadMetadata { *; }
+-keep class ah.runtime.loader.UntrustedPayloadBinding { *; }
 -keep class ah.runtime.loader.NativePayloadBridge { *; }
 # The separately installed M2-02 instrumentation fixture calls code() on the
 # frozen exception binary name. Keep this only in the synthetic Release target;
@@ -24,6 +26,10 @@
 -keep class ah.fixtures.android.m202.M202ColdStartActivity { *; }
 -keep class ah.runtime.guard.RuntimeStartupGuard { *; }
 -keep class ah.runtime.guard.RuntimeStartupGuard$* { *; }
+-keep class ah.runtime.guard.RuntimeIntegrityFailure { *; }
+-keep class ah.runtime.guard.IntegrityChecks { *; }
+-keep class ah.runtime.guard.RuntimeSignerVerifier { *; }
+-keep class ah.runtime.guard.RuntimeSignerVerifier$* { *; }
 -keep class ah.runtime.guard.VerifiedPayloadSession { *; }
 -keep class ah.runtime.guard.VerifiedSignerIdentity { *; }
 -keep class ah.runtime.guard.VerifiedStartupConfiguration { *; }

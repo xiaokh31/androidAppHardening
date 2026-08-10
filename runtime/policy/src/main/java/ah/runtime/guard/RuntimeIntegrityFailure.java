@@ -28,14 +28,33 @@ final class RuntimeIntegrityFailure extends IllegalStateException {
             return PREFIX + "INTERNAL";
         }
         if (category.startsWith(PREFIX)) {
-            return category;
+            category = category.substring(PREFIX.length());
         }
-        for (int index = 0; index < category.length(); index++) {
-            char value = category.charAt(index);
-            if (!((value >= 'A' && value <= 'Z') || value == '_')) {
+        switch (category) {
+            case "APK_METADATA":
+            case "ARGUMENT":
+            case "BINDING":
+            case "CLOSED":
+            case "CONTAINER":
+            case "INPUT_CHANGED":
+            case "INTERNAL":
+            case "LINEAGE_INVALID":
+            case "LINEAGE_MISMATCH":
+            case "METADATA":
+            case "METADATA_HANDLE":
+            case "MULTIPLE_CURRENT":
+            case "PACKAGE_MISMATCH":
+            case "SESSION":
+            case "SIGNATURE_INVALID":
+            case "SIGNER_FORMAT":
+            case "SIGNER_MISMATCH":
+            case "SNAPSHOT_CHANGED":
+            case "SOURCE":
+            case "UNSIGNED":
+            case "VERSION":
+                return PREFIX + category;
+            default:
                 return PREFIX + "INTERNAL";
-            }
         }
-        return PREFIX + category;
     }
 }

@@ -38,7 +38,12 @@ try {
   verifyStartup("different-signer", "wrong-target-apk", "SIGNER_MISMATCH", false);
   verifyStartup("multiple-current", "multi-target-apk", "MULTIPLE_CURRENT", true);
   verifyStartup("historical-only", "historical-target-apk", "SIGNER_MISMATCH", false);
-  cleanup();
+  verifyStartup("config-version-tamper", "config-target-apk", "CONTAINER", false);
+  verifyStartup("factory-slot-tamper", "factory-target-apk", "CONTAINER", false);
+  verifyStartup("binding-slot-tamper", "binding-target-apk", "CONTAINER", false);
+  verifyStartup("container-ciphertext-tamper", "container-target-apk", "CONTAINER", false);
+  const cleanupPassed = cleanup();
+  if (!cleanupPassed) fail("cleanup verification failed");
 
   const report = {
     task_id: "M2-03",
@@ -46,15 +51,19 @@ try {
     serial_sha256: sha256(Buffer.from(serial, "utf8")),
     signer_fixture_matrix: fixtureResults,
     startup_rejection_matrix: startupResults,
-    cleanup_passed: true,
+    cleanup_passed: cleanupPassed,
     result: "PASS",
   };
+  const serializedTranscript = `${JSON.stringify(transcript, null, 2)}\n`;
+  assertNoSensitiveEvidence(serializedTranscript, "commands transcript");
   writeFileSync(path.join(evidence, "signer-matrix-report.json"), `${JSON.stringify(report, null, 2)}\n`);
-  writeFileSync(path.join(evidence, "signer-matrix-commands.json"), `${JSON.stringify(transcript, null, 2)}\n`);
+  writeFileSync(path.join(evidence, "signer-matrix-commands.json"), serializedTranscript);
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
 } catch (error) {
   cleanup();
-  writeFileSync(path.join(evidence, "signer-matrix-commands.json"), `${JSON.stringify(transcript, null, 2)}\n`);
+  const serializedTranscript = `${JSON.stringify(transcript, null, 2)}\n`;
+  assertNoSensitiveEvidence(serializedTranscript, "failed commands transcript");
+  writeFileSync(path.join(evidence, "signer-matrix-commands.json"), serializedTranscript);
   process.stderr.write(`${error.stack ?? error}\n`);
   process.exitCode = 1;
 }
@@ -104,11 +113,16 @@ function verifyStartup(name, option, expected, allowInstallRejection) {
   const installed = runAdb(["install", "-r", "-t", "--no-streaming", apk], true);
   if (installed.status !== 0) {
     if (!allowInstallRejection) fail(`${name} install failed: ${installed.stderr}`);
+    const installOutput = `${installed.stdout}\n${installed.stderr}`;
+    const platformCode = installOutput.match(
+      /INSTALL_(?:PARSE_FAILED_(?:INCONSISTENT_CERTIFICATES|NO_CERTIFICATES)|FAILED_INVALID_APK)/u,
+    )?.[0];
+    if (!platformCode) fail(`${name} unexpected install failure: ${installOutput}`);
     startupResults.push({
       name,
       apk_sha256: sha256(readFileSync(apk)),
       expected_code: `AAH-RUNTIME-INTEGRITY-${expected}`,
-      actual_code: "PLATFORM_SIGNATURE_REJECTION",
+      actual_code: `PLATFORM_SIGNATURE_REJECTION:${platformCode}`,
       install_rejected: true,
       result: "PASS",
     });
@@ -116,26 +130,55 @@ function verifyStartup(name, option, expected, allowInstallRejection) {
   }
   runAdb(["shell", "am", "start", "-W", "-n", activity], true);
   runAdb(["shell", "sleep", "1"]);
-  const logs = runAdb(["logcat", "-d", "-v", "threadtime"]);
-  writeFileSync(path.join(evidence, `${name}.logcat.txt`), logs.stdout);
+  const logs = runAdb(["logcat", "-d", "-v", "threadtime"], false, false);
   const code = `AAH-RUNTIME-INTEGRITY-${expected}`;
   if (!logs.stdout.includes(code)) fail(`${name} startup did not emit ${code}`);
+  const marker = `startup_rejected code=${code} lookup_count=0 session_published=false`;
+  if (!logs.stdout.includes(marker)) fail(`${name} startup publication marker mismatch`);
+  const sanitized = logs.stdout
+    .split(/\r?\n/u)
+    .filter((line) => line.includes("AAH-M2-03") && line.includes("startup_rejected"))
+    .map((line) => line.slice(line.indexOf("startup_rejected")))
+    .join("\n");
+  if (!sanitized.includes(marker)) fail(`${name} sanitized startup evidence missing marker`);
+  assertNoSensitiveEvidence(sanitized, name);
+  writeFileSync(path.join(evidence, `${name}.logcat.txt`), `${sanitized}\n`);
   startupResults.push({
     name,
     apk_sha256: sha256(readFileSync(apk)),
     expected_code: code,
     actual_code: code,
     install_rejected: false,
+    lookup_count: 0,
+    session_published: false,
     result: "PASS",
   });
 }
 
+function assertNoSensitiveEvidence(value, name) {
+  const forbidden = [
+    /dex\n0(?:35|37|38|39|40|41)\0/u,
+    /(?:cek|kek|private[_ -]?key|key[_ -]?material)\s*[:=]/iu,
+    /[A-Z]:\\Users\\/iu,
+    /\/home\/[^/\s]+\//u,
+    /\/(?:data|sdcard|storage|proc)\/[^\s"']+/u,
+  ];
+  if (forbidden.some((pattern) => pattern.test(value))) {
+    fail(`${name} evidence contains forbidden plaintext or user path`);
+  }
+}
+
 function cleanup() {
+  let passed = true;
   for (const name of [
     "same-signer", "different-signer", "multiple-current", "unsigned",
     "valid-rotation", "historical-only",
   ]) {
-    runAdb(["shell", "run-as", policyPackage, "rm", "-f", `files/aah-m2-03-${name}.apk`], true);
+    const file = `files/aah-m2-03-${name}.apk`;
+    runAdb(["shell", "run-as", policyPackage, "rm", "-f", file], true);
+    if (runAdb(["shell", "run-as", policyPackage, "test", "!", "-e", file], true).status !== 0) {
+      passed = false;
+    }
   }
   runAdb(["shell", "rm", "-f", "/data/local/tmp/aah-m2-03-same-signer.apk"], true);
   runAdb(["shell", "rm", "-f", "/data/local/tmp/aah-m2-03-different-signer.apk"], true);
@@ -145,9 +188,23 @@ function cleanup() {
   runAdb(["shell", "rm", "-f", "/data/local/tmp/aah-m2-03-historical-only.apk"], true);
   runAdb(["uninstall", policyPackage], true);
   runAdb(["uninstall", targetPackage], true);
+  for (const packageName of [policyPackage, targetPackage]) {
+    if (runAdb(["shell", "pm", "path", packageName], true).stdout.trim() !== "") {
+      passed = false;
+    }
+  }
+  for (const name of [
+    "same-signer", "different-signer", "multiple-current", "unsigned",
+    "valid-rotation", "historical-only",
+  ]) {
+    if (runAdb(["shell", "test", "!", "-e", `/data/local/tmp/aah-m2-03-${name}.apk`], true).status !== 0) {
+      passed = false;
+    }
+  }
+  return passed;
 }
 
-function runAdb(args, allowFailure = false) {
+function runAdb(args, allowFailure = false, recordOutput = true) {
   const result = spawnSync(adb, ["-s", serial, ...args], {
     encoding: "utf8",
     timeout,
@@ -159,13 +216,27 @@ function runAdb(args, allowFailure = false) {
     command: ["adb", "-s", "<serial-redacted>", ...args.map(redact)],
     exit_code: result.status,
     timed_out: result.error?.code === "ETIMEDOUT",
-    stdout: result.stdout ?? "",
-    stderr: result.stderr ?? "",
+    stdout: recordOutput ? sanitizeTranscriptOutput(result.stdout ?? "") : "<output-omitted>",
+    stderr: recordOutput ? sanitizeTranscriptOutput(result.stderr ?? "") : "<output-omitted>",
   };
   transcript.push(record);
   if (record.timed_out) fail(`adb timed out: ${args.join(" ")}`);
   if (!allowFailure && result.status !== 0) fail(`adb failed: ${args.join(" ")}\n${record.stderr}`);
-  return { status: result.status, stdout: record.stdout, stderr: record.stderr };
+  return { status: result.status, stdout: result.stdout ?? "", stderr: result.stderr ?? "" };
+}
+
+function sanitizeTranscriptOutput(value) {
+  if (/dex\n0(?:35|37|38|39|40|41)\0/u.test(value)) return "<binary-dex-output-redacted>";
+  return value
+    .split(/\r?\n/u)
+    .map((line) => /(?:cek|kek|private[_ -]?key|key[_ -]?material)\s*[:=]/iu.test(line)
+      ? "<sensitive-output-redacted>"
+      : line)
+    .join("\n")
+    .replace(/[0-9a-f]{64}/giu, "<sha256-redacted>")
+    .replace(/[A-Z]:\\[^\s"']+/giu, "<host-path-redacted>")
+    .replace(/\/(?:data|sdcard|storage|proc)\/[^\s"']+/gu, "<device-path-redacted>")
+    .replace(/\/home\/[^\s"']+/gu, "<host-path-redacted>");
 }
 
 function redact(value) {

@@ -98,7 +98,14 @@ check(guard.includes("if (!committed && loadedPayload != null)"), "Guard rollbac
 check(guard.includes("primary.addSuppressed(cleanupFailure)"), "cleanup suppression preserves primary");
 
 check(statSync(path.join(root, "runtime/policy/src/test/java/ah/runtime/guard/PolicySelfTest.java")).size > 0, "non-empty JVM policy matrix");
-check(statSync(path.join(root, "runtime/policy/src/androidTest/java/ah/runtime/guard/PolicyConnectedRunner.java")).size > 0, "non-empty connected policy runner");
+const connectedRunner = read("runtime/policy/src/androidTest/java/ah/runtime/guard/PolicyConnectedRunner.java");
+const kvmWorkflow = read(".github/workflows/m0-05-linux-kvm.yml");
+check(
+  connectedRunner.includes("policy_connected=true cases=5") &&
+    kvmWorkflow.includes("ah.runtime.policy.test/ah.runtime.guard.PolicyConnectedRunner") &&
+    kvmWorkflow.includes("grep -F 'policy_connected=true cases=5'"),
+  "non-empty connected policy runner",
+);
 check(statSync(path.join(root, "fixtures/android/src/androidTestM203Fixture/java/ah/runtime/guard/M203DeviceRunner.java")).size > 0, "non-empty Guard device runner");
 
 const report = {

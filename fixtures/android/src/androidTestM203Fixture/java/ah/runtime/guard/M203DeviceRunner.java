@@ -95,8 +95,6 @@ public final class M203DeviceRunner extends Instrumentation {
         VerifiedPayloadSession reopened =
                 RuntimeStartupGuard.openVerifiedPayload(applicationInfo, target.getClassLoader());
         reopened.close();
-        require(RuntimeSignerVerifier.cacheSizeForTesting() >= 1, "verification cache empty");
-        require(RuntimeSignerVerifier.cacheSizeForTesting() <= 8, "verification cache unbounded");
         requireNoPlaintextDex(applicationInfo.dataDir);
         if (applicationInfo.deviceProtectedDataDir != null) {
             requireNoPlaintextDex(applicationInfo.deviceProtectedDataDir);

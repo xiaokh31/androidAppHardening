@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260809-225921
-updated_at: 2026-08-10T14:14:30+08:00
+updated_at: 2026-08-10T14:29:30+08:00
 updated_by: /root
 state: active
 source_branch: feat/m2-03-runtime-integrity

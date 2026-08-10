@@ -480,6 +480,7 @@ jobs:
           "$ANDROID_HOME/build-tools/36.1.0/apksigner" sign \
             --v4-signing-enabled false \
             --v1-signing-enabled false \
+            --v2-signing-enabled false \
             --rotation-min-sdk-version 29 \
             --alignment-preserved true \
             --ks "$M005_ALT_KEYSTORE" \

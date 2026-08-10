@@ -2,14 +2,14 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260809-225921
-updated_at: 2026-08-11T02:47:00+08:00
+updated_at: 2026-08-11T03:09:11+08:00
 updated_by: /root
-state: active
-source_branch: feat/m2-03-runtime-integrity
-base_commit: dec1ef68f69eea26ae1bc6a1132bf26bf39ba0f8
+state: ready
+source_branch: main
+base_commit: 803de853439026f4248a749d51033424c2e10b6d
 working_tree: clean
 current_milestone: M2
-active_task: M2-03
+active_task: NONE
 next_owner: /root
 ---
 
@@ -17,13 +17,13 @@ next_owner: /root
 
 ## Objective
 
-在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 边界内完成 M2-03 Runtime signer、同 handle authenticated metadata 复核与 session 所有权门禁；不启动 M2-01、M2-04 或其他相邻任务。
+M2-03 Runtime signer、同 handle authenticated metadata 复核与 session 所有权门禁已经完成；当前无活动任务，M2-01、M2-04 或其他相邻任务均未启动。
 
 ## Current State
 
-- M2-03 implementation parent `8211a60dca604ac1aab56b4839bcd96d5494aa05` has passed exact-head Build `31419276164`, Governance `31419276874` and PR API 29/36 x86_64 KVM `31419279082`. The KVM artifacts prove extracted/direct Release/R8, 12 exception/OOM ownership windows, 12 metadata/cross-handle/session rejections, six signer fixtures, seven real startup rejections with one unique run-token marker each, cross-DEX, JNI, authenticated metadata, 20 cold starts per variant, memory, zero plaintext DEX and cleanup.
+- M2-03 final PR HEAD `19d02a40962f55678b7a3c1cc17108bfbb44f9fa` passed exact-head Build `31421047955`, Governance `31421047952` and API 29/36 x86_64 KVM `31421047965`. PR [#44](https://github.com/xiaokh31/androidAppHardening/pull/44) was merged with expected-head protection as merge commit `803de853439026f4248a749d51033424c2e10b6d`; Issue #14 is closed.
 - The authorized API 29 arm64 `user/release-keys`, `ro.debuggable=0`, non-root physical-device report passed the same extracted/direct 12+12 ownership/metadata, cross-DEX, JNI, 20 cold starts, memory, zero-plaintext and cleanup matrix. Its evidence is inherited with a documented boundary because `659c2b8..8211a60` changes no production Runtime, Native, target/test APK or device instrumentation logic.
-- The full plus incremental independent read-only review is PASS with `P0=0`, `P1=0`, `P2=0`. The retained-logcat false positive is closed by per-scenario tokens; the later API 29 KVM stop/start race is closed by an M2-03-only stabilization window plus exact Activity/PID/PSS checks and fail-first logcat capture, without retry or sample substitution. Local/remote/security evidence is ready for a final evidence-only child; PR #44 remains draft until that child passes exact-head CI. README stays unchanged until the task is actually merged and post-merge gates close.
+- The full plus incremental independent read-only review is PASS with `P0=0`, `P1=0`, `P2=0`. The retained-logcat false positive is closed by per-scenario tokens; the later API 29 KVM stop/start race is closed by an M2-03-only stabilization window plus exact Activity/PID/PSS checks and fail-first logcat capture, without retry or sample substitution. README now records M2-03 as complete; only this post-merge coordination commit and its final main gates remain.
 
 - PR [#43](https://github.com/xiaokh31/androidAppHardening/pull/43) 已在 exact HEAD `84f11ed3aa38315c84b15eae531fb1e7f82693b7` 的 Ubuntu/Windows Build/Governance 与 API 29/36 x86_64 KVM 全绿后转为 ready，并以 expected-head 保护的普通 merge commit `b4f680f55a39d3f030fa2d1c6d627baed712964b` 合并到 `main`；Issue #13 已关闭。本地 main 已同步，当前只提交 post-merge README/HandOff 并等待最终 main 门禁，不启动 M2-03。
 
@@ -176,7 +176,7 @@ next_owner: /root
 | M2-07 | `/root` | `main` | done | M0-03, M1-04 | PR #42、Issue #41、最终独立复核、README、strict 与 post-merge Build/Governance/KVM 均已关闭 |
 | M2-02 | `/root` | `main` | done | M0-04, M1-04, M2-07 | PR #43、Issue #13、全零复核、双平台 CI、API 29/36 KVM、arm64 真机、README 与 strict HandOff 已关闭 |
 
-| M2-03 | `/root` | `feat/m2-03-runtime-integrity` | review | M1-02, M1-04, M2-02 | Evidence-only child CI, ready/merge, then post-merge README/strict/main CI |
+| M2-03 | `/root` | `main` | done | M1-02, M1-04, M2-02 | PR #44、Issue #14、全零复核、双平台 CI、API 29/36 KVM、arm64 真机、README 与 strict HandOff 已关闭 |
 
 ## Decisions and Invariants
 
@@ -338,6 +338,18 @@ next_owner: /root
 - M2-02 第三实现层已完成本地检查点：同一 `sourceDir` 只读文件映射、OS 只读 DEX commit、generation+slot 类型化 JNI handle、同 handle `AHMD` 认证 metadata、精确五 JNI 方法、Java primitive/finally 交接窗口、幂等 `LoadedPayload` owner，以及 M0-05 等价 Native 搜索路径和三参数 API 29 `InMemoryDexClassLoader` 已接通。Java 17 编译/lint、NDK 四 ABI warnings-as-errors 与离线根 `assembleRelease check` 284-task 均 PASS，四个 ELF 都含唯一 104-byte alloc/read-only `.ah_share_v1`，未启动设备或模拟器。证据更新于 `docs/evidence/M2-02/local-validation.md`；任务仍未完成或发布，下一步仅补 failure injection、Host sanitizer/fuzz/OOM 与已授权 KVM/arm64 验收，不启动 M2-03。
 
 ## Verification Evidence
+
+### M2-03 final acceptance and independent review
+
+- task_id: M2-03
+- git_commit: 19d02a40962f55678b7a3c1cc17108bfbb44f9fa
+- command: `node tools/validation/verify-m2-03-runtime-integrity.mjs`; GitHub Actions Build `31421047955`, Governance `31421047952`, M0-05 Linux KVM `31421047965`; authorized API 29 arm64 extracted/direct acceptance with 20 cold starts per variant; independent full plus incremental read-only security review
+- exit_code: 0
+- environment: Windows local validation; Ubuntu 24.04 and Windows 2025 Build/Governance; API 29 r8 and API 36 r2 x86_64 Linux/KVM; Xiaomi sirius API 29 arm64-v8a user/release-keys non-root physical device; no local emulator
+- timestamp: 2026-08-11T03:08:18+08:00
+- artifact: `docs/evidence/M2-03/local-validation.md`; `docs/evidence/M2-03/remote-validation.md`; `docs/evidence/M2-03/security-review.md`; API 29 KVM report SHA-256 `5d620f56de5cdd4b6b1aa674e5e53afb3f8df22e36d750066d32a66a28dd7428`; API 36 KVM report SHA-256 `22ad1b3dc984458eb8b4a5643ff9c0940bbde8de3e67086cb39b224f104e4311`; policy AAR SHA-256 `1279240a67dbcb2e6a0aef8cb82519cbf8efbde6e723483566be4723bfb05aff`; PR `https://github.com/xiaokh31/androidAppHardening/pull/44`; merge commit `803de853439026f4248a749d51033424c2e10b6d`
+- sha256: cf418b7d2cc2803b394d7be4a234f69e96b5c3eb8011bc8f29ebfc2d08234446
+- result: PASS; extracted/direct Release/R8, signer/rotation policy, authenticated metadata, 12 exception/OOM ownership windows, 12 metadata/cross-handle/session rejections, seven real startup tamper rejections, cross-DEX, JNI, 20 cold starts per variant, memory, zero plaintext DEX, cleanup and P0=0/P1=0/P2=0 independent review all passed
 
 ### M2-02 API 29 arm64 final acceptance
 
@@ -1305,10 +1317,9 @@ None
 
 ## Ordered Next Actions
 
-1. Commit the M2-03 local/remote/security evidence and this HandOff as an evidence-only child of `8211a60dca604ac1aab56b4839bcd96d5494aa05`; verify the diff contains no implementation change.
-2. Push the final evidence child and require exact-head Build, Governance and API 29/36 KVM to pass.
-3. Convert PR #44 to ready and merge with expected-head protection; do not start M2-01 or M2-04.
-4. On post-merge `main`, update README and HandOff to mark M2-03 complete, run strict HandOff without exemption and pass final main CI.
+1. Commit and push this post-merge README/HandOff coordination snapshot on `main`.
+2. Require final `main` Build, Governance and any triggered API 29/36 KVM checks to pass.
+3. Keep M2-01, M2-04 and all adjacent tasks unstarted until the user explicitly selects the next task.
 
 ## Relevant Files and Artifacts
 
@@ -1483,6 +1494,8 @@ None
 - [x] 对当前 clean 冻结提交完成新的独立 parser/security 复核；P0/P1/P2 全零。
 
 ## Handoff Sign-off
+
+- `/root` verified final PR HEAD `19d02a40962f55678b7a3c1cc17108bfbb44f9fa`, exact-head Ubuntu/Windows Build/Governance, API 29/36 x86_64 KVM, API 29 arm64 physical-device evidence and independent `P0=0/P1=0/P2=0` review; PR #44 merged as `803de853439026f4248a749d51033424c2e10b6d` and Issue #14 closed. M2-03 is complete and no adjacent task has started.
 
 - `/root` verified PR #43 replacement exact-head CI, expected-head merge commit `b4f680f55a39d3f030fa2d1c6d627baed712964b`, closed Issue #13 and clean synchronized `main`. M2-02 is marked done in the post-merge coordination snapshot; final main CI remains the only closing action, and M2-03 has not started.
 

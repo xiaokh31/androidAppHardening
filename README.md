@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-M0 基础建设与可行性验证以及 M1 Host 处理链已经完成。M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换器、M1-07 AHDC v2 分块认证容器合同、M1-04 AHDC v2 Host 实现、M1-05 APK 重打包与对齐、M1-06 CLI 与 JSON 报告均已合并并通过双平台门禁。M2 已完成独立前置任务 M2-07 和 Native AHDC v2 解密与内存 DEX loader M2-02；M2-02 已通过本地、Ubuntu/Windows、API 29/36 x86_64 KVM、API 29 arm64 非 root 真机、第三轮独立安全复核和 PR 合并门禁。生产 RuntimeBundle 与可发布端到端发行包仍属于后续任务。
+M0 基础建设与可行性验证以及 M1 Host 处理链已经完成。M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换器、M1-07 AHDC v2 分块认证容器合同、M1-04 AHDC v2 Host 实现、M1-05 APK 重打包与对齐、M1-06 CLI 与 JSON 报告均已合并并通过双平台门禁。M2 已完成独立前置任务 M2-07、Native AHDC v2 解密与内存 DEX loader M2-02，以及 Runtime signer、authenticated metadata 与启动事务所有权门禁 M2-03；M2-03 已通过本地、Ubuntu/Windows、API 29/36 x86_64 KVM、API 29 arm64 非 root 真机、独立安全复核和 PR 合并门禁。生产 RuntimeBundle 与可发布端到端发行包仍属于后续任务。
 
 开发者和 Agent 从 [`docs/README_FIRST.md`](docs/README_FIRST.md) 开始。项目统筹状态以 [`HandOff.md`](HandOff.md) 为准。
 
@@ -24,7 +24,8 @@ M0 基础建设与可行性验证以及 M1 Host 处理链已经完成。M1-01 �
 | [M1-06](docs/tasks/M1-06-cli-and-json-report.md) | 已完成 | PR #40、Issue #11、冻结只读复核、Ubuntu/Windows full-flow/字节一致性 CI、expected-head 普通合并与 post-merge strict HandOff 均已关闭 |
 | [M2-07](docs/tasks/M2-07-native-crypto-backend.md) | 已完成 | PR #42、Issue #41、Mbed TLS 4.1.1/TF-PSA-Crypto 1.1.1 不可变供应链、许可证与漏洞复核、NIST/RFC 向量、四 ABI、API 29/36 KVM 和最终独立安全复核均已关闭 |
 | [M2-02](docs/tasks/M2-02-native-decrypt-and-inmemory-loader.md) | 已完成 | PR #43、Issue #13、第三轮独立安全复核、Ubuntu/Windows Build/Governance、API 29/36 KVM、API 29 arm64 非 root 真机与 strict HandOff 均已关闭 |
-| M2-03 ～ M4 | 未启动 | 后续 Runtime、验证矩阵与发布阶段不得提前实现 |
+| [M2-03](docs/tasks/M2-03-runtime-signer-and-integrity.md) | 已完成 | PR #44、Issue #14、P0/P1/P2 全零复核、Ubuntu/Windows、API 29/36 KVM、API 29 arm64 非 root 真机与 strict HandOff 均已关闭 |
+| M2-01、M2-04 ～ M4 | 未启动 | 后续 Runtime、验证矩阵与发布阶段不得提前实现 |
 
 任务按 [`docs/tasks/INDEX.md`](docs/tasks/INDEX.md) 的依赖顺序执行。每个任务只有在 PR 合并、合并后门禁与证据完成后才在本表标记“已完成”；每个任务的收尾协调提交必须同步本 README，避免公开进度长期滞后。
 
@@ -57,7 +58,7 @@ Ubuntu 全量基线：
 ./gradlew --no-daemon :runtime:native:assemble
 ```
 
-当前工程已包含 M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换、M1-04 AHDC v2 容器、M1-05 APK 重打包/对齐和 M1-06 Host CLI/REPORT_V1。M1-06 生产入口只读取后续发行任务提供的固定 classpath RuntimeBundle；仓库合成 RuntimeBundle 仅用于忽略目录中的 full-flow 测试，不是可发布 Runtime。依赖解析继续使用严格 SHA-256 verification metadata、全 configuration lockfile 与 settings 级 `google()`/`mavenCentral()` 白名单。
+当前工程已包含 M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换、M1-04 AHDC v2 容器、M1-05 APK 重打包/对齐、M1-06 Host CLI/REPORT_V1，以及 M2-02/M2-03 的 Native 内存加载、Runtime signer、authenticated metadata 与启动事务门禁。M1-06 生产入口只读取后续发行任务提供的固定 classpath RuntimeBundle；仓库合成 RuntimeBundle 仅用于忽略目录中的 full-flow 测试，不是可发布 Runtime。依赖解析继续使用严格 SHA-256 verification metadata、全 configuration lockfile 与 settings 级 `google()`/`mavenCentral()` 白名单。
 
 ## 许可证
 

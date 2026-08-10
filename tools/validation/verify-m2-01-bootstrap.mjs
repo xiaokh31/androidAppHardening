@@ -78,6 +78,10 @@ requireCondition(deviceRunner.includes('result.putString("summary", summary)')
     && !deviceRunner.includes('result.putString("stream"')
     && deviceRunner.includes("finish(Activity.RESULT_OK, result)"),
   "device runner does not expose the platform instrumentation result code");
+requireCondition(deviceRunner.includes("waitForJniMarker()")
+    && deviceRunner.includes("TimeUnit.SECONDS.toNanos(5)")
+    && deviceRunner.includes("main JNI marker did not converge"),
+  "device runner does not bound the asynchronous Application/JNI lifecycle");
 requireCondition(deviceManifest.includes('android:process=":m201secondary"'),
   "independent-process component is absent");
 requireCondition(deviceManifest.includes(

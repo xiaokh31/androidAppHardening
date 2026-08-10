@@ -66,7 +66,7 @@ public final class M201DeviceRunner extends Instrumentation {
         equal(1, ProbeSignal.factoryCount("application"), "main application count");
         equal(1, ProbeSignal.factoryCount("provider"), "main provider count");
         equal("M0-05-CLASSES2:provider", ProbeSignal.providerMarker(), "provider cross-DEX");
-        equal("M0-05-JNI-FIXED", ProbeSignal.jniMarker(), "main JNI marker");
+        waitForJniMarker();
 
         Activity activity = launchActivity(target);
         try {
@@ -132,6 +132,15 @@ public final class M201DeviceRunner extends Instrumentation {
             Thread.sleep(25L);
         }
         throw new AssertionError(component + " callback count did not converge");
+    }
+
+    private static void waitForJniMarker() throws Exception {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        while (System.nanoTime() < deadline) {
+            if ("M0-05-JNI-FIXED".equals(ProbeSignal.jniMarker())) return;
+            Thread.sleep(25L);
+        }
+        throw new AssertionError("main JNI marker did not converge");
     }
 
     private static int countPlaintextDex(String rootPath) throws Exception {

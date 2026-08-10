@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
@@ -129,11 +129,15 @@ function verifyStartup(name, option, expected, allowInstallRejection) {
     return;
   }
   const code = `AAH-RUNTIME-INTEGRITY-${expected}`;
-  const marker = `startup_rejected code=${code} lookup_count=0 session_published=false`;
+  const runToken = randomBytes(8).toString("hex");
+  const marker = `startup_rejected run_token=${runToken} code=${code} lookup_count=0 session_published=false`;
   // API 29 can keep `am start -W` blocked until the command timeout when the
   // deliberately rejected Activity dies in onCreate. Dispatch without `-W`;
   // the bounded tagged-log polling below is the completion barrier.
-  runAdb(["shell", "am", "start", "-n", activity], true);
+  runAdb([
+    "shell", "am", "start", "-n", activity,
+    "--es", "aah_m2_03_run_token", runToken,
+  ], true);
   let startupLogs = "";
   for (let attempt = 0; attempt < 5 && !startupLogs.includes(marker); attempt += 1) {
     runAdb(["shell", "sleep", "1"]);
@@ -143,18 +147,18 @@ function verifyStartup(name, option, expected, allowInstallRejection) {
       false,
     ).stdout;
   }
-  const sanitized = startupLogs
+  const sanitizedLines = startupLogs
     .split(/\r?\n/u)
-    .filter((line) => line.includes("AAH-M2-03") && line.includes("startup_rejected"))
+    .filter((line) => line.includes("AAH-M2-03") && line.includes(`run_token=${runToken}`))
     .map((line) => line.slice(line.indexOf("startup_rejected")))
-    .join("\n");
-  if (!startupLogs.includes(code)) {
-    fail(`${name} startup did not emit ${code}; observed=${sanitized || "<none>"}`);
+    .filter((line) => line.startsWith("startup_rejected"));
+  const matchingMarkers = sanitizedLines.filter((line) => line === marker);
+  const sanitized = sanitizedLines.join("\n");
+  if (matchingMarkers.length !== 1 || sanitizedLines.length !== 1) {
+    fail(`${name} startup marker was not unique for this run token; observed=${sanitized || "<none>"}`);
   }
-  if (!startupLogs.includes(marker)) fail(`${name} startup publication marker mismatch`);
-  if (!sanitized.includes(marker)) fail(`${name} sanitized startup evidence missing marker`);
   assertNoSensitiveEvidence(sanitized, name);
-  writeFileSync(path.join(evidence, `${name}.logcat.txt`), `${sanitized}\n`);
+  writeFileSync(path.join(evidence, `${name}.logcat.txt`), `${marker}\n`);
   startupResults.push({
     name,
     apk_sha256: sha256(readFileSync(apk)),

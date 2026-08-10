@@ -130,6 +130,8 @@ check(
     signerMatrix.includes('verifyFixture("multiple-current"') &&
     signerMatrix.includes('verifyStartup("historical-only"') &&
     signerMatrix.includes("lookup_count=0 session_published=false") &&
+    signerMatrix.includes("run_token=${runToken}") &&
+    signerMatrix.includes("matchingMarkers.length !== 1") &&
     signerMatrix.includes("unexpected install failure") &&
     signerMatrix.includes("assertNoSensitiveEvidence") &&
     kvmWorkflow.includes("run-m2-03-signer-matrix.mjs"),

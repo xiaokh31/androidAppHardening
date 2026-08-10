@@ -16,6 +16,7 @@ public final class M203ColdStartActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        String runToken = runToken();
         int lookupCount = 0;
         boolean sessionPublished = false;
         try {
@@ -33,14 +34,21 @@ public final class M203ColdStartActivity extends Activity {
             loadJni.setAccessible(true);
             require("M0-05-JNI-FIXED".equals(invoke(loadJni)), "JNI marker");
             session = opened;
-            Log.i(TAG, "startup_verified lookup_count=" + lookupCount + " session_published=true");
+            Log.i(TAG, "startup_verified run_token=" + runToken
+                    + " lookup_count=" + lookupCount + " session_published=true");
         } catch (Throwable failure) {
             String code = stableCode(failure);
-            Log.e(TAG, "startup_rejected code=" + code
+            Log.e(TAG, "startup_rejected run_token=" + runToken
+                    + " code=" + code
                     + " lookup_count=" + lookupCount
                     + " session_published=" + sessionPublished);
             throw new IllegalStateException("M2-03 cold-start fixture rejected: " + code);
         }
+    }
+
+    private String runToken() {
+        String token = getIntent().getStringExtra("aah_m2_03_run_token");
+        return token != null && token.matches("[0-9a-f]{16}") ? token : "invalid";
     }
 
     @Override

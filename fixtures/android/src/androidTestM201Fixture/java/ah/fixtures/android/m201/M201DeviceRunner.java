@@ -35,12 +35,15 @@ public final class M201DeviceRunner extends Instrumentation {
         try {
             String summary = runAcceptance();
             Bundle status = new Bundle();
-            status.putString("stream", summary);
+            status.putString("stream", summary + "\nOK (1 test)\n");
             sendStatus(0, status);
-            result.putString("stream", "\n" + summary + "\nOK (1 test)\n");
+            result.putString("summary", summary);
             finish(Activity.RESULT_OK, result);
         } catch (Throwable failure) {
-            result.putString("stream", "\nFAILURES!!!\n" + failure);
+            Bundle status = new Bundle();
+            status.putString("stream", "\nFAILURES!!!\n" + failure + "\n");
+            sendStatus(-2, status);
+            result.putString("summary", "m2_01_device=false");
             finish(Activity.RESULT_CANCELED, result);
         }
     }

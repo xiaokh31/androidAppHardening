@@ -74,6 +74,10 @@ for (const marker of ["platform_callbacks=6", "main_install=1", "secondary_insta
   "metadata_null=true", "plaintext_dex_files=0"]) {
   requireCondition(deviceRunner.includes(marker), `device acceptance marker absent: ${marker}`);
 }
+requireCondition(deviceRunner.includes('result.putString("summary", summary)')
+    && !deviceRunner.includes('result.putString("stream"')
+    && deviceRunner.includes("finish(Activity.RESULT_OK, result)"),
+  "device runner does not expose the platform instrumentation result code");
 requireCondition(deviceManifest.includes('android:process=":m201secondary"'),
   "independent-process component is absent");
 requireCondition(deviceManifest.includes(

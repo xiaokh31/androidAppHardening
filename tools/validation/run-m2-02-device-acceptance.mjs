@@ -120,18 +120,31 @@ function runVariant(variant) {
   const activity = `${variant.packageName}/${activityClass}`;
   for (let index = 0; index < coldStarts; index += 1) {
     runAdb(["shell", "am", "force-stop", variant.packageName]);
+    // API 29 can finish the package stop asynchronously.  Starting the M2-03
+    // fixture immediately can race that final kill and briefly return a PID
+    // before the process disappears.  Keep this stabilization task-scoped so
+    // the frozen M2-02 acceptance contract remains byte-for-byte unchanged.
+    if (isM203) wait(150);
     runAdb(["logcat", "-c"], timeout, true);
     const start = runAdb(["shell", "am", "start", "-W", "-n", activity]);
     const status = value(start.stdout, "Status");
     const total = Number(value(start.stdout, "TotalTime"));
+    const reportedActivity = value(start.stdout, "Activity");
     const pid = waitForPid(variant.packageName);
-    if (status !== "ok" || !Number.isFinite(total) || total < 0 || pid === "") {
+    const activityMatches = !isM203 || reportedActivity === activity;
+    const meminfo = status === "ok" && Number.isFinite(total) && total >= 0 &&
+        pid !== "" && activityMatches
+      ? runAdb(["shell", "dumpsys", "meminfo", variant.packageName])
+      : null;
+    const totalPss = meminfo === null ? null : pssValue(meminfo.stdout);
+    if (status !== "ok" || !Number.isFinite(total) || total < 0 || pid === "" ||
+        !activityMatches || totalPss === null) {
       const log = runAdb(["logcat", "-d", "-v", "threadtime"], timeout, true);
       writeFileSync(path.join(evidence, `${variant.name}.cold-${index + 1}.logcat.txt`), log.stdout);
-      fail(`${variant.name} cold start ${index + 1} failed:\n${start.stdout}`);
+      fail(`${variant.name} cold start ${index + 1} failed:\n${start.stdout}\n${meminfo?.stdout ?? ""}`);
     }
     timings.push(total);
-    pss.push(parsePss(runAdb(["shell", "dumpsys", "meminfo", variant.packageName]).stdout));
+    pss.push(totalPss);
   }
   runAdb(["shell", "am", "force-stop", variant.packageName]);
   const sorted = [...timings].sort((left, right) => left - right);
@@ -194,6 +207,10 @@ function waitForPid(packageName) {
   return "";
 }
 
+function wait(milliseconds) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+}
+
 function cleanup() {
   let passed = true;
   for (const variant of variants) {
@@ -236,10 +253,9 @@ function runAdb(args, commandTimeout = timeout, allowFailure = false) {
   return record;
 }
 
-function parsePss(output) {
+function pssValue(output) {
   const match = output.match(/^\s*TOTAL\s+(\d+)\b/mu) ?? output.match(/^\s*TOTAL PSS:\s*(\d+)\b/mu);
-  if (!match) fail("dumpsys meminfo did not report TOTAL PSS");
-  return Number(match[1]);
+  return match ? Number(match[1]) : null;
 }
 
 function value(output, label) {

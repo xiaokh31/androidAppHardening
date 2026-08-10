@@ -2,14 +2,14 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260809-225921
-updated_at: 2026-08-11T03:09:11+08:00
+updated_at: 2026-08-11T05:14:01+08:00
 updated_by: /root
-state: ready
-source_branch: main
-base_commit: 803de853439026f4248a749d51033424c2e10b6d
-working_tree: clean
+state: active
+source_branch: feat/m2-01-shell-app-component-factory
+base_commit: f4b773fc59129ea69c2dabde553438d8e62c549e
+working_tree: dirty
 current_milestone: M2
-active_task: NONE
+active_task: M2-01
 next_owner: /root
 ---
 
@@ -17,10 +17,12 @@ next_owner: /root
 
 ## Objective
 
-M2-03 Runtime signer、同 handle authenticated metadata 复核与 session 所有权门禁已经完成；当前无活动任务，M2-01、M2-04 或其他相邻任务均未启动。
+在 API 29+ 公共 `AppComponentFactory` 边界内完成 M2-01 Shell 启动链、原 Factory 委托和 `VerifiedPayloadSession` READY 前所有权；不启动 M2-04 或其他相邻任务。
 
 ## Current State
 
+- M2-01 已从最终 main `f4b773fc59129ea69c2dabde553438d8e62c549e` 建立固定分支 `feat/m2-01-shell-app-component-factory`。唯一 Issue [#12](https://github.com/xiaokh31/androidAppHardening/issues/12) 为 OPEN，远程无同名分支且无关联 PR；M0-05、M1-03、M1-04、M2-03 依赖均已完成。
+- 当前实现范围只限 `runtime/bootstrap`、M2-01 合成 fixture/验证和任务证据：把 M0-05 PoC Shell 收敛为只调用 `RuntimeStartupGuard.openVerifiedPayload(...)` 的生产启动链，覆盖六个公开 Factory 入口、原 Factory ClassLoader 委托、并发/重入/失败缓存与 READY 前 exactly-once session close。M2-04 未启动。
 - M2-03 final PR HEAD `19d02a40962f55678b7a3c1cc17108bfbb44f9fa` passed exact-head Build `31421047955`, Governance `31421047952` and API 29/36 x86_64 KVM `31421047965`. PR [#44](https://github.com/xiaokh31/androidAppHardening/pull/44) was merged with expected-head protection as merge commit `803de853439026f4248a749d51033424c2e10b6d`; Issue #14 is closed.
 - The authorized API 29 arm64 `user/release-keys`, `ro.debuggable=0`, non-root physical-device report passed the same extracted/direct 12+12 ownership/metadata, cross-DEX, JNI, 20 cold starts, memory, zero-plaintext and cleanup matrix. Its evidence is inherited with a documented boundary because `659c2b8..8211a60` changes no production Runtime, Native, target/test APK or device instrumentation logic.
 - The full plus incremental independent read-only review is PASS with `P0=0`, `P1=0`, `P2=0`. The retained-logcat false positive is closed by per-scenario tokens; the later API 29 KVM stop/start race is closed by an M2-03-only stabilization window plus exact Activity/PID/PSS checks and fail-first logcat capture, without retry or sample substitution. README now records M2-03 as complete; only this post-merge coordination commit and its final main gates remain.
@@ -177,6 +179,7 @@ M2-03 Runtime signer、同 handle authenticated metadata 复核与 session 所�
 | M2-02 | `/root` | `main` | done | M0-04, M1-04, M2-07 | PR #43、Issue #13、全零复核、双平台 CI、API 29/36 KVM、arm64 真机、README 与 strict HandOff 已关闭 |
 
 | M2-03 | `/root` | `main` | done | M1-02, M1-04, M2-02 | PR #44、Issue #14、全零复核、双平台 CI、API 29/36 KVM、arm64 真机、README 与 strict HandOff 已关闭 |
+| M2-01 | `/root` | `feat/m2-01-shell-app-component-factory` | in_progress | M0-05, M1-03, M1-04, M2-03 | Implement production Shell/BootstrapResult, unit/instrumentation ownership matrix, then freeze for independent review |
 
 ## Decisions and Invariants
 
@@ -200,6 +203,7 @@ M2-03 Runtime signer、同 handle authenticated metadata 复核与 session 所�
 
 ## Changes Since Previous Handoff
 
+- 用户明确启动 M2-01 并预授权任务内推送、唯一 PR、CI 修复、ready 与 expected-head 普通合并。协调者已核验唯一 Issue #12、无重复分支/PR、clean main 与全部依赖，并创建固定任务分支；验证模式固定为 `pre-cli` 的 M2 test-only integration driver，不启动本机模拟器。
 - Accepted implementation parent `8211a60dca604ac1aab56b4839bcd96d5494aa05` closes both the retained-logcat P1 and the API 29 KVM stop/start orchestration race. Local syntax/static/Governance checks passed; the task-scoped stabilization adds no retry and preserves 20 successful samples per variant.
 - Exact-head Build `31419276164` and Governance `31419276874` passed on Ubuntu/Windows. PR KVM `31419279082` passed API 29 job `93555839095` and API 36 job `93555839055`; the new artifacts contain the full signer/tamper, 20+20 cold-start, memory, zero-plaintext and cleanup proof.
 - API 29 arm64 physical evidence is inherited only for unchanged production/device-instrumentation behavior. Full plus incremental independent read-only review is `P0=0/P1=0/P2=0`; evidence is archived under `docs/evidence/M2-03/` and ignored build directories.
@@ -1317,9 +1321,9 @@ None
 
 ## Ordered Next Actions
 
-1. Commit and push this post-merge README/HandOff coordination snapshot on `main`.
-2. Require final `main` Build, Governance and any triggered API 29/36 KVM checks to pass.
-3. Keep M2-01, M2-04 and all adjacent tasks unstarted until the user explicitly selects the next task.
+1. Implement the M2-01 production Shell, `HardeningBootstrap`/`BootstrapResult`, stable errors and six-entry delegation without importing `ah.runtime.loader` or using hidden APIs.
+2. Add JVM/instrumentation tests for concurrency, recursion/reentry, Factory hook/null/error/final-loader failures, exactly-once session close, metadata null/non-null equivalence and multi-process startup.
+3. Run local pre-cli gates, freeze evidence and complete an independent read-only security review before publishing the unique Issue #12 PR; do not start M2-04.
 
 ## Relevant Files and Artifacts
 

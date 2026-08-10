@@ -1,35 +1,37 @@
 # M2-03 local validation
 
+- Implementation parent: `0ed9240617527a321a4baaf38a4d7e15f5d2eb33`
 - Base commit: `dec1ef68f69eea26ae1bc6a1132bf26bf39ba0f8`
 - Branch: `feat/m2-03-runtime-integrity`
-- Environment: Windows 10 x86_64, Temurin JDK `17.0.19+10`, Gradle `9.5.0`, Android SDK with NDK `28.2.13676358`
+- Environment: Windows 10 x86_64, project-local Temurin JDK `17.0.19+10`, Gradle `9.5.0`, Android SDK/NDK fixed by the repository
 - Validation mode: `pre-cli`
-- Timestamp: `2026-08-10T14:02:45+08:00`
+- Timestamp: `2026-08-11T01:44:42+08:00`
 
-## Passing gates
+## Passing local gates
 
-1. `node tools/governance/validate-project-package.mjs` — exit `0`; 28 task cards, 11 core docs and 9 ADRs accepted.
-2. `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict` — exit `0`.
-3. `gradle --no-daemon --offline verifyGovernance verifyM203RuntimeIntegrity :runtime:policy:test :runtime:policy:lint` — exit `0`; the non-empty JVM policy matrix passed 29 cases and the architecture/capability scan passed all 13 checks.
-4. `gradle --no-daemon --offline clean check verifyGovernance :runtime:native:assembleRelease` — exit `0`; 401 tasks completed in 2 minutes 13 seconds after a clean, including the non-empty policy matrix, full regression, lint and all four Native Release ABIs.
-5. `gradle --no-daemon --offline :fixtures:android:assembleM203ExtractedRelease :fixtures:android:assembleM203DirectRelease :fixtures:android:assembleM203ExtractedDebugAndroidTest :fixtures:android:assembleM203DirectDebugAndroidTest` — exit `0`; both extracted/direct Release/R8 targets and their non-empty device runners compiled.
-6. `git diff --check` — exit `0`.
+1. Project-local `gradle --no-daemon --offline verifyGovernance verifyM203RuntimeIntegrity :runtime:policy:test :runtime:policy:lint` — exit `0`; 72 tasks, 57 non-empty policy cases, 14 architecture/security checks, lint and Governance passed in 49 seconds.
+2. `node tools/governance/validate-project-package.mjs` — exit `0`; 28 task cards, 11 core docs and 9 ADRs accepted.
+3. `git diff --check` — exit `0` at the implementation parent.
+4. Project-local `gradle --no-daemon --offline :runtime:policy:assembleRelease` — exit `0`; 36 tasks passed in 25 seconds. `runtime/policy/build/outputs/aar/policy-release.aar` is `22052` bytes with SHA-256 `1279240a67dbcb2e6a0aef8cb82519cbf8efbde6e723483566be4723bfb05aff`.
 
-The production source scan SHA-256 is `6300a2d89493287451c9c14e7f12c33343fc14c99b6c74e27392d24df3d2b9da`. It confirms pinned `apksig 9.3.0`, a single production `PayloadRuntime` caller, no product signing/private-key capability, no startup `Context`/`PackageManager` lookup, the frozen Guard ordering and cleanup suppression ownership.
+The production source scan SHA-256 is `d63b6cc4a3a22634ad90e1fc6721236706bdd4244bd790be080cc40ec73d1d11`. It confirms pinned `apksig 9.3.0`, a single production `PayloadRuntime` caller, no product signing/private-key capability, no startup `Context`/`PackageManager` dependency, the frozen Guard ordering, rollback ownership and primary/suppressed cleanup semantics.
 
-## Local protected fixtures
+## API 29 arm64 physical-device acceptance
 
-The target APKs were externally signed only for installation testing with a random two-day PKCS12 certificate generated under ignored `build/m2-03/signing/`. No key, password, certificate or APK is tracked by Git.
+The authorized Xiaomi `sirius`/MI 8 SE ran Android API 29 with `arm64-v8a`, `user/release-keys`, `ro.secure=1`, `ro.debuggable=0`, a 64-bit process and non-root ADB shell UID 2000. Only ordinary user-authorized USB installation was used; no secure setting, root path or prompt bypass was used.
 
-- extracted Release/R8: size `911047`, SHA-256 `ca1e5a0653309f8409030713447c6c72f866b0cbcd77461711ebbc4093045c0c`
-- direct Release/R8: size `1271495`, SHA-256 `ea64ebdee9565827b0c54f330e7ab5d415484504048e8f01c9231f236af545de`
+Both extracted/direct Release/R8 variants passed non-empty instrumentation, 12 exception/OOM ownership windows, 12 metadata/cross-handle/cross-session rejection cases, cross-DEX, JNI, authenticated metadata, zero plaintext DEX files, exactly 20 cold starts, memory collection and final package cleanup.
 
-## Device status
+| Variant | Target APK SHA-256 | Test APK SHA-256 | Cold-start p50/p95 | Peak PSS |
+|---|---|---|---|---|
+| extracted | `73acee2cc875998a250836ce88f0af61cfde5bcf6a2cf5f73bb7b6f0e02107f9` | `419f277267f13332b00cc25d8f82386061e0d4054c05c8bee62901d0e553f40e` | `328/411 ms` | `66403 KiB` |
+| direct | `463d04edf6858cfa95d6bcf25ee1bfb7bc111c8495e160b4cf95c6ecc978e949` | `404b5adc34a5134e6c96ecc70cfb15334e38dd769b00cb89a1f9477e5fc59a86` | `316/330 ms` | `69443 KiB` |
 
-The authorized device is a Xiaomi `sirius`/MI 8 SE, API 29, `arm64-v8a,armeabi-v7a,armeabi`, ADB shell UID 2000 and non-root. The first bounded acceptance attempt stopped at its first normal `adb install` with `INSTALL_FAILED_USER_RESTRICTED: Install canceled by user`; the script then verified package cleanup. No secure setting, root path, UI bypass or retry loop was used. This is an open external acceptance gate, not a product-test pass.
+- Report: ignored `build/m2-03/final-device-api29-arm64-pass/report.json`; SHA-256 `cf418b7d2cc2803b394d7be4a234f69e96b5c3eb8011bc8f29ebfc2d08234446`.
+- Sanitized command transcript: ignored `build/m2-03/final-device-api29-arm64-pass/commands.json`; SHA-256 `9a955a563d6b28d09b6197cff59aab7f10cc312123dd02c607afe91679997025`.
+- Extracted/direct instrumentation summaries: `253` bytes each; SHA-256 `7451ff9c7531cb32d0ba0f89ef8d84d56b56b3d8053ee93d2b16e15ed60f263d` each.
+- Result: `PASS`; cleanup passed and no further physical-device interaction is required.
 
-API 29/36 x86_64 acceptance is delegated to the repository GitHub Linux/KVM workflow with a 45-minute job timeout, command timeouts and unconditional package/emulator cleanup. Remote run IDs and final reports are recorded only after the frozen branch is pushed.
+The physical report was generated at parent `659c2b8614f0f30b76d22d8269803925a06924a5` and is inherited with an explicit boundary. The diff to `0ed9240617527a321a4baaf38a4d7e15f5d2eb33` changes only the fixture Activity's non-sensitive run-token log, the host signer-matrix runner and its static assertion. Production `runtime/**`, Native libraries, `M203DeviceRunner` and the arm64 ownership/metadata/JNI/DEX/cold-start logic are unchanged. The inherited report does not prove the new run-token negative matrix; that change is accepted only from exact-head API 29/36 KVM evidence.
 
-The first frozen Build run `31360660016` exposed a Windows-only CI race: the architecture scanner traversed generated `runtime/native/build` files while parallel `clean` removed them. The scanner was narrowed to the three explicit production `src/main/java` roots and changed to directory-entry traversal, then the exact clean aggregate command above passed locally. Replacement Build run `31361127670` passed on Ubuntu and Windows.
-
-Replacement KVM run `31361127677` exposed two test-harness defects after the product Guard paths had run: the M2-03 runner directly named a package-private verifier class removed by Release/R8 inlining, and the generic Gradle connected task reported zero policy tests. The direct cache-hook assertion was removed from the Release fixture runner. KVM now installs the standalone policy test APK explicitly, runs `PolicyConnectedRunner`, requires the `policy_connected=true cases=5` marker and success code, then uninstalls it under the unconditional cleanup trap. Both failed remote SHAs remain diagnostic only and are not acceptance inputs.
+All installation certificates, APKs, reports and raw test outputs remain under ignored build directories. No private key, password, full certificate, APK or device path is tracked by Git.

@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260809-225921
-updated_at: 2026-08-10T14:48:30+08:00
+updated_at: 2026-08-11T02:08:38+08:00
 updated_by: /root
 state: active
 source_branch: feat/m2-03-runtime-integrity
@@ -21,9 +21,9 @@ next_owner: /root
 
 ## Current State
 
-- M2-03 frozen implementation `7db6873d05bcb3c384d653f0e8debd0376a1dbea` passed exact-head Ubuntu/Windows Build `31362136455` and API 29/36 x86_64 Linux/KVM `31362136472`. Both KVM jobs ran the explicit five-case policy instrumentation plus extracted/direct six-window Guard instrumentation, cross-DEX, JNI, authenticated metadata, exactly 20 cold starts per variant, memory, zero plaintext DEX and cleanup. API 29 arm64 remains blocked only by MIUI rejecting normal ADB install with `INSTALL_FAILED_USER_RESTRICTED`; no bypass or retry loop is permitted. Independent read-only M2-03 review is still required before ready/merge.
-- 用户已明确启动并完整授权 M2-03。分支 `feat/m2-03-runtime-integrity` 从最终门禁全绿的 `main@dec1ef68f69eea26ae1bc6a1132bf26bf39ba0f8` 建立，唯一 tracking Issue 为 #14。实现已接通固定 `apksig 9.3.0`、Framework `sourceDir`/package、唯一 current signer、old-to-new lineage、同 handle metadata recheck、原子 `VerifiedPayloadSession`、六个 Guard OOM 窗口和有界验证记录；29-case JVM matrix、lint、双 Release/R8 fixture 编译、架构/敏感能力扫描与 Governance 均 PASS。
-- API 29 arm64 非 root 真机在线且设备信息已核验；首次有界验收在第一个普通 ADB 安装处由 MIUI 返回 `INSTALL_FAILED_USER_RESTRICTED: Install canceled by user`，脚本随后完成卸载检查，没有绕过安全设置或重试循环。API 29/36 x86_64 KVM 已加入固定 45 分钟 job timeout 与 unconditional cleanup，等待冻结分支 CI。
+- M2-03 implementation parent `0ed9240617527a321a4baaf38a4d7e15f5d2eb33` has passed exact-head Build `31415786223`, Governance `31415786181` and API 29/36 x86_64 KVM `31415786339`. The KVM artifacts prove extracted/direct Release/R8, 12 exception/OOM ownership windows, 12 metadata/cross-handle/session rejections, six signer fixtures, seven real startup rejections with one unique run-token marker each, cross-DEX, JNI, authenticated metadata, 20 cold starts per variant, memory, zero plaintext DEX and cleanup.
+- The authorized API 29 arm64 `user/release-keys`, `ro.debuggable=0`, non-root physical-device report passed the same extracted/direct 12+12 ownership/metadata, cross-DEX, JNI, 20 cold starts, memory, zero-plaintext and cleanup matrix. Its evidence is inherited with a documented boundary because `659c2b8..0ed9240` changes only fixture token logging and host/static validation; no production Runtime, Native or device instrumentation logic changed.
+- The final independent read-only review is PASS with `P0=0`, `P1=0`, `P2=0`. The earlier API 29 retained-logcat false positive is closed by per-scenario 16-hex tokens and exact-one-marker enforcement on both KVM platforms. Local/remote/security evidence is ready for an evidence-only child; PR #44 remains draft until that child passes exact-head CI. README stays unchanged until the task is actually merged and post-merge gates close.
 
 - PR [#43](https://github.com/xiaokh31/androidAppHardening/pull/43) 已在 exact HEAD `84f11ed3aa38315c84b15eae531fb1e7f82693b7` 的 Ubuntu/Windows Build/Governance 与 API 29/36 x86_64 KVM 全绿后转为 ready，并以 expected-head 保护的普通 merge commit `b4f680f55a39d3f030fa2d1c6d627baed712964b` 合并到 `main`；Issue #13 已关闭。本地 main 已同步，当前只提交 post-merge README/HandOff 并等待最终 main 门禁，不启动 M2-03。
 
@@ -176,7 +176,7 @@ next_owner: /root
 | M2-07 | `/root` | `main` | done | M0-03, M1-04 | PR #42、Issue #41、最终独立复核、README、strict 与 post-merge Build/Governance/KVM 均已关闭 |
 | M2-02 | `/root` | `main` | done | M0-04, M1-04, M2-07 | PR #43、Issue #13、全零复核、双平台 CI、API 29/36 KVM、arm64 真机、README 与 strict HandOff 已关闭 |
 
-| M2-03 | `/root` | `feat/m2-03-runtime-integrity` | in_progress | M1-02, M1-04, M2-02 | Implement frozen signer/metadata/session gate, device evidence and independent review |
+| M2-03 | `/root` | `feat/m2-03-runtime-integrity` | review | M1-02, M1-04, M2-02 | Evidence-only child CI, ready/merge, then post-merge README/strict/main CI |
 
 ## Decisions and Invariants
 
@@ -199,6 +199,10 @@ next_owner: /root
 - 根 `README.md` 必须维护公开任务进度表；任务仅在合并后门禁完成时标记“已完成”，每个任务的收尾协调提交必须同步该表，不能以 README 替代 `HandOff.md` 的证据。
 
 ## Changes Since Previous Handoff
+
+- Accepted implementation parent `0ed9240617527a321a4baaf38a4d7e15f5d2eb33` closes the retained-logcat P1 with a unique non-sensitive token per startup attempt and exact-one-marker enforcement. Local Node/static checks and 285-task extracted/direct Release/R8/androidTest compilation passed.
+- Exact-head Build `31415786223` and Governance `31415786181` passed on Ubuntu/Windows. KVM `31415786339` passed API 29 job `93544350615` and API 36 job `93544350706`; both artifacts contain seven one-line logs with seven distinct tokens, full signer/tamper matrices and cleanup proof.
+- API 29 arm64 physical evidence passed and is inherited only for unchanged production/device-instrumentation behavior. Independent read-only review is `P0=0/P1=0/P2=0`; evidence is archived under `docs/evidence/M2-03/` and the ignored build directories.
 
 - PR #43 replacement HEAD `84f11ed3aa38315c84b15eae531fb1e7f82693b7` 的 Governance run `31319256459`、Build runs `31319254096`/`31319256463` 与 KVM run `31319256453` 全部 PASS。API 29/36 KVM 分别在 `11m50s`/`13m21s` 完成非空 connected tests、两套 Release/R8、冷启动、内存、零明文 DEX 和清理。
 - PR #43 已按用户预授权转为 ready，并以 expected-head 保护的普通 merge commit `b4f680f55a39d3f030fa2d1c6d627baed712964b` 合并；Issue #13 关闭。本地 main 快进同步后，README 标记 M2-02 完成，HandOff 切换到 `main`/`NONE`；M2-03 未启动。
@@ -1301,15 +1305,22 @@ None
 
 ## Ordered Next Actions
 
-1. Run the clean local root gate, freeze the M2-03 implementation commit and push it for Ubuntu/Windows Build plus API 29/36 x86_64 KVM.
-2. Complete the same bounded API 29 arm64 command after ordinary MIUI ADB installation is allowed; do not change secure settings or bypass the prompt.
-3. Freeze evidence, obtain an independent read-only review with P0/P1/P2 all zero, then create the unique Issue #14 draft PR, pass exact-head CI, make ready and merge.
-4. Update README/HandOff on post-merge `main`, pass strict HandOff and final main CI; do not start M2-01 or M2-04.
+1. Commit the M2-03 local/remote/security evidence and this HandOff as an evidence-only child of `0ed9240617527a321a4baaf38a4d7e15f5d2eb33`; verify the diff contains no implementation change.
+2. Push the evidence child and require exact-head Build, Governance and API 29/36 KVM to pass.
+3. Convert PR #44 to ready and merge with expected-head protection; do not start M2-01 or M2-04.
+4. On post-merge `main`, update README and HandOff to mark M2-03 complete, run strict HandOff without exemption and pass final main CI.
 
 ## Relevant Files and Artifacts
 
 - `HandOff.md`
 - `README.md`
+- `docs/tasks/M2-03-runtime-signer-and-integrity.md`
+- `docs/evidence/M2-03/local-validation.md`
+- `docs/evidence/M2-03/remote-validation.md`
+- `docs/evidence/M2-03/security-review.md`
+- ignored `build/m2-03/final-device-api29-arm64-pass/`
+- ignored `build/ci-artifacts/m2-03-0ed9240-api29/`
+- ignored `build/ci-artifacts/m2-03-0ed9240-api36/`
 - `docs/tasks/M2-02-native-decrypt-and-inmemory-loader.md`
 - `docs/evidence/M2-02/local-validation.md`
 - `docs/evidence/M2-02/security-review-1.md`

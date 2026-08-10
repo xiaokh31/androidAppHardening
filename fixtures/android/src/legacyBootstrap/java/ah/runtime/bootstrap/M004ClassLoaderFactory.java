@@ -7,7 +7,7 @@ import android.content.pm.ApplicationInfo;
 import dalvik.system.InMemoryDexClassLoader;
 import java.nio.ByteBuffer;
 
-/** Preserves the already-accepted M0-04 fixture while M0-05 evolves the frozen shell name. */
+/** Legacy fixture-only M0-04 factory. */
 public final class M004ClassLoaderFactory extends AppComponentFactory {
     @Override
     public ClassLoader instantiateClassLoader(

@@ -1,11 +1,9 @@
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
+import org.gradle.api.tasks.JavaExec
+import org.gradle.api.tasks.testing.Test
+
 plugins {
     alias(libs.plugins.android.library)
-}
-
-val m005ExpectedSignerSha256 =
-    providers.gradleProperty("m005ExpectedSignerSha256").orElse("0".repeat(64)).get()
-if (!m005ExpectedSignerSha256.matches(Regex("[0-9a-fA-F]{64}"))) {
-    throw GradleException("m005ExpectedSignerSha256 must be exactly 64 hexadecimal characters")
 }
 
 android {
@@ -16,15 +14,6 @@ android {
     defaultConfig {
         minSdk = libs.versions.android.min.sdk.get().toInt()
         testInstrumentationRunner = "ah.runtime.bootstrap.BootstrapConnectedRunner"
-        buildConfigField(
-            "String",
-            "M005_EXPECTED_SIGNER_SHA256_HEX",
-            "\"${m005ExpectedSignerSha256.lowercase()}\"",
-        )
-    }
-
-    buildFeatures {
-        buildConfig = true
     }
 
     compileOptions {
@@ -38,9 +27,57 @@ android {
         disable += "GradleDependency" // M0-03 intentionally pins compileSdk 36.
         warningsAsErrors = true
     }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {
     api(project(":runtime:policy"))
-    implementation(libs.android.apksig)
+}
+
+val bootstrapSelfTest by tasks.registering(JavaExec::class) {
+    group = "verification"
+    description = "Runs the dependency-free M2-01 bootstrap state-machine matrix."
+    dependsOn(
+        "compileDebugUnitTestJavaWithJavac",
+        ":runtime:policy:compileDebugJavaWithJavac",
+        ":runtime:native:compileDebugJavaWithJavac",
+    )
+    val externalRuntime =
+        configurations.named("debugRuntimeClasspath").map { configuration ->
+            configuration.incoming.artifactView {
+                componentFilter { identifier -> identifier is ModuleComponentIdentifier }
+            }.files
+        }
+    classpath(
+        layout.buildDirectory.dir(
+            "intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes",
+        ),
+        layout.buildDirectory.dir(
+            "intermediates/javac/debug/compileDebugJavaWithJavac/classes",
+        ),
+        rootProject.layout.projectDirectory.dir(
+            "runtime/policy/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes",
+        ),
+        rootProject.layout.projectDirectory.dir(
+            "runtime/native/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes",
+        ),
+        androidComponents.sdkComponents.sdkDirectory.map { sdk ->
+            sdk.file("platforms/android-${libs.versions.android.compile.sdk.get()}/android.jar")
+        },
+        externalRuntime,
+    )
+    mainClass.set("ah.runtime.bootstrap.BootstrapSelfTest")
+}
+
+afterEvaluate {
+    tasks.named("test") {
+        dependsOn(bootstrapSelfTest)
+    }
+}
+
+tasks.withType<Test>().configureEach {
+    failOnNoDiscoveredTests = false
 }

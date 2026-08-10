@@ -11,6 +11,7 @@ import java.util.Arrays;
 import java.util.zip.Adler32;
 import java.util.zip.CRC32;
 
+/** Legacy fixture-only STORED DEX reader. */
 final class StoredDexReader {
     static final String ENTRY_NAME = "assets/ah/poc/classes.dex";
     static final String CONFIG_ENTRY_NAME = "assets/ah/runtime/config.bin";
@@ -47,7 +48,7 @@ final class StoredDexReader {
         return readEntry(
                 sourceDir,
                 CONFIG_ENTRY_NAME,
-                ConfigV2Parser.SIZE,
+                768,
                 PocFailure.CONFIG_CODE,
                 "ConfigV2");
     }

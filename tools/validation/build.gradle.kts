@@ -18,8 +18,12 @@ val compileM005ConfigParserTest by tasks.registering(JavaCompile::class) {
     source(
         rootProject.file("runtime/bootstrap/src/main/java/ah/runtime/bootstrap/PocFailure.java"),
         rootProject.file("runtime/bootstrap/src/main/java/ah/runtime/bootstrap/EarlySignerResult.java"),
-        rootProject.file("runtime/bootstrap/src/main/java/ah/runtime/bootstrap/EarlyConfigResult.java"),
-        rootProject.file("runtime/bootstrap/src/main/java/ah/runtime/bootstrap/ConfigV2Parser.java"),
+        layout.projectDirectory.file(
+            "src/m0_05_config_test/java/ah/runtime/bootstrap/EarlyConfigResult.java",
+        ),
+        layout.projectDirectory.file(
+            "src/m0_05_config_test/java/ah/runtime/bootstrap/ConfigV2Parser.java",
+        ),
         layout.projectDirectory.file(
             "src/m0_05_config_test/java/ah/runtime/bootstrap/ConfigV2ParserSelfTest.java",
         ),

@@ -11,6 +11,7 @@ out/
 .vscode/
 local.properties
 .toolchains/
+.gradle-user-home/
 # M0-04 pinned Emulator, system images, AVDs, and Android user/cache state.
 /.toolchains/android-m0-04/
 

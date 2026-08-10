@@ -8,7 +8,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
 import java.util.List;
 
-/** Public-API-only signer gate for the no-Context instantiateClassLoader callback. */
+/** Legacy fixture signer gate retained only for M0-05 regression evidence. */
 public final class EarlySignerProbe {
     private EarlySignerProbe() {}
 
@@ -74,7 +74,7 @@ public final class EarlySignerProbe {
     }
 
     private static byte[] decodeExpectedSigner() {
-        String hex = BuildConfig.M005_EXPECTED_SIGNER_SHA256_HEX;
+        String hex = ah.fixtures.android.BuildConfig.M005_EXPECTED_SIGNER_SHA256_HEX;
         if (hex == null || hex.length() != 64) {
             throw PocFailure.create(
                     PocFailure.SIGNER_MISMATCH_CODE,

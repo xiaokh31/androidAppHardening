@@ -359,6 +359,10 @@ android {
     compileSdk = libs.versions.android.compile.sdk.get().toInt()
     buildToolsVersion = libs.versions.android.build.tools.get()
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     defaultConfig {
         applicationId = "ah.fixtures.android"
         minSdk = libs.versions.android.min.sdk.get().toInt()
@@ -366,6 +370,18 @@ android {
         versionCode = 1
         versionName = "0.1"
         testInstrumentationRunner = "ah.fixtures.android.ClassLoaderPocRunner"
+        val m005ExpectedSignerSha256 =
+            providers.gradleProperty("m005ExpectedSignerSha256").orElse("0".repeat(64)).get()
+        if (!m005ExpectedSignerSha256.matches(Regex("[0-9a-fA-F]{64}"))) {
+            throw GradleException(
+                "m005ExpectedSignerSha256 must be exactly 64 hexadecimal characters",
+            )
+        }
+        buildConfigField(
+            "String",
+            "M005_EXPECTED_SIGNER_SHA256_HEX",
+            "\"${m005ExpectedSignerSha256.lowercase()}\"",
+        )
 
         ndk {
             abiFilters += listOf("arm64-v8a", "x86_64")
@@ -458,13 +474,18 @@ android {
     }
 
     sourceSets {
+        getByName("classloaderPoc") {
+            java.srcDir("src/legacyBootstrap/java")
+        }
         getByName("compatExtracted") {
             manifest.srcFile("src/compatFixture/AndroidManifest.xml")
             java.srcDir("src/compatFixture/java")
+            java.srcDir("src/legacyBootstrap/java")
         }
         getByName("compatDirect") {
             manifest.srcFile("src/compatFixture/AndroidManifest.xml")
             java.srcDir("src/compatFixture/java")
+            java.srcDir("src/legacyBootstrap/java")
         }
         getByName("androidTestCompatExtracted") {
             java.srcDir("src/androidTestCompatFixture/java")
@@ -632,6 +653,8 @@ dependencies {
     add("classloaderPocImplementation", project(":runtime:bootstrap"))
     add("compatExtractedImplementation", project(":runtime:bootstrap"))
     add("compatDirectImplementation", project(":runtime:bootstrap"))
+    add("compatExtractedImplementation", libs.android.apksig)
+    add("compatDirectImplementation", libs.android.apksig)
     add("m202ExtractedImplementation", project(":runtime:native"))
     add("m202DirectImplementation", project(":runtime:native"))
     add("m203ExtractedImplementation", project(":runtime:policy"))

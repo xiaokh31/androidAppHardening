@@ -11,7 +11,7 @@
 1. `node tools/governance/validate-project-package.mjs` — exit `0`; 28 task cards, 11 core docs and 9 ADRs accepted.
 2. `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict` — exit `0`.
 3. `gradle --no-daemon --offline verifyGovernance verifyM203RuntimeIntegrity :runtime:policy:test :runtime:policy:lint` — exit `0`; the non-empty JVM policy matrix passed 29 cases and the architecture/capability scan passed all 13 checks.
-4. `gradle --no-daemon --offline check lint verifyGovernance :runtime:native:assembleRelease` — all implementation, unit, lint, architecture and native build tasks passed; the aggregate invocation exited `1` only because the task card temporarily used the governance-invalid development status `in_progress`. The field was restored to `planned`, and gates 1–3 then passed without exemption.
+4. `gradle --no-daemon --offline clean check verifyGovernance :runtime:native:assembleRelease` — exit `0`; 401 tasks completed in 2 minutes 13 seconds after a clean, including the non-empty policy matrix, full regression, lint and all four Native Release ABIs.
 5. `gradle --no-daemon --offline :fixtures:android:assembleM203ExtractedRelease :fixtures:android:assembleM203DirectRelease :fixtures:android:assembleM203ExtractedDebugAndroidTest :fixtures:android:assembleM203DirectDebugAndroidTest` — exit `0`; both extracted/direct Release/R8 targets and their non-empty device runners compiled.
 6. `git diff --check` — exit `0`.
 
@@ -29,3 +29,5 @@ The target APKs were externally signed only for installation testing with a rand
 The authorized device is a Xiaomi `sirius`/MI 8 SE, API 29, `arm64-v8a,armeabi-v7a,armeabi`, ADB shell UID 2000 and non-root. The first bounded acceptance attempt stopped at its first normal `adb install` with `INSTALL_FAILED_USER_RESTRICTED: Install canceled by user`; the script then verified package cleanup. No secure setting, root path, UI bypass or retry loop was used. This is an open external acceptance gate, not a product-test pass.
 
 API 29/36 x86_64 acceptance is delegated to the repository GitHub Linux/KVM workflow with a 45-minute job timeout, command timeouts and unconditional package/emulator cleanup. Remote run IDs and final reports are recorded only after the frozen branch is pushed.
+
+The first frozen Build run `31360660016` exposed a Windows-only CI race: the architecture scanner traversed generated `runtime/native/build` files while parallel `clean` removed them. The scanner was narrowed to the three explicit production `src/main/java` roots and changed to directory-entry traversal, then the exact clean aggregate command above passed locally. The failed SHA is diagnostic only and is not an acceptance input.

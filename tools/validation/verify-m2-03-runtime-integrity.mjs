@@ -21,9 +21,9 @@ function check(condition, name) {
 function filesBelow(relative) {
   const result = [];
   const visit = (absolute) => {
-    for (const name of readdirSync(absolute)) {
-      const child = path.join(absolute, name);
-      if (statSync(child).isDirectory()) visit(child);
+    for (const entry of readdirSync(absolute, { withFileTypes: true })) {
+      const child = path.join(absolute, entry.name);
+      if (entry.isDirectory()) visit(child);
       else result.push(child);
     }
   };
@@ -47,8 +47,9 @@ const bootstrapSources = filesBelow("runtime/bootstrap/src/main/java")
   .map((file) => readFileSync(file, "utf8"));
 check(bootstrapSources.every((source) => !source.includes("ah.runtime.loader")), "bootstrap has no loader reference");
 
-const runtimeProduction = filesBelow("runtime")
-  .filter((file) => file.includes(`${path.sep}src${path.sep}main${path.sep}`) && file.endsWith(".java"));
+const runtimeProduction = ["bootstrap", "native", "policy"]
+  .flatMap((module) => filesBelow(`runtime/${module}/src/main/java`))
+  .filter((file) => file.endsWith(".java"));
 const callers = runtimeProduction
   .filter((file) => !file.includes(`${path.sep}runtime${path.sep}native${path.sep}`))
   .filter((file) => readFileSync(file, "utf8").includes("PayloadRuntime."))

@@ -2,12 +2,12 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260809-225921
-updated_at: 2026-08-11T05:14:01+08:00
+updated_at: 2026-08-11T05:50:00+08:00
 updated_by: /root
 state: active
 source_branch: feat/m2-01-shell-app-component-factory
 base_commit: f4b773fc59129ea69c2dabde553438d8e62c549e
-working_tree: dirty
+working_tree: clean
 current_milestone: M2
 active_task: M2-01
 next_owner: /root
@@ -21,6 +21,7 @@ next_owner: /root
 
 ## Current State
 
+- M2-01 implementation is frozen at `33afb977887dff0f603e8e84ae4532ebcf52e624` and published in the sole draft PR [#45](https://github.com/xiaokh31/androidAppHardening/pull/45), linked to Issue #12. Local Java 17 state-machine tests, AndroidTest compilation, Release AAR/test APK assembly, Lint, M0-05 parser regression, adjacent fixture compilation, architecture scan and governance package validation are PASS. API 29/36 x86_64 execution remains delegated to bounded Linux/KVM CI; no local emulator was started.
 - M2-01 已从最终 main `f4b773fc59129ea69c2dabde553438d8e62c549e` 建立固定分支 `feat/m2-01-shell-app-component-factory`。唯一 Issue [#12](https://github.com/xiaokh31/androidAppHardening/issues/12) 为 OPEN，远程无同名分支且无关联 PR；M0-05、M1-03、M1-04、M2-03 依赖均已完成。
 - 当前实现范围只限 `runtime/bootstrap`、M2-01 合成 fixture/验证和任务证据：把 M0-05 PoC Shell 收敛为只调用 `RuntimeStartupGuard.openVerifiedPayload(...)` 的生产启动链，覆盖六个公开 Factory 入口、原 Factory ClassLoader 委托、并发/重入/失败缓存与 READY 前 exactly-once session close。M2-04 未启动。
 - M2-03 final PR HEAD `19d02a40962f55678b7a3c1cc17108bfbb44f9fa` passed exact-head Build `31421047955`, Governance `31421047952` and API 29/36 x86_64 KVM `31421047965`. PR [#44](https://github.com/xiaokh31/androidAppHardening/pull/44) was merged with expected-head protection as merge commit `803de853439026f4248a749d51033424c2e10b6d`; Issue #14 is closed.

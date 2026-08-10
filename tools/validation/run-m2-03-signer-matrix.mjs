@@ -130,7 +130,10 @@ function verifyStartup(name, option, expected, allowInstallRejection) {
   }
   const code = `AAH-RUNTIME-INTEGRITY-${expected}`;
   const marker = `startup_rejected code=${code} lookup_count=0 session_published=false`;
-  runAdb(["shell", "am", "start", "-W", "-n", activity], true);
+  // API 29 can keep `am start -W` blocked until the command timeout when the
+  // deliberately rejected Activity dies in onCreate. Dispatch without `-W`;
+  // the bounded tagged-log polling below is the completion barrier.
+  runAdb(["shell", "am", "start", "-n", activity], true);
   let startupLogs = "";
   for (let attempt = 0; attempt < 5 && !startupLogs.includes(marker); attempt += 1) {
     runAdb(["shell", "sleep", "1"]);

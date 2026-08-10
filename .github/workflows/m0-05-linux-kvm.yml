@@ -455,15 +455,17 @@ jobs:
           done
           "$ANDROID_HOME/build-tools/36.1.0/apksigner" sign \
             --v4-signing-enabled false \
+            --alignment-preserved true \
             --ks "$M005_ALT_KEYSTORE" \
             --ks-key-alias "$M005_ALT_KEY_ALIAS" \
             --ks-pass env:M005_ALT_STORE_PASSWORD \
             --key-pass env:M005_ALT_KEY_PASSWORD \
             --out build/m2-03/m2-03-wrong-signer-extracted.apk \
-            build/m2-03/m2-03-extracted.apk
+            build/m2-03/m2-03-extracted-aligned.apk
           "$ANDROID_HOME/build-tools/36.1.0/apksigner" sign \
             --v4-signing-enabled false \
             --v3-signing-enabled false \
+            --alignment-preserved true \
             --ks "$M005_TEST_KEYSTORE" \
             --ks-key-alias "$M005_TEST_KEY_ALIAS" \
             --ks-pass env:M005_TEST_STORE_PASSWORD \
@@ -474,22 +476,24 @@ jobs:
             --ks-pass env:M005_ALT_STORE_PASSWORD \
             --key-pass env:M005_ALT_KEY_PASSWORD \
             --out build/m2-03/m2-03-multi-signer-extracted.apk \
-            build/m2-03/m2-03-extracted.apk
+            build/m2-03/m2-03-extracted-aligned.apk
           "$ANDROID_HOME/build-tools/36.1.0/apksigner" sign \
             --v4-signing-enabled false \
             --rotation-min-sdk-version 29 \
-            --ks "$M005_TEST_KEYSTORE" \
-            --ks-key-alias "$M005_TEST_KEY_ALIAS" \
-            --ks-pass env:M005_TEST_STORE_PASSWORD \
-            --key-pass env:M005_TEST_KEY_PASSWORD \
-            --next-signer \
+            --alignment-preserved true \
             --ks "$M005_ALT_KEYSTORE" \
             --ks-key-alias "$M005_ALT_KEY_ALIAS" \
             --ks-pass env:M005_ALT_STORE_PASSWORD \
             --key-pass env:M005_ALT_KEY_PASSWORD \
             --lineage "$rotation_lineage" \
             --out build/m2-03/m2-03-historical-only-extracted.apk \
-            build/m2-03/m2-03-extracted.apk
+            build/m2-03/m2-03-extracted-aligned.apk
+          for apk in \
+            build/m2-03/m2-03-wrong-signer-extracted.apk \
+            build/m2-03/m2-03-multi-signer-extracted.apk \
+            build/m2-03/m2-03-historical-only-extracted.apk; do
+            "$ANDROID_HOME/build-tools/36.1.0/zipalign" -c -P 16 4096 "$apk"
+          done
 
       - name: Run bounded device acceptance
         shell: bash

@@ -22,4 +22,10 @@
 # public-API Native search path selected by this package-private helper.
 -keep class ah.runtime.loader.PayloadClassLoaders { *; }
 -keep class ah.fixtures.android.m202.M202ColdStartActivity { *; }
+-keep class ah.runtime.guard.RuntimeStartupGuard { *; }
+-keep class ah.runtime.guard.RuntimeStartupGuard$* { *; }
+-keep class ah.runtime.guard.VerifiedPayloadSession { *; }
+-keep class ah.runtime.guard.VerifiedSignerIdentity { *; }
+-keep class ah.runtime.guard.VerifiedStartupConfiguration { *; }
+-keep class ah.fixtures.android.m203.M203ColdStartActivity { *; }
 -keepattributes *Annotation*,InnerClasses,EnclosingMethod

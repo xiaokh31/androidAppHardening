@@ -5,11 +5,13 @@ on:
     branches:
       - spike/m0-05-application-factory-provider-jni-poc
       - feat/m2-02-native-decrypt-loader
+      - feat/m2-03-runtime-integrity
     paths:
       - ".github/workflows/m0-05-linux-kvm.yml"
       - "fixtures/android/**"
       - "runtime/bootstrap/**"
       - "runtime/native/**"
+      - "runtime/policy/**"
       - "host/container/**"
       - "host/axml/**"
       - "tools/validation/**"
@@ -22,6 +24,7 @@ on:
       - "fixtures/android/**"
       - "runtime/bootstrap/**"
       - "runtime/native/**"
+      - "runtime/policy/**"
       - "host/container/**"
       - "host/axml/**"
       - "tools/validation/**"
@@ -368,7 +371,11 @@ jobs:
             :fixtures:android:assembleM202ExtractedRelease \
             :fixtures:android:assembleM202DirectRelease \
             :fixtures:android:assembleM202ExtractedDebugAndroidTest \
-            :fixtures:android:assembleM202DirectDebugAndroidTest
+            :fixtures:android:assembleM202DirectDebugAndroidTest \
+            :fixtures:android:assembleM203ExtractedRelease \
+            :fixtures:android:assembleM203DirectRelease \
+            :fixtures:android:assembleM203ExtractedDebugAndroidTest \
+            :fixtures:android:assembleM203DirectDebugAndroidTest
           mkdir -p build/m2-02
           node tools/validation/prepare-m2-02-device-fixture.mjs extract \
             fixtures/android/build/generated/m0-05/compatExtractedRelease/assets/ah/runtime/payload.ahdc \
@@ -387,6 +394,21 @@ jobs:
             node tools/validation/prepare-m2-02-device-fixture.mjs package \
               "$baseline" "$vector_root" "build/m2-02/m2-02-${variant}.apk" \
               | tee "build/m2-02/${variant}-package-report.json"
+          done
+          mkdir -p build/m2-03
+          for variant in extracted direct; do
+            package_name="ah.fixtures.android.m203.${variant}"
+            vector_root="build/m2-03/vector-${variant}"
+            baseline="fixtures/android/build/outputs/apk/m203${variant^}/release/android-m203${variant^}-release.apk"
+            ./gradlew --no-daemon --console=plain :host:container:prepareM202DeviceVector \
+              "-Pm202PrimaryDex=$PWD/build/m2-02/source-dex/classes.dex" \
+              "-Pm202SecondaryDex=$PWD/build/m2-02/source-dex/classes2.dex" \
+              "-Pm202VectorOutput=$PWD/$vector_root" \
+              "-Pm202PackageName=$package_name" \
+              "-Pm202SignerSha256=$signer_digest"
+            node tools/validation/prepare-m2-02-device-fixture.mjs package \
+              "$baseline" "$vector_root" "build/m2-03/m2-03-${variant}.apk" \
+              | tee "build/m2-03/${variant}-package-report.json"
           done
 
       - name: Run bounded device acceptance
@@ -409,6 +431,10 @@ jobs:
             adb -s "$serial" uninstall ah.fixtures.android.m202.extracted >/dev/null 2>&1
             adb -s "$serial" uninstall ah.fixtures.android.m202.direct.test >/dev/null 2>&1
             adb -s "$serial" uninstall ah.fixtures.android.m202.direct >/dev/null 2>&1
+            adb -s "$serial" uninstall ah.fixtures.android.m203.extracted.test >/dev/null 2>&1
+            adb -s "$serial" uninstall ah.fixtures.android.m203.extracted >/dev/null 2>&1
+            adb -s "$serial" uninstall ah.fixtures.android.m203.direct.test >/dev/null 2>&1
+            adb -s "$serial" uninstall ah.fixtures.android.m203.direct >/dev/null 2>&1
             adb -s "$serial" emu kill >/dev/null 2>&1
             if [[ -n "$emulator_pid" ]]; then
               kill -TERM "$emulator_pid" >/dev/null 2>&1
@@ -469,7 +495,8 @@ jobs:
 
           ANDROID_SERIAL="$serial" timeout 300s ./gradlew --no-daemon --console=plain \
             :runtime:native:connectedCheck \
-            :runtime:bootstrap:connectedCheck
+            :runtime:bootstrap:connectedCheck \
+            :runtime:policy:connectedCheck
 
           timeout 900s node tools/validation/run-m0-05-device-acceptance.mjs \
             --adb "$ANDROID_HOME/platform-tools/adb" \
@@ -518,6 +545,22 @@ jobs:
             --evidence "build/m2-02/device-api${API}-x86_64"
           cat "build/m2-02/device-api${API}-x86_64/report.json"
 
+          timeout 1200s node tools/validation/run-m2-02-device-acceptance.mjs \
+            --task-id M2-03 \
+            --adb "$ANDROID_HOME/platform-tools/adb" \
+            --serial "$serial" \
+            --platform "api${API}-x86_64-linux-kvm" \
+            --cold-starts 20 \
+            --command-timeout-ms 60000 \
+            --extracted-target-apk build/m2-03/m2-03-extracted.apk \
+            --extracted-test-apk fixtures/android/build/outputs/apk/androidTest/m203Extracted/debug/android-m203Extracted-debug-androidTest.apk \
+            --extracted-vector-report build/m2-03/vector-extracted/vector-report.json \
+            --direct-target-apk build/m2-03/m2-03-direct.apk \
+            --direct-test-apk fixtures/android/build/outputs/apk/androidTest/m203Direct/debug/android-m203Direct-debug-androidTest.apk \
+            --direct-vector-report build/m2-03/vector-direct/vector-report.json \
+            --evidence "build/m2-03/device-api${API}-x86_64"
+          cat "build/m2-03/device-api${API}-x86_64/report.json"
+
       - name: Print cleanup diagnostics
         if: always()
         shell: bash
@@ -526,6 +569,7 @@ jobs:
           ps -ef | grep -E '[e]mulator|[q]emu-system' || true
           find build/m0-05 -maxdepth 2 -type f -print -exec sha256sum {} \; || true
           find build/m2-02 -maxdepth 2 -type f -print -exec sha256sum {} \; || true
+          find build/m2-03 -maxdepth 2 -type f -print -exec sha256sum {} \; || true
 
       - name: Upload bounded validation evidence
         if: always()
@@ -545,6 +589,8 @@ jobs:
             build/m0-05/device-api${{ matrix.api }}-x86_64/**/*.xml
             build/m2-02/**/*.json
             build/m2-02/**/*.txt
+            build/m2-03/**/*.json
+            build/m2-03/**/*.txt
             fixtures/android/build/outputs/mapping/compatExtractedRelease/mapping.txt
             fixtures/android/build/outputs/mapping/compatExtractedRelease/usage.txt
             fixtures/android/build/outputs/mapping/compatDirectRelease/mapping.txt

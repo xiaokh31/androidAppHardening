@@ -421,6 +421,16 @@ android {
             applicationIdSuffix = ".m202.direct"
             testInstrumentationRunner = "ah.runtime.loader.M202DeviceRunner"
         }
+        create("m203Extracted") {
+            dimension = "poc"
+            applicationIdSuffix = ".m203.extracted"
+            testInstrumentationRunner = "ah.runtime.guard.M203DeviceRunner"
+        }
+        create("m203Direct") {
+            dimension = "poc"
+            applicationIdSuffix = ".m203.direct"
+            testInstrumentationRunner = "ah.runtime.guard.M203DeviceRunner"
+        }
     }
 
     androidResources {
@@ -475,6 +485,20 @@ android {
         }
         getByName("androidTestM202Direct") {
             java.srcDir("src/androidTestM202Fixture/java")
+        }
+        getByName("m203Extracted") {
+            manifest.srcFile("src/m203Fixture/AndroidManifest.xml")
+            java.srcDir("src/m203Fixture/java")
+        }
+        getByName("m203Direct") {
+            manifest.srcFile("src/m203Fixture/AndroidManifest.xml")
+            java.srcDir("src/m203Fixture/java")
+        }
+        getByName("androidTestM203Extracted") {
+            java.srcDir("src/androidTestM203Fixture/java")
+        }
+        getByName("androidTestM203Direct") {
+            java.srcDir("src/androidTestM203Fixture/java")
         }
     }
 
@@ -547,6 +571,14 @@ androidComponents {
         variant.packaging.jniLibs.useLegacyPackaging.set(false)
         registerM202Placeholders(variant)
     }
+    onVariants(selector().withFlavor("poc" to "m203Extracted")) { variant ->
+        variant.packaging.jniLibs.useLegacyPackaging.set(true)
+        registerM202Placeholders(variant)
+    }
+    onVariants(selector().withFlavor("poc" to "m203Direct")) { variant ->
+        variant.packaging.jniLibs.useLegacyPackaging.set(false)
+        registerM202Placeholders(variant)
+    }
 }
 
 fun registerM202Placeholders(variant: com.android.build.api.variant.ApplicationVariant) {
@@ -602,5 +634,8 @@ dependencies {
     add("compatDirectImplementation", project(":runtime:bootstrap"))
     add("m202ExtractedImplementation", project(":runtime:native"))
     add("m202DirectImplementation", project(":runtime:native"))
+    add("m203ExtractedImplementation", project(":runtime:policy"))
+    add("m203DirectImplementation", project(":runtime:policy"))
     add("androidTestCompileOnly", project(":runtime:native"))
+    add("androidTestCompileOnly", project(":runtime:policy"))
 }

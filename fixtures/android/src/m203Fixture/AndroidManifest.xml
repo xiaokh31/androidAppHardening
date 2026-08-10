@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application
+        android:hasCode="true"
+        android:label="M2-03 Device Fixture">
+        <activity
+            android:name="ah.fixtures.android.m203.M203ColdStartActivity"
+            android:exported="true" />
+    </application>
+</manifest>

@@ -2,24 +2,27 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260809-225921
-updated_at: 2026-08-09T22:59:21+08:00
+updated_at: 2026-08-10T14:04:30+08:00
 updated_by: /root
-state: ready
-source_branch: main
-base_commit: b4f680f55a39d3f030fa2d1c6d627baed712964b
+state: active
+source_branch: feat/m2-03-runtime-integrity
+base_commit: dec1ef68f69eea26ae1bc6a1132bf26bf39ba0f8
 working_tree: clean
 current_milestone: M2
-active_task: NONE
-next_owner: unassigned
+active_task: M2-03
+next_owner: /root
 ---
 
 # Project HandOff
 
 ## Objective
 
-M2-02 已在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内完成 AHDC v2 Native 认证解密、有界 zlib、匿名 DEX 映射和 API 29 公共 InMemoryDexClassLoader。当前只关闭 post-merge `main` 门禁；不启动 M2-03 或相邻任务。
+在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 边界内完成 M2-03 Runtime signer、同 handle authenticated metadata 复核与 session 所有权门禁；不启动 M2-01、M2-04 或其他相邻任务。
 
 ## Current State
+
+- 用户已明确启动并完整授权 M2-03。分支 `feat/m2-03-runtime-integrity` 从最终门禁全绿的 `main@dec1ef68f69eea26ae1bc6a1132bf26bf39ba0f8` 建立，唯一 tracking Issue 为 #14。实现已接通固定 `apksig 9.3.0`、Framework `sourceDir`/package、唯一 current signer、old-to-new lineage、同 handle metadata recheck、原子 `VerifiedPayloadSession`、六个 Guard OOM 窗口和有界验证记录；29-case JVM matrix、lint、双 Release/R8 fixture 编译、架构/敏感能力扫描与 Governance 均 PASS。
+- API 29 arm64 非 root 真机在线且设备信息已核验；首次有界验收在第一个普通 ADB 安装处由 MIUI 返回 `INSTALL_FAILED_USER_RESTRICTED: Install canceled by user`，脚本随后完成卸载检查，没有绕过安全设置或重试循环。API 29/36 x86_64 KVM 已加入固定 45 分钟 job timeout 与 unconditional cleanup，等待冻结分支 CI。
 
 - PR [#43](https://github.com/xiaokh31/androidAppHardening/pull/43) 已在 exact HEAD `84f11ed3aa38315c84b15eae531fb1e7f82693b7` 的 Ubuntu/Windows Build/Governance 与 API 29/36 x86_64 KVM 全绿后转为 ready，并以 expected-head 保护的普通 merge commit `b4f680f55a39d3f030fa2d1c6d627baed712964b` 合并到 `main`；Issue #13 已关闭。本地 main 已同步，当前只提交 post-merge README/HandOff 并等待最终 main 门禁，不启动 M2-03。
 
@@ -171,6 +174,8 @@ M2-02 已在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边�
 | M1-06 | `/root` | `feat/m1-06-cli-and-json-report` | done | M1-01, M1-02, M1-03, M1-04, M1-05 | PR #40、Issue #11、独立复核、merger-ready 与 post-merge main 双平台 CI、README 和 strict HandOff 均已关闭 |
 | M2-07 | `/root` | `main` | done | M0-03, M1-04 | PR #42、Issue #41、最终独立复核、README、strict 与 post-merge Build/Governance/KVM 均已关闭 |
 | M2-02 | `/root` | `main` | done | M0-04, M1-04, M2-07 | PR #43、Issue #13、全零复核、双平台 CI、API 29/36 KVM、arm64 真机、README 与 strict HandOff 已关闭 |
+
+| M2-03 | `/root` | `feat/m2-03-runtime-integrity` | in_progress | M1-02, M1-04, M2-02 | Implement frozen signer/metadata/session gate, device evidence and independent review |
 
 ## Decisions and Invariants
 
@@ -1295,8 +1300,10 @@ None
 
 ## Ordered Next Actions
 
-1. Commit and push this post-merge README/HandOff snapshot on `main`, then require the final main Build and Governance jobs to pass.
-2. After final main CI is green, report M2-02 complete and remain idle. Do not start M2-03 without an explicit user instruction.
+1. Run the clean local root gate, freeze the M2-03 implementation commit and push it for Ubuntu/Windows Build plus API 29/36 x86_64 KVM.
+2. Complete the same bounded API 29 arm64 command after ordinary MIUI ADB installation is allowed; do not change secure settings or bypass the prompt.
+3. Freeze evidence, obtain an independent read-only review with P0/P1/P2 all zero, then create the unique Issue #14 draft PR, pass exact-head CI, make ready and merge.
+4. Update README/HandOff on post-merge `main`, pass strict HandOff and final main CI; do not start M2-01 or M2-04.
 
 ## Relevant Files and Artifacts
 

@@ -1,3 +1,7 @@
+import org.gradle.api.tasks.JavaExec
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
+import org.gradle.api.tasks.testing.Test
+
 plugins {
     alias(libs.plugins.android.library)
 }
@@ -9,6 +13,7 @@ android {
 
     defaultConfig {
         minSdk = libs.versions.android.min.sdk.get().toInt()
+        testInstrumentationRunner = "ah.runtime.guard.PolicyConnectedRunner"
     }
 
     compileOptions {
@@ -26,4 +31,40 @@ android {
 
 dependencies {
     implementation(project(":runtime:native"))
+    implementation(libs.android.apksig)
+}
+
+val policySelfTest by tasks.registering(JavaExec::class) {
+    group = "verification"
+    description = "Runs the dependency-free M2-03 policy unit matrix."
+    dependsOn("compileDebugUnitTestJavaWithJavac", ":runtime:native:compileDebugJavaWithJavac")
+    val externalRuntime =
+        configurations.named("debugRuntimeClasspath").map { configuration ->
+            configuration.incoming.artifactView {
+                componentFilter { identifier -> identifier is ModuleComponentIdentifier }
+            }.files
+        }
+    classpath(
+        layout.buildDirectory.dir(
+            "intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes",
+        ),
+        layout.buildDirectory.dir(
+            "intermediates/javac/debug/compileDebugJavaWithJavac/classes",
+        ),
+        rootProject.layout.projectDirectory.dir(
+            "runtime/native/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes",
+        ),
+        externalRuntime,
+    )
+    mainClass.set("ah.runtime.guard.PolicySelfTest")
+}
+
+afterEvaluate {
+    tasks.named("test") {
+        dependsOn(policySelfTest)
+    }
+}
+
+tasks.withType<Test>().configureEach {
+    failOnNoDiscoveredTests = false
 }

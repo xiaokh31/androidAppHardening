@@ -2,24 +2,28 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260809-225921
-updated_at: 2026-08-09T22:59:21+08:00
+updated_at: 2026-08-11T02:47:00+08:00
 updated_by: /root
-state: ready
-source_branch: main
-base_commit: b4f680f55a39d3f030fa2d1c6d627baed712964b
+state: active
+source_branch: feat/m2-03-runtime-integrity
+base_commit: dec1ef68f69eea26ae1bc6a1132bf26bf39ba0f8
 working_tree: clean
 current_milestone: M2
-active_task: NONE
-next_owner: unassigned
+active_task: M2-03
+next_owner: /root
 ---
 
 # Project HandOff
 
 ## Objective
 
-M2-02 已在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边界内完成 AHDC v2 Native 认证解密、有界 zlib、匿名 DEX 映射和 API 29 公共 InMemoryDexClassLoader。当前只关闭 post-merge `main` 门禁；不启动 M2-03 或相邻任务。
+在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 边界内完成 M2-03 Runtime signer、同 handle authenticated metadata 复核与 session 所有权门禁；不启动 M2-01、M2-04 或其他相邻任务。
 
 ## Current State
+
+- M2-03 implementation parent `8211a60dca604ac1aab56b4839bcd96d5494aa05` has passed exact-head Build `31419276164`, Governance `31419276874` and PR API 29/36 x86_64 KVM `31419279082`. The KVM artifacts prove extracted/direct Release/R8, 12 exception/OOM ownership windows, 12 metadata/cross-handle/session rejections, six signer fixtures, seven real startup rejections with one unique run-token marker each, cross-DEX, JNI, authenticated metadata, 20 cold starts per variant, memory, zero plaintext DEX and cleanup.
+- The authorized API 29 arm64 `user/release-keys`, `ro.debuggable=0`, non-root physical-device report passed the same extracted/direct 12+12 ownership/metadata, cross-DEX, JNI, 20 cold starts, memory, zero-plaintext and cleanup matrix. Its evidence is inherited with a documented boundary because `659c2b8..8211a60` changes no production Runtime, Native, target/test APK or device instrumentation logic.
+- The full plus incremental independent read-only review is PASS with `P0=0`, `P1=0`, `P2=0`. The retained-logcat false positive is closed by per-scenario tokens; the later API 29 KVM stop/start race is closed by an M2-03-only stabilization window plus exact Activity/PID/PSS checks and fail-first logcat capture, without retry or sample substitution. Local/remote/security evidence is ready for a final evidence-only child; PR #44 remains draft until that child passes exact-head CI. README stays unchanged until the task is actually merged and post-merge gates close.
 
 - PR [#43](https://github.com/xiaokh31/androidAppHardening/pull/43) 已在 exact HEAD `84f11ed3aa38315c84b15eae531fb1e7f82693b7` 的 Ubuntu/Windows Build/Governance 与 API 29/36 x86_64 KVM 全绿后转为 ready，并以 expected-head 保护的普通 merge commit `b4f680f55a39d3f030fa2d1c6d627baed712964b` 合并到 `main`；Issue #13 已关闭。本地 main 已同步，当前只提交 post-merge README/HandOff 并等待最终 main 门禁，不启动 M2-03。
 
@@ -172,6 +176,8 @@ M2-02 已在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边�
 | M2-07 | `/root` | `main` | done | M0-03, M1-04 | PR #42、Issue #41、最终独立复核、README、strict 与 post-merge Build/Governance/KVM 均已关闭 |
 | M2-02 | `/root` | `main` | done | M0-04, M1-04, M2-07 | PR #43、Issue #13、全零复核、双平台 CI、API 29/36 KVM、arm64 真机、README 与 strict HandOff 已关闭 |
 
+| M2-03 | `/root` | `feat/m2-03-runtime-integrity` | review | M1-02, M1-04, M2-02 | Evidence-only child CI, ready/merge, then post-merge README/strict/main CI |
+
 ## Decisions and Invariants
 
 - 继续遵守 ADR 0001 至 ADR 0003、ADR 0005 至 ADR 0008；ADR 0004 已被 ADR 0008 supersede。ADR 0007 固定 sourceDir 配置通道，ADR 0006 保持 768-byte ConfigV2 且 `container_major=2`。
@@ -193,6 +199,10 @@ M2-02 已在 APK-only、输入只读、输出未签名和 `minSdk >= 29` 的边�
 - 根 `README.md` 必须维护公开任务进度表；任务仅在合并后门禁完成时标记“已完成”，每个任务的收尾协调提交必须同步该表，不能以 README 替代 `HandOff.md` 的证据。
 
 ## Changes Since Previous Handoff
+
+- Accepted implementation parent `8211a60dca604ac1aab56b4839bcd96d5494aa05` closes both the retained-logcat P1 and the API 29 KVM stop/start orchestration race. Local syntax/static/Governance checks passed; the task-scoped stabilization adds no retry and preserves 20 successful samples per variant.
+- Exact-head Build `31419276164` and Governance `31419276874` passed on Ubuntu/Windows. PR KVM `31419279082` passed API 29 job `93555839095` and API 36 job `93555839055`; the new artifacts contain the full signer/tamper, 20+20 cold-start, memory, zero-plaintext and cleanup proof.
+- API 29 arm64 physical evidence is inherited only for unchanged production/device-instrumentation behavior. Full plus incremental independent read-only review is `P0=0/P1=0/P2=0`; evidence is archived under `docs/evidence/M2-03/` and ignored build directories.
 
 - PR #43 replacement HEAD `84f11ed3aa38315c84b15eae531fb1e7f82693b7` 的 Governance run `31319256459`、Build runs `31319254096`/`31319256463` 与 KVM run `31319256453` 全部 PASS。API 29/36 KVM 分别在 `11m50s`/`13m21s` 完成非空 connected tests、两套 Release/R8、冷启动、内存、零明文 DEX 和清理。
 - PR #43 已按用户预授权转为 ready，并以 expected-head 保护的普通 merge commit `b4f680f55a39d3f030fa2d1c6d627baed712964b` 合并；Issue #13 关闭。本地 main 快进同步后，README 标记 M2-02 完成，HandOff 切换到 `main`/`NONE`；M2-03 未启动。
@@ -1295,13 +1305,22 @@ None
 
 ## Ordered Next Actions
 
-1. Commit and push this post-merge README/HandOff snapshot on `main`, then require the final main Build and Governance jobs to pass.
-2. After final main CI is green, report M2-02 complete and remain idle. Do not start M2-03 without an explicit user instruction.
+1. Commit the M2-03 local/remote/security evidence and this HandOff as an evidence-only child of `8211a60dca604ac1aab56b4839bcd96d5494aa05`; verify the diff contains no implementation change.
+2. Push the final evidence child and require exact-head Build, Governance and API 29/36 KVM to pass.
+3. Convert PR #44 to ready and merge with expected-head protection; do not start M2-01 or M2-04.
+4. On post-merge `main`, update README and HandOff to mark M2-03 complete, run strict HandOff without exemption and pass final main CI.
 
 ## Relevant Files and Artifacts
 
 - `HandOff.md`
 - `README.md`
+- `docs/tasks/M2-03-runtime-signer-and-integrity.md`
+- `docs/evidence/M2-03/local-validation.md`
+- `docs/evidence/M2-03/remote-validation.md`
+- `docs/evidence/M2-03/security-review.md`
+- ignored `build/m2-03/final-device-api29-arm64-pass/`
+- ignored `build/ci-artifacts/m2-03-8211a60-api29/`
+- ignored `build/ci-artifacts/m2-03-8211a60-api36/`
 - `docs/tasks/M2-02-native-decrypt-and-inmemory-loader.md`
 - `docs/evidence/M2-02/local-validation.md`
 - `docs/evidence/M2-02/security-review-1.md`

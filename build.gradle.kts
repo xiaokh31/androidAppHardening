@@ -29,6 +29,12 @@ val testToolchainPolicy by tasks.registering(Exec::class) {
     commandLine("node", "tools/validation/test-m0-toolchain-policy.mjs")
 }
 
+val verifyM203RuntimeIntegrity by tasks.registering(Exec::class) {
+    group = "verification"
+    description = "Validates the M2-03 runtime integrity architecture and capability boundary."
+    commandLine("node", "tools/validation/verify-m2-03-runtime-integrity.mjs")
+}
+
 tasks.register<Exec>("testDependencyVerification") {
     group = "verification"
     description = "Proves tampered dependency checksums fail closed and restored metadata passes."
@@ -60,6 +66,7 @@ tasks.named("check") {
         ":distribution:check",
         verifyToolchainPolicy,
         testToolchainPolicy,
+        verifyM203RuntimeIntegrity,
     )
 }
 

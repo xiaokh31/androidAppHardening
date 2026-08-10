@@ -14,6 +14,14 @@ const evidence = path.resolve(required("evidence"));
 const coldStarts = Number(options.get("cold-starts") ?? "20");
 const timeout = Number(options.get("command-timeout-ms") ?? "60000");
 const selectedVariant = options.get("variant") ?? "all";
+const taskId = options.get("task-id") ?? "M2-02";
+if (!["M2-02", "M2-03"].includes(taskId)) fail("invalid task id");
+const isM203 = taskId === "M2-03";
+const packageStem = isM203 ? "m203" : "m202";
+const runnerClass = isM203 ? "ah.runtime.guard.M203DeviceRunner" : "ah.runtime.loader.M202DeviceRunner";
+const activityClass = isM203
+  ? "ah.fixtures.android.m203.M203ColdStartActivity"
+  : "ah.fixtures.android.m202.M202ColdStartActivity";
 if (!Number.isInteger(coldStarts) || coldStarts < 1 || coldStarts > 20) fail("invalid cold-start count");
 if (!Number.isInteger(timeout) || timeout < 1000 || timeout > 120000) fail("invalid command timeout");
 if (!["all", "extracted", "direct"].includes(selectedVariant)) fail("invalid variant selection");
@@ -23,14 +31,14 @@ mkdirSync(evidence, { recursive: true });
 const allVariants = [
   {
     name: "extracted",
-    packageName: "ah.fixtures.android.m202.extracted",
+    packageName: `ah.fixtures.android.${packageStem}.extracted`,
     target: artifact(required("extracted-target-apk")),
     test: artifact(required("extracted-test-apk")),
     golden: vectorGolden(required("extracted-vector-report")),
   },
   {
     name: "direct",
-    packageName: "ah.fixtures.android.m202.direct",
+    packageName: `ah.fixtures.android.${packageStem}.direct`,
     target: artifact(required("direct-target-apk")),
     test: artifact(required("direct-test-apk")),
     golden: vectorGolden(required("direct-vector-report")),
@@ -48,7 +56,7 @@ try {
   cleanupPassed = cleanup();
   if (!cleanupPassed) fail("package cleanup verification failed");
   const report = {
-    task_id: "M2-02",
+    task_id: taskId,
     validation_mode: "pre-cli",
     platform,
     serial_sha256: sha256(Buffer.from(serial)),
@@ -78,18 +86,29 @@ function runVariant(variant) {
   uninstall(variant);
   runAdb(["install", "-r", "-t", "--no-streaming", variant.target]);
   runAdb(["install", "-r", "-t", "--no-streaming", variant.test]);
-  const instrumentation = runAdb([
+  const instrumentationArguments = [
     "shell", "am", "instrument", "-w",
+  ];
+  if (!isM203) instrumentationArguments.push(
     "-e", "m202_expected_build_id_hex", variant.golden.buildId,
     "-e", "m202_expected_key_slot_id_hex", variant.golden.keySlotId,
-    `${variant.packageName}.test/ah.runtime.loader.M202DeviceRunner`,
-  ], 120000);
-  if (!instrumentation.stdout.includes("OK (1 test)") ||
-      !instrumentation.stdout.includes("failure_injection=10") ||
-      !instrumentation.stdout.includes("metadata_negative=true") ||
-      !instrumentation.stdout.includes("metadata_golden=true") ||
-      !instrumentation.stdout.includes("cross_handle=true") ||
-      !instrumentation.stdout.includes("jni_cleanup=true") ||
+  );
+  instrumentationArguments.push(`${variant.packageName}.test/${runnerClass}`);
+  const instrumentation = runAdb(instrumentationArguments, 120000);
+  const taskSpecificPassed = isM203
+    ? instrumentation.stdout.includes("guard_failure_injection=12") &&
+      instrumentation.stdout.includes("guard_metadata_rejections=12") &&
+      instrumentation.stdout.includes("signer=true") &&
+      instrumentation.stdout.includes("framework_package_rejection=true") &&
+      instrumentation.stdout.includes("cleanup_suppressed=true") &&
+      instrumentation.stdout.includes("mapping_cleanup=true") &&
+      instrumentation.stdout.includes("session_close=true")
+    : instrumentation.stdout.includes("failure_injection=10") &&
+      instrumentation.stdout.includes("metadata_negative=true") &&
+      instrumentation.stdout.includes("metadata_golden=true") &&
+      instrumentation.stdout.includes("cross_handle=true") &&
+      instrumentation.stdout.includes("jni_cleanup=true");
+  if (!instrumentation.stdout.includes("OK (1 test)") || !taskSpecificPassed ||
       !instrumentation.stdout.includes("plaintext_dex_files=0") ||
       instrumentation.stdout.includes("FAILURES!!!")) {
     fail(`${variant.name} instrumentation failed:\n${instrumentation.stdout}\n${instrumentation.stderr}`);
@@ -98,21 +117,34 @@ function runVariant(variant) {
 
   const timings = [];
   const pss = [];
-  const activity = `${variant.packageName}/ah.fixtures.android.m202.M202ColdStartActivity`;
+  const activity = `${variant.packageName}/${activityClass}`;
   for (let index = 0; index < coldStarts; index += 1) {
     runAdb(["shell", "am", "force-stop", variant.packageName]);
+    // API 29 can finish the package stop asynchronously.  Starting the M2-03
+    // fixture immediately can race that final kill and briefly return a PID
+    // before the process disappears.  Keep this stabilization task-scoped so
+    // the frozen M2-02 acceptance contract remains byte-for-byte unchanged.
+    if (isM203) wait(150);
     runAdb(["logcat", "-c"], timeout, true);
     const start = runAdb(["shell", "am", "start", "-W", "-n", activity]);
     const status = value(start.stdout, "Status");
     const total = Number(value(start.stdout, "TotalTime"));
+    const reportedActivity = value(start.stdout, "Activity");
     const pid = waitForPid(variant.packageName);
-    if (status !== "ok" || !Number.isFinite(total) || total < 0 || pid === "") {
+    const activityMatches = !isM203 || reportedActivity === activity;
+    const meminfo = status === "ok" && Number.isFinite(total) && total >= 0 &&
+        pid !== "" && activityMatches
+      ? runAdb(["shell", "dumpsys", "meminfo", variant.packageName])
+      : null;
+    const totalPss = meminfo === null ? null : pssValue(meminfo.stdout);
+    if (status !== "ok" || !Number.isFinite(total) || total < 0 || pid === "" ||
+        !activityMatches || totalPss === null) {
       const log = runAdb(["logcat", "-d", "-v", "threadtime"], timeout, true);
       writeFileSync(path.join(evidence, `${variant.name}.cold-${index + 1}.logcat.txt`), log.stdout);
-      fail(`${variant.name} cold start ${index + 1} failed:\n${start.stdout}`);
+      fail(`${variant.name} cold start ${index + 1} failed:\n${start.stdout}\n${meminfo?.stdout ?? ""}`);
     }
     timings.push(total);
-    pss.push(parsePss(runAdb(["shell", "dumpsys", "meminfo", variant.packageName]).stdout));
+    pss.push(totalPss);
   }
   runAdb(["shell", "am", "force-stop", variant.packageName]);
   const sorted = [...timings].sort((left, right) => left - right);
@@ -122,7 +154,8 @@ function runVariant(variant) {
     target_apk: fileEvidence(variant.target),
     test_apk: fileEvidence(variant.test),
     instrumentation_passed: true,
-    failure_injection_windows: 10,
+    failure_injection_windows: isM203 ? 12 : 10,
+    guard_metadata_rejections: isM203 ? 12 : 0,
     multidex_verified: true,
     jni_verified: true,
     authenticated_metadata_verified: true,
@@ -174,6 +207,10 @@ function waitForPid(packageName) {
   return "";
 }
 
+function wait(milliseconds) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+}
+
 function cleanup() {
   let passed = true;
   for (const variant of variants) {
@@ -216,10 +253,9 @@ function runAdb(args, commandTimeout = timeout, allowFailure = false) {
   return record;
 }
 
-function parsePss(output) {
+function pssValue(output) {
   const match = output.match(/^\s*TOTAL\s+(\d+)\b/mu) ?? output.match(/^\s*TOTAL PSS:\s*(\d+)\b/mu);
-  if (!match) fail("dumpsys meminfo did not report TOTAL PSS");
-  return Number(match[1]);
+  return match ? Number(match[1]) : null;
 }
 
 function value(output, label) {

@@ -8,6 +8,7 @@ on:
     branches:
       - main
       - feat/m2-02-native-decrypt-loader
+      - feat/m2-03-runtime-integrity
 
 permissions:
   contents: read

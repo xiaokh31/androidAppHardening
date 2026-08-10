@@ -3,6 +3,7 @@ package ah.runtime.guard;
 import ah.runtime.loader.AuthenticatedPayloadMetadata;
 import ah.runtime.loader.UntrustedPayloadBinding;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
 
@@ -39,6 +40,10 @@ public final class PolicySelfTest {
                 new byte[][] {old, current}, new byte[][] {current}, "LINEAGE_MISMATCH"));
         expect("LINEAGE_MISMATCH", () -> IntegrityChecks.requireLineageEqual(
                 new byte[][] {old, current}, new byte[][] {current, old}, "LINEAGE_MISMATCH"));
+        expect("LINEAGE_MISMATCH", () -> IntegrityChecks.requireLineageEqual(
+                new byte[][] {old, current}, new byte[][] {old, digest(0x41)}, "LINEAGE_MISMATCH"));
+        expect("LINEAGE_INVALID", () -> new RuntimeSignerVerifier.Measurement(
+                current, new byte[][] {old, old, current}, 7L, 11L));
 
         IntegrityResult verified = IntegrityResult.verified();
         check(verified.status() == IntegrityResult.Status.VERIFIED, "verified-status");
@@ -55,6 +60,25 @@ public final class PolicySelfTest {
                 1, List.of("V3_SIG_POR_DID_NOT_VERIFY"))), "lineage-map");
         check("SIGNATURE_INVALID".equals(RuntimeSignerVerifier.classifyRejectedCategory(
                 0, List.of("V2_SIG_MALFORMED_SIGNERS"))), "invalid-map");
+        check("SIGNATURE_INVALID".equals(RuntimeSignerVerifier.classifyRejectedCategory(
+                1, null)), "null-errors-map");
+
+        Object cacheBase = cacheKey("example.package", 7L, 11L, 101L, current,
+                new byte[][] {old, current}, "100:1");
+        check(cacheBase.equals(cacheKey("example.package", 7L, 11L, 101L, current,
+                new byte[][] {old, current}, "100:1")), "cache-equal");
+        check(!cacheBase.equals(cacheKey("example.package", 8L, 11L, 101L, current,
+                new byte[][] {old, current}, "100:1")), "cache-version-invalidate");
+        check(!cacheBase.equals(cacheKey("example.package", 7L, 12L, 101L, current,
+                new byte[][] {old, current}, "100:1")), "cache-mtime-invalidate");
+        check(!cacheBase.equals(cacheKey("example.package", 7L, 11L, 102L, current,
+                new byte[][] {old, current}, "100:1")), "cache-size-invalidate");
+        check(!cacheBase.equals(cacheKey("example.package", 7L, 11L, 101L, digest(0x41),
+                new byte[][] {old, digest(0x41)}, "100:1")), "cache-signer-invalidate");
+        check(!cacheBase.equals(cacheKey("example.package", 7L, 11L, 101L, current,
+                new byte[][] {digest(0x11), current}, "100:1")), "cache-lineage-invalidate");
+        check(!cacheBase.equals(cacheKey("example.package", 7L, 11L, 101L, current,
+                new byte[][] {old, current}, "101:1")), "cache-process-invalidate");
 
         byte[] buildId = Arrays.copyOf(old, 16);
         byte[] keySlotId = Arrays.copyOf(current, 16);
@@ -62,6 +86,11 @@ public final class PolicySelfTest {
         UntrustedPayloadBinding binding = binding(buildId, keySlotId, current);
         RuntimeSignerVerifier.Measurement measurement =
                 new RuntimeSignerVerifier.Measurement(current, new byte[][] {old, current}, 7L, 11L);
+        byte[] measuredCopy = measurement.currentSignerSha256();
+        measuredCopy[0] ^= 1;
+        check(!Arrays.equals(measuredCopy, measurement.currentSignerSha256()), "measurement-signer-copy");
+        check(measurement.versionCode() == 7L && measurement.apkLastModified() == 11L,
+                "measurement-cache-fields");
         AuthenticatedPayloadMetadata metadata = metadata(
                 "example.OriginalFactory",
                 2,
@@ -80,8 +109,14 @@ public final class PolicySelfTest {
 
         expect("SIGNER_MISMATCH", () -> IntegrityChecks.verifyPreReadSigner(
                 binding(buildId, keySlotId, digest(0x41)), current));
+        expect("SIGNER_MISMATCH", () -> IntegrityChecks.verifyPreReadSigner(
+                binding(buildId, keySlotId, oneBitDifferent(current)), current));
         expect("PACKAGE_MISMATCH", () -> IntegrityChecks.verifyAuthenticatedMetadata(
                 metadata, binding, digest(0x71), measurement));
+        expect("SIGNER_MISMATCH", () -> IntegrityChecks.verifyAuthenticatedMetadata(
+                metadata(null, 2, 0, 1, 1, buildId, keySlotId, packageDigest,
+                        oneBitDifferent(current), new byte[][] {old, oneBitDifferent(current)}),
+                binding, packageDigest, measurement));
         expect("SNAPSHOT_CHANGED", () -> IntegrityChecks.verifyAuthenticatedMetadata(
                 metadata,
                 binding(different16(buildId), keySlotId, current),
@@ -92,16 +127,34 @@ public final class PolicySelfTest {
                 binding(buildId, different16(keySlotId), current),
                 packageDigest,
                 measurement));
-        AuthenticatedPayloadMetadata badVersion = metadata(
-                null, 2, 0, 1, 2, buildId, keySlotId, packageDigest, current,
-                new byte[][] {old, current});
-        expect("VERSION", () -> IntegrityChecks.verifyAuthenticatedMetadata(
-                badVersion, binding, packageDigest, measurement));
-        AuthenticatedPayloadMetadata wrongLineage = metadata(
-                null, 2, 0, 1, 1, buildId, keySlotId, packageDigest, current,
-                new byte[][] {current});
+        int[][] invalidVersions = {{3, 0, 1, 1}, {2, 1, 1, 1}, {2, 0, 2, 1}, {2, 0, 1, 2}};
+        for (int[] versions : invalidVersions) {
+            AuthenticatedPayloadMetadata badVersion = metadata(
+                    null, versions[0], versions[1], versions[2], versions[3], buildId, keySlotId,
+                    packageDigest, current, new byte[][] {old, current});
+            expect("VERSION", () -> IntegrityChecks.verifyAuthenticatedMetadata(
+                    badVersion, binding, packageDigest, measurement));
+        }
+        AuthenticatedPayloadMetadata wrongLineage = metadata(null, 2, 0, 1, 1, buildId, keySlotId,
+                packageDigest, current, new byte[][] {current});
         expect("LINEAGE_MISMATCH", () -> IntegrityChecks.verifyAuthenticatedMetadata(
                 wrongLineage, binding, packageDigest, measurement));
+        AuthenticatedPayloadMetadata addedLineage = metadata(null, 2, 0, 1, 1, buildId, keySlotId,
+                packageDigest, current, new byte[][] {digest(0x01), old, current});
+        expect("LINEAGE_MISMATCH", () -> IntegrityChecks.verifyAuthenticatedMetadata(
+                addedLineage, binding, packageDigest, measurement));
+        AuthenticatedPayloadMetadata reorderedLineage = metadata(null, 2, 0, 1, 1, buildId, keySlotId,
+                packageDigest, current, new byte[][] {current, old});
+        expect("LINEAGE_MISMATCH", () -> IntegrityChecks.verifyAuthenticatedMetadata(
+                reorderedLineage, binding, packageDigest, measurement));
+        expect("METADATA", () -> IntegrityChecks.verifyAuthenticatedMetadata(
+                null, binding, packageDigest, measurement));
+        expect("METADATA", () -> IntegrityChecks.verifyAuthenticatedMetadata(
+                metadata, null, packageDigest, measurement));
+        check(Arrays.stream(UntrustedPayloadBinding.class.getDeclaredMethods())
+                        .map(Method::getName)
+                        .noneMatch(name -> name.toLowerCase().contains("factory")),
+                "untrusted-binding-cannot-authorize-factory");
         VerifiedStartupConfiguration configuration = new VerifiedStartupConfiguration(metadata);
         check("example.OriginalFactory".equals(configuration.originalFactoryClassNameOrNull()), "factory-source");
         byte[] buildCopy = configuration.buildId();
@@ -194,6 +247,38 @@ public final class PolicySelfTest {
         byte[] copy = source.clone();
         copy[0] ^= 1;
         return copy;
+    }
+
+    private static byte[] oneBitDifferent(byte[] source) {
+        byte[] copy = source.clone();
+        copy[0] ^= 1;
+        return copy;
+    }
+
+    private static Object cacheKey(
+            String packageName,
+            long versionCode,
+            long modifiedMillis,
+            long size,
+            byte[] current,
+            byte[][] lineage,
+            String processStartId) {
+        try {
+            Class<?> type = Class.forName("ah.runtime.guard.RuntimeSignerVerifier$CacheKey");
+            Constructor<?> constructor = type.getDeclaredConstructor(
+                    String.class,
+                    long.class,
+                    long.class,
+                    long.class,
+                    byte[].class,
+                    byte[][].class,
+                    String.class);
+            constructor.setAccessible(true);
+            return constructor.newInstance(
+                    packageName, versionCode, modifiedMillis, size, current, lineage, processStartId);
+        } catch (ReflectiveOperationException failure) {
+            throw new AssertionError(failure);
+        }
     }
 
     private static void require(boolean condition, String label) {

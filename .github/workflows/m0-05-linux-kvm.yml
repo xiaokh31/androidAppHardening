@@ -116,6 +116,7 @@ jobs:
             test -e "$ANDROID_HOME/$directory"
             ln -s "$ANDROID_HOME/$directory" "$sdk_root/$directory"
           done
+
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$sdk_root" \
             "platforms;android-36" \
             "build-tools;36.1.0" \
@@ -367,6 +368,40 @@ jobs:
             ]' > "$root/startup-negative-cases.json"
           done
 
+          rotation_lineage="$RUNNER_TEMP/m0-05-signing/fixture-to-alternate.lineage"
+          "$ANDROID_HOME/build-tools/36.1.0/apksigner" rotate \
+            --out "$rotation_lineage" \
+            --old-signer \
+            --ks "$M005_TEST_KEYSTORE" \
+            --ks-key-alias "$M005_TEST_KEY_ALIAS" \
+            --ks-pass env:M005_TEST_STORE_PASSWORD \
+            --key-pass env:M005_TEST_KEY_PASSWORD \
+            --new-signer \
+            --ks "$M005_ALT_KEYSTORE" \
+            --ks-key-alias "$M005_ALT_KEY_ALIAS" \
+            --ks-pass env:M005_ALT_STORE_PASSWORD \
+            --key-pass env:M005_ALT_KEY_PASSWORD
+          "$ANDROID_HOME/build-tools/36.1.0/apksigner" sign \
+            --v4-signing-enabled false \
+            --rotation-min-sdk-version 29 \
+            --ks "$M005_TEST_KEYSTORE" \
+            --ks-key-alias "$M005_TEST_KEY_ALIAS" \
+            --ks-pass env:M005_TEST_STORE_PASSWORD \
+            --key-pass env:M005_TEST_KEY_PASSWORD \
+            --next-signer \
+            --ks "$M005_ALT_KEYSTORE" \
+            --ks-key-alias "$M005_ALT_KEY_ALIAS" \
+            --ks-pass env:M005_ALT_STORE_PASSWORD \
+            --key-pass env:M005_ALT_KEY_PASSWORD \
+            --lineage "$rotation_lineage" \
+            --out build/m0-05/test-apks/extracted/signed/m2-03-valid-rotation.apk \
+            build/m0-05/test-apks/extracted/unsigned/m0-05-config-major-unsigned.apk
+          alternate_digest="$("$ANDROID_HOME/build-tools/36.1.0/apksigner" verify --print-certs \
+            build/m0-05/test-apks/extracted/signed/m0-05-wrong-signer.apk \
+            | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')"
+          test "${#alternate_digest}" = 64
+          printf '%s\n' "$alternate_digest" > build/m0-05/alternate-signer-sha256.txt
+
           ./gradlew --no-daemon --console=plain \
             :fixtures:android:assembleM202ExtractedRelease \
             :fixtures:android:assembleM202DirectRelease \
@@ -410,6 +445,43 @@ jobs:
               "$baseline" "$vector_root" "build/m2-03/m2-03-${variant}.apk" \
               | tee "build/m2-03/${variant}-package-report.json"
           done
+          "$ANDROID_HOME/build-tools/36.1.0/apksigner" sign \
+            --v4-signing-enabled false \
+            --ks "$M005_ALT_KEYSTORE" \
+            --ks-key-alias "$M005_ALT_KEY_ALIAS" \
+            --ks-pass env:M005_ALT_STORE_PASSWORD \
+            --key-pass env:M005_ALT_KEY_PASSWORD \
+            --out build/m2-03/m2-03-wrong-signer-extracted.apk \
+            build/m2-03/m2-03-extracted.apk
+          "$ANDROID_HOME/build-tools/36.1.0/apksigner" sign \
+            --v4-signing-enabled false \
+            --v3-signing-enabled false \
+            --ks "$M005_TEST_KEYSTORE" \
+            --ks-key-alias "$M005_TEST_KEY_ALIAS" \
+            --ks-pass env:M005_TEST_STORE_PASSWORD \
+            --key-pass env:M005_TEST_KEY_PASSWORD \
+            --next-signer \
+            --ks "$M005_ALT_KEYSTORE" \
+            --ks-key-alias "$M005_ALT_KEY_ALIAS" \
+            --ks-pass env:M005_ALT_STORE_PASSWORD \
+            --key-pass env:M005_ALT_KEY_PASSWORD \
+            --out build/m2-03/m2-03-multi-signer-extracted.apk \
+            build/m2-03/m2-03-extracted.apk
+          "$ANDROID_HOME/build-tools/36.1.0/apksigner" sign \
+            --v4-signing-enabled false \
+            --rotation-min-sdk-version 29 \
+            --ks "$M005_TEST_KEYSTORE" \
+            --ks-key-alias "$M005_TEST_KEY_ALIAS" \
+            --ks-pass env:M005_TEST_STORE_PASSWORD \
+            --key-pass env:M005_TEST_KEY_PASSWORD \
+            --next-signer \
+            --ks "$M005_ALT_KEYSTORE" \
+            --ks-key-alias "$M005_ALT_KEY_ALIAS" \
+            --ks-pass env:M005_ALT_STORE_PASSWORD \
+            --key-pass env:M005_ALT_KEY_PASSWORD \
+            --lineage "$rotation_lineage" \
+            --out build/m2-03/m2-03-historical-only-extracted.apk \
+            build/m2-03/m2-03-extracted.apk
 
       - name: Run bounded device acceptance
         shell: bash
@@ -501,12 +573,39 @@ jobs:
 
           adb -s "$serial" install -r -t --no-streaming \
             runtime/policy/build/outputs/apk/androidTest/debug/policy-debug-androidTest.apk
-          policy_output="$(timeout 60s adb -s "$serial" shell am instrument -w \
+          policy_output_one="$(timeout 60s adb -s "$serial" shell am instrument -w \
             ah.runtime.policy.test/ah.runtime.guard.PolicyConnectedRunner)"
-          printf '%s\n' "$policy_output"
-          grep -F 'policy_connected=true cases=5' <<<"$policy_output"
-          grep -F 'INSTRUMENTATION_CODE: -1' <<<"$policy_output"
-          adb -s "$serial" uninstall ah.runtime.policy.test
+          adb -s "$serial" shell am force-stop ah.runtime.policy.test
+          policy_output_two="$(timeout 60s adb -s "$serial" shell am instrument -w \
+            ah.runtime.policy.test/ah.runtime.guard.PolicyConnectedRunner)"
+          printf '%s\n%s\n' "$policy_output_one" "$policy_output_two"
+          grep -F 'policy_connected=true cases=8' <<<"$policy_output_one"
+          grep -F 'policy_connected=true cases=8' <<<"$policy_output_two"
+          grep -F 'INSTRUMENTATION_CODE: -1' <<<"$policy_output_one"
+          grep -F 'INSTRUMENTATION_CODE: -1' <<<"$policy_output_two"
+          policy_signer_one="$(sed -n 's/.*policy_signer=\([0-9a-f]\{64\}\).*/\1/p' <<<"$policy_output_one" | head -n1)"
+          policy_signer_two="$(sed -n 's/.*policy_signer=\([0-9a-f]\{64\}\).*/\1/p' <<<"$policy_output_two" | head -n1)"
+          policy_pid_one="$(sed -n 's/.*policy_pid=\([0-9][0-9]*\).*/\1/p' <<<"$policy_output_one" | head -n1)"
+          policy_pid_two="$(sed -n 's/.*policy_pid=\([0-9][0-9]*\).*/\1/p' <<<"$policy_output_two" | head -n1)"
+          test -n "$policy_signer_one"
+          test "$policy_signer_one" = "$policy_signer_two"
+          test -n "$policy_pid_one"
+          test "$policy_pid_one" != "$policy_pid_two"
+          timeout 300s node tools/validation/run-m2-03-signer-matrix.mjs \
+            --adb "$ANDROID_HOME/platform-tools/adb" \
+            --serial "$serial" \
+            --policy-apk runtime/policy/build/outputs/apk/androidTest/debug/policy-debug-androidTest.apk \
+            --signer-sha256 "$(cat build/m0-05/signer-sha256.txt)" \
+            --same-apk build/m0-05/test-apks/extracted/signed/m0-05-config-major.apk \
+            --wrong-apk build/m0-05/test-apks/extracted/signed/m0-05-wrong-signer.apk \
+            --multi-apk build/m0-05/test-apks/extracted/signed/m0-05-multi-signer.apk \
+            --unsigned-apk build/m0-05/test-apks/extracted/unsigned/m0-05-config-major-unsigned.apk \
+            --rotation-apk build/m0-05/test-apks/extracted/signed/m2-03-valid-rotation.apk \
+            --wrong-target-apk build/m2-03/m2-03-wrong-signer-extracted.apk \
+            --multi-target-apk build/m2-03/m2-03-multi-signer-extracted.apk \
+            --historical-target-apk build/m2-03/m2-03-historical-only-extracted.apk \
+            --evidence "build/m2-03/device-api${API}-x86_64/signer-matrix" \
+            --command-timeout-ms 60000
 
           timeout 900s node tools/validation/run-m0-05-device-acceptance.mjs \
             --adb "$ANDROID_HOME/platform-tools/adb" \

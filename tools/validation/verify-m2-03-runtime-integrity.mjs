@@ -101,12 +101,23 @@ check(statSync(path.join(root, "runtime/policy/src/test/java/ah/runtime/guard/Po
 const connectedRunner = read("runtime/policy/src/androidTest/java/ah/runtime/guard/PolicyConnectedRunner.java");
 const kvmWorkflow = read(".github/workflows/m0-05-linux-kvm.yml");
 check(
-  connectedRunner.includes("policy_connected=true cases=5") &&
+  connectedRunner.includes("policy_connected=true cases=8") &&
+    connectedRunner.includes("RuntimeSignerVerifier.verify(self)") &&
     kvmWorkflow.includes("ah.runtime.policy.test/ah.runtime.guard.PolicyConnectedRunner") &&
-    kvmWorkflow.includes("grep -F 'policy_connected=true cases=5'"),
+    kvmWorkflow.includes("grep -F 'policy_connected=true cases=8'") &&
+    kvmWorkflow.includes('test "$policy_signer_one" = "$policy_signer_two"') &&
+    kvmWorkflow.includes('test "$policy_pid_one" != "$policy_pid_two"'),
   "non-empty connected policy runner",
 );
 check(statSync(path.join(root, "fixtures/android/src/androidTestM203Fixture/java/ah/runtime/guard/M203DeviceRunner.java")).size > 0, "non-empty Guard device runner");
+const signerMatrix = read("tools/validation/run-m2-03-signer-matrix.mjs");
+check(
+  signerMatrix.includes('verifyFixture("valid-rotation"') &&
+    signerMatrix.includes('verifyFixture("multiple-current"') &&
+    signerMatrix.includes('verifyStartup("historical-only"') &&
+    kvmWorkflow.includes("run-m2-03-signer-matrix.mjs"),
+  "device signer and rotation rejection matrix",
+);
 
 const report = {
   task_id: "M2-03",

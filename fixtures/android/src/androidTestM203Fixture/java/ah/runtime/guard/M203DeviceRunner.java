@@ -59,6 +59,14 @@ public final class M203DeviceRunner extends Instrumentation {
                             }
 
                             @Override
+                            public void close(ah.runtime.loader.LoadedPayload payload) {
+                                payload.close();
+                                if (stage == RuntimeStartupGuard.GuardStage.BEFORE_RETURN) {
+                                    throw new IllegalStateException("synthetic-cleanup");
+                                }
+                            }
+
+                            @Override
                             public void closed() {
                                 closeCount[0]++;
                             }
@@ -66,6 +74,14 @@ public final class M203DeviceRunner extends Instrumentation {
                 throw new AssertionError("failure stage returned: " + stage);
             } catch (OutOfMemoryError expected) {
                 require(closeCount[0] == 1, "Guard close count: " + stage);
+                if (stage == RuntimeStartupGuard.GuardStage.BEFORE_RETURN) {
+                    require(expected.getSuppressed().length == 1, "cleanup suppression count");
+                    require(
+                            "synthetic-cleanup".equals(expected.getSuppressed()[0].getMessage()),
+                            "cleanup suppression value");
+                } else {
+                    require(expected.getSuppressed().length == 0, "unexpected suppression");
+                }
                 injected++;
             }
         }

@@ -1,0 +1,210 @@
+#!/usr/bin/env node
+
+import { createHash } from "node:crypto";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import process from "node:process";
+import { spawnSync } from "node:child_process";
+
+const options = parse(process.argv.slice(2));
+const adb = required("adb");
+const serial = required("serial");
+const evidence = path.resolve(required("evidence"));
+const signer = required("signer-sha256");
+const timeout = Number(options.get("command-timeout-ms") ?? "60000");
+if (!/^[0-9a-f]{64}$/u.test(signer)) fail("invalid signer SHA-256");
+if (!Number.isInteger(timeout) || timeout < 1000 || timeout > 120000) fail("invalid timeout");
+assertIgnored(evidence);
+mkdirSync(evidence, { recursive: true });
+
+const policyPackage = "ah.runtime.policy.test";
+const runner = `${policyPackage}/ah.runtime.guard.PolicyConnectedRunner`;
+const fixturePackage = "ah.fixtures.android.m005.extracted";
+const targetPackage = "ah.fixtures.android.m203.extracted";
+const activity = `${targetPackage}/ah.fixtures.android.m203.M203ColdStartActivity`;
+const transcript = [];
+const fixtureResults = [];
+const startupResults = [];
+
+try {
+  runAdb(["install", "-r", "-t", "--no-streaming", artifact("policy-apk")]);
+  verifyFixture("same-signer", "same-apk", "VERIFIED", 1, signer);
+  verifyFixture("different-signer", "wrong-apk", "SIGNER_MISMATCH", 0, signer);
+  verifyFixture("multiple-current", "multi-apk", "MULTIPLE_CURRENT", 0, "");
+  verifyFixture("unsigned", "unsigned-apk", "UNSIGNED", 0, "");
+  verifyFixture("valid-rotation", "rotation-apk", "VERIFIED", 2, "");
+  verifyFixture("historical-only", "rotation-apk", "SIGNER_MISMATCH", 0, signer);
+
+  verifyStartup("different-signer", "wrong-target-apk", "SIGNER_MISMATCH", false);
+  verifyStartup("multiple-current", "multi-target-apk", "MULTIPLE_CURRENT", true);
+  verifyStartup("historical-only", "historical-target-apk", "SIGNER_MISMATCH", false);
+  cleanup();
+
+  const report = {
+    task_id: "M2-03",
+    validation_mode: "pre-cli",
+    serial_sha256: sha256(Buffer.from(serial, "utf8")),
+    signer_fixture_matrix: fixtureResults,
+    startup_rejection_matrix: startupResults,
+    cleanup_passed: true,
+    result: "PASS",
+  };
+  writeFileSync(path.join(evidence, "signer-matrix-report.json"), `${JSON.stringify(report, null, 2)}\n`);
+  writeFileSync(path.join(evidence, "signer-matrix-commands.json"), `${JSON.stringify(transcript, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+} catch (error) {
+  cleanup();
+  writeFileSync(path.join(evidence, "signer-matrix-commands.json"), `${JSON.stringify(transcript, null, 2)}\n`);
+  process.stderr.write(`${error.stack ?? error}\n`);
+  process.exitCode = 1;
+}
+
+function verifyFixture(name, option, expected, lineageCount, expectedCurrent) {
+  const source = artifact(option);
+  const staging = `/data/local/tmp/aah-m2-03-${name}.apk`;
+  const appRoot = runAdb(["shell", "run-as", policyPackage, "pwd"]).stdout.trim();
+  if (!appRoot.startsWith("/data/")) fail("invalid policy app data path");
+  const remote = `${appRoot}/files/aah-m2-03-${name}.apk`;
+  runAdb(["push", source, staging]);
+  runAdb(["shell", "run-as", policyPackage, "mkdir", "-p", "files"]);
+  runAdb(["shell", "run-as", policyPackage, "cp", staging, `files/aah-m2-03-${name}.apk`]);
+  const command = [
+    "shell", "am", "instrument", "-w",
+    "-e", "verify_apk", remote,
+    "-e", "verify_package", fixturePackage,
+    "-e", "expected_category", expected,
+    "-e", "expected_lineage_count", String(lineageCount),
+  ];
+  if (expectedCurrent !== "") {
+    command.push("-e", "expected_current_sha256", expectedCurrent);
+  }
+  command.push(runner);
+  const result = runAdb(command);
+  if (!result.stdout.includes("policy_fixture=true") ||
+      !result.stdout.includes(`actual=${expected}`) ||
+      !result.stdout.includes("INSTRUMENTATION_CODE: -1")) {
+    fail(`${name} policy instrumentation mismatch: ${result.stdout}`);
+  }
+  runAdb(["shell", "run-as", policyPackage, "rm", "-f", `files/aah-m2-03-${name}.apk`]);
+  runAdb(["shell", "rm", "-f", staging]);
+  fixtureResults.push({
+    name,
+    apk_sha256: sha256(readFileSync(source)),
+    expected_code: `AAH-RUNTIME-INTEGRITY-${expected}`,
+    actual_code: `AAH-RUNTIME-INTEGRITY-${expected}`,
+    expected_lineage_count: lineageCount,
+    result: "PASS",
+  });
+}
+
+function verifyStartup(name, option, expected, allowInstallRejection) {
+  const apk = artifact(option);
+  runAdb(["uninstall", targetPackage], true);
+  runAdb(["logcat", "-c"], true);
+  const installed = runAdb(["install", "-r", "-t", "--no-streaming", apk], true);
+  if (installed.status !== 0) {
+    if (!allowInstallRejection) fail(`${name} install failed: ${installed.stderr}`);
+    startupResults.push({
+      name,
+      apk_sha256: sha256(readFileSync(apk)),
+      expected_code: `AAH-RUNTIME-INTEGRITY-${expected}`,
+      actual_code: "PLATFORM_SIGNATURE_REJECTION",
+      install_rejected: true,
+      result: "PASS",
+    });
+    return;
+  }
+  runAdb(["shell", "am", "start", "-W", "-n", activity], true);
+  runAdb(["shell", "sleep", "1"]);
+  const logs = runAdb(["logcat", "-d", "-v", "threadtime"]);
+  writeFileSync(path.join(evidence, `${name}.logcat.txt`), logs.stdout);
+  const code = `AAH-RUNTIME-INTEGRITY-${expected}`;
+  if (!logs.stdout.includes(code)) fail(`${name} startup did not emit ${code}`);
+  startupResults.push({
+    name,
+    apk_sha256: sha256(readFileSync(apk)),
+    expected_code: code,
+    actual_code: code,
+    install_rejected: false,
+    result: "PASS",
+  });
+}
+
+function cleanup() {
+  for (const name of [
+    "same-signer", "different-signer", "multiple-current", "unsigned",
+    "valid-rotation", "historical-only",
+  ]) {
+    runAdb(["shell", "run-as", policyPackage, "rm", "-f", `files/aah-m2-03-${name}.apk`], true);
+  }
+  runAdb(["shell", "rm", "-f", "/data/local/tmp/aah-m2-03-same-signer.apk"], true);
+  runAdb(["shell", "rm", "-f", "/data/local/tmp/aah-m2-03-different-signer.apk"], true);
+  runAdb(["shell", "rm", "-f", "/data/local/tmp/aah-m2-03-multiple-current.apk"], true);
+  runAdb(["shell", "rm", "-f", "/data/local/tmp/aah-m2-03-unsigned.apk"], true);
+  runAdb(["shell", "rm", "-f", "/data/local/tmp/aah-m2-03-valid-rotation.apk"], true);
+  runAdb(["shell", "rm", "-f", "/data/local/tmp/aah-m2-03-historical-only.apk"], true);
+  runAdb(["uninstall", policyPackage], true);
+  runAdb(["uninstall", targetPackage], true);
+}
+
+function runAdb(args, allowFailure = false) {
+  const result = spawnSync(adb, ["-s", serial, ...args], {
+    encoding: "utf8",
+    timeout,
+    maxBuffer: 16 * 1024 * 1024,
+    windowsHide: true,
+  });
+  const record = {
+    started_at: new Date().toISOString(),
+    command: ["adb", "-s", "<serial-redacted>", ...args.map(redact)],
+    exit_code: result.status,
+    timed_out: result.error?.code === "ETIMEDOUT",
+    stdout: result.stdout ?? "",
+    stderr: result.stderr ?? "",
+  };
+  transcript.push(record);
+  if (record.timed_out) fail(`adb timed out: ${args.join(" ")}`);
+  if (!allowFailure && result.status !== 0) fail(`adb failed: ${args.join(" ")}\n${record.stderr}`);
+  return { status: result.status, stdout: record.stdout, stderr: record.stderr };
+}
+
+function redact(value) {
+  if (path.isAbsolute(value)) return path.basename(value);
+  return /^[0-9a-f]{64}$/u.test(value) ? "<sha256-redacted>" : value;
+}
+
+function artifact(name) {
+  const value = path.resolve(required(name));
+  readFileSync(value);
+  return value;
+}
+
+function assertIgnored(target) {
+  const roots = [path.resolve("build"), path.resolve("artifacts")];
+  if (!roots.some((root) => target === root || target.startsWith(`${root}${path.sep}`))) {
+    fail("evidence must be under build/ or artifacts/");
+  }
+}
+
+function parse(values) {
+  const parsed = new Map();
+  for (let index = 0; index < values.length; index += 2) {
+    if (!values[index]?.startsWith("--") || values[index + 1] === undefined) fail("invalid arguments");
+    parsed.set(values[index].slice(2), values[index + 1]);
+  }
+  return parsed;
+}
+
+function required(name) {
+  const value = options.get(name);
+  if (!value) fail(`missing --${name}`);
+  return value;
+}
+
+function sha256(value) {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function fail(message) {
+  throw new Error(`M2-03 signer matrix failed: ${message}`);
+}

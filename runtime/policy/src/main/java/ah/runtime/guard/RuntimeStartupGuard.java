@@ -23,6 +23,10 @@ public final class RuntimeStartupGuard {
     interface GuardFailureProbe {
         void hit(GuardStage stage);
 
+        default void close(LoadedPayload payload) {
+            payload.close();
+        }
+
         default void closed() {}
     }
 
@@ -99,7 +103,11 @@ public final class RuntimeStartupGuard {
         } finally {
             if (!committed && loadedPayload != null) {
                 try {
-                    loadedPayload.close();
+                    if (failureProbe == null) {
+                        loadedPayload.close();
+                    } else {
+                        failureProbe.close(loadedPayload);
+                    }
                 } catch (RuntimeException | Error cleanupFailure) {
                     if (primary == null) {
                         throw cleanupFailure;

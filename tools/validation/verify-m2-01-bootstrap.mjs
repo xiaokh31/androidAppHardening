@@ -87,6 +87,14 @@ requireCondition(legacyShell.includes("M0-05 fixture-only compatibility proof")
   "legacy M0-05 fixture crossed into the production Guard contract");
 requireCondition(!combined.includes("LegacyShellAppComponentFactory"),
   "fixture-only legacy Shell entered production sources");
+requireCondition(kvmWorkflow.includes(
+  'input_apk="fixtures/android/build/outputs/apk/compat${variant^}/release/android-compat${variant^}-release.apk"'),
+  "legacy M0-05 negative matrix does not use its fixture-only APK");
+for (const variant of ["Extracted", "Direct"]) {
+  requireCondition(kvmWorkflow.includes(
+    `--${variant.toLowerCase()}-target-apk fixtures/android/build/outputs/apk/compat${variant}/release/android-compat${variant}-release.apk`),
+    `legacy M0-05 ${variant.toLowerCase()} runtime target is not isolated`);
+}
 requireCondition(kvmWorkflow.includes("run-m2-01-device-acceptance.mjs")
     && kvmWorkflow.includes("assembleM201ExtractedRelease")
     && kvmWorkflow.includes("assembleM201DirectRelease"),

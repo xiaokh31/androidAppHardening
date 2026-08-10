@@ -299,7 +299,11 @@ jobs:
             root="build/m0-05/test-apks/$variant"
             unsigned_dir="$root/unsigned"
             signed_dir="$root/signed"
-            input_apk="build/m1-03/device-apks/m1-03-${variant}.apk"
+            # M1-03's transformed artifact intentionally names the production M2-01 Shell and
+            # remains covered by the static gate above. The historical M0-05 runtime/negative
+            # matrix must use its fixture-only Legacy Shell instead of feeding the obsolete PoC
+            # container contract into the production M2-03 Guard.
+            input_apk="fixtures/android/build/outputs/apk/compat${variant^}/release/android-compat${variant^}-release.apk"
             mkdir -p "$unsigned_dir" "$signed_dir"
             node tools/validation/create-m0-05-test-apks.mjs \
               "$input_apk" "$unsigned_dir" | tee "$root/creation-report.json"
@@ -672,8 +676,8 @@ jobs:
             --platform "api${API}-x86_64-linux-kvm" \
             --cold-starts 20 \
             --command-timeout-ms 60000 \
-            --extracted-target-apk build/m1-03/device-apks/m1-03-extracted.apk \
-            --direct-target-apk build/m1-03/device-apks/m1-03-direct.apk \
+            --extracted-target-apk fixtures/android/build/outputs/apk/compatExtracted/release/android-compatExtracted-release.apk \
+            --direct-target-apk fixtures/android/build/outputs/apk/compatDirect/release/android-compatDirect-release.apk \
             --no-factory-apk build/m0-05/test-apks/extracted/signed/m0-05-no-factory.apk \
             --extracted-negative-signed-dir build/m0-05/test-apks/extracted/signed \
             --extracted-negative-unsigned-dir build/m0-05/test-apks/extracted/unsigned \

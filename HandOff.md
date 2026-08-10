@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260809-225921
-updated_at: 2026-08-10T14:29:30+08:00
+updated_at: 2026-08-10T14:48:30+08:00
 updated_by: /root
 state: active
 source_branch: feat/m2-03-runtime-integrity
@@ -21,6 +21,7 @@ next_owner: /root
 
 ## Current State
 
+- M2-03 frozen implementation `7db6873d05bcb3c384d653f0e8debd0376a1dbea` passed exact-head Ubuntu/Windows Build `31362136455` and API 29/36 x86_64 Linux/KVM `31362136472`. Both KVM jobs ran the explicit five-case policy instrumentation plus extracted/direct six-window Guard instrumentation, cross-DEX, JNI, authenticated metadata, exactly 20 cold starts per variant, memory, zero plaintext DEX and cleanup. API 29 arm64 remains blocked only by MIUI rejecting normal ADB install with `INSTALL_FAILED_USER_RESTRICTED`; no bypass or retry loop is permitted. Independent read-only M2-03 review is still required before ready/merge.
 - 用户已明确启动并完整授权 M2-03。分支 `feat/m2-03-runtime-integrity` 从最终门禁全绿的 `main@dec1ef68f69eea26ae1bc6a1132bf26bf39ba0f8` 建立，唯一 tracking Issue 为 #14。实现已接通固定 `apksig 9.3.0`、Framework `sourceDir`/package、唯一 current signer、old-to-new lineage、同 handle metadata recheck、原子 `VerifiedPayloadSession`、六个 Guard OOM 窗口和有界验证记录；29-case JVM matrix、lint、双 Release/R8 fixture 编译、架构/敏感能力扫描与 Governance 均 PASS。
 - API 29 arm64 非 root 真机在线且设备信息已核验；首次有界验收在第一个普通 ADB 安装处由 MIUI 返回 `INSTALL_FAILED_USER_RESTRICTED: Install canceled by user`，脚本随后完成卸载检查，没有绕过安全设置或重试循环。API 29/36 x86_64 KVM 已加入固定 45 分钟 job timeout 与 unconditional cleanup，等待冻结分支 CI。
 

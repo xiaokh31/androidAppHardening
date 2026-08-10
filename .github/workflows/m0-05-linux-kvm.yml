@@ -607,9 +607,15 @@ jobs:
           test -n "$policy_pid_two"
           test "$policy_pid_one" != "$policy_pid_two"
           adb -s "$serial" shell run-as ah.runtime.policy.test rm -f files/m2-03-process.apk
-          adb -s "$serial" shell run-as ah.runtime.policy.test test ! -e files/m2-03-process.apk
+          if adb -s "$serial" shell run-as ah.runtime.policy.test ls files/m2-03-process.apk; then
+            echo "M2-03 private process APK cleanup failed" >&2
+            exit 1
+          fi
           adb -s "$serial" shell rm -f /data/local/tmp/m2-03-process.apk
-          adb -s "$serial" shell test ! -e /data/local/tmp/m2-03-process.apk
+          if adb -s "$serial" shell ls /data/local/tmp/m2-03-process.apk; then
+            echo "M2-03 staging process APK cleanup failed" >&2
+            exit 1
+          fi
           timeout 300s node tools/validation/run-m2-03-signer-matrix.mjs \
             --adb "$ANDROID_HOME/platform-tools/adb" \
             --serial "$serial" \

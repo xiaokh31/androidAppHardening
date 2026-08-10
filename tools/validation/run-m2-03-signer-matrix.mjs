@@ -128,18 +128,27 @@ function verifyStartup(name, option, expected, allowInstallRejection) {
     });
     return;
   }
-  runAdb(["shell", "am", "start", "-W", "-n", activity], true);
-  runAdb(["shell", "sleep", "1"]);
-  const logs = runAdb(["logcat", "-d", "-v", "threadtime"], false, false);
   const code = `AAH-RUNTIME-INTEGRITY-${expected}`;
-  if (!logs.stdout.includes(code)) fail(`${name} startup did not emit ${code}`);
   const marker = `startup_rejected code=${code} lookup_count=0 session_published=false`;
-  if (!logs.stdout.includes(marker)) fail(`${name} startup publication marker mismatch`);
-  const sanitized = logs.stdout
+  runAdb(["shell", "am", "start", "-W", "-n", activity], true);
+  let startupLogs = "";
+  for (let attempt = 0; attempt < 5 && !startupLogs.includes(marker); attempt += 1) {
+    runAdb(["shell", "sleep", "1"]);
+    startupLogs = runAdb(
+      ["logcat", "-d", "-v", "threadtime", "-s", "AAH-M2-03:*"],
+      false,
+      false,
+    ).stdout;
+  }
+  const sanitized = startupLogs
     .split(/\r?\n/u)
     .filter((line) => line.includes("AAH-M2-03") && line.includes("startup_rejected"))
     .map((line) => line.slice(line.indexOf("startup_rejected")))
     .join("\n");
+  if (!startupLogs.includes(code)) {
+    fail(`${name} startup did not emit ${code}; observed=${sanitized || "<none>"}`);
+  }
+  if (!startupLogs.includes(marker)) fail(`${name} startup publication marker mismatch`);
   if (!sanitized.includes(marker)) fail(`${name} sanitized startup evidence missing marker`);
   assertNoSensitiveEvidence(sanitized, name);
   writeFileSync(path.join(evidence, `${name}.logcat.txt`), `${sanitized}\n`);
@@ -176,7 +185,7 @@ function cleanup() {
   ]) {
     const file = `files/aah-m2-03-${name}.apk`;
     runAdb(["shell", "run-as", policyPackage, "rm", "-f", file], true);
-    if (runAdb(["shell", "run-as", policyPackage, "test", "!", "-e", file], true).status !== 0) {
+    if (runAdb(["shell", "run-as", policyPackage, "ls", file], true).status === 0) {
       passed = false;
     }
   }
@@ -197,7 +206,7 @@ function cleanup() {
     "same-signer", "different-signer", "multiple-current", "unsigned",
     "valid-rotation", "historical-only",
   ]) {
-    if (runAdb(["shell", "test", "!", "-e", `/data/local/tmp/aah-m2-03-${name}.apk`], true).status !== 0) {
+    if (runAdb(["shell", "ls", `/data/local/tmp/aah-m2-03-${name}.apk`], true).status === 0) {
       passed = false;
     }
   }

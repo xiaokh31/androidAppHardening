@@ -18,3 +18,12 @@ Replacement exact-head run IDs and artifacts will be appended only after the cor
 - Pinned offline regression `:runtime:native:clean :runtime:native:archiveM204NativeDebugSymbols` exited `0` in 36 seconds, built all four ABIs and stored the configuration cache. The resulting ZIP contains exactly one `libah_runtime.so` under each of `armeabi-v7a`, `arm64-v8a`, `x86`, and `x86_64`; it is 3603789 bytes with SHA-256 `ec4ee7d911e0476ec3fd5cdd2581543db501ee8f2c877288bedb44ef88ba9098`.
 
 This correction changes debug-symbol discovery/staging only. Runtime sources, stripped AAR inputs, ABI policy, device fixtures and acceptance behavior are unchanged. A new exact-head CI round is required.
+
+## Replacement head `46aad4a741c32d9e0410b814f007c7a99a987192`
+
+- Build run `31512864693` passed Ubuntu job `93850732573` and Windows job `93850732314`, including clean full checks, exact four-ABI verification and evidence upload. Governance run `31512864733` passed.
+- KVM run `31512864768` built both API fixtures successfully, then API 29 job `93850890009` and API 36 job `93850890033` failed at the same `compileDebugAndroidTestJavaWithJavac` boundary. `NativeConnectedRunner` extends platform `Instrumentation`, which has no `getArguments()` method; this source had not previously been compiled by the local fixture-only target.
+- The bounded fix copies the supplied `Bundle` in `onCreate()` and reads the configured expected ABI from that private field in `onStart()`. No production source, JNI behavior or fixture contract changes.
+- Pinned offline `-Pm204TargetAbi=x86_64 :runtime:native:compileDebugAndroidTestJavaWithJavac` exited `0` in 25 seconds with configuration cache stored.
+
+A new exact-head KVM run must execute both API device matrices. The already proven Build/Governance semantics remain useful regression evidence but the final completion point still requires all checks on the same final head.

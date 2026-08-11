@@ -14,9 +14,11 @@ import java.io.IOException;
 public final class NativeConnectedRunner extends Instrumentation {
     private static final String TEST_CLASS = "ah.runtime.nativebridge.NativeConnectedContract";
     private static final String TEST_NAME = "jniFailClosedSmoke";
+    private Bundle runnerArguments = new Bundle();
 
     @Override
     public void onCreate(Bundle arguments) {
+        runnerArguments = arguments == null ? new Bundle() : new Bundle(arguments);
         super.onCreate(arguments);
         start();
     }
@@ -33,9 +35,7 @@ public final class NativeConnectedRunner extends Instrumentation {
             expectCode(null, "AAH-RUNTIME-CONTAINER-ARGUMENT");
             expectCode(applicationInfo, "AAH-RUNTIME-CONTAINER-ZIP-MISSING");
             String runtimeAbi = runtimeAbi(applicationInfo);
-            String expectedAbi = getArguments() == null
-                    ? null
-                    : getArguments().getString("m204_expected_abi");
+            String expectedAbi = runnerArguments.getString("m204_expected_abi");
             require(expectedAbi == null || expectedAbi.equals(runtimeAbi),
                     "runtime ABI mismatch expected=" + expectedAbi + " actual=" + runtimeAbi);
             sendStatus(0, status("."));

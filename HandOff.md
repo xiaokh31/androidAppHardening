@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260812-001814
-updated_at: 2026-08-12T00:18:14+08:00
+handoff_id: HO-20260812-002320
+updated_at: 2026-08-12T00:23:20+08:00
 updated_by: /root
 state: active
 source_branch: feat/m2-04-four-abi-runtime
@@ -26,6 +26,7 @@ Complete M2-04 four-ABI Runtime build, compatibility reporting and bounded devic
 - M2-04 is active on `feat/m2-04-four-abi-runtime` from synchronized `main@9ea71927`. Four-ABI Release/AAR, ELF hardening/slot/export verification, ABI policy, REPORT_V1 alignment and a selected x86 Release/R8 fixture build pass locally. No local emulator was started.
 - After renewed ordinary USB-install permission, the bounded API 29 physical runner passed `arm64-v8a` and `armeabi-v7a`, each with extracted/direct Release/R8 instrumentation, cross-DEX, JNI, metadata, one cold start, memory, zero plaintext DEX files and cleanup. A stale ignored vector path caused one pre-install no-replace stop; the runner now uses per-run source/vector directories and the successful matrix was not repeated. No local emulator was started.
 - Independent review rejected frozen `3cc8dc2` with `P0=0/P1=2/P2=2`. Corrected implementation parent `0cfafd4a956f0fefde3c7b5d8278a081f6e05c40` closes all four findings and passed a fresh independent read-only review with `P0=0/P1=0/P2=0`. The next commit is evidence-only; any production change invalidates that review.
+- The reviewed branch was pushed and unique draft PR #46 now closes Issue #15. Initial KVM run `31511953811` failed before any Android build because GitHub deployed official Ubuntu image `20260810.271.1`; its official manifest preserves GCC/G++ `13.3.0`. The exact image/ref pair is added to the existing fail-closed Build/KVM allowlists, with replacement CI pending.
 - M2-03 final PR HEAD `19d02a40962f55678b7a3c1cc17108bfbb44f9fa` passed exact-head Build `31421047955`, Governance `31421047952` and API 29/36 x86_64 KVM `31421047965`. PR [#44](https://github.com/xiaokh31/androidAppHardening/pull/44) was merged with expected-head protection as merge commit `803de853439026f4248a749d51033424c2e10b6d`; Issue #14 is closed.
 - The authorized API 29 arm64 `user/release-keys`, `ro.debuggable=0`, non-root physical-device report passed the same extracted/direct 12+12 ownership/metadata, cross-DEX, JNI, 20 cold starts, memory, zero-plaintext and cleanup matrix. Its evidence is inherited with a documented boundary because `659c2b8..8211a60` changes no production Runtime, Native, target/test APK or device instrumentation logic.
 - The full plus incremental independent read-only review is PASS with `P0=0`, `P1=0`, `P2=0`. The retained-logcat false positive is closed by per-scenario tokens; the later API 29 KVM stop/start race is closed by an M2-03-only stabilization window plus exact Activity/PID/PSS checks and fail-first logcat capture, without retry or sample substitution. README now records M2-03 as complete; only this post-merge coordination commit and its final main gates remain.
@@ -1338,8 +1339,8 @@ None
 
 ## Ordered Next Actions
 
-1. Commit the bounded per-run validation-directory fix and physical ARM evidence, then push the reviewed branch and create the unique Issue #15 draft PR under the user's explicit authorization.
-2. Observe one Ubuntu/Windows Build plus API 29/36 KVM round. Do not retrigger successful jobs.
+1. Commit and push the exact Ubuntu `20260810.271.1` allowlist correction, then observe its automatically triggered replacement Build, Governance and API 29/36 KVM runs.
+2. Do not manually retrigger successful jobs; diagnose only a concrete failed check.
 3. If no production code changes, perform only an evidence-consistency check against implementation parent `0cfafd4`; do not repeat the completed full code review.
 4. Only after all gates pass, update README, ready/merge the PR with expected-head protection, run strict HandOff on `main`, and then start M2-05 as explicitly ordered by the user; M2-06 follows only after M2-05 completes.
 

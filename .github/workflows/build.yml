@@ -38,6 +38,7 @@ jobs:
           case "${ImageVersion:-}" in
             20260720.247.2) reviewed_manifest='ubuntu24/20260720.247' ;;
             20260804.265.1) reviewed_manifest='ubuntu24/20260804.265' ;;
+            20260810.271.1) reviewed_manifest='ubuntu24/20260810.271' ;;
             *) printf 'unexpected mutable runner image: ImageOS=%s ImageVersion=%s\n' "${ImageOS:-}" "${ImageVersion:-}" >&2; exit 1 ;;
           esac
           test "$(gcc -dumpfullversion -dumpversion)" = "13.3.0"

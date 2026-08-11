@@ -46,3 +46,15 @@ M2-04 is therefore an implementation checkpoint, not complete. The only local de
 - The failed lint task alone was rerun and exited `0` in 36 seconds. The strengthened verifier exited `0`; `native-runtime-review2.json` is 4955 bytes with unchanged SHA-256 `8cc20f1af70b5b0e591aefe79c34020b322f34480af509dab76f0db8622abf5a`.
 
 No device install was retried. The corrected implementation was frozen at `0cfafd4a956f0fefde3c7b5d8278a081f6e05c40`; independent read-only review 2 returned PASS with `P0=0`, `P1=0`, `P2=0` and is archived in `security-review-2.md`. The review closes the code gate only. ARM physical-device installation, API 29/36 KVM, Ubuntu/Windows CI, publication, README completion and post-merge strict HandOff remain pending.
+
+## 2026-08-12 API 29 physical ARM acceptance
+
+- Validation mode: `pre-cli`; project-generated fixture only. The authorized Xiaomi device was API 29, `user/release-keys`, `ro.secure=1`, `ro.debuggable=0`, non-root, and exposed both `arm64-v8a` and `armeabi-v7a`.
+- The first invocation after renewed authorization stopped before installation because the previous rejected run's ignored vector directory already existed and the container builder correctly enforced no-replace publication. The runner now gives source DEX and Runtime/vector output a unique per-run ID; this test-only orchestration change does not affect production Runtime code.
+- `tools/validation/run-m2-04-arm-device.ps1` was then executed once with a unique ignored evidence root. It exited `0` in 238 seconds. Both ABIs ran extracted/direct Release/R8 fixtures with instrumentation, ten failure-injection windows, cross-DEX, JNI, authenticated metadata, one bounded cold start, memory measurement, zero plaintext DEX files and successful package cleanup.
+- Matrix: 1089 bytes, SHA-256 `701839820fac2d54690c923c77b8b4323773f9c880be0f55e27a46f34154ab06`.
+- `arm64-v8a` report: 3298 bytes, SHA-256 `06107478f01933ba2262667ab1557d1ec129de5854f28d3d617cbef42def5635`; command transcript: 20290 bytes, SHA-256 `ca056a109880dabca89edc143d56a1475446da6ed7df3d8bda744352afbfbd40`.
+- `armeabi-v7a` report: 3312 bytes, SHA-256 `ad8bbd5978740411b671c403db10f8925d3d5c1f59cb70bf9db3c60d0850b506`; command transcript: 20306 bytes, SHA-256 `6ffc9f70962500af8ab1f7512cf0411139332c5d73de0a9a2383a22009b3fadd`.
+- Independent `pm path` checks after the runner returned no target packages. No emulator was started, no root or secure-setting change was used, and no successful device case was repeated.
+
+The local implementation, independent code review and physical ARM gates are closed. M2-04 now awaits its single authorized draft-PR Ubuntu/Windows Build and API 29/36 Linux/KVM round.

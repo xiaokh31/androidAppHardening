@@ -50,8 +50,8 @@ if ($LASTEXITCODE -ne 0 -or $api -ne "29" -or
 
 $runId = [Guid]::NewGuid().ToString("N")
 $signingRoot = Join-Path $repository "build/m2-04/signing/$runId"
-$runtimeRoot = Join-Path $repository "build/m2-04/arm-runtime"
-$sourceRoot = Join-Path $repository "build/m2-04/arm-source-dex"
+$runtimeRoot = Join-Path $repository "build/m2-04/arm-runtime/$runId"
+$sourceRoot = Join-Path $repository "build/m2-04/arm-source-dex/$runId"
 New-Item -ItemType Directory -Force -Path $evidence, $signingRoot, $runtimeRoot | Out-Null
 $keystore = Join-Path $signingRoot "fixture.p12"
 $password = [Guid]::NewGuid().ToString("N") + [Guid]::NewGuid().ToString("N")

@@ -1342,8 +1342,8 @@ None
 
 ## Ordered Next Actions
 
-1. Commit and push this documentation/HandOff-only evidence child of final implementation `ed6b21b`; wait only for its Build and Governance checks because the KVM path filter correctly inherits the unchanged implementation result `31516454190`.
-2. After the final evidence HEAD is green, request the still-missing explicit ready/merge authorization for draft PR #46; do not merge from the existing push/draft authorization alone.
+1. The documentation/HandOff-only child of final implementation `ed6b21b` is pushed. GitHub evaluates the PR path filter against the complete PR diff, so wait for its automatically triggered Build, Governance and KVM round without manual reruns.
+2. After that final evidence HEAD is green, request the still-missing explicit ready/merge authorization for draft PR #46; do not merge from the existing push/draft authorization alone.
 3. After expected-head merge, synchronize `main`, update README to mark M2-04 complete, run strict HandOff and the final main gates.
 4. Start M2-05 only after M2-04 is completely closed; M2-06 follows only after M2-05 completes. Do not parallelize the tasks or repeat already successful device matrices.
 

@@ -1,12 +1,12 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260812-004354
-updated_at: 2026-08-12T01:32:54+08:00
+handoff_id: HO-20260812-053200
+updated_at: 2026-08-12T05:32:00+08:00
 updated_by: /root
 state: active
-source_branch: feat/m2-04-four-abi-runtime
-base_commit: 9ea71927aea01cd28ba993df71d50b82213dd87d
+source_branch: main
+base_commit: d5c74e7d3bfbcebff9c782134795f23ddd16c5e7
 working_tree: clean
 current_milestone: M2
 active_task: M2-04
@@ -17,10 +17,11 @@ next_owner: /root
 
 ## Objective
 
-Complete M2-04 four-ABI Runtime build, compatibility reporting and bounded device evidence without starting M2-05 or another adjacent task.
+Close M2-04 on merged `main` with README synchronization, strict HandOff and final main gates; start M2-05 only after those gates pass.
 
 ## Current State
 
+- PR [#46](https://github.com/xiaokh31/androidAppHardening/pull/46) was marked ready and merged with exact-head protection at `80fee2559073278eb55f94de4a9ac2065777ba6b` as merge commit `d5c74e7d3bfbcebff9c782134795f23ddd16c5e7`; Issue [#15](https://github.com/xiaokh31/androidAppHardening/issues/15) is closed. Local `main` is synchronized. This coordination change updates README/evidence/HandOff and triggers the final main gates; no device matrix is repeated.
 - M2-01 final implementation parent `6a5a2706dcbb1b2984fb2bc6edf4147e81f98773` passed local gates, Ubuntu/Windows Build and Governance, API 29/36 x86_64 KVM, and the independent read-only review with `P0=0`, `P1=0`, `P2=0`.
 - The sole PR [#45](https://github.com/xiaokh31/androidAppHardening/pull/45) was merged with expected-head protection as `8dc20e65ed87c029cf14add3d3f5769719e13862`; Issue [#12](https://github.com/xiaokh31/androidAppHardening/issues/12) is closed. Production Shell covers all six public callbacks, custom and absent original Factory paths, stable failure caching and exactly-once pre-READY session ownership.
 - M2-04 is in merger-ready evidence preparation on `feat/m2-04-four-abi-runtime` from synchronized `main@9ea71927`. Final implementation head `ed6b21b362dc5447e9605e04f634d81357dca34c` passed Ubuntu/Windows Build `31516454041`, Governance `31516454109`, API 29/36 KVM `31516454190`, the API 29 `arm64-v8a`/`armeabi-v7a` physical matrix and independent review `P0=0/P1=0/P2=0`. No local emulator was started.
@@ -187,7 +188,7 @@ Complete M2-04 four-ABI Runtime build, compatibility reporting and bounded devic
 
 | M2-03 | `/root` | `main` | done | M1-02, M1-04, M2-02 | PR #44、Issue #14、全零复核、双平台 CI、API 29/36 KVM、arm64 真机、README 与 strict HandOff 已关闭 |
 | M2-01 | `/root` | `main` | done | M0-05, M1-03, M1-04, M2-03 | PR #45、Issue #12、全零独立复核、Ubuntu/Windows、API 29/36 KVM、README 与 strict HandOff 已关闭 |
-| M2-04 | `/root` | `feat/m2-04-four-abi-runtime` | review | M0-03, M1-01, M2-01, M2-02, M2-03 | final implementation `ed6b21b` 的双平台 Build/Governance、API 29/36 KVM、双 ARM 真机与独立复核全通过；等待 evidence-only HEAD 门禁及 ready/merge 授权 |
+| M2-04 | `/root` | `main` | review | M0-03, M1-01, M2-01, M2-02, M2-03 | PR #46 已 expected-head 合并；提交 README/HandOff 后运行无豁免 strict 与最终 main Build/Governance/KVM |
 
 ## Decisions and Invariants
 
@@ -351,6 +352,18 @@ Complete M2-04 four-ABI Runtime build, compatibility reporting and bounded devic
 - M2-02 第三实现层已完成本地检查点：同一 `sourceDir` 只读文件映射、OS 只读 DEX commit、generation+slot 类型化 JNI handle、同 handle `AHMD` 认证 metadata、精确五 JNI 方法、Java primitive/finally 交接窗口、幂等 `LoadedPayload` owner，以及 M0-05 等价 Native 搜索路径和三参数 API 29 `InMemoryDexClassLoader` 已接通。Java 17 编译/lint、NDK 四 ABI warnings-as-errors 与离线根 `assembleRelease check` 284-task 均 PASS，四个 ELF 都含唯一 104-byte alloc/read-only `.ah_share_v1`，未启动设备或模拟器。证据更新于 `docs/evidence/M2-02/local-validation.md`；任务仍未完成或发布，下一步仅补 failure injection、Host sanitizer/fuzz/OOM 与已授权 KVM/arm64 验收，不启动 M2-03。
 
 ## Verification Evidence
+
+### M2-04 merger-ready acceptance and merge
+
+- task_id: M2-04
+- git_commit: 80fee2559073278eb55f94de4a9ac2065777ba6b
+- command: exact-head GitHub Actions Build `31518486332`, Governance `31518486285`, M0-05 Linux KVM `31518486273`; authorized API 29 ARM dual-ABI physical acceptance; independent read-only security review; expected-head PR merge
+- exit_code: 0
+- environment: Windows local validation; Ubuntu 24.04 and Windows 2025 Build/Governance; API 29 r8 and API 36 r2 Linux/KVM; authorized API 29 non-root physical device for arm64-v8a and armeabi-v7a; no local emulator
+- timestamp: 2026-08-12T05:29:05+08:00
+- artifact: `docs/evidence/M2-04/local-validation.md`; `docs/evidence/M2-04/remote-validation.md`; `docs/evidence/M2-04/security-review-1.md`; `docs/evidence/M2-04/security-review-2.md`; PR `https://github.com/xiaokh31/androidAppHardening/pull/46`; merge commit `d5c74e7d3bfbcebff9c782134795f23ddd16c5e7`
+- sha256: 8af14b39d86322dd2b037123c31f1998b80c137e5bf53c9e25e2e56f99cdd043
+- result: PASS; four ABI build/ELF/share-slot/JNI/compatibility policy, extracted/direct Release/R8 device paths, API 29/36 KVM, API 29 ARM dual ABI, cleanup and independent P0=0/P1=0/P2=0 review passed; PR merged and Issue #15 closed
 
 ### M2-01 final acceptance and independent review
 
@@ -1342,13 +1355,16 @@ None
 
 ## Ordered Next Actions
 
-1. The documentation/HandOff-only child of final implementation `ed6b21b` is pushed. GitHub evaluates the PR path filter against the complete PR diff, so wait for its automatically triggered Build, Governance and KVM round without manual reruns.
-2. After that final evidence HEAD is green, request the still-missing explicit ready/merge authorization for draft PR #46; do not merge from the existing push/draft authorization alone.
-3. After expected-head merge, synchronize `main`, update README to mark M2-04 complete, run strict HandOff and the final main gates.
-4. Start M2-05 only after M2-04 is completely closed; M2-06 follows only after M2-05 completes. Do not parallelize the tasks or repeat already successful device matrices.
+1. Commit and push this README/evidence/HandOff-only post-merge coordination change on `main` after local Governance, strict HandOff and diff checks pass.
+2. Wait for the automatically triggered main Build and Governance, and dispatch one final API 29/36 KVM run only if the workflow does not run on main push; do not repeat the successful ARM physical matrix.
+3. After all final main gates pass, M2-04 is completely closed. Start M2-05 next; start M2-06 only after M2-05 completes. Do not parallelize the tasks.
 
 ## Relevant Files and Artifacts
 
+- `docs/tasks/M2-04-four-abi-runtime.md`
+- `docs/evidence/M2-04/local-validation.md`
+- `docs/evidence/M2-04/remote-validation.md`
+- `docs/evidence/M2-04/security-review-2.md`
 - `docs/tasks/M2-01-shell-app-component-factory.md`
 - `docs/evidence/M2-01/local-validation.md`
 - `docs/evidence/M2-01/remote-validation.md`
@@ -1543,6 +1559,7 @@ None
 
 ## Handoff Sign-off
 
+- `/root` verified merger-ready M2-04 head `80fee2559073278eb55f94de4a9ac2065777ba6b`, exact-head Ubuntu/Windows Build/Governance, API 29/36 KVM, inherited API 29 ARM dual-ABI evidence and independent `P0=0/P1=0/P2=0` review. PR #46 merged as `d5c74e7d3bfbcebff9c782134795f23ddd16c5e7`, Issue #15 closed, and only final main coordination gates remain before M2-05.
 - `/root` verified final M2-01 head `6a5a2706dcbb1b2984fb2bc6edf4147e81f98773`, exact-head Ubuntu/Windows Build/Governance, API 29/36 x86_64 KVM artifacts and independent `P0=0/P1=0/P2=0` review. PR #45 merged as `8dc20e65ed87c029cf14add3d3f5769719e13862`, Issue #12 closed, README/evidence are synchronized, and no adjacent task has started.
 
 - `/root` verified final PR HEAD `19d02a40962f55678b7a3c1cc17108bfbb44f9fa`, exact-head Ubuntu/Windows Build/Governance, API 29/36 x86_64 KVM, API 29 arm64 physical-device evidence and independent `P0=0/P1=0/P2=0` review; PR #44 merged as `803de853439026f4248a749d51033424c2e10b6d` and Issue #14 closed. M2-03 is complete and no adjacent task has started.

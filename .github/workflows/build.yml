@@ -9,6 +9,7 @@ on:
       - main
       - feat/m2-02-native-decrypt-loader
       - feat/m2-03-runtime-integrity
+      - feat/m2-04-four-abi-runtime
 
 permissions:
   contents: read
@@ -37,6 +38,7 @@ jobs:
           case "${ImageVersion:-}" in
             20260720.247.2) reviewed_manifest='ubuntu24/20260720.247' ;;
             20260804.265.1) reviewed_manifest='ubuntu24/20260804.265' ;;
+            20260810.271.1) reviewed_manifest='ubuntu24/20260810.271' ;;
             *) printf 'unexpected mutable runner image: ImageOS=%s ImageVersion=%s\n' "${ImageOS:-}" "${ImageVersion:-}" >&2; exit 1 ;;
           esac
           test "$(gcc -dumpfullversion -dumpversion)" = "13.3.0"
@@ -247,7 +249,7 @@ jobs:
         shell: bash
         run: |
           declare -A expected=(
-            ["host/cli/build/reports/m1-06/integration/normalized-success.json"]="71052641e1e8933b6104087362180125f88b4ff8dfe4a34b7e4851b1e304c213"
+            ["host/cli/build/reports/m1-06/integration/normalized-success.json"]="11471db5fc272ee2a3b8001a6773097a9af23bd668d11652d0cde196d2d144e3"
             ["host/cli/build/reports/m1-06/integration/error-matrix.json"]="9de958b0855ec939d9f7523880552e2962b4144dbea76fcc37d393d9397e785e"
             ["host/cli/build/reports/m1-06/integration/cleanup-matrix.json"]="03f9f1b80b7a562db4d406fdda23deab03b688bc87fd50fb8d913283da956598"
             ["host/cli/build/reports/m1-06/unit/path-error-matrix.json"]="ea48b25b0c8f561bb533f0df578a0755f27a6a0c257ffd600a976c0687b1e4a5"
@@ -298,6 +300,21 @@ jobs:
             fi
             sha256sum "$file" "$unstripped"
           done
+          node tools/validation/verify-m2-04-four-abi-runtime.mjs \
+            --self-test --report=build/m2-04/native-runtime.json
+
+      - name: Upload M2-04 Ubuntu four-ABI evidence
+        # actions/upload-artifact v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: m2-04-ubuntu-four-abi-evidence
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            build/m2-04/native-runtime.json
+            runtime/native/build/outputs/aar/native-release.aar
+            runtime/native/build/outputs/native-debug-symbols/release/*.zip
+            runtime/native/build/intermediates/stripped_native_libs/release/out/lib/*/libah_runtime.so
 
   windows:
     name: Build (windows-2025)
@@ -571,7 +588,7 @@ jobs:
         shell: pwsh
         run: |
           $expected = @{
-            "host/cli/build/reports/m1-06/integration/normalized-success.json" = "71052641e1e8933b6104087362180125f88b4ff8dfe4a34b7e4851b1e304c213"
+            "host/cli/build/reports/m1-06/integration/normalized-success.json" = "11471db5fc272ee2a3b8001a6773097a9af23bd668d11652d0cde196d2d144e3"
             "host/cli/build/reports/m1-06/integration/error-matrix.json" = "9de958b0855ec939d9f7523880552e2962b4144dbea76fcc37d393d9397e785e"
             "host/cli/build/reports/m1-06/integration/cleanup-matrix.json" = "03f9f1b80b7a562db4d406fdda23deab03b688bc87fd50fb8d913283da956598"
             "host/cli/build/reports/m1-06/unit/path-error-matrix.json" = "ea48b25b0c8f561bb533f0df578a0755f27a6a0c257ffd600a976c0687b1e4a5"
@@ -625,3 +642,19 @@ jobs:
             }
             Get-FileHash -Algorithm SHA256 -LiteralPath $file, $unstripped.FullName
           }
+          & node tools/validation/verify-m2-04-four-abi-runtime.mjs `
+            --self-test --report=build/m2-04/native-runtime.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload M2-04 Windows four-ABI evidence
+        # actions/upload-artifact v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: m2-04-windows-four-abi-evidence
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            build/m2-04/native-runtime.json
+            runtime/native/build/outputs/aar/native-release.aar
+            runtime/native/build/outputs/native-debug-symbols/release/*.zip
+            runtime/native/build/intermediates/stripped_native_libs/release/out/lib/*/libah_runtime.so

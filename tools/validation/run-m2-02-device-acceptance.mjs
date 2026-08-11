@@ -15,8 +15,13 @@ const coldStarts = Number(options.get("cold-starts") ?? "20");
 const timeout = Number(options.get("command-timeout-ms") ?? "60000");
 const selectedVariant = options.get("variant") ?? "all";
 const taskId = options.get("task-id") ?? "M2-02";
-if (!["M2-02", "M2-03"].includes(taskId)) fail("invalid task id");
+if (!["M2-02", "M2-03", "M2-04"].includes(taskId)) fail("invalid task id");
 const isM203 = taskId === "M2-03";
+const isM204 = taskId === "M2-04";
+const expectedAbi = isM204 ? required("expected-abi") : null;
+if (isM204 && !["armeabi-v7a", "arm64-v8a", "x86", "x86_64"].includes(expectedAbi)) {
+  fail("invalid expected ABI");
+}
 const packageStem = isM203 ? "m203" : "m202";
 const runnerClass = isM203 ? "ah.runtime.guard.M203DeviceRunner" : "ah.runtime.loader.M202DeviceRunner";
 const activityClass = isM203
@@ -53,6 +58,13 @@ let cleanupPassed = false;
 try {
   const environment = collectEnvironment();
   const results = variants.map(runVariant);
+  if (isM204) {
+    const golden = JSON.stringify(results[0].source_dex_sha256);
+    if (results.some((result) => result.runtime_abi !== expectedAbi ||
+        JSON.stringify(result.source_dex_sha256) !== golden)) {
+      fail("M2-04 variants did not preserve one ABI and one shared DEX vector");
+    }
+  }
   cleanupPassed = cleanup();
   if (!cleanupPassed) fail("package cleanup verification failed");
   const report = {
@@ -93,6 +105,7 @@ function runVariant(variant) {
     "-e", "m202_expected_build_id_hex", variant.golden.buildId,
     "-e", "m202_expected_key_slot_id_hex", variant.golden.keySlotId,
   );
+  if (isM204) instrumentationArguments.push("-e", "m204_expected_abi", expectedAbi);
   instrumentationArguments.push(`${variant.packageName}.test/${runnerClass}`);
   const instrumentation = runAdb(instrumentationArguments, 120000);
   const taskSpecificPassed = isM203
@@ -107,7 +120,8 @@ function runVariant(variant) {
       instrumentation.stdout.includes("metadata_negative=true") &&
       instrumentation.stdout.includes("metadata_golden=true") &&
       instrumentation.stdout.includes("cross_handle=true") &&
-      instrumentation.stdout.includes("jni_cleanup=true");
+      instrumentation.stdout.includes("jni_cleanup=true") &&
+      (!isM204 || instrumentation.stdout.includes(`runtime_abi=${expectedAbi}`));
   if (!instrumentation.stdout.includes("OK (1 test)") || !taskSpecificPassed ||
       !instrumentation.stdout.includes("plaintext_dex_files=0") ||
       instrumentation.stdout.includes("FAILURES!!!")) {
@@ -151,6 +165,8 @@ function runVariant(variant) {
   return {
     name: variant.name,
     package_name: variant.packageName,
+    runtime_abi: isM204 ? expectedAbi : undefined,
+    source_dex_sha256: isM204 ? variant.golden.sourceDexSha256 : undefined,
     target_apk: fileEvidence(variant.target),
     test_apk: fileEvidence(variant.test),
     instrumentation_passed: true,
@@ -180,7 +196,15 @@ function vectorGolden(argument) {
       fail(`vector report has invalid ${name}`);
     }
   }
-  return { buildId: report.build_id_hex, keySlotId: report.key_slot_id_hex };
+  if (!Array.isArray(report.source_dex_sha256) || report.source_dex_sha256.length !== 2 ||
+      report.source_dex_sha256.some((value) => !/^[0-9a-f]{64}$/u.test(value))) {
+    fail("vector report has invalid source_dex_sha256");
+  }
+  return {
+    buildId: report.build_id_hex,
+    keySlotId: report.key_slot_id_hex,
+    sourceDexSha256: report.source_dex_sha256,
+  };
 }
 
 function collectEnvironment() {

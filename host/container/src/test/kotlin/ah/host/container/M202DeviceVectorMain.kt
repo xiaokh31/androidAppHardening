@@ -60,7 +60,7 @@ object M202DeviceVectorMain {
                     sha256(path),
                 )
             },
-            NativeAbiSummary(listOf("arm64-v8a", "x86_64")),
+            NativeAbiSummary(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")),
             emptyList(),
             "m2-02-device-vector",
             LimitsApplied(emptyMap()),

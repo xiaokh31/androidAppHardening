@@ -17,7 +17,13 @@ import {
 const EOCD_SIGNATURE = 0x06054b50;
 const CONFIG_ENTRY = "assets/ah/runtime/config.bin";
 const PAYLOAD_ENTRY = "assets/ah/runtime/payload.ahdc";
-const RUNTIME = /^lib\/(arm64-v8a|x86_64)\/libah_runtime\.so$/u;
+const RUNTIME = /^lib\/(armeabi-v7a|arm64-v8a|x86|x86_64)\/libah_runtime\.so$/u;
+const ABI_IDS = new Map([
+  ["armeabi-v7a", 1],
+  ["arm64-v8a", 2],
+  ["x86", 3],
+  ["x86_64", 4],
+]);
 
 function fail(message) {
   throw new Error(`M2-02 device fixture failed: ${message}`);
@@ -45,7 +51,8 @@ function patchRuntime(source, slot, abi) {
   if (slot.length !== 104 || slot.subarray(0, 4).toString("ascii") !== "AHS1") {
     fail(`invalid ${abi} share slot`);
   }
-  const expectedAbi = abi === "arm64-v8a" ? 2 : 4;
+  const expectedAbi = ABI_IDS.get(abi);
+  if (expectedAbi === undefined) fail(`unsupported Runtime ABI ${abi}`);
   if (slot.readUInt16LE(6) !== expectedAbi) fail(`share slot ABI mismatch for ${abi}`);
   const marker = Buffer.from("AHP0", "ascii");
   const offset = source.indexOf(marker);
@@ -170,9 +177,11 @@ async function packageFixture(baselineArgument, vectorArgument, outputArgument) 
       replacements.set(entry.name, patchRuntime(materialize(entry), slot, abi));
     }
   }
-  if (![...replacements.keys()].some((name) => name.includes("arm64-v8a")) ||
-      ![...replacements.keys()].some((name) => name.includes("x86_64"))) {
-    fail("baseline APK is missing one of the two device Runtime ABIs");
+  const packagedAbis = [...replacements.keys()]
+    .map((name) => name.match(RUNTIME)?.[1])
+    .filter(Boolean);
+  if (packagedAbis.length === 0) {
+    fail("baseline APK has no supported Runtime ABI");
   }
   const unsigned = output.replace(/\.apk$/u, "-unsigned.apk");
   const aligned = output.replace(/\.apk$/u, "-aligned.apk");
@@ -197,6 +206,7 @@ async function packageFixture(baselineArgument, vectorArgument, outputArgument) 
   process.stdout.write(`${JSON.stringify({
     task_id: "M2-02",
     mode: "package-device-fixture",
+    runtime_abis: packagedAbis,
     baseline_sha256: sha256(baseline),
     output_sha256: sha256(outputBytes),
     output_bytes: outputBytes.length,

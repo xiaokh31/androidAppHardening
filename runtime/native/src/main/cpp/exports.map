@@ -1,0 +1,10 @@
+{
+  global:
+    Java_ah_runtime_loader_NativePayloadBridge_nativeInspectBinding;
+    Java_ah_runtime_loader_NativePayloadBridge_nativeOpenVerifiedPayload;
+    Java_ah_runtime_loader_NativePayloadBridge_nativeAuthenticatedMetadata;
+    Java_ah_runtime_loader_NativePayloadBridge_nativeDexBuffers;
+    Java_ah_runtime_loader_NativePayloadBridge_nativeClosePayload;
+  local:
+    *;
+};

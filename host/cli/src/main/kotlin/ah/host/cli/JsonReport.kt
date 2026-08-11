@@ -3,6 +3,7 @@ package ah.host.cli
 import ah.host.container.DexContainerDescriptor
 import ah.host.inspector.ApkInspection
 import ah.host.inspector.SignerPolicyV1
+import ah.host.container.RuntimeAbi
 import ah.host.repacker.OutputVerification
 import java.nio.charset.StandardCharsets
 import java.time.Instant
@@ -87,8 +88,11 @@ internal object ReportV1Writer {
                 "container_minor" to descriptor?.minor,
             ),
             "abi" to linkedMapOf(
-                "input" to (inspection?.nativeAbis?.abis ?: emptyList<String>()),
-                "output" to (verification?.outputEffectiveAbis?.map { it.directoryName } ?: emptyList<String>()),
+                "runtime_available_abis" to RuntimeAbi.entries.map { it.directoryName },
+                "input_native_abis" to (inspection?.nativeAbis?.abis ?: emptyList<String>()),
+                "output_effective_abis" to
+                    (verification?.outputEffectiveAbis?.map { it.directoryName } ?: emptyList<String>()),
+                "limitations" to abiLimitations(inspection),
             ),
             "compatibility" to linkedMapOf(
                 "supported" to (inspection != null),
@@ -120,6 +124,16 @@ internal object ReportV1Writer {
             },
         )
         return (JsonEncoder.encode(root) + "\n").toByteArray(StandardCharsets.UTF_8)
+    }
+
+    private fun abiLimitations(inspection: ApkInspection?): List<String> {
+        val input = inspection?.nativeAbis?.abis ?: return emptyList()
+        val available = RuntimeAbi.entries.map { it.directoryName }.toSet()
+        return if (input.isNotEmpty() && input.toSet() != available) {
+            listOf("OUTPUT_LIMITED_TO_INPUT_NATIVE_ABIS")
+        } else {
+            emptyList()
+        }
     }
 
     private fun ByteArray.toHex(): String = joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }

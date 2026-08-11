@@ -7,8 +7,10 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.os.Bundle;
+import android.os.Build;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
@@ -16,6 +18,8 @@ import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.util.Arrays;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 /** Test-only M2-02 transaction, loader, JNI and plaintext-on-disk acceptance runner. */
 public final class M202DeviceRunner extends Instrumentation {
@@ -56,6 +60,10 @@ public final class M202DeviceRunner extends Instrumentation {
                         .digest(applicationInfo.packageName.getBytes(java.nio.charset.StandardCharsets.UTF_8));
         byte[] expectedBuildId = expectedHexArgument("m202_expected_build_id_hex", 16);
         byte[] expectedKeySlotId = expectedHexArgument("m202_expected_key_slot_id_hex", 16);
+        String runtimeAbi = runtimeAbi(applicationInfo);
+        String expectedAbi = arguments == null ? null : arguments.getString("m204_expected_abi");
+        require(expectedAbi == null || expectedAbi.equals(runtimeAbi),
+                "runtime ABI mismatch expected=" + expectedAbi + " actual=" + runtimeAbi);
 
         int injected = 0;
         for (PayloadRuntime.OpenStage stage : PayloadRuntime.OpenStage.values()) {
@@ -91,7 +99,7 @@ public final class M202DeviceRunner extends Instrumentation {
                 NativePayloadBridge.nativeAuthenticatedMetadata(committedHandle[0]);
         verifyMetadataParserMatrix(encodedMetadata);
         Arrays.fill(encodedMetadata, (byte) 0);
-        verifyNativeSearchPath(applicationInfo);
+        verifyNativeSearchPath(applicationInfo, runtimeAbi);
         ClassLoader loader = payload.classLoader();
         require(loader.getParent() == target.getClassLoader(), "payload parent loader changed");
         AuthenticatedPayloadMetadata metadata = payload.authenticatedMetadata();
@@ -144,10 +152,58 @@ public final class M202DeviceRunner extends Instrumentation {
         Arrays.fill(expectedPackage, (byte) 0);
         Arrays.fill(expectedBuildId, (byte) 0);
         Arrays.fill(expectedKeySlotId, (byte) 0);
-        return "failure_injection=" + injected
+        return "runtime_abi=" + runtimeAbi + " failure_injection=" + injected
                 + " multidex=true jni=true native_path=true metadata=true"
                 + " metadata_negative=true metadata_golden=true cross_handle=true"
                 + " jni_cleanup=true plaintext_dex_files=0";
+    }
+
+    private static String runtimeAbi(ApplicationInfo applicationInfo) throws Exception {
+        byte[] header = new byte[20];
+        boolean extracted =
+                (applicationInfo.flags & ApplicationInfo.FLAG_EXTRACT_NATIVE_LIBS) != 0;
+        if (extracted) {
+            File runtime = new File(applicationInfo.nativeLibraryDir, "libah_runtime.so");
+            require(runtime.isFile() && runtime.canRead(), "Runtime ELF is unavailable");
+            try (FileInputStream input = new FileInputStream(runtime)) {
+                readHeader(input, header);
+            }
+        } else {
+            try (ZipFile apk = new ZipFile(applicationInfo.sourceDir)) {
+                ZipEntry runtime = null;
+                for (String abi : Build.SUPPORTED_ABIS) {
+                    ZipEntry candidate = apk.getEntry("lib/" + abi + "/libah_runtime.so");
+                    if (candidate != null) {
+                        runtime = candidate;
+                        break;
+                    }
+                }
+                require(runtime != null && runtime.getSize() >= header.length,
+                        "direct Runtime ELF is unavailable");
+                try (InputStream input = apk.getInputStream(runtime)) {
+                    readHeader(input, header);
+                }
+            }
+        }
+        require(header[0] == 0x7f && header[1] == 'E' && header[2] == 'L' && header[3] == 'F',
+                "Runtime ELF magic mismatch");
+        require(header[5] == 1, "Runtime ELF must be little-endian");
+        int elfClass = header[4] & 0xff;
+        int machine = (header[18] & 0xff) | ((header[19] & 0xff) << 8);
+        if (elfClass == 1 && machine == 40) return "armeabi-v7a";
+        if (elfClass == 2 && machine == 183) return "arm64-v8a";
+        if (elfClass == 1 && machine == 3) return "x86";
+        if (elfClass == 2 && machine == 62) return "x86_64";
+        throw new AssertionError("unsupported Runtime ELF class/machine");
+    }
+
+    private static void readHeader(InputStream input, byte[] header) throws Exception {
+        int offset = 0;
+        while (offset < header.length) {
+            int count = input.read(header, offset, header.length - offset);
+            require(count > 0, "Runtime ELF header is truncated");
+            offset += count;
+        }
     }
 
     private static Object invoke(Method method, Object... arguments) throws Exception {
@@ -274,11 +330,10 @@ public final class M202DeviceRunner extends Instrumentation {
         return MessageDigest.getInstance("SHA-256").digest(current[0].toByteArray());
     }
 
-    private static void verifyNativeSearchPath(ApplicationInfo applicationInfo) {
+    private static void verifyNativeSearchPath(ApplicationInfo applicationInfo, String runtimeAbi) {
         String searchPath = PayloadClassLoaders.resolveNativeLibrarySearchPath(applicationInfo);
         String apkPrefix = applicationInfo.sourceDir + "!/lib/";
-        String apkPathPattern =
-                java.util.regex.Pattern.quote(apkPrefix) + "(?:arm64-v8a|x86_64)";
+        String apkPath = apkPrefix + runtimeAbi;
         boolean extracted =
                 (applicationInfo.flags & ApplicationInfo.FLAG_EXTRACT_NATIVE_LIBS) != 0;
         if (extracted) {
@@ -287,10 +342,10 @@ public final class M202DeviceRunner extends Instrumentation {
             require(searchPath.startsWith(extractedPrefix), "extracted Native path not first");
             require(new File(applicationInfo.nativeLibraryDir, "libah_runtime.so").isFile(),
                     "extracted Runtime SO missing");
-            require(searchPath.substring(extractedPrefix.length()).matches(apkPathPattern),
+            require(searchPath.substring(extractedPrefix.length()).equals(apkPath),
                     "extracted fallback path mismatch");
         } else {
-            require(searchPath.matches(apkPathPattern), "direct Native path mismatch");
+            require(searchPath.equals(apkPath), "direct Native path mismatch");
         }
     }
 

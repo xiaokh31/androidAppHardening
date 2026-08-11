@@ -1,29 +1,35 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260811-110801
-updated_at: 2026-08-11T11:08:01+08:00
+handoff_id: HO-20260812-004354
+updated_at: 2026-08-12T01:32:54+08:00
 updated_by: /root
-state: ready
-source_branch: main
-base_commit: 8dc20e65ed87c029cf14add3d3f5769719e13862
+state: active
+source_branch: feat/m2-04-four-abi-runtime
+base_commit: 9ea71927aea01cd28ba993df71d50b82213dd87d
 working_tree: clean
 current_milestone: M2
-active_task: NONE
-next_owner: unassigned
+active_task: M2-04
+next_owner: /root
 ---
 
 # Project HandOff
 
 ## Objective
 
-M2-01 Shell `AppComponentFactory` 启动链、原 Factory/平台默认组件委托和 `VerifiedPayloadSession` READY 前所有权已经完成；保持 M2-04 及其他相邻任务未启动。
+Complete M2-04 four-ABI Runtime build, compatibility reporting and bounded device evidence without starting M2-05 or another adjacent task.
 
 ## Current State
 
 - M2-01 final implementation parent `6a5a2706dcbb1b2984fb2bc6edf4147e81f98773` passed local gates, Ubuntu/Windows Build and Governance, API 29/36 x86_64 KVM, and the independent read-only review with `P0=0`, `P1=0`, `P2=0`.
 - The sole PR [#45](https://github.com/xiaokh31/androidAppHardening/pull/45) was merged with expected-head protection as `8dc20e65ed87c029cf14add3d3f5769719e13862`; Issue [#12](https://github.com/xiaokh31/androidAppHardening/issues/12) is closed. Production Shell covers all six public callbacks, custom and absent original Factory paths, stable failure caching and exactly-once pre-READY session ownership.
-- Local `main` is synchronized. README, final local/remote evidence, final independent review and this root HandOff are the only post-merge coordination changes; the governance schema intentionally keeps task-card frontmatter at its required initial `planned` value. No local emulator or physical-device installation was used for M2-01, and M2-04 has not started.
+- M2-04 is in merger-ready evidence preparation on `feat/m2-04-four-abi-runtime` from synchronized `main@9ea71927`. Final implementation head `ed6b21b362dc5447e9605e04f634d81357dca34c` passed Ubuntu/Windows Build `31516454041`, Governance `31516454109`, API 29/36 KVM `31516454190`, the API 29 `arm64-v8a`/`armeabi-v7a` physical matrix and independent review `P0=0/P1=0/P2=0`. No local emulator was started.
+- After renewed ordinary USB-install permission, the bounded API 29 physical runner passed `arm64-v8a` and `armeabi-v7a`, each with extracted/direct Release/R8 instrumentation, cross-DEX, JNI, metadata, one cold start, memory, zero plaintext DEX files and cleanup. A stale ignored vector path caused one pre-install no-replace stop; the runner now uses per-run source/vector directories and the successful matrix was not repeated. No local emulator was started.
+- Independent review rejected frozen `3cc8dc2` with `P0=0/P1=2/P2=2`. Corrected implementation parent `0cfafd4a956f0fefde3c7b5d8278a081f6e05c40` closes all four findings and passed a fresh independent read-only review with `P0=0/P1=0/P2=0`. The next commit is evidence-only; any production change invalidates that review.
+- The reviewed branch was pushed and unique draft PR #46 now closes Issue #15. Initial KVM run `31511953811` failed before any Android build because GitHub deployed official Ubuntu image `20260810.271.1`; its official manifest preserves GCC/G++ `13.3.0`. The exact image/ref pair is added to the existing fail-closed Build/KVM allowlists, with replacement CI pending.
+- On replacement head `d72f456`, Governance passed and KVM cleared the image gate, while both Build platforms exposed the same clean-run debug-symbol archive defect before compilation. A declared-input/output staging task now discovers the four unstripped ELFs only after `stripReleaseDebugSymbols`; pinned local `clean + archive` passed in 36 seconds with configuration cache stored and an exact four-ABI ZIP.
+- Head `46aad4a` then passed Ubuntu/Windows Build and Governance. Both KVM jobs built fixtures but exposed the same androidTest-only compile error because platform `Instrumentation` has no `getArguments()` method. The runner now stores the supplied private argument bundle in `onCreate`; targeted x86_64 androidTest compilation passed in 25 seconds. Production Runtime/JNI code is unchanged.
+- Head `731d527` exposed that the Native connected smoke assumed extracted SOs on API 36; the runner now reads direct-packaged ELF headers from the APK ZIP. Head `2fbb361` then exposed that the M2-04 package window lacked the preceding step's ephemeral signing environment. Final head `ed6b21b` carries a runner-temporary mode-`0600` environment handoff with immediate unset/removal and existing cleanup ownership. Its Build/Governance/KVM jobs are all green; downloaded evidence is confined to ignored `build/m2-04/remote/ed6b21b/`.
 - M2-03 final PR HEAD `19d02a40962f55678b7a3c1cc17108bfbb44f9fa` passed exact-head Build `31421047955`, Governance `31421047952` and API 29/36 x86_64 KVM `31421047965`. PR [#44](https://github.com/xiaokh31/androidAppHardening/pull/44) was merged with expected-head protection as merge commit `803de853439026f4248a749d51033424c2e10b6d`; Issue #14 is closed.
 - The authorized API 29 arm64 `user/release-keys`, `ro.debuggable=0`, non-root physical-device report passed the same extracted/direct 12+12 ownership/metadata, cross-DEX, JNI, 20 cold starts, memory, zero-plaintext and cleanup matrix. Its evidence is inherited with a documented boundary because `659c2b8..8211a60` changes no production Runtime, Native, target/test APK or device instrumentation logic.
 - The full plus incremental independent read-only review is PASS with `P0=0`, `P1=0`, `P2=0`. The retained-logcat false positive is closed by per-scenario tokens; the later API 29 KVM stop/start race is closed by an M2-03-only stabilization window plus exact Activity/PID/PSS checks and fail-first logcat capture, without retry or sample substitution. README now records M2-03 as complete; only this post-merge coordination commit and its final main gates remain.
@@ -181,6 +187,7 @@ M2-01 Shell `AppComponentFactory` 启动链、原 Factory/平台默认组件委�
 
 | M2-03 | `/root` | `main` | done | M1-02, M1-04, M2-02 | PR #44、Issue #14、全零复核、双平台 CI、API 29/36 KVM、arm64 真机、README 与 strict HandOff 已关闭 |
 | M2-01 | `/root` | `main` | done | M0-05, M1-03, M1-04, M2-03 | PR #45、Issue #12、全零独立复核、Ubuntu/Windows、API 29/36 KVM、README 与 strict HandOff 已关闭 |
+| M2-04 | `/root` | `feat/m2-04-four-abi-runtime` | review | M0-03, M1-01, M2-01, M2-02, M2-03 | final implementation `ed6b21b` 的双平台 Build/Governance、API 29/36 KVM、双 ARM 真机与独立复核全通过；等待 evidence-only HEAD 门禁及 ready/merge 授权 |
 
 ## Decisions and Invariants
 
@@ -1335,9 +1342,10 @@ None
 
 ## Ordered Next Actions
 
-1. Commit and push this post-merge M2-01 coordination snapshot on `main`.
-2. Run Governance, strict HandOff and diff checks without exemption, then observe the single final `main` Build/Governance/KVM round without retriggering successful jobs.
-3. Do not start M2-04 or another task until the user explicitly selects it.
+1. The documentation/HandOff-only child of final implementation `ed6b21b` is pushed. GitHub evaluates the PR path filter against the complete PR diff, so wait for its automatically triggered Build, Governance and KVM round without manual reruns.
+2. After that final evidence HEAD is green, request the still-missing explicit ready/merge authorization for draft PR #46; do not merge from the existing push/draft authorization alone.
+3. After expected-head merge, synchronize `main`, update README to mark M2-04 complete, run strict HandOff and the final main gates.
+4. Start M2-05 only after M2-04 is completely closed; M2-06 follows only after M2-05 completes. Do not parallelize the tasks or repeat already successful device matrices.
 
 ## Relevant Files and Artifacts
 
@@ -1415,6 +1423,11 @@ None
 - `tools/validation/run-m0-05-startup-negative.mjs`
 - `tools/validation/m0-05-linux-kvm-packages.json`
 - `.github/workflows/m0-05-linux-kvm.yml`
+- `docs/evidence/M2-04/local-validation.md`
+- `docs/evidence/M2-04/remote-validation.md`
+- `docs/evidence/M2-04/security-review-1.md`
+- `docs/evidence/M2-04/security-review-2.md`
+- ignored `build/m2-04/remote/ed6b21b/`
 
 ## Resume Checklist
 
@@ -1423,6 +1436,10 @@ None
 - [x] Final independent read-only review of `6a5a270` returned PASS with P0/P1/P2 all zero.
 - [x] PR #45 merged with expected-head protection as `8dc20e6`; Issue #12 closed; README/task/evidence updated; M2-04 not started.
 - [ ] Push this post-merge coordination commit and confirm its single final main Build/Governance/KVM round.
+
+- [x] M2-04 implementation, four-ABI artifacts/policy, independent review and API 29 dual-ARM physical acceptance passed.
+- [x] Final implementation `ed6b21b` passed Ubuntu/Windows Build, Governance and API 29/36 KVM; all downloaded evidence remains ignored below the project root.
+- [ ] Push the evidence-only child and confirm its Build/Governance checks, then obtain explicit ready/merge authorization for PR #46.
 
 - [x] M2-02 implementation parent `39a883f` passed Ubuntu/Windows Build and API 29/36 x86_64 KVM with non-empty connected tests and both Release/R8 variants.
 - [x] API 29 arm64 non-root review4 passed both variants, 20 cold starts each, instrumentation, JNI/metadata/negative paths, memory, no plaintext DEX and package cleanup.

@@ -6,6 +6,7 @@ on:
       - spike/m0-05-application-factory-provider-jni-poc
       - feat/m2-02-native-decrypt-loader
       - feat/m2-03-runtime-integrity
+      - feat/m2-04-four-abi-runtime
     paths:
       - ".github/workflows/m0-05-linux-kvm.yml"
       - "fixtures/android/**"
@@ -67,6 +68,7 @@ jobs:
           case "${ImageVersion:-}" in
             20260720.247.2) reviewed_manifest='ubuntu24/20260720.247' ;;
             20260804.265.1) reviewed_manifest='ubuntu24/20260804.265' ;;
+            20260810.271.1) reviewed_manifest='ubuntu24/20260810.271' ;;
             *) printf 'unexpected mutable runner image: ImageOS=%s ImageVersion=%s\n' "${ImageOS:-}" "${ImageVersion:-}" >&2; exit 1 ;;
           esac
           test "$(gcc -dumpfullversion -dumpversion)" = "13.3.0"
@@ -220,6 +222,16 @@ jobs:
             -alias "$M005_TEST_KEY_ALIAS" \
             -keyalg RSA -keysize 2048 -validity 2 \
             -dname "CN=M0-05 Ephemeral Fixture,O=androidAppHardening,C=US"
+          signing_env="$RUNNER_TEMP/m0-05-signing/m2-04.env"
+          (
+            umask 077
+            {
+              printf 'export M005_TEST_KEYSTORE=%q\n' "$M005_TEST_KEYSTORE"
+              printf 'export M005_TEST_STORE_PASSWORD=%q\n' "$M005_TEST_STORE_PASSWORD"
+              printf 'export M005_TEST_KEY_ALIAS=%q\n' "$M005_TEST_KEY_ALIAS"
+              printf 'export M005_TEST_KEY_PASSWORD=%q\n' "$M005_TEST_KEY_PASSWORD"
+            } > "$signing_env"
+          )
 
           ./gradlew --no-daemon --console=plain \
             :fixtures:android:assembleCompatExtractedRelease
@@ -576,6 +588,7 @@ jobs:
             pkill -TERM -f "$ANDROID_HOME/emulator/qemu/" >/dev/null 2>&1
             sleep 1
             pkill -KILL -f "$ANDROID_HOME/emulator/qemu/" >/dev/null 2>&1
+            rm -rf -- "$RUNNER_TEMP/m0-05-signing"
           }
           trap cleanup EXIT INT TERM
 
@@ -627,6 +640,10 @@ jobs:
             :runtime:native:connectedCheck \
             :runtime:bootstrap:connectedCheck \
             :runtime:policy:connectedCheck
+
+          mkdir -p "build/m2-04/device-api${API}-x86_64/x86_64"
+          cp -R runtime/native/build/outputs/androidTest-results/connected/. \
+            "build/m2-04/device-api${API}-x86_64/x86_64/"
 
           adb -s "$serial" install -r -t --no-streaming \
             runtime/policy/build/outputs/apk/androidTest/debug/policy-debug-androidTest.apk
@@ -746,6 +763,51 @@ jobs:
             --evidence "build/m2-02/device-api${API}-x86_64"
           cat "build/m2-02/device-api${API}-x86_64/report.json"
 
+          m204_signing_env="$RUNNER_TEMP/m0-05-signing/m2-04.env"
+          test -f "$m204_signing_env"
+          source "$m204_signing_env"
+          m204_abis=(x86_64)
+          if [[ "$API" = "29" ]]; then m204_abis+=(x86); fi
+          for abi in "${m204_abis[@]}"; do
+            runtime_root="build/m2-04/device-api${API}-x86_64/${abi}/runtime"
+            evidence_root="build/m2-04/device-api${API}-x86_64/${abi}/evidence"
+            mkdir -p "$runtime_root" "$evidence_root"
+            ./gradlew --no-daemon --console=plain -Pm204TargetAbi="$abi" \
+              :fixtures:android:assembleM202ExtractedRelease \
+              :fixtures:android:assembleM202DirectRelease \
+              :fixtures:android:assembleM202ExtractedDebugAndroidTest \
+              :fixtures:android:assembleM202DirectDebugAndroidTest
+            cp fixtures/android/build/outputs/apk/androidTest/m202Extracted/debug/android-m202Extracted-debug-androidTest.apk \
+              "$runtime_root/m2-04-extracted-test.apk"
+            cp fixtures/android/build/outputs/apk/androidTest/m202Direct/debug/android-m202Direct-debug-androidTest.apk \
+              "$runtime_root/m2-04-direct-test.apk"
+            for variant in extracted direct; do
+              baseline="fixtures/android/build/outputs/apk/m202${variant^}/release/android-m202${variant^}-release.apk"
+              node tools/validation/prepare-m2-02-device-fixture.mjs package \
+                "$baseline" "build/m2-02/vector-${variant}" \
+                "$runtime_root/m2-04-${variant}.apk" \
+                | tee "$runtime_root/${variant}-package-report.json"
+            done
+            timeout 300s node tools/validation/run-m2-02-device-acceptance.mjs \
+              --task-id M2-04 \
+              --expected-abi "$abi" \
+              --adb "$ANDROID_HOME/platform-tools/adb" \
+              --serial "$serial" \
+              --platform "api${API}-${abi}-linux-kvm" \
+              --cold-starts 1 \
+              --command-timeout-ms 60000 \
+              --extracted-target-apk "$runtime_root/m2-04-extracted.apk" \
+              --extracted-test-apk "$runtime_root/m2-04-extracted-test.apk" \
+              --extracted-vector-report build/m2-02/vector-extracted/vector-report.json \
+              --direct-target-apk "$runtime_root/m2-04-direct.apk" \
+              --direct-test-apk "$runtime_root/m2-04-direct-test.apk" \
+              --direct-vector-report build/m2-02/vector-direct/vector-report.json \
+              --evidence "$evidence_root"
+            cat "$evidence_root/report.json"
+          done
+          unset M005_TEST_KEYSTORE M005_TEST_STORE_PASSWORD M005_TEST_KEY_ALIAS M005_TEST_KEY_PASSWORD
+          rm -f -- "$m204_signing_env"
+
           timeout 1200s node tools/validation/run-m2-02-device-acceptance.mjs \
             --task-id M2-03 \
             --adb "$ANDROID_HOME/platform-tools/adb" \
@@ -772,6 +834,7 @@ jobs:
           find build/m2-01 -maxdepth 2 -type f -print -exec sha256sum {} \; || true
           find build/m2-02 -maxdepth 2 -type f -print -exec sha256sum {} \; || true
           find build/m2-03 -maxdepth 2 -type f -print -exec sha256sum {} \; || true
+          find build/m2-04 -maxdepth 4 -type f -print -exec sha256sum {} \; || true
 
       - name: Upload bounded validation evidence
         if: always()
@@ -789,6 +852,7 @@ jobs:
             build/m0-05/device-api${{ matrix.api }}-x86_64/**/*.json
             build/m0-05/device-api${{ matrix.api }}-x86_64/**/*.txt
             build/m0-05/device-api${{ matrix.api }}-x86_64/**/*.xml
+            build/m2-04/device-api${{ matrix.api }}-x86_64/**/*
             build/m2-01/**/*.json
             build/m2-01/**/*.txt
             build/m2-02/**/*.json

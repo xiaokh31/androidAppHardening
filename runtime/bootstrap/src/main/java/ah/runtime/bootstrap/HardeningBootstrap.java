@@ -205,7 +205,14 @@ final class HardeningBootstrap {
         VerifiedPayloadSession session = null;
         boolean committed = false;
         try {
-            session = RuntimeStartupGuard.openVerifiedPayload(applicationInfo, shellLoader);
+            try {
+                session = RuntimeStartupGuard.openVerifiedPayload(applicationInfo, shellLoader);
+            } catch (OutOfMemoryError resourceFailure) {
+                throw resourceFailure;
+            } catch (Throwable guardFailure) {
+                // Cross the Guard boundary with a stable local category only.
+                throw BootstrapFailure.create(BootstrapFailure.GUARD);
+            }
             BootstrapSession wrapped = new GuardBootstrapSession(session);
             committed = true;
             return wrapped;
@@ -270,16 +277,6 @@ final class HardeningBootstrap {
         }
         if (failure instanceof OutOfMemoryError) {
             return BootstrapFailure.RESOURCE;
-        }
-        String message;
-        try {
-            message = failure.getMessage();
-        } catch (Throwable ignored) {
-            // Throwable is untrusted at this boundary; classification must be total.
-            return BootstrapFailure.INTERNAL;
-        }
-        if (message != null && message.startsWith("AAH-RUNTIME-INTEGRITY-")) {
-            return BootstrapFailure.GUARD;
         }
         return BootstrapFailure.INTERNAL;
     }

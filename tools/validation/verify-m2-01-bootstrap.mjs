@@ -44,6 +44,9 @@ requireCondition(bootstrap.includes("RuntimeStartupGuard.openVerifiedPayload(app
   "frozen Guard call is absent");
 requireCondition((bootstrap.match(/RuntimeStartupGuard\.openVerifiedPayload\(/gu) ?? []).length === 1,
   "Guard call count is not exactly one");
+requireCondition(!bootstrap.includes("failure.getMessage()")
+    && bootstrap.includes("BootstrapFailure.create(BootstrapFailure.GUARD)"),
+  "untrusted Throwable methods crossed the stable Guard classification boundary");
 for (const method of ["instantiateClassLoader", "instantiateApplication", "instantiateActivity",
   "instantiateService", "instantiateReceiver", "instantiateProvider"]) {
   requireCondition(shell.includes(method + "("), `missing public entry ${method}`);

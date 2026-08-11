@@ -1,5 +1,6 @@
 package ah.runtime;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -20,7 +21,7 @@ public final class AbiCompatibility {
         this.runtimeAvailableAbis = immutableCopy(runtimeAvailableAbis);
         this.inputNativeAbis = immutableCopy(inputNativeAbis);
         this.outputEffectiveAbis = immutableCopy(outputEffectiveAbis);
-        this.limitations = List.copyOf(limitations);
+        this.limitations = Collections.unmodifiableList(new ArrayList<>(limitations));
     }
 
     public Set<String> runtimeAvailableAbis() {

@@ -35,3 +35,14 @@ Every stripped ELF passed exact machine/ABI ID, one alloc/read-only 104-byte `.a
 - The runner immediately stopped, performed package cleanup and did not retry, change MIUI settings, automate confirmation, use root or bypass the platform gate. `pm path` confirms both target and test packages are absent.
 
 M2-04 is therefore an implementation checkpoint, not complete. The only local device blocker is renewed ordinary MIUI USB-install permission; API 29/36 KVM, frozen-SHA independent review, PR publication, README completion and final HandOff remain pending.
+
+## 2026-08-11 review-1 remediation checkpoint
+
+- Independent read-only review of frozen `3cc8dc2cc693c90cf757a39d794c3284ec73f6f6` returned `P0=0`, `P1=2`, `P2=2`; the commit is rejected and the findings are archived in `security-review-1.md`.
+- Production ABI collections now use API 29-safe `Collections`/defensive copies. A connected policy smoke path invokes `evaluate()` and every getter on-device. Full four-ABI input now has no limitation; the Host report uses the same strict-subset rule.
+- M202 device instrumentation reads extracted ELF headers from `nativeLibraryDir` and direct headers from the selected bounded APK ZIP entry. Search-path checks use the actual loaded ABI and no longer exclude `armeabi-v7a` or `x86`.
+- The ELF verifier now requires `.ah_share_v1` to be fully covered by exactly one non-writable `PT_LOAD`; its self-test mutates that covering segment to writable and requires rejection.
+- One bounded remediation Gradle invocation compiled both device instrumentation APKs, rebuilt the four-ABI Release, passed the ABI policy matrix (`27` cases) and existing policy matrix (`57` cases). Its only failure was the non-security `ChromeOsAbiSupport` lint false positive caused by the test-only single-ABI property; the module now suppresses that rule with the exact four-ABI Release still enforced by the archive verifier.
+- The failed lint task alone was rerun and exited `0` in 36 seconds. The strengthened verifier exited `0`; `native-runtime-review2.json` is 4955 bytes with unchanged SHA-256 `8cc20f1af70b5b0e591aefe79c34020b322f34480af509dab76f0db8622abf5a`.
+
+No device install was retried. A fresh frozen commit and one independent re-review are required; ARM/KVM/dual-platform publication gates remain pending.

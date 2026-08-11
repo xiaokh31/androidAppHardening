@@ -102,6 +102,9 @@ android {
         abortOnError = true
         checkDependencies = true
         disable += "GradleDependency" // M0-03 intentionally pins compileSdk 36.
+        // M2-04's test-only m204TargetAbi intentionally builds one process ABI;
+        // the release default is locked to all four ABIs by the archive verifier.
+        disable += "ChromeOsAbiSupport"
         warningsAsErrors = true
     }
 }

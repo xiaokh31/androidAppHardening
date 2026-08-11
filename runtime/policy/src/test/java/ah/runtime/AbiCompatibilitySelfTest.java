@@ -36,6 +36,8 @@ public final class AbiCompatibilitySelfTest {
         check(armOnly.outputEffectiveAbis().equals(
                 new LinkedHashSet<>(List.of("armeabi-v7a", "arm64-v8a"))), "arm-only"); cases++;
         check(!armOnly.outputEffectiveAbis().contains("x86"), "arm-not-converted-to-x86"); cases++;
+        AbiCompatibility complete = AbiCompatibilityPolicy.evaluate(new LinkedHashSet<>(ALL));
+        check(complete.limitations().isEmpty(), "complete-no-limitation"); cases++;
         for (String abi : List.of("x86", "x86_64")) {
             AbiCompatibility x86 = AbiCompatibilityPolicy.evaluate(Set.of(abi));
             check(x86.limitations().stream().noneMatch(value ->

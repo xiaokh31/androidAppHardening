@@ -20,11 +20,13 @@ const JNI_EXPORTS = [
   "Java_ah_runtime_loader_NativePayloadBridge_nativeInspectBinding",
   "Java_ah_runtime_loader_NativePayloadBridge_nativeOpenVerifiedPayload",
 ].sort();
+const PT_LOAD = 1;
 const PT_GNU_STACK = 0x6474e551;
 const PT_GNU_RELRO = 0x6474e552;
 const SHF_WRITE = 1n;
 const SHF_ALLOC = 2n;
 const PF_X = 1;
+const PF_W = 2;
 
 function fail(message) {
   throw new Error(`M2-04 four-ABI verification failed: ${message}`);
@@ -124,18 +126,30 @@ function verifyElfBuffer(buffer, expected) {
 
   let stack = null;
   let relro = false;
+  const loads = [];
   for (let index = 0; index < layout.phnum; index += 1) {
     const headerOffset = layout.phoff + layout.phentsize * index;
     const type = buffer.readUInt32LE(headerOffset);
     const flagsOffset = headerOffset + (layout.is64 ? 4 : 24);
     const flags = buffer.readUInt32LE(flagsOffset);
+    if (type === PT_LOAD) {
+      const offset = layout.is64 ? unsigned64(buffer, headerOffset + 8) : buffer.readUInt32LE(headerOffset + 4);
+      const fileSize = layout.is64 ? unsigned64(buffer, headerOffset + 32) : buffer.readUInt32LE(headerOffset + 16);
+      if (offset + fileSize > buffer.length) fail(`${expected.name} PT_LOAD exceeds file bounds`);
+      loads.push({ offset, fileSize, flags, flagsOffset });
+    }
     if (type === PT_GNU_STACK) stack = { flags, flagsOffset };
     if (type === PT_GNU_RELRO) relro = true;
   }
   if (stack === null || (stack.flags & PF_X) !== 0 || !relro) {
     fail(`${expected.name} GNU_STACK/RELRO contract mismatch`);
   }
-  return { layout, share, stack, relro };
+  const shareLoads = loads.filter((load) => share.offset >= load.offset &&
+    share.offset + share.size <= load.offset + load.fileSize);
+  if (shareLoads.length !== 1 || (shareLoads[0].flags & PF_W) !== 0) {
+    fail(`${expected.name} share section must be covered by one read-only PT_LOAD`);
+  }
+  return { layout, share, shareLoad: shareLoads[0], stack, relro };
 }
 
 function executable(name) {
@@ -247,6 +261,9 @@ function selfTest(source, expected, metadata) {
   const executableStack = Buffer.from(source);
   executableStack.writeUInt32LE(metadata.stack.flags | PF_X, metadata.stack.flagsOffset);
   expectFailure(() => verifyElfBuffer(executableStack, expected), "executable stack mutation");
+  const writableLoad = Buffer.from(source);
+  writableLoad.writeUInt32LE(metadata.shareLoad.flags | PF_W, metadata.shareLoad.flagsOffset);
+  expectFailure(() => verifyElfBuffer(writableLoad, expected), "writable share PT_LOAD mutation");
   expectFailure(() => requireExactExports([...JNI_EXPORTS, "unexpected_export"].sort(), expected.name),
     "export mutation");
 }

@@ -12,8 +12,11 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Process;
 import android.os.SystemClock;
+import ah.runtime.AbiCompatibility;
+import ah.runtime.AbiCompatibilityPolicy;
 import java.io.File;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -53,7 +56,15 @@ public final class PolicyConnectedRunner extends Instrumentation {
             expect("AAH-RUNTIME-INTEGRITY-SIGNER_FORMAT", () ->
                     new VerifiedSignerIdentity(new byte[31], new byte[][] {new byte[31]}));
             if (!arguments.containsKey("verify_process_apk")) {
-                result.putString("summary", "policy_connected_smoke=true cases=7");
+                LinkedHashSet<String> armOnly = new LinkedHashSet<>();
+                armOnly.add("armeabi-v7a");
+                armOnly.add("arm64-v8a");
+                AbiCompatibility compatibility = AbiCompatibilityPolicy.evaluate(armOnly);
+                require(compatibility.runtimeAvailableAbis().size() == 4, "runtime-abis");
+                require(compatibility.inputNativeAbis().equals(armOnly), "input-abis");
+                require(compatibility.outputEffectiveAbis().equals(armOnly), "output-abis");
+                require(compatibility.limitations().size() == 1, "abi-limitation");
+                result.putString("summary", "policy_connected_smoke=true cases=11");
                 finish(Activity.RESULT_OK, result);
                 return;
             }

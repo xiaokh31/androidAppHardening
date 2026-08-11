@@ -1,13 +1,13 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260811-132918
-updated_at: 2026-08-11T13:29:18+08:00
+handoff_id: HO-20260811-134147
+updated_at: 2026-08-11T13:41:47+08:00
 updated_by: /root
 state: blocked
 source_branch: feat/m2-04-four-abi-runtime
 base_commit: 9ea71927aea01cd28ba993df71d50b82213dd87d
-working_tree: dirty
+working_tree: clean
 current_milestone: M2
 active_task: M2-04
 next_owner: /root
@@ -25,6 +25,7 @@ Complete M2-04 four-ABI Runtime build, compatibility reporting and bounded devic
 - The sole PR [#45](https://github.com/xiaokh31/androidAppHardening/pull/45) was merged with expected-head protection as `8dc20e65ed87c029cf14add3d3f5769719e13862`; Issue [#12](https://github.com/xiaokh31/androidAppHardening/issues/12) is closed. Production Shell covers all six public callbacks, custom and absent original Factory paths, stable failure caching and exactly-once pre-READY session ownership.
 - M2-04 is active on `feat/m2-04-four-abi-runtime` from synchronized `main@9ea71927`. Four-ABI Release/AAR, ELF hardening/slot/export verification, ABI policy, REPORT_V1 alignment and a selected x86 Release/R8 fixture build pass locally. No local emulator was started.
 - The authorized API 29 Xiaomi device exposes both `arm64-v8a` and `armeabi-v7a`. The bounded ARM runner built the shared vector and arm64 fixtures, then the first ordinary install was rejected once with `INSTALL_FAILED_USER_RESTRICTED`; it stopped and cleaned without retry or bypass. KVM and independent review remain pending, so M2-04 is blocked only on renewed ordinary MIUI USB-install permission plus publication-dependent gates.
+- Independent review rejected frozen `3cc8dc2` with `P0=0/P1=2/P2=2`: API 29 collection APIs, direct/32-bit fixture ABI observation, full-set limitation consistency and read-only `PT_LOAD` enforcement. All four findings have bounded code fixes and targeted local regression evidence; a fresh freeze and independent re-review are now required.
 - M2-03 final PR HEAD `19d02a40962f55678b7a3c1cc17108bfbb44f9fa` passed exact-head Build `31421047955`, Governance `31421047952` and API 29/36 x86_64 KVM `31421047965`. PR [#44](https://github.com/xiaokh31/androidAppHardening/pull/44) was merged with expected-head protection as merge commit `803de853439026f4248a749d51033424c2e10b6d`; Issue #14 is closed.
 - The authorized API 29 arm64 `user/release-keys`, `ro.debuggable=0`, non-root physical-device report passed the same extracted/direct 12+12 ownership/metadata, cross-DEX, JNI, 20 cold starts, memory, zero-plaintext and cleanup matrix. Its evidence is inherited with a documented boundary because `659c2b8..8211a60` changes no production Runtime, Native, target/test APK or device instrumentation logic.
 - The full plus incremental independent read-only review is PASS with `P0=0`, `P1=0`, `P2=0`. The retained-logcat false positive is closed by per-scenario tokens; the later API 29 KVM stop/start race is closed by an M2-03-only stabilization window plus exact Activity/PID/PSS checks and fail-first logcat capture, without retry or sample substitution. README now records M2-03 as complete; only this post-merge coordination commit and its final main gates remain.

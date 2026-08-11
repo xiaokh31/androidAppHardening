@@ -90,7 +90,9 @@ public final class BootstrapSelfTest {
     }
 
     private static void failuresCloseOnceAndCache() {
-        for (String mode : new String[] {"construct", "hook", "null", "validate", "oom"}) {
+        for (String mode : new String[] {
+                "construct", "hook", "null", "validate", "oom", "hostile-message"
+        }) {
             FakeSession session = new FakeSession("a.b.OriginalFactory");
             FakeAdapter adapter = new FakeAdapter();
             adapter.mode = mode;
@@ -103,6 +105,10 @@ public final class BootstrapSelfTest {
             require(first.provisionalClassLoader() == null, mode + " retained provisional");
             require(first.finalClassLoader() == null, mode + " retained final");
             require(first.originalFactory() == null, mode + " retained factory");
+            if ("hostile-message".equals(mode)) {
+                equal(BootstrapFailure.message(BootstrapFailure.INTERNAL), first.errorCode(),
+                        "hostile Throwable classification");
+            }
             same(first, coordinator.install(SHELL, info(null)), mode + " failure cache identity");
             equal(1, session.closeCount.get(), mode + " cached close count");
         }
@@ -225,6 +231,13 @@ public final class BootstrapSelfTest {
                 ApplicationInfo info) {
             delegateCount.incrementAndGet();
             if ("hook".equals(mode)) throw BootstrapFailure.create(BootstrapFailure.FACTORY_HOOK);
+            if ("hostile-message".equals(mode)) {
+                throw new RuntimeException() {
+                    @Override public String getMessage() {
+                        throw new AssertionError("hostile Throwable message accessor");
+                    }
+                };
+            }
             if ("null".equals(mode)) return null;
             return finalLoader;
         }

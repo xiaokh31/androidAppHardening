@@ -9,6 +9,7 @@ public final class ProbeSignal {
     private static final Map<String, Integer> FACTORY_COUNTS = new HashMap<>();
     private static String providerMarker;
     private static String activityMarker;
+    private static String serviceMarker;
     private static String jniMarker;
     private static boolean failActivityDelegation;
     private static boolean failFactoryConstruction;
@@ -28,8 +29,10 @@ public final class ProbeSignal {
 
     public static synchronized void recordProviderMarker(String marker) { providerMarker = marker; }
     public static synchronized void recordActivityMarker(String marker) { activityMarker = marker; }
+    public static synchronized void recordServiceMarker(String marker) { serviceMarker = marker; }
     public static synchronized String providerMarker() { return providerMarker; }
     public static synchronized String activityMarker() { return activityMarker; }
+    public static synchronized String serviceMarker() { return serviceMarker; }
 
     public static synchronized void applicationOnCreate(Class<?> applicationClass) {
         ClassLoaderProbe.recordApplicationOnCreate(applicationClass);

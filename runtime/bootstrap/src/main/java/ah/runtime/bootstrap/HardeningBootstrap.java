@@ -271,7 +271,13 @@ final class HardeningBootstrap {
         if (failure instanceof OutOfMemoryError) {
             return BootstrapFailure.RESOURCE;
         }
-        String message = failure.getMessage();
+        String message;
+        try {
+            message = failure.getMessage();
+        } catch (Throwable ignored) {
+            // Throwable is untrusted at this boundary; classification must be total.
+            return BootstrapFailure.INTERNAL;
+        }
         if (message != null && message.startsWith("AAH-RUNTIME-INTEGRITY-")) {
             return BootstrapFailure.GUARD;
         }

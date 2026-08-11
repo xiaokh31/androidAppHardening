@@ -115,21 +115,6 @@ public final class ShellAppComponentFactory extends AppComponentFactory {
         }
     }
 
-    /** Compatibility-fixture diagnostic; never participates in startup decisions. */
-    public int testOnlyLastFailedSessionCloseCount() {
-        return coordinator.failedCloseAttempts();
-    }
-
-    /** Compatibility-fixture diagnostic for a completed, non-throwing owner cleanup. */
-    public boolean testOnlyLastFailedBuffersCleared() {
-        return coordinator.failedCleanupCompleted();
-    }
-
-    /** Compatibility-fixture diagnostic; returns only ownership state, never objects. */
-    public boolean testOnlyFailureReferencesCleared() {
-        return coordinator.failedReferencesCleared() && installed == null;
-    }
-
     private BootstrapResult requireReady(ClassLoader loader) {
         BootstrapResult result = installed;
         if (result == null

@@ -434,6 +434,18 @@ jobs:
               "$baseline" "$vector_root" "build/m2-01/m2-01-${variant}.apk" \
               | tee "build/m2-01/${variant}-package-report.json"
           done
+          no_factory_root="build/m2-01/vector-no-factory"
+          ./gradlew --no-daemon --console=plain :host:container:prepareM202DeviceVector \
+            "-Pm202PrimaryDex=$PWD/build/m2-02/source-dex/classes.dex" \
+            "-Pm202SecondaryDex=$PWD/build/m2-02/source-dex/classes2.dex" \
+            "-Pm202VectorOutput=$PWD/$no_factory_root" \
+            "-Pm202PackageName=ah.fixtures.android.m201.extracted" \
+            "-Pm202SignerSha256=$signer_digest" \
+            "-Pm202OriginalFactory=-"
+          node tools/validation/prepare-m2-02-device-fixture.mjs package \
+            fixtures/android/build/outputs/apk/m201Extracted/release/android-m201Extracted-release.apk \
+            "$no_factory_root" build/m2-01/m2-01-no-factory.apk \
+            | tee build/m2-01/no-factory-package-report.json
           for variant in extracted direct; do
             package_name="ah.fixtures.android.m202.${variant}"
             vector_root="build/m2-02/vector-${variant}"
@@ -713,6 +725,9 @@ jobs:
             --direct-target-apk build/m2-01/m2-01-direct.apk \
             --direct-test-apk fixtures/android/build/outputs/apk/androidTest/m201Direct/debug/android-m201Direct-debug-androidTest.apk \
             --direct-vector-report build/m2-01/vector-direct/vector-report.json \
+            --no-factory-target-apk build/m2-01/m2-01-no-factory.apk \
+            --no-factory-test-apk fixtures/android/build/outputs/apk/androidTest/m201Extracted/debug/android-m201Extracted-debug-androidTest.apk \
+            --no-factory-vector-report build/m2-01/vector-no-factory/vector-report.json \
             --evidence "build/m2-01/device-api${API}-x86_64"
           cat "build/m2-01/device-api${API}-x86_64/report.json"
 

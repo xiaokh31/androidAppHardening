@@ -48,6 +48,8 @@ for (const method of ["instantiateClassLoader", "instantiateApplication", "insta
   "instantiateService", "instantiateReceiver", "instantiateProvider"]) {
   requireCondition(shell.includes(method + "("), `missing public entry ${method}`);
 }
+requireCondition(!/public\s+[^\n]+\s+testOnly\w*\s*\(/u.test(shell),
+  "test-only diagnostic entered the public Release API");
 for (const forbidden of [
   /import\s+ah\.runtime\.loader/u,
   /\bPayloadRuntime\b/u,
@@ -82,6 +84,9 @@ requireCondition(deviceRunner.includes("waitForJniMarker()")
     && deviceRunner.includes("TimeUnit.SECONDS.toNanos(5)")
     && deviceRunner.includes("main JNI marker did not converge"),
   "device runner does not bound the asynchronous Application/JNI lifecycle");
+requireCondition(deviceRunner.includes("waitForServiceMarker()")
+    && deviceRunner.includes("service lifecycle marker did not converge"),
+  "device runner does not observe platform-default Service creation");
 requireCondition(deviceManifest.includes('android:process=":m201secondary"'),
   "independent-process component is absent");
 requireCondition(deviceManifest.includes(
@@ -105,7 +110,9 @@ for (const variant of ["Extracted", "Direct"]) {
 }
 requireCondition(kvmWorkflow.includes("run-m2-01-device-acceptance.mjs")
     && kvmWorkflow.includes("assembleM201ExtractedRelease")
-    && kvmWorkflow.includes("assembleM201DirectRelease"),
+    && kvmWorkflow.includes("assembleM201DirectRelease")
+    && kvmWorkflow.includes("-Pm202OriginalFactory=-")
+    && kvmWorkflow.includes("--no-factory-target-apk"),
   "API 29/36 KVM Release/R8 acceptance is not wired");
 
 console.log(JSON.stringify({
@@ -120,5 +127,5 @@ console.log(JSON.stringify({
   real_device_acceptance_wired: true,
   legacy_poc_isolated: true,
   process_modes: 2,
-  release_r8_variants: 2,
+  release_r8_variants: 3,
 }, null, 2));

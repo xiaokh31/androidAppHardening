@@ -16,13 +16,11 @@ if (!Number.isInteger(timeout) || timeout < 1000 || timeout > 120000) fail("inva
 assertIgnored(evidence);
 mkdirSync(evidence, { recursive: true });
 
-const variants = ["extracted", "direct"].map((name) => ({
-  name,
-  packageName: `ah.fixtures.android.m201.${name}`,
-  target: artifact(required(`${name}-target-apk`)),
-  test: artifact(required(`${name}-test-apk`)),
-  vector: artifact(required(`${name}-vector-report`)),
-}));
+const variants = [
+  variant("extracted", "ah.fixtures.android.m201.extracted", true),
+  variant("direct", "ah.fixtures.android.m201.direct", true),
+  variant("no-factory", "ah.fixtures.android.m201.extracted", false),
+];
 const transcript = [];
 
 try {
@@ -56,12 +54,15 @@ function runVariant(variant) {
   runAdb(["install", "-r", "-t", "--no-streaming", variant.test]);
   const output = runAdb([
     "shell", "am", "instrument", "-w",
+    "-e", "original_factory", String(variant.originalFactoryExpected),
     `${variant.packageName}.test/ah.fixtures.android.m201.M201DeviceRunner`,
   ], 120000);
   const requiredMarkers = [
     "m2_01_device=true", "platform_callbacks=6", "main_install=1",
     "secondary_install=1", "custom_application=true", "early_provider=true",
     "multidex=true", "jni=true", "metadata_null=true", "plaintext_dex_files=0",
+    `original_factory=${variant.originalFactoryExpected}`,
+    `factory_callbacks=${variant.originalFactoryExpected ? 1 : 0}`,
     "OK (1 test)", "INSTRUMENTATION_CODE: -1",
   ];
   if (requiredMarkers.some((marker) => !output.stdout.includes(marker))
@@ -71,7 +72,10 @@ function runVariant(variant) {
   const instrumentation = path.join(evidence, `${variant.name}.instrumentation.txt`);
   writeFileSync(instrumentation, output.stdout);
   const vector = JSON.parse(readFileSync(variant.vector, "utf8"));
-  if (vector.original_factory !== "ah.fixtures.android.payload.OriginalAppComponentFactory"
+  const expectedFactory = variant.originalFactoryExpected
+    ? "ah.fixtures.android.payload.OriginalAppComponentFactory"
+    : null;
+  if (vector.original_factory !== expectedFactory
       || vector.result !== "PASS") fail(`${variant.name} vector lacks authenticated factory`);
   return {
     name: variant.name,
@@ -81,6 +85,8 @@ function runVariant(variant) {
     vector_report: fileEvidence(variant.vector),
     instrumentation: fileEvidence(instrumentation),
     platform_callbacks: 6,
+    original_factory_present: variant.originalFactoryExpected,
+    original_factory_callback_count: variant.originalFactoryExpected ? 1 : 0,
     main_process_install_count: 1,
     secondary_process_install_count: 1,
     custom_application_verified: true,
@@ -90,6 +96,17 @@ function runVariant(variant) {
     metadata_null_verified: true,
     plaintext_dex_files: 0,
     result: "PASS",
+  };
+}
+
+function variant(name, packageName, originalFactoryExpected) {
+  return {
+    name,
+    packageName,
+    originalFactoryExpected,
+    target: artifact(required(`${name}-target-apk`)),
+    test: artifact(required(`${name}-test-apk`)),
+    vector: artifact(required(`${name}-vector-report`)),
   };
 }
 

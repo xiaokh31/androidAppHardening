@@ -21,10 +21,13 @@ public final class M201DeviceRunner extends Instrumentation {
     private static final String SERVICE = "ah.fixtures.android.payload.PayloadService";
     private static final String RECEIVER = "ah.fixtures.android.payload.PayloadReceiver";
     private static final String SECONDARY = "ah.fixtures.android.payload.SecondaryApi";
+    private boolean originalFactoryExpected = true;
 
     @Override
     public void onCreate(Bundle arguments) {
         super.onCreate(arguments);
+        originalFactoryExpected = arguments == null
+                || !"false".equals(arguments.getString("original_factory"));
         start();
     }
 
@@ -62,9 +65,13 @@ public final class M201DeviceRunner extends Instrumentation {
         ApplicationInfo withMetadata = target.getPackageManager().getApplicationInfo(
                 target.getPackageName(), PackageManager.GET_META_DATA);
         require(withMetadata.metaData == null, "fixture metadata must be null");
-        equal(1, ProbeSignal.factoryCount("classloader"), "main classloader hook count");
-        equal(1, ProbeSignal.factoryCount("application"), "main application count");
-        equal(1, ProbeSignal.factoryCount("provider"), "main provider count");
+        int expectedFactoryCallbacks = originalFactoryExpected ? 1 : 0;
+        equal(expectedFactoryCallbacks, ProbeSignal.factoryCount("classloader"),
+                "main classloader hook count");
+        equal(expectedFactoryCallbacks, ProbeSignal.factoryCount("application"),
+                "main application count");
+        equal(expectedFactoryCallbacks, ProbeSignal.factoryCount("provider"),
+                "main provider count");
         equal("M0-05-CLASSES2:provider", ProbeSignal.providerMarker(), "provider cross-DEX");
         waitForJniMarker();
 
@@ -72,14 +79,15 @@ public final class M201DeviceRunner extends Instrumentation {
         try {
             require(activity.getClass().getClassLoader() == payloadLoader,
                     "Activity loader differs from final loader");
-            equal(1, ProbeSignal.factoryCount("activity"), "activity count");
+            equal(expectedFactoryCallbacks, ProbeSignal.factoryCount("activity"), "activity count");
             equal("M0-05-CLASSES2:activity", ProbeSignal.activityMarker(), "activity cross-DEX");
             Intent service = new Intent().setClassName(target, SERVICE);
             require(target.startService(service) != null, "service did not start");
-            waitForCount("service", 1);
+            waitForServiceMarker();
             verifySecondaryProcess(target);
-            equal(1, ProbeSignal.factoryCount("classloader"), "main process installed twice");
-            equal(1, ProbeSignal.factoryCount("service"), "service count");
+            equal(expectedFactoryCallbacks, ProbeSignal.factoryCount("classloader"),
+                    "unexpected main factory callback count");
+            equal(expectedFactoryCallbacks, ProbeSignal.factoryCount("service"), "service count");
             require(payloadLoader.loadClass(SECONDARY).getClassLoader() == payloadLoader,
                     "classes2 type did not use final loader");
             equal(0, countPlaintextDex(target.getApplicationInfo().dataDir),
@@ -89,6 +97,8 @@ public final class M201DeviceRunner extends Instrumentation {
             target.stopService(new Intent().setClassName(target, SERVICE));
         }
         return "m2_01_device=true platform_callbacks=6 main_install=1 secondary_install=1 "
+                + "original_factory=" + originalFactoryExpected
+                + " factory_callbacks=" + expectedFactoryCallbacks + " "
                 + "custom_application=true early_provider=true multidex=true jni=true "
                 + "metadata_null=true plaintext_dex_files=0";
     }
@@ -115,9 +125,13 @@ public final class M201DeviceRunner extends Instrumentation {
         require(completed.await(10, TimeUnit.SECONDS), "secondary process receiver timed out");
         Bundle result = observed[0];
         require(result != null, "secondary process returned no result");
-        equal(1, result.getInt("classloader_count", -1), "secondary classloader hook count");
-        equal(1, result.getInt("application_count", -1), "secondary application count");
-        equal(1, result.getInt("receiver_count", -1), "secondary receiver count");
+        int expectedFactoryCallbacks = originalFactoryExpected ? 1 : 0;
+        equal(expectedFactoryCallbacks, result.getInt("classloader_count", -1),
+                "secondary classloader hook count");
+        equal(expectedFactoryCallbacks, result.getInt("application_count", -1),
+                "secondary application count");
+        equal(expectedFactoryCallbacks, result.getInt("receiver_count", -1),
+                "secondary receiver count");
         equal("M0-05-JNI-FIXED", result.getString("jni_marker"), "secondary JNI marker");
         equal("M0-05-CLASSES2:secondary", result.getString("secondary_marker"),
                 "secondary cross-DEX marker");
@@ -125,13 +139,13 @@ public final class M201DeviceRunner extends Instrumentation {
                 "secondary receiver loader");
     }
 
-    private static void waitForCount(String component, int expected) throws Exception {
+    private static void waitForServiceMarker() throws Exception {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
         while (System.nanoTime() < deadline) {
-            if (ProbeSignal.factoryCount(component) == expected) return;
+            if ("M0-05-CLASSES2:service".equals(ProbeSignal.serviceMarker())) return;
             Thread.sleep(25L);
         }
-        throw new AssertionError(component + " callback count did not converge");
+        throw new AssertionError("service lifecycle marker did not converge");
     }
 
     private static void waitForJniMarker() throws Exception {

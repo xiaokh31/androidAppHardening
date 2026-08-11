@@ -2,6 +2,35 @@ plugins {
     alias(libs.plugins.android.library)
 }
 
+abstract class StageM204NativeDebugSymbols : org.gradle.api.DefaultTask() {
+    @get:org.gradle.api.tasks.Input
+    abstract val supportedAbis: org.gradle.api.provider.ListProperty<String>
+
+    @get:org.gradle.api.tasks.InputDirectory
+    @get:org.gradle.api.tasks.PathSensitive(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+    abstract val unstrippedRoot: org.gradle.api.file.DirectoryProperty
+
+    @get:org.gradle.api.tasks.OutputDirectory
+    abstract val destination: org.gradle.api.file.DirectoryProperty
+
+    @org.gradle.api.tasks.TaskAction
+    fun stage() {
+        val sourceRoot = unstrippedRoot.get().asFile
+        val destinationRoot = destination.get().asFile
+        destinationRoot.deleteRecursively()
+        for (abi in supportedAbis.get()) {
+            val suffix = "/obj/$abi/libah_runtime.so"
+            val matches = sourceRoot.walkTopDown()
+                .filter { it.isFile && it.invariantSeparatorsPath.endsWith(suffix) }
+                .toList()
+            require(matches.size == 1) { "expected one unstripped Release $abi ELF, found ${matches.size}" }
+            val target = destinationRoot.resolve("lib/$abi/libah_runtime.so")
+            target.parentFile.mkdirs()
+            matches.single().copyTo(target, overwrite = false)
+        }
+    }
+}
+
 val stageM204RuntimeTemplates by tasks.registering(Sync::class) {
     group = "build"
     description = "Stages the four stripped Runtime templates at the M2-04 fixed path."
@@ -31,25 +60,27 @@ if (m204TargetAbi != null && m204TargetAbi !in m204SupportedAbis) {
     throw GradleException("m204TargetAbi must be one of ${m204SupportedAbis.joinToString()}")
 }
 
+val stagedM204NativeDebugSymbols =
+    layout.buildDirectory.dir("intermediates/m2-04-native-debug-symbols")
+
+val stageM204NativeDebugSymbols by tasks.registering(StageM204NativeDebugSymbols::class) {
+    group = "build"
+    description = "Stages the four unstripped M2-04 Runtime ELFs after the Release native build."
+    dependsOn("stripReleaseDebugSymbols")
+    supportedAbis.set(m204SupportedAbis)
+    unstrippedRoot.set(layout.buildDirectory.dir("intermediates/cxx/RelWithDebInfo"))
+    destination.set(stagedM204NativeDebugSymbols)
+}
+
 val archiveM204NativeDebugSymbols by tasks.registering(Zip::class) {
     group = "build"
     description = "Archives the four unstripped M2-04 Runtime ELFs separately from release templates."
-    dependsOn("stripReleaseDebugSymbols")
+    dependsOn(stageM204NativeDebugSymbols)
     destinationDirectory.set(layout.buildDirectory.dir("outputs/native-debug-symbols/release"))
     archiveFileName.set("native-release-native-debug-symbols.zip")
     isReproducibleFileOrder = true
     isPreserveFileTimestamps = false
-    for (abi in m204SupportedAbis) {
-        from(providers.provider {
-            val matches = fileTree(layout.buildDirectory.dir("intermediates/cxx/RelWithDebInfo")) {
-                include("**/obj/$abi/libah_runtime.so")
-            }.files
-            require(matches.size == 1) { "expected one unstripped Release $abi ELF, found ${matches.size}" }
-            matches.single()
-        }) {
-            into("lib/$abi")
-        }
-    }
+    from(stagedM204NativeDebugSymbols)
 }
 
 afterEvaluate {

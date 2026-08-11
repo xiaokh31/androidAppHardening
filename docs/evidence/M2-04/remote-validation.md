@@ -9,3 +9,12 @@
 - The bounded correction adds only that exact image/ref pair to the existing Ubuntu allowlist in Build and KVM. Compiler checks remain fixed at GCC/G++ `13.3.0`; no Android, Runtime, device or acceptance behavior changes.
 
 Replacement exact-head run IDs and artifacts will be appended only after the corrected head completes. Successful jobs will not be manually rerun.
+
+## Replacement head `d72f45677984728e01fbeffa425c283c697470b1`
+
+- Governance run `31512206204` passed. KVM run `31512206214` accepted the new image/GCC gate and proceeded into Android preparation.
+- Build run `31512206267` failed identically on Ubuntu job `93848558347` and Windows job `93848558408` before compilation tasks executed: Gradle resolved `archiveM204NativeDebugSymbols` during task-graph construction and required an already-existing unstripped x86_64 ELF. The local dirty build had masked this clean-run defect.
+- The fix adds a configuration-cache-compatible staging task with declared inputs and outputs. It depends on `stripReleaseDebugSymbols`, discovers and requires exactly one unstripped ELF per ABI only after Release native construction, stages the four files, and then feeds the reproducible ZIP task.
+- Pinned offline regression `:runtime:native:clean :runtime:native:archiveM204NativeDebugSymbols` exited `0` in 36 seconds, built all four ABIs and stored the configuration cache. The resulting ZIP contains exactly one `libah_runtime.so` under each of `armeabi-v7a`, `arm64-v8a`, `x86`, and `x86_64`; it is 3603789 bytes with SHA-256 `ec4ee7d911e0476ec3fd5cdd2581543db501ee8f2c877288bedb44ef88ba9098`.
+
+This correction changes debug-symbol discovery/staging only. Runtime sources, stripped AAR inputs, ABI policy, device fixtures and acceptance behavior are unchanged. A new exact-head CI round is required.

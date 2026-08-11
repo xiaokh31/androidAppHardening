@@ -3,12 +3,16 @@ package ah.runtime.nativebridge;
 import android.app.Activity;
 import android.app.Instrumentation;
 import android.content.pm.ApplicationInfo;
+import android.os.Build;
 import android.os.Bundle;
 import ah.runtime.loader.PayloadLoadException;
 import ah.runtime.loader.PayloadRuntime;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 /** Non-empty connectedCheck contract for the production Native facade and JNI library. */
 public final class NativeConnectedRunner extends Instrumentation {
@@ -52,15 +56,30 @@ public final class NativeConnectedRunner extends Instrumentation {
     }
 
     private static String runtimeAbi(ApplicationInfo applicationInfo) throws IOException {
-        File runtime = new File(applicationInfo.nativeLibraryDir, "libah_runtime.so");
-        require(runtime.isFile() && runtime.canRead(), "Runtime ELF is unavailable");
         byte[] header = new byte[20];
-        try (FileInputStream input = new FileInputStream(runtime)) {
-            int offset = 0;
-            while (offset < header.length) {
-                int read = input.read(header, offset, header.length - offset);
-                require(read > 0, "Runtime ELF header is truncated");
-                offset += read;
+        boolean extracted =
+                (applicationInfo.flags & ApplicationInfo.FLAG_EXTRACT_NATIVE_LIBS) != 0;
+        if (extracted) {
+            File runtime = new File(applicationInfo.nativeLibraryDir, "libah_runtime.so");
+            require(runtime.isFile() && runtime.canRead(), "Runtime ELF is unavailable");
+            try (FileInputStream input = new FileInputStream(runtime)) {
+                readHeader(input, header);
+            }
+        } else {
+            try (ZipFile apk = new ZipFile(applicationInfo.sourceDir)) {
+                ZipEntry runtime = null;
+                for (String abi : Build.SUPPORTED_ABIS) {
+                    ZipEntry candidate = apk.getEntry("lib/" + abi + "/libah_runtime.so");
+                    if (candidate != null) {
+                        runtime = candidate;
+                        break;
+                    }
+                }
+                require(runtime != null && runtime.getSize() >= header.length,
+                        "direct Runtime ELF is unavailable");
+                try (InputStream input = apk.getInputStream(runtime)) {
+                    readHeader(input, header);
+                }
             }
         }
         require(header[0] == 0x7f && header[1] == 'E' && header[2] == 'L' && header[3] == 'F',
@@ -73,6 +92,15 @@ public final class NativeConnectedRunner extends Instrumentation {
         if (elfClass == 1 && machine == 3) return "x86";
         if (elfClass == 2 && machine == 62) return "x86_64";
         throw new AssertionError("unsupported Runtime ELF class/machine");
+    }
+
+    private static void readHeader(InputStream input, byte[] header) throws IOException {
+        int offset = 0;
+        while (offset < header.length) {
+            int read = input.read(header, offset, header.length - offset);
+            require(read > 0, "Runtime ELF header is truncated");
+            offset += read;
+        }
     }
 
     private static void expectCode(ApplicationInfo applicationInfo, String code) {

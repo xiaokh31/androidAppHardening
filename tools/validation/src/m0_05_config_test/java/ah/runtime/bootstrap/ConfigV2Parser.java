@@ -8,7 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.regex.Pattern;
 
-/** Strict, bounded parser for the frozen 768-byte ConfigV2 PoC contract. */
+/** Legacy validation-only parser for the frozen 768-byte ConfigV2 PoC contract. */
 final class ConfigV2Parser {
     static final int SIZE = 768;
     static final int SIGNER_OFFSET = 56;

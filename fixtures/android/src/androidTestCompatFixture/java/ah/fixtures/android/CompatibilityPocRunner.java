@@ -4,7 +4,7 @@ import ah.runtime.bootstrap.ClassLoaderProbe;
 import ah.runtime.bootstrap.EarlySignerProbe;
 import ah.runtime.bootstrap.NativeLibrarySearchPath;
 import ah.runtime.bootstrap.ProbeEvent;
-import ah.runtime.bootstrap.ShellAppComponentFactory;
+import ah.runtime.bootstrap.LegacyShellAppComponentFactory;
 import android.app.Activity;
 import android.app.Instrumentation;
 import android.content.Intent;
@@ -249,14 +249,14 @@ public final class CompatibilityPocRunner extends Instrumentation {
         ApplicationInfo noMetadata = new ApplicationInfo(actual);
         noMetadata.metaData = null;
         ClassLoader noMetadataLoader =
-                new ShellAppComponentFactory()
+                new LegacyShellAppComponentFactory()
                         .instantiateClassLoader(getClass().getClassLoader(), noMetadata);
 
         ApplicationInfo arbitraryMetadata = new ApplicationInfo(actual);
         arbitraryMetadata.metaData = new Bundle();
         arbitraryMetadata.metaData.putString("fixture.unrelated", "ignored");
         ClassLoader arbitraryMetadataLoader =
-                new ShellAppComponentFactory()
+                new LegacyShellAppComponentFactory()
                         .instantiateClassLoader(getClass().getClassLoader(), arbitraryMetadata);
         require(noMetadataLoader != null, "null metadata changed the positive path");
         require(arbitraryMetadataLoader != null, "unrelated metadata changed the positive path");
@@ -329,7 +329,7 @@ public final class CompatibilityPocRunner extends Instrumentation {
             int loadersBefore = countEvents(ClassLoaderProbe.LOADER_CREATED);
             int jniBefore = countEvents(ClassLoaderProbe.JNI_LOADED);
             try {
-                new ShellAppComponentFactory()
+                new LegacyShellAppComponentFactory()
                         .instantiateClassLoader(getClass().getClassLoader(), mutated);
                 throw new AssertionError(testCase[0] + " did not fail");
             } catch (IllegalStateException expected) {
@@ -354,7 +354,7 @@ public final class CompatibilityPocRunner extends Instrumentation {
 
     private void verifyDelegatedFailureContract() {
         ApplicationInfo actual = getTargetContext().getApplicationInfo();
-        ShellAppComponentFactory shell = new ShellAppComponentFactory();
+        LegacyShellAppComponentFactory shell = new LegacyShellAppComponentFactory();
         ClassLoader loader = shell.instantiateClassLoader(getClass().getClassLoader(), actual);
         ProbeSignal.setFailActivityDelegation(true);
         try {
@@ -467,7 +467,7 @@ public final class CompatibilityPocRunner extends Instrumentation {
             boolean failClose,
             String code) {
         int finalLoadersBefore = countEvents(ClassLoaderProbe.LOADER_CREATED);
-        ShellAppComponentFactory shell = new ShellAppComponentFactory();
+        LegacyShellAppComponentFactory shell = new LegacyShellAppComponentFactory();
         ProbeSignal.setFailFactoryConstruction(failConstruction);
         ProbeSignal.setClassLoaderHookMode(hookMode);
         ClassLoaderProbe.setFailSessionCloseForTesting(failClose);
@@ -540,7 +540,7 @@ public final class CompatibilityPocRunner extends Instrumentation {
     }
 
     private void requireDelegatedFailure(
-            ShellAppComponentFactory shell,
+            LegacyShellAppComponentFactory shell,
             ClassLoader loader,
             String component,
             String mode,
@@ -568,7 +568,7 @@ public final class CompatibilityPocRunner extends Instrumentation {
     }
 
     private void invokeDelegatedComponent(
-            ShellAppComponentFactory shell,
+            LegacyShellAppComponentFactory shell,
             ClassLoader loader,
             String component)
             throws ClassNotFoundException, IllegalAccessException, InstantiationException {

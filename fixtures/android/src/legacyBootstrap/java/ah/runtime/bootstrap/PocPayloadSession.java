@@ -3,7 +3,7 @@ package ah.runtime.bootstrap;
 import android.app.AppComponentFactory;
 import java.nio.ByteBuffer;
 
-/** M0-05 ownership proof for buffers and partial loader/factory references before READY. */
+/** Legacy fixture-only M0-05 ownership proof. */
 final class PocPayloadSession implements AutoCloseable {
     private ByteBuffer[] payloadBuffers;
     private ClassLoader provisionalLoader;

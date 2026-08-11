@@ -1,4 +1,7 @@
 -keep class ah.runtime.bootstrap.ShellAppComponentFactory { public *; }
+-keep class ah.runtime.bootstrap.LegacyShellAppComponentFactory { public *; }
+-keep class ah.runtime.bootstrap.EarlyConfigProbe { public *; }
+-keep class ah.runtime.bootstrap.EarlyConfigResult { public *; }
 # The Release/R8 target and separately installed instrumentation APK share these
 # bounded PoC diagnostics by binary name. They are not product Runtime APIs.
 -keep class ah.runtime.bootstrap.ClassLoaderProbe { public *; }
@@ -34,4 +37,5 @@
 -keep class ah.runtime.guard.VerifiedSignerIdentity { *; }
 -keep class ah.runtime.guard.VerifiedStartupConfiguration { *; }
 -keep class ah.fixtures.android.m203.M203ColdStartActivity { *; }
+-keep class ah.fixtures.android.m201.M201DeviceRunner { *; }
 -keepattributes *Annotation*,InnerClasses,EnclosingMethod

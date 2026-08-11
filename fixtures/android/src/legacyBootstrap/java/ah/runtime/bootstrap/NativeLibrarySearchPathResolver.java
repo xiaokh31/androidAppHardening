@@ -16,7 +16,7 @@ import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-/** Derives native lookup paths from public ApplicationInfo and process ABI APIs only. */
+/** Legacy fixture-only native lookup path resolver. */
 public final class NativeLibrarySearchPathResolver {
     private static final int MAX_ZIP_ENTRIES = 4096;
     private static final int MAX_NAME_LENGTH = 512;

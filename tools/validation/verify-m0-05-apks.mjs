@@ -276,11 +276,17 @@ async function verifySourcePolicy(repositoryRoot) {
     path.join(runtimeRoot, "ah", "runtime", "bootstrap", "ShellAppComponentFactory.java"),
     "utf8",
   );
-  const signer = shell.indexOf("EarlySignerProbe.verify(applicationInfo)");
-  const config = shell.indexOf("EarlyConfigProbe.open(applicationInfo, signer)");
-  const payload = shell.indexOf("StoredDexReader.readContainer(applicationInfo.sourceDir)");
-  if (!(signer >= 0 && signer < config && config < payload)) {
-    fail("source ordering does not prove signer then ConfigV2 then payload");
+  const bootstrap = await readFile(
+    path.join(runtimeRoot, "ah", "runtime", "bootstrap", "HardeningBootstrap.java"),
+    "utf8",
+  );
+  if (!bootstrap.includes("RuntimeStartupGuard.openVerifiedPayload(applicationInfo, shellLoader)")) {
+    fail("production bootstrap does not use the frozen M2-03 Guard entry point");
+  }
+  for (const forbiddenCall of ["PayloadRuntime.", "EarlySignerProbe.", "StoredDexReader."]) {
+    if (shell.includes(forbiddenCall) || bootstrap.includes(forbiddenCall)) {
+      fail(`production bootstrap directly uses legacy or low-level path ${forbiddenCall}`);
+    }
   }
 }
 

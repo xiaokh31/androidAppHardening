@@ -1,7 +1,8 @@
 package ah.runtime.bootstrap;
 
-import android.util.Log;
+import android.app.AppComponentFactory;
 import android.content.pm.ApplicationInfo;
+import android.util.Log;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -36,7 +37,7 @@ public final class ClassLoaderProbe {
     private static int writeIndex;
     private static byte[] earlySignerSha256;
     private static NativeLibrarySearchPath nativeLibrarySearchPath;
-    private static ShellAppComponentFactory reentrantShell;
+    private static AppComponentFactory reentrantShell;
     private static ClassLoader reentrantParent;
     private static ApplicationInfo reentrantApplicationInfo;
     private static boolean failSessionCloseForTesting;
@@ -84,7 +85,7 @@ public final class ClassLoaderProbe {
     }
 
     static synchronized void setOriginalFactoryHookForTesting(
-            ShellAppComponentFactory shell,
+            AppComponentFactory shell,
             ClassLoader parent,
             ApplicationInfo applicationInfo) {
         reentrantShell = shell;
@@ -100,7 +101,7 @@ public final class ClassLoaderProbe {
 
     /** Synthetic fixture hook used only to prove recursive startup fails closed. */
     public static ClassLoader reenterOriginalFactoryHookForTesting() {
-        final ShellAppComponentFactory shell;
+        final AppComponentFactory shell;
         final ClassLoader parent;
         final ApplicationInfo applicationInfo;
         synchronized (ClassLoaderProbe.class) {

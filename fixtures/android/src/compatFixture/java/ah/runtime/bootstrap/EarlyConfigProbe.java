@@ -3,7 +3,7 @@ package ah.runtime.bootstrap;
 import android.content.pm.ApplicationInfo;
 import java.nio.ByteBuffer;
 
-/** Opens only the fixed sourceDir ConfigV2 entry and releases fields after signer binding. */
+/** Archived M0-05 helper; not part of a production source set. */
 public final class EarlyConfigProbe {
     private EarlyConfigProbe() {}
 

@@ -1,6 +1,6 @@
 package ah.runtime.bootstrap;
 
-/** Authenticated M0-05 ConfigV2 view; no field is exposed before signer binding succeeds. */
+/** Legacy validation-only authenticated ConfigV2 view. */
 public final class EarlyConfigResult {
     private final String originalFactory;
 

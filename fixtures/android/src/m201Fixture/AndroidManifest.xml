@@ -2,32 +2,24 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
         android:name="ah.fixtures.android.payload.PayloadApplication"
-        android:appComponentFactory="ah.runtime.bootstrap.LegacyShellAppComponentFactory"
+        android:appComponentFactory="ah.runtime.bootstrap.ShellAppComponentFactory"
         android:hasCode="true"
-        android:label="M0-05 Compatibility PoC"
+        android:label="M2-01 Bootstrap Fixture"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
-
         <provider
             android:name="ah.fixtures.android.payload.PayloadProvider"
             android:authorities="${applicationId}.startup"
             android:exported="false"
             android:initOrder="100" />
-
         <activity
             android:name="ah.fixtures.android.payload.PayloadActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-
+            android:exported="true" />
         <service
             android:name="ah.fixtures.android.payload.PayloadService"
             android:exported="false" />
-
         <receiver
             android:name="ah.fixtures.android.payload.PayloadReceiver"
-            android:exported="false" />
+            android:exported="false"
+            android:process=":m201secondary" />
     </application>
 </manifest>

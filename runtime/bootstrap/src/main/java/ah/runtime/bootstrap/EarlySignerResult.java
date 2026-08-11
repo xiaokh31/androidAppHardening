@@ -3,7 +3,7 @@ package ah.runtime.bootstrap;
 import java.security.MessageDigest;
 import java.util.Objects;
 
-/** Immutable result of verifying the installed APK's unique current signer. */
+/** Immutable legacy fixture result retained for compatibility-test parsing only. */
 public final class EarlySignerResult {
     private final byte[] certificateSha256;
 

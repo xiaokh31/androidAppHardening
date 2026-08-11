@@ -22,6 +22,9 @@ abstract class M202DeviceVectorArguments : CommandLineArgumentProvider {
     @get:Input
     abstract val signerSha256: Property<String>
 
+    @get:Input
+    abstract val originalFactory: Property<String>
+
     override fun asArguments(): Iterable<String> =
         listOf(
             primaryDex.get(),
@@ -29,6 +32,7 @@ abstract class M202DeviceVectorArguments : CommandLineArgumentProvider {
             outputRoot.get(),
             packageName.get(),
             signerSha256.get(),
+            originalFactory.get(),
         )
 }
 
@@ -58,6 +62,7 @@ val prepareM202DeviceVector by tasks.registering(JavaExec::class) {
             outputRoot.set(providers.gradleProperty("m202VectorOutput"))
             packageName.set(providers.gradleProperty("m202PackageName"))
             signerSha256.set(providers.gradleProperty("m202SignerSha256"))
+            originalFactory.set(providers.gradleProperty("m202OriginalFactory").orElse("-"))
         },
     )
 }

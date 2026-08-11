@@ -93,6 +93,16 @@ if(MSVC)
 else()
     target_compile_options(ah_crypto_backend PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
+if(ANDROID)
+    target_compile_definitions(ah_crypto_backend PRIVATE _FORTIFY_SOURCE=2)
+    target_compile_options(
+        ah_crypto_backend
+        PRIVATE
+            -fstack-protector-strong
+            -ffunction-sections
+            -fdata-sections
+    )
+endif()
 if(UNIX AND NOT ANDROID)
     target_link_libraries(ah_crypto_backend PRIVATE ZLIB::ZLIB)
 endif()
@@ -106,16 +116,21 @@ set_target_properties(
 if(ANDROID)
     add_library(ah_runtime SHARED $<TARGET_OBJECTS:ah_crypto_backend>)
     target_link_libraries(ah_runtime PRIVATE TF-PSA-Crypto::tfpsacrypto z)
-    target_compile_options(ah_runtime PRIVATE -fstack-protector-strong -ffunction-sections -fdata-sections)
     target_link_options(
         ah_runtime
         PRIVATE
             -Wl,--gc-sections
             -Wl,--exclude-libs,ALL
             -Wl,--undefined=ah_crypto_backend_anchor
+            -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/exports.map
             -Wl,-z,relro
             -Wl,-z,now
             -Wl,-z,noexecstack
+    )
+    set_property(
+        TARGET ah_runtime
+        APPEND
+        PROPERTY LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/exports.map"
     )
     set_target_properties(
         ah_runtime

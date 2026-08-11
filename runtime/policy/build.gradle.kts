@@ -59,9 +59,32 @@ val policySelfTest by tasks.registering(JavaExec::class) {
     mainClass.set("ah.runtime.guard.PolicySelfTest")
 }
 
+val abiCompatibilitySelfTest by tasks.registering(JavaExec::class) {
+    group = "verification"
+    description = "Runs the dependency-free M2-04 ABI compatibility matrix."
+    dependsOn("compileDebugUnitTestJavaWithJavac", ":runtime:native:compileDebugJavaWithJavac")
+    val externalRuntime =
+        configurations.named("debugRuntimeClasspath").map { configuration ->
+            configuration.incoming.artifactView {
+                componentFilter { identifier -> identifier is ModuleComponentIdentifier }
+            }.files
+        }
+    classpath(
+        layout.buildDirectory.dir(
+            "intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes",
+        ),
+        layout.buildDirectory.dir(
+            "intermediates/javac/debug/compileDebugJavaWithJavac/classes",
+        ),
+        externalRuntime,
+    )
+    mainClass.set("ah.runtime.AbiCompatibilitySelfTest")
+    args(layout.buildDirectory.dir("reports/m2-04").get().asFile.absolutePath)
+}
+
 afterEvaluate {
     tasks.named("test") {
-        dependsOn(policySelfTest)
+        dependsOn(policySelfTest, abiCompatibilitySelfTest)
     }
 }
 

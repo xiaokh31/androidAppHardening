@@ -1,29 +1,30 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260811-110801
-updated_at: 2026-08-11T11:08:01+08:00
+handoff_id: HO-20260811-132918
+updated_at: 2026-08-11T13:29:18+08:00
 updated_by: /root
-state: ready
-source_branch: main
-base_commit: 8dc20e65ed87c029cf14add3d3f5769719e13862
-working_tree: clean
+state: blocked
+source_branch: feat/m2-04-four-abi-runtime
+base_commit: 9ea71927aea01cd28ba993df71d50b82213dd87d
+working_tree: dirty
 current_milestone: M2
-active_task: NONE
-next_owner: unassigned
+active_task: M2-04
+next_owner: /root
 ---
 
 # Project HandOff
 
 ## Objective
 
-M2-01 Shell `AppComponentFactory` 启动链、原 Factory/平台默认组件委托和 `VerifiedPayloadSession` READY 前所有权已经完成；保持 M2-04 及其他相邻任务未启动。
+Complete M2-04 four-ABI Runtime build, compatibility reporting and bounded device evidence without starting M2-05 or another adjacent task.
 
 ## Current State
 
 - M2-01 final implementation parent `6a5a2706dcbb1b2984fb2bc6edf4147e81f98773` passed local gates, Ubuntu/Windows Build and Governance, API 29/36 x86_64 KVM, and the independent read-only review with `P0=0`, `P1=0`, `P2=0`.
 - The sole PR [#45](https://github.com/xiaokh31/androidAppHardening/pull/45) was merged with expected-head protection as `8dc20e65ed87c029cf14add3d3f5769719e13862`; Issue [#12](https://github.com/xiaokh31/androidAppHardening/issues/12) is closed. Production Shell covers all six public callbacks, custom and absent original Factory paths, stable failure caching and exactly-once pre-READY session ownership.
-- Local `main` is synchronized. README, final local/remote evidence, final independent review and this root HandOff are the only post-merge coordination changes; the governance schema intentionally keeps task-card frontmatter at its required initial `planned` value. No local emulator or physical-device installation was used for M2-01, and M2-04 has not started.
+- M2-04 is active on `feat/m2-04-four-abi-runtime` from synchronized `main@9ea71927`. Four-ABI Release/AAR, ELF hardening/slot/export verification, ABI policy, REPORT_V1 alignment and a selected x86 Release/R8 fixture build pass locally. No local emulator was started.
+- The authorized API 29 Xiaomi device exposes both `arm64-v8a` and `armeabi-v7a`. The bounded ARM runner built the shared vector and arm64 fixtures, then the first ordinary install was rejected once with `INSTALL_FAILED_USER_RESTRICTED`; it stopped and cleaned without retry or bypass. KVM and independent review remain pending, so M2-04 is blocked only on renewed ordinary MIUI USB-install permission plus publication-dependent gates.
 - M2-03 final PR HEAD `19d02a40962f55678b7a3c1cc17108bfbb44f9fa` passed exact-head Build `31421047955`, Governance `31421047952` and API 29/36 x86_64 KVM `31421047965`. PR [#44](https://github.com/xiaokh31/androidAppHardening/pull/44) was merged with expected-head protection as merge commit `803de853439026f4248a749d51033424c2e10b6d`; Issue #14 is closed.
 - The authorized API 29 arm64 `user/release-keys`, `ro.debuggable=0`, non-root physical-device report passed the same extracted/direct 12+12 ownership/metadata, cross-DEX, JNI, 20 cold starts, memory, zero-plaintext and cleanup matrix. Its evidence is inherited with a documented boundary because `659c2b8..8211a60` changes no production Runtime, Native, target/test APK or device instrumentation logic.
 - The full plus incremental independent read-only review is PASS with `P0=0`, `P1=0`, `P2=0`. The retained-logcat false positive is closed by per-scenario tokens; the later API 29 KVM stop/start race is closed by an M2-03-only stabilization window plus exact Activity/PID/PSS checks and fail-first logcat capture, without retry or sample substitution. README now records M2-03 as complete; only this post-merge coordination commit and its final main gates remain.
@@ -181,6 +182,7 @@ M2-01 Shell `AppComponentFactory` 启动链、原 Factory/平台默认组件委�
 
 | M2-03 | `/root` | `main` | done | M1-02, M1-04, M2-02 | PR #44、Issue #14、全零复核、双平台 CI、API 29/36 KVM、arm64 真机、README 与 strict HandOff 已关闭 |
 | M2-01 | `/root` | `main` | done | M0-05, M1-03, M1-04, M2-03 | PR #45、Issue #12、全零独立复核、Ubuntu/Windows、API 29/36 KVM、README 与 strict HandOff 已关闭 |
+| M2-04 | `/root` | `feat/m2-04-four-abi-runtime` | blocked | M0-03, M1-01, M2-01, M2-02, M2-03 | 本地四 ABI/ELF/AAR/策略/REPORT_V1 已通过；等待 MIUI 普通 USB 安装许可、冻结复核与 KVM/双平台 CI |
 
 ## Decisions and Invariants
 
@@ -1331,13 +1333,15 @@ M2-01 Shell `AppComponentFactory` 启动链、原 Factory/平台默认组件委�
 
 ## Blockers and Required Approvals
 
-None
+- M2-04 API 29 physical ARM execution is blocked by the device-side ordinary install gate: the first `adb install --no-streaming` returned `INSTALL_FAILED_USER_RESTRICTED`. The user must renew MIUI USB installation permission; no retry, secure-setting change, privilege escalation or confirmation bypass is authorized.
+- Ubuntu/Windows and API 29/36 KVM evidence requires publishing the frozen branch. No M2-04 push or PR publication authorization has been given in the current task request.
 
 ## Ordered Next Actions
 
-1. Commit and push this post-merge M2-01 coordination snapshot on `main`.
-2. Run Governance, strict HandOff and diff checks without exemption, then observe the single final `main` Build/Governance/KVM round without retriggering successful jobs.
-3. Do not start M2-04 or another task until the user explicitly selects it.
+1. After the user renews ordinary MIUI USB installation permission, run the existing bounded M2-04 ARM script once; do not retry or bypass a platform rejection.
+2. Freeze the implementation SHA, run one independent read-only M2-04 security review, and close any real P0/P1/P2 finding before publication.
+3. With publication authorization, push the fixed branch, create the unique Issue #15 draft PR, and observe one Ubuntu/Windows Build plus API 29/36 KVM round. Do not retrigger successful jobs.
+4. Only after all gates pass, update README, ready/merge the PR with expected-head protection, run strict HandOff on `main`, and keep M2-05 unstarted.
 
 ## Relevant Files and Artifacts
 

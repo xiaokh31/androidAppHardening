@@ -25,6 +25,12 @@ plugins {
     alias(libs.plugins.android.application)
 }
 
+val m204SupportedAbis = listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+val m204TargetAbi = providers.gradleProperty("m204TargetAbi").orNull
+if (m204TargetAbi != null && m204TargetAbi !in m204SupportedAbis) {
+    throw GradleException("m204TargetAbi must be one of ${m204SupportedAbis.joinToString()}")
+}
+
 @CacheableTask
 abstract class GenerateClassloaderPocDex
 @Inject
@@ -384,7 +390,7 @@ android {
         )
 
         ndk {
-            abiFilters += listOf("arm64-v8a", "x86_64")
+            abiFilters += m204TargetAbi?.let(::listOf) ?: listOf("arm64-v8a", "x86_64")
         }
     }
 

@@ -114,7 +114,13 @@ object CliIntegrationSelfTest {
         val dex = parsed.getValue("dex") as Map<*, *>
         check(dex["count"] == 2L)
         val abi = parsed.getValue("abi") as Map<*, *>
-        check((abi["input"] as List<*>).toSet() == setOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
+        check((abi["runtime_available_abis"] as List<*>).toSet() ==
+            setOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
+        check((abi["input_native_abis"] as List<*>).toSet() ==
+            setOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
+        check((abi["output_effective_abis"] as List<*>).toSet() ==
+            setOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
+        check((abi["limitations"] as List<*>).isEmpty())
         val application = parsed.getValue("application") as Map<*, *>
         check(application["application_class"] != null && application["original_factory"] != null)
         assertUnsigned(output)

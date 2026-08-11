@@ -18,7 +18,7 @@ The normative JSON Schema is [`report-v1.schema.json`](report-v1.schema.json). R
 6. `application`: inspected package/SDK/Application/original Factory and the fixed Shell Factory.
 7. `signing`: input verification result, public certificate digests/schemes, `required=true`, `performed=false`.
 8. `dex`: original DEX order, lengths and hashes plus AHDC version.
-9. `abi`: actual input ABI set and injected Runtime ABI set.
+9. `abi`: complete Runtime build ABI set, actual input ABI set, injected effective ABI set, and explicit limitations. The fixed keys are `runtime_available_abis`, `input_native_abis`, `output_effective_abis`, and `limitations`; x86/x86_64 alone never add a risk limitation.
 10. `compatibility`: rules version and stable findings.
 11. `stages`: entered stages in strict `inspect`, `signer`, `manifest`, `container`, `package`, `verify`, `publish` order.
 12. `size`: input/output/delta bytes.

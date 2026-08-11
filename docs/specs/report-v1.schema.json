@@ -121,10 +121,19 @@
     },
     "abi": {
       "type": "object", "additionalProperties": false,
-      "required": ["input", "output"],
+      "required": ["runtime_available_abis", "input_native_abis", "output_effective_abis", "limitations"],
       "properties": {
-        "input": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
-        "output": { "type": "array", "items": { "enum": ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"] }, "uniqueItems": true }
+        "runtime_available_abis": {
+          "type": "array", "minItems": 4, "maxItems": 4,
+          "items": { "enum": ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"] }, "uniqueItems": true
+        },
+        "input_native_abis": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "output_effective_abis": {
+          "type": "array", "items": { "enum": ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"] }, "uniqueItems": true
+        },
+        "limitations": {
+          "type": "array", "items": { "enum": ["OUTPUT_LIMITED_TO_INPUT_NATIVE_ABIS"] }, "uniqueItems": true
+        }
       }
     },
     "compatibility": {

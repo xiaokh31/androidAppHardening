@@ -6,6 +6,7 @@ on:
       - spike/m0-05-application-factory-provider-jni-poc
       - feat/m2-02-native-decrypt-loader
       - feat/m2-03-runtime-integrity
+      - feat/m2-04-four-abi-runtime
     paths:
       - ".github/workflows/m0-05-linux-kvm.yml"
       - "fixtures/android/**"
@@ -628,6 +629,10 @@ jobs:
             :runtime:bootstrap:connectedCheck \
             :runtime:policy:connectedCheck
 
+          mkdir -p "build/m2-04/device-api${API}-x86_64/x86_64"
+          cp -R runtime/native/build/outputs/androidTest-results/connected/. \
+            "build/m2-04/device-api${API}-x86_64/x86_64/"
+
           adb -s "$serial" install -r -t --no-streaming \
             runtime/policy/build/outputs/apk/androidTest/debug/policy-debug-androidTest.apk
           adb -s "$serial" push build/m0-05/test-apks/extracted/signed/m0-05-config-major.apk \
@@ -746,6 +751,46 @@ jobs:
             --evidence "build/m2-02/device-api${API}-x86_64"
           cat "build/m2-02/device-api${API}-x86_64/report.json"
 
+          m204_abis=(x86_64)
+          if [[ "$API" = "29" ]]; then m204_abis+=(x86); fi
+          for abi in "${m204_abis[@]}"; do
+            runtime_root="build/m2-04/device-api${API}-x86_64/${abi}/runtime"
+            evidence_root="build/m2-04/device-api${API}-x86_64/${abi}/evidence"
+            mkdir -p "$runtime_root" "$evidence_root"
+            ./gradlew --no-daemon --console=plain -Pm204TargetAbi="$abi" \
+              :fixtures:android:assembleM202ExtractedRelease \
+              :fixtures:android:assembleM202DirectRelease \
+              :fixtures:android:assembleM202ExtractedDebugAndroidTest \
+              :fixtures:android:assembleM202DirectDebugAndroidTest
+            cp fixtures/android/build/outputs/apk/androidTest/m202Extracted/debug/android-m202Extracted-debug-androidTest.apk \
+              "$runtime_root/m2-04-extracted-test.apk"
+            cp fixtures/android/build/outputs/apk/androidTest/m202Direct/debug/android-m202Direct-debug-androidTest.apk \
+              "$runtime_root/m2-04-direct-test.apk"
+            for variant in extracted direct; do
+              baseline="fixtures/android/build/outputs/apk/m202${variant^}/release/android-m202${variant^}-release.apk"
+              node tools/validation/prepare-m2-02-device-fixture.mjs package \
+                "$baseline" "build/m2-02/vector-${variant}" \
+                "$runtime_root/m2-04-${variant}.apk" \
+                | tee "$runtime_root/${variant}-package-report.json"
+            done
+            timeout 300s node tools/validation/run-m2-02-device-acceptance.mjs \
+              --task-id M2-04 \
+              --expected-abi "$abi" \
+              --adb "$ANDROID_HOME/platform-tools/adb" \
+              --serial "$serial" \
+              --platform "api${API}-${abi}-linux-kvm" \
+              --cold-starts 1 \
+              --command-timeout-ms 60000 \
+              --extracted-target-apk "$runtime_root/m2-04-extracted.apk" \
+              --extracted-test-apk "$runtime_root/m2-04-extracted-test.apk" \
+              --extracted-vector-report build/m2-02/vector-extracted/vector-report.json \
+              --direct-target-apk "$runtime_root/m2-04-direct.apk" \
+              --direct-test-apk "$runtime_root/m2-04-direct-test.apk" \
+              --direct-vector-report build/m2-02/vector-direct/vector-report.json \
+              --evidence "$evidence_root"
+            cat "$evidence_root/report.json"
+          done
+
           timeout 1200s node tools/validation/run-m2-02-device-acceptance.mjs \
             --task-id M2-03 \
             --adb "$ANDROID_HOME/platform-tools/adb" \
@@ -772,6 +817,7 @@ jobs:
           find build/m2-01 -maxdepth 2 -type f -print -exec sha256sum {} \; || true
           find build/m2-02 -maxdepth 2 -type f -print -exec sha256sum {} \; || true
           find build/m2-03 -maxdepth 2 -type f -print -exec sha256sum {} \; || true
+          find build/m2-04 -maxdepth 4 -type f -print -exec sha256sum {} \; || true
 
       - name: Upload bounded validation evidence
         if: always()
@@ -789,6 +835,7 @@ jobs:
             build/m0-05/device-api${{ matrix.api }}-x86_64/**/*.json
             build/m0-05/device-api${{ matrix.api }}-x86_64/**/*.txt
             build/m0-05/device-api${{ matrix.api }}-x86_64/**/*.xml
+            build/m2-04/device-api${{ matrix.api }}-x86_64/**/*
             build/m2-01/**/*.json
             build/m2-01/**/*.txt
             build/m2-02/**/*.json

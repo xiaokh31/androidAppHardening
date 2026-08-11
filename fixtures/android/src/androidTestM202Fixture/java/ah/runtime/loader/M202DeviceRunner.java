@@ -56,6 +56,10 @@ public final class M202DeviceRunner extends Instrumentation {
                         .digest(applicationInfo.packageName.getBytes(java.nio.charset.StandardCharsets.UTF_8));
         byte[] expectedBuildId = expectedHexArgument("m202_expected_build_id_hex", 16);
         byte[] expectedKeySlotId = expectedHexArgument("m202_expected_key_slot_id_hex", 16);
+        String runtimeAbi = runtimeAbi(applicationInfo);
+        String expectedAbi = arguments == null ? null : arguments.getString("m204_expected_abi");
+        require(expectedAbi == null || expectedAbi.equals(runtimeAbi),
+                "runtime ABI mismatch expected=" + expectedAbi + " actual=" + runtimeAbi);
 
         int injected = 0;
         for (PayloadRuntime.OpenStage stage : PayloadRuntime.OpenStage.values()) {
@@ -144,10 +148,34 @@ public final class M202DeviceRunner extends Instrumentation {
         Arrays.fill(expectedPackage, (byte) 0);
         Arrays.fill(expectedBuildId, (byte) 0);
         Arrays.fill(expectedKeySlotId, (byte) 0);
-        return "failure_injection=" + injected
+        return "runtime_abi=" + runtimeAbi + " failure_injection=" + injected
                 + " multidex=true jni=true native_path=true metadata=true"
                 + " metadata_negative=true metadata_golden=true cross_handle=true"
                 + " jni_cleanup=true plaintext_dex_files=0";
+    }
+
+    private static String runtimeAbi(ApplicationInfo applicationInfo) throws Exception {
+        File runtime = new File(applicationInfo.nativeLibraryDir, "libah_runtime.so");
+        require(runtime.isFile() && runtime.canRead(), "Runtime ELF is unavailable");
+        byte[] header = new byte[20];
+        try (FileInputStream input = new FileInputStream(runtime)) {
+            int offset = 0;
+            while (offset < header.length) {
+                int count = input.read(header, offset, header.length - offset);
+                require(count > 0, "Runtime ELF header is truncated");
+                offset += count;
+            }
+        }
+        require(header[0] == 0x7f && header[1] == 'E' && header[2] == 'L' && header[3] == 'F',
+                "Runtime ELF magic mismatch");
+        require(header[5] == 1, "Runtime ELF must be little-endian");
+        int elfClass = header[4] & 0xff;
+        int machine = (header[18] & 0xff) | ((header[19] & 0xff) << 8);
+        if (elfClass == 1 && machine == 40) return "armeabi-v7a";
+        if (elfClass == 2 && machine == 183) return "arm64-v8a";
+        if (elfClass == 1 && machine == 3) return "x86";
+        if (elfClass == 2 && machine == 62) return "x86_64";
+        throw new AssertionError("unsupported Runtime ELF class/machine");
     }
 
     private static Object invoke(Method method, Object... arguments) throws Exception {

@@ -26,6 +26,8 @@ const files = {
   nativeTest: "runtime/native/src/main/cpp/risk_signals_test.cpp",
   unit: "runtime/policy/src/test/java/ah/runtime/risk/EnvironmentRiskEngineSelfTest.java",
   connected: "runtime/policy/src/androidTest/java/ah/runtime/risk/RiskConnectedAssertions.java",
+  m203: "fixtures/android/src/androidTestM203Fixture/java/ah/runtime/guard/M203DeviceRunner.java",
+  workflow: ".github/workflows/m0-05-linux-kvm.yml",
 };
 
 for (const file of Object.values(files)) {
@@ -40,6 +42,8 @@ const action = read(files.action);
 const nativeCpp = read(files.nativeCpp);
 const unit = read(files.unit);
 const connected = read(files.connected);
+const m203 = read(files.m203);
+const workflow = read(files.workflow);
 
 for (const token of ["TRACER", "JDWP", "DEBUGGABLE", "INSTRUMENTATION_MAPPING", "EMULATOR_COMPOSITE"]) {
   requireText(adr.includes(token), `ADR missing ${token}`);
@@ -60,11 +64,23 @@ requireText(nativeCpp.includes('"/proc/self/status"') && nativeCpp.includes('"/p
   "native current-process sources missing");
 requireText(nativeCpp.includes("kStatusLimit") && nativeCpp.includes("kMapsLimit"),
   "native read limits missing");
+requireText(nativeCpp.includes("O_NONBLOCK") && nativeCpp.includes("deadlineReached")
+    && nativeCpp.includes("collectWithDependencies"), "native bounded deadline missing");
 requireText(unit.includes("unavailable-zero") && unit.includes("emulator-cap")
     && unit.includes("family-dedup") && unit.includes("abi-zero-contribution"),
   "unit matrix incomplete");
-requireText(connected.includes("index < 1000") && connected.includes("50_000_000L")
-    && connected.includes("injection-debugger-high"), "connected matrix incomplete");
+requireText(read(files.nativeTest).includes("read-failure-unavailable")
+    && read(files.nativeTest).includes("forced-timeout-unavailable"),
+  "native failure matrix incomplete");
+requireText(connected.includes("expectDebugger ? 1 : 1000") && connected.includes("50_000_000L")
+    && connected.includes("injection-debugger-high")
+    && connected.includes("libfrida-agent-fixture.so")
+    && connected.includes("timeout-all-unavailable"), "connected matrix incomplete");
+requireText(m203.includes("risk_r8_jni=true") && m203.includes("EnvironmentRiskEngine.evaluate"),
+  "Release/R8 facade evidence missing");
+requireText(workflow.includes("m205_wait_for_debugger") && workflow.includes("jdb -attach")
+    && workflow.includes("-Pm204TargetAbi=x86 :runtime:policy:connectedCheck"),
+  "real JDWP/x86 device evidence missing");
 
 const samplePath = path.resolve("runtime/policy/build/reports/m2-05/risk-report-v1.json");
 if (fs.existsSync(samplePath)) {

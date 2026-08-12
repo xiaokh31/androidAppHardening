@@ -1,11 +1,13 @@
 #include "risk_signals.hpp"
 
 #include <array>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <memory>
 #include <new>
+#include <limits>
 
 #if defined(__linux__)
 #include <fcntl.h>
@@ -19,6 +21,18 @@ constexpr std::size_t kStatusLimit = 64U * 1024U;
 constexpr std::size_t kMapsLimit = 512U * 1024U;
 constexpr std::uint32_t kDynamicInstrumentation = 1U;
 constexpr std::uint32_t kRuntimeHook = 2U;
+constexpr std::uint64_t kCollectionBudgetNanos = 50U * 1000U * 1000U;
+
+std::uint64_t monotonicNanos() noexcept {
+    using Clock = std::chrono::steady_clock;
+    const auto now = Clock::now().time_since_epoch();
+    return static_cast<std::uint64_t>(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(now).count());
+}
+
+bool deadlineReached(MonotonicClock clock, std::uint64_t deadline) noexcept {
+    return clock == nullptr || clock() >= deadline;
+}
 
 char asciiLower(char value) noexcept {
     return value >= 'A' && value <= 'Z' ? static_cast<char>(value + ('a' - 'A')) : value;
@@ -40,20 +54,26 @@ bool containsAscii(const char* bytes, std::size_t size, const char* needle) noex
     return false;
 }
 
-#if defined(__linux__)
 void clearBytes(char* bytes, std::size_t size) noexcept {
     volatile char* cursor = bytes;
     while (cursor != nullptr && size-- > 0) *cursor++ = 0;
 }
 
+#if defined(__linux__)
 bool readBounded(const char* path, char* output, std::size_t capacity,
-                 std::size_t* written) noexcept {
+                 std::size_t* written, std::uint64_t deadline,
+                 MonotonicClock clock) noexcept {
     if (path == nullptr || output == nullptr || capacity == 0 || written == nullptr) return false;
     *written = 0;
-    const int descriptor = open(path, O_RDONLY | O_CLOEXEC);
+    if (deadlineReached(clock, deadline)) return false;
+    const int descriptor = open(path, O_RDONLY | O_CLOEXEC | O_NONBLOCK);
     if (descriptor < 0) return false;
     bool valid = true;
     while (*written < capacity) {
+        if (deadlineReached(clock, deadline)) {
+            valid = false;
+            break;
+        }
         const ssize_t count = read(descriptor, output + *written, capacity - *written);
         if (count == 0) break;
         if (count < 0) {
@@ -64,10 +84,10 @@ bool readBounded(const char* path, char* output, std::size_t capacity,
     }
     if (valid && *written == capacity) {
         char extra{};
-        valid = read(descriptor, &extra, 1) == 0;
+        valid = !deadlineReached(clock, deadline) && read(descriptor, &extra, 1) == 0;
     }
     if (close(descriptor) != 0) valid = false;
-    return valid;
+    return valid && !deadlineReached(clock, deadline);
 }
 #endif
 
@@ -117,28 +137,42 @@ Collected parseMappings(const char* bytes, std::size_t size) noexcept {
     return result;
 }
 
-Collected collectCurrentProcess() noexcept {
+Collected collectWithDependencies(BoundedReader reader, MonotonicClock clock,
+                                  std::uint64_t budget_nanos) noexcept {
     Collected result{};
-#if defined(__linux__)
+    if (reader == nullptr || clock == nullptr || budget_nanos == 0) return result;
+    const std::uint64_t started = clock();
+    const std::uint64_t deadline = budget_nanos > std::numeric_limits<std::uint64_t>::max() - started
+            ? std::numeric_limits<std::uint64_t>::max()
+            : started + budget_nanos;
     std::array<char, kStatusLimit> status{};
     std::size_t status_size = 0;
-    if (readBounded("/proc/self/status", status.data(), status.size(), &status_size)) {
+    if (reader("/proc/self/status", status.data(), status.size(), &status_size, deadline, clock)) {
         result.tracer = parseTracerStatus(status.data(), status_size);
     }
     clearBytes(status.data(), status.size());
 
+    if (deadlineReached(clock, deadline)) return Collected{};
+
     std::unique_ptr<char[]> maps(new (std::nothrow) char[kMapsLimit]);
     if (maps != nullptr) {
         std::size_t maps_size = 0;
-        if (readBounded("/proc/self/maps", maps.get(), kMapsLimit, &maps_size)) {
+        if (reader("/proc/self/maps", maps.get(), kMapsLimit, &maps_size, deadline, clock)) {
             Collected parsed = parseMappings(maps.get(), maps_size);
             result.mappings = parsed.mappings;
             result.mapping_family_mask = parsed.mapping_family_mask;
         }
         clearBytes(maps.get(), kMapsLimit);
     }
+    return deadlineReached(clock, deadline) ? Collected{} : result;
+}
+
+Collected collectCurrentProcess() noexcept {
+#if defined(__linux__)
+    return collectWithDependencies(readBounded, monotonicNanos, kCollectionBudgetNanos);
+#else
+    return Collected{};
 #endif
-    return result;
 }
 
 }  // namespace ah::risk

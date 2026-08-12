@@ -19,11 +19,28 @@ public final class EnvironmentRiskEngine {
     private EnvironmentRiskEngine() {}
 
     public static RiskReportV1 evaluate(ApplicationInfo applicationInfo) {
+        return evaluateWithDependencies(
+                applicationInfo,
+                EnvironmentRiskEngine::collectNative,
+                SystemClock::elapsedRealtimeNanos);
+    }
+
+    static RiskReportV1 evaluateWithDependencies(
+            ApplicationInfo applicationInfo, NativeCollector nativeCollector, NanoClock clock) {
         if (applicationInfo == null) {
             throw new IllegalArgumentException("AAH-RUNTIME-RISK-ARGUMENT");
         }
-        long started = SystemClock.elapsedRealtimeNanos();
-        int[] nativeResult = collectNative();
+        if (nativeCollector == null || clock == null) {
+            throw new IllegalArgumentException("AAH-RUNTIME-RISK-ARGUMENT");
+        }
+        long started = clock.now();
+        int[] nativeResult;
+        try {
+            nativeResult = nativeCollector.collect();
+        } catch (RuntimeException | LinkageError unavailable) {
+            nativeResult = new int[0];
+        }
+        if (nativeResult == null || nativeResult.length != 4) nativeResult = new int[0];
         SignalState tracer = nativeState(nativeResult, 1);
         SignalState mappings = nativeState(nativeResult, 2);
         int mappingMask = nativeResult.length == 4 && nativeResult[0] == 1 ? nativeResult[3] : 0;
@@ -40,7 +57,8 @@ public final class EnvironmentRiskEngine {
         int emulatorMask = emulatorCharacteristics();
         SignalState emulator = emulatorMask == 0 ? SignalState.CLEAR : SignalState.DETECTED;
 
-        if (SystemClock.elapsedRealtimeNanos() - started > BUDGET_NANOS) {
+        long elapsed = clock.now() - started;
+        if (elapsed < 0 || elapsed > BUDGET_NANOS) {
             return RiskPolicyV1.evaluate(new RiskSnapshot(
                     SignalState.UNAVAILABLE,
                     SignalState.UNAVAILABLE,
@@ -58,6 +76,14 @@ public final class EnvironmentRiskEngine {
                 mappingMask,
                 emulator,
                 emulatorMask));
+    }
+
+    interface NativeCollector {
+        int[] collect();
+    }
+
+    interface NanoClock {
+        long now();
     }
 
     private static int[] collectNative() {

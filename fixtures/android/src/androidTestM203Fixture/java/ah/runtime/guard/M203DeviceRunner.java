@@ -4,6 +4,8 @@ import ah.runtime.loader.AuthenticatedPayloadMetadata;
 import ah.runtime.loader.LoadedPayload;
 import ah.runtime.loader.PayloadRuntime;
 import ah.runtime.loader.UntrustedPayloadBinding;
+import ah.runtime.risk.EnvironmentRiskEngine;
+import ah.runtime.risk.RiskReportV1;
 import android.app.Activity;
 import android.app.Instrumentation;
 import android.content.Context;
@@ -49,6 +51,7 @@ public final class M203DeviceRunner extends Instrumentation {
     private String runAcceptance() throws Exception {
         Context target = getTargetContext();
         ApplicationInfo applicationInfo = target.getApplicationInfo();
+        verifyRiskFacade(applicationInfo);
         byte[] expectedSigner = installedSigner(target);
         int injected = 0;
         for (RuntimeStartupGuard.GuardStage stage : RuntimeStartupGuard.GuardStage.values()) {
@@ -153,7 +156,22 @@ public final class M203DeviceRunner extends Instrumentation {
                 + " guard_metadata_rejections=" + metadataRejections
                 + " signer=true metadata=true session_close=true multidex=true jni=true"
                 + " framework_package_rejection=true cleanup_suppressed=true"
-                + " mapping_cleanup=true plaintext_dex_files=0";
+                + " mapping_cleanup=true plaintext_dex_files=0 risk_r8_jni=true";
+
+    }
+
+    private static void verifyRiskFacade(ApplicationInfo applicationInfo) {
+        long maxNanos = 0;
+        for (int index = 0; index < 50; index++) {
+            long started = android.os.SystemClock.elapsedRealtimeNanos();
+            RiskReportV1 report = EnvironmentRiskEngine.evaluate(applicationInfo);
+            long elapsed = android.os.SystemClock.elapsedRealtimeNanos() - started;
+            maxNanos = Math.max(maxNanos, elapsed);
+            require(report.version() == 1 && report.signals().size() == 5,
+                    "M2-05 R8 facade/JNI");
+            require(elapsed <= 50_000_000L, "M2-05 R8 budget");
+        }
+        require(maxNanos > 0, "M2-05 R8 clock");
     }
 
     private static void verifyFrameworkPackageRejection(

@@ -4,6 +4,7 @@
 
 - Timestamp: 2026-08-12T12:58:00+08:00
 - Branch base: `main@029f7af5a183b18704e088bcde89ab1e80f6a278`
+- Frozen implementation: `2f7ab58ae49638ae16ee70cef9549ebfe135797e`
 - Host: Windows 10 x64, PowerShell, Node.js `24.12.0`
 - JDK: Eclipse Temurin `17.0.19+10`
 - Android toolchain: compileSdk 36, Build Tools 36.1.0, NDK 29.0.14206865, CMake 4.1.2

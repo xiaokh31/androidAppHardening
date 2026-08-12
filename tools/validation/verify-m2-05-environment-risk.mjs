@@ -76,7 +76,9 @@ requireText(connected.includes("expectDebugger ? 1 : 1000") && connected.include
     && connected.includes("injection-debugger-high")
     && connected.includes("libfrida-agent-fixture.so")
     && connected.includes("timeout-all-unavailable"), "connected matrix incomplete");
-requireText(m203.includes("risk_r8_jni=true") && m203.includes("EnvironmentRiskEngine.evaluate"),
+requireText(m203.includes("risk_r8_jni=true") && m203.includes("EnvironmentRiskEngine.evaluate")
+    && m203.includes("M2-05 R8 JNI mapping score")
+    && m203.includes("libfrida-agent-r8.so"),
   "Release/R8 facade evidence missing");
 requireText(workflow.includes("m205_wait_for_debugger") && workflow.includes("jdb -attach")
     && workflow.includes("-Pm204TargetAbi=x86 :runtime:policy:connectedCheck"),

@@ -21,6 +21,7 @@ constexpr std::size_t kStatusLimit = 64U * 1024U;
 constexpr std::size_t kMapsLimit = 512U * 1024U;
 constexpr std::uint32_t kDynamicInstrumentation = 1U;
 constexpr std::uint32_t kRuntimeHook = 2U;
+#if defined(__linux__)
 constexpr std::uint64_t kCollectionBudgetNanos = 50U * 1000U * 1000U;
 
 std::uint64_t monotonicNanos() noexcept {
@@ -29,6 +30,7 @@ std::uint64_t monotonicNanos() noexcept {
     return static_cast<std::uint64_t>(
             std::chrono::duration_cast<std::chrono::nanoseconds>(now).count());
 }
+#endif
 
 bool deadlineReached(MonotonicClock clock, std::uint64_t deadline) noexcept {
     return clock == nullptr || clock() >= deadline;

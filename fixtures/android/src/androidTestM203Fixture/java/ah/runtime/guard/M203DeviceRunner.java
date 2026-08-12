@@ -6,6 +6,9 @@ import ah.runtime.loader.PayloadRuntime;
 import ah.runtime.loader.UntrustedPayloadBinding;
 import ah.runtime.risk.EnvironmentRiskEngine;
 import ah.runtime.risk.RiskReportV1;
+import ah.runtime.risk.RiskSignal;
+import ah.runtime.risk.RiskSignalId;
+import ah.runtime.risk.SignalState;
 import android.app.Activity;
 import android.app.Instrumentation;
 import android.content.Context;
@@ -14,16 +17,24 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.os.Bundle;
+import android.os.Build;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.io.PrintWriter;
+import java.io.RandomAccessFile;
 import java.io.StringWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.security.MessageDigest;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.Arrays;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 /** Real M2-03 signer, metadata, Guard ownership and loader acceptance runner. */
 public final class M203DeviceRunner extends Instrumentation {
@@ -51,7 +62,7 @@ public final class M203DeviceRunner extends Instrumentation {
     private String runAcceptance() throws Exception {
         Context target = getTargetContext();
         ApplicationInfo applicationInfo = target.getApplicationInfo();
-        verifyRiskFacade(applicationInfo);
+        verifyRiskFacade(target, applicationInfo);
         byte[] expectedSigner = installedSigner(target);
         int injected = 0;
         for (RuntimeStartupGuard.GuardStage stage : RuntimeStartupGuard.GuardStage.values()) {
@@ -160,7 +171,8 @@ public final class M203DeviceRunner extends Instrumentation {
 
     }
 
-    private static void verifyRiskFacade(ApplicationInfo applicationInfo) {
+    private static void verifyRiskFacade(Context context, ApplicationInfo applicationInfo)
+            throws Exception {
         long maxNanos = 0;
         for (int index = 0; index < 50; index++) {
             long started = android.os.SystemClock.elapsedRealtimeNanos();
@@ -172,6 +184,54 @@ public final class M203DeviceRunner extends Instrumentation {
             require(elapsed <= 50_000_000L, "M2-05 R8 budget");
         }
         require(maxNanos > 0, "M2-05 R8 clock");
+        File directory = new File(context.getCodeCacheDir(), "m205-risk-r8");
+        require(directory.isDirectory() || directory.mkdirs(), "M2-05 R8 mapping dir");
+        File frida = new File(directory, "libfrida-agent-r8.so");
+        File xposed = new File(directory, "libxposed-r8.so");
+        extractRuntimeLibrary(applicationInfo.sourceDir, frida);
+        extractRuntimeLibrary(applicationInfo.sourceDir, xposed);
+        try (RandomAccessFile first = new RandomAccessFile(frida, "r");
+                RandomAccessFile second = new RandomAccessFile(xposed, "r");
+                FileChannel firstChannel = first.getChannel();
+                FileChannel secondChannel = second.getChannel()) {
+            MappedByteBuffer firstMapping = firstChannel.map(
+                    FileChannel.MapMode.READ_ONLY, 0, firstChannel.size());
+            MappedByteBuffer secondMapping = secondChannel.map(
+                    FileChannel.MapMode.READ_ONLY, 0, secondChannel.size());
+            require(firstMapping.get(0) == 0x7f && secondMapping.get(0) == 0x7f,
+                    "M2-05 R8 mapped ELF");
+            RiskReportV1 mapped = EnvironmentRiskEngine.evaluate(applicationInfo);
+            RiskSignal mappingSignal = mapped.signals().stream()
+                    .filter(signal -> signal.id() == RiskSignalId.INSTRUMENTATION_MAPPING)
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("M2-05 R8 mapping signal"));
+            require(mappingSignal.state() == SignalState.DETECTED
+                            && mappingSignal.score() == 80,
+                    "M2-05 R8 JNI mapping score");
+        } finally {
+            require(frida.delete() && xposed.delete(), "M2-05 R8 mapping cleanup");
+            require(directory.delete(), "M2-05 R8 mapping dir cleanup");
+        }
+    }
+
+    private static void extractRuntimeLibrary(String apkPath, File output) throws Exception {
+        try (ZipFile apk = new ZipFile(apkPath)) {
+            ZipEntry selected = null;
+            for (String abi : Build.SUPPORTED_ABIS) {
+                ZipEntry candidate = apk.getEntry("lib/" + abi + "/libah_runtime.so");
+                if (candidate != null) {
+                    selected = candidate;
+                    break;
+                }
+            }
+            require(selected != null && selected.getSize() > 0, "M2-05 R8 Runtime ELF");
+            try (InputStream input = apk.getInputStream(selected);
+                    FileOutputStream target = new FileOutputStream(output, false)) {
+                byte[] buffer = new byte[8192];
+                int count;
+                while ((count = input.read(buffer)) != -1) target.write(buffer, 0, count);
+            }
+        }
     }
 
     private static void verifyFrameworkPackageRejection(

@@ -1,6 +1,7 @@
 #include "authenticated_payload.hpp"
 
 #include "crypto_backend.hpp"
+#include "secure_buffer.hpp"
 
 #include <algorithm>
 #include <array>
@@ -94,12 +95,8 @@ struct AuthenticatedContainer {
     container::ByteView encoded_records{};
     container::ByteView encoded_chunks{};
     container::ByteView payload{};
-    std::array<std::uint8_t, 32> cek{};
+    memory::SecureBuffer cek{32, true};
     std::array<std::uint8_t, 32> package_sha256{};
-
-    ~AuthenticatedContainer() noexcept {
-        crypto::secureZero(cek.data(), cek.size());
-    }
 };
 
 bool valid(container::ByteView bytes) noexcept {
@@ -188,6 +185,9 @@ Status parseStructure(const OpenRequest& request, AuthenticatedContainer* output
 }
 
 Status authenticate(const OpenRequest& request, AuthenticatedContainer* value) noexcept {
+    if (value == nullptr || value->cek.size() != 32) {
+        return Status::kOutOfMemory;
+    }
     container::NativeShareSlotV1 slot{};
     if (container::parseNativeShareSlotV1(request.native_share_slot, request.expected_abi_id, &slot) !=
         container::Status::kSuccess) {
@@ -216,9 +216,13 @@ Status authenticate(const OpenRequest& request, AuthenticatedContainer* value) n
         return Status::kCrypto;
     }
 
-    std::array<std::uint8_t, 32> root{};
-    std::array<std::uint8_t, 32> kek{};
-    std::array<std::uint8_t, sizeof(kKekDomain) - 1 + 64> kek_info{};
+    memory::SecureBuffer root{32, true};
+    memory::SecureBuffer kek{32, true};
+    memory::SecureBuffer kek_info{sizeof(kKekDomain) - 1 + 64};
+    if (root.size() != 32 || kek.size() != 32 ||
+        kek_info.size() != sizeof(kKekDomain) - 1 + 64) {
+        return Status::kOutOfMemory;
+    }
     for (std::size_t index = 0; index < root.size(); ++index) {
         root[index] = slot.r_native[index] ^ value->config.r_java[index];
     }
@@ -230,10 +234,7 @@ Status authenticate(const OpenRequest& request, AuthenticatedContainer* value) n
     crypto_status = crypto::hkdfSha256(
         root.data(), root.size(), value->config.build_id.data(), value->config.build_id.size(),
         kek_info.data(), kek_info.size(), kek.data(), kek.size());
-    crypto::secureZero(root.data(), root.size());
-    crypto::secureZero(kek_info.data(), kek_info.size());
     if (crypto_status != crypto::Status::kSuccess) {
-        crypto::secureZero(kek.data(), kek.size());
         return Status::kCrypto;
     }
     std::size_t cek_size = 0;
@@ -243,12 +244,14 @@ Status authenticate(const OpenRequest& request, AuthenticatedContainer* value) n
         value->config.wrapped_cek.data(), value->config.wrapped_cek.size(),
         value->config.wrapped_cek_tag.data(), value->config.wrapped_cek_tag.size(),
         value->cek.data(), value->cek.size(), &cek_size);
-    crypto::secureZero(kek.data(), kek.size());
     if (crypto_status != crypto::Status::kSuccess || cek_size != value->cek.size()) {
         return cryptoStatus(crypto_status);
     }
 
-    std::array<std::uint8_t, 32> manifest_key{};
+    memory::SecureBuffer manifest_key{32, true};
+    if (manifest_key.size() != 32) {
+        return Status::kOutOfMemory;
+    }
     crypto_status = crypto::hkdfSha256(
         value->cek.data(), value->cek.size(), value->config.build_id.data(), value->config.build_id.size(),
         reinterpret_cast<const std::uint8_t*>(kManifestDomain), sizeof(kManifestDomain) - 1,
@@ -265,18 +268,18 @@ Status authenticate(const OpenRequest& request, AuthenticatedContainer* value) n
         {value->encoded_records.data, value->encoded_records.size},
         {value->encoded_chunks.data, value->encoded_chunks.size},
     }};
-    std::array<std::uint8_t, 32> manifest_mac{};
+    memory::SecureBuffer manifest_mac{32};
+    if (manifest_mac.size() != 32) {
+        return Status::kOutOfMemory;
+    }
     crypto_status = crypto::hmacSha256(
         manifest_key.data(), manifest_key.size(), manifest_inputs.data(), manifest_inputs.size(),
         manifest_mac.data(), manifest_mac.size());
-    crypto::secureZero(manifest_key.data(), manifest_key.size());
     crypto::secureZero(zero_mac_header.data(), zero_mac_header.size());
     if (crypto_status != crypto::Status::kSuccess ||
         !equal(manifest_mac.data(), value->header.manifest_mac.data(), manifest_mac.size())) {
-        crypto::secureZero(manifest_mac.data(), manifest_mac.size());
         return crypto_status == crypto::Status::kSuccess ? Status::kAuthentication : Status::kCrypto;
     }
-    crypto::secureZero(manifest_mac.data(), manifest_mac.size());
 
     crypto_status = crypto::sha256(
         request.assets.config.data, request.assets.config.size, digest.data(), digest.size());
@@ -420,14 +423,21 @@ Status inflateRecords(const OpenRequest& request, AuthenticatedContainer* value,
 #if !defined(AH_M2_02_HOST_TESTING)
     (void) request;
 #endif
-    std::array<std::uint8_t, container::kChunkPlaintextMax> compressed{};
-    std::array<std::uint8_t, kChunkAadBytes> aad{};
-    std::array<std::uint8_t, 32> record_key{};
+    memory::SecureBuffer compressed{container::kChunkPlaintextMax};
+    memory::SecureBuffer aad{kChunkAadBytes};
     std::array<std::uint8_t, sizeof(kRecordDomain) - 1 + 4> record_info{};
+    if (compressed.size() != container::kChunkPlaintextMax || aad.size() != kChunkAadBytes) {
+        return Status::kOutOfMemory;
+    }
     Status result = Status::kSuccess;
 
     for (std::size_t record_index = 0; record_index < value->header.dex_count; ++record_index) {
         const container::RecordV2& record = value->records[record_index];
+        memory::SecureBuffer record_key{32, true};
+        if (record_key.size() != 32) {
+            result = Status::kOutOfMemory;
+            break;
+        }
         memory::Mapping* mapping = nullptr;
         if (transaction->allocate(static_cast<std::size_t>(record.original_length), &mapping) !=
             memory::Status::kSuccess) {
@@ -542,7 +552,6 @@ Status inflateRecords(const OpenRequest& request, AuthenticatedContainer* value,
             }
         }
         result = inflater.finish(result);
-        crypto::secureZero(record_key.data(), record_key.size());
         crypto::secureZero(record_info.data(), record_info.size());
         if (result != Status::kSuccess) {
             break;
@@ -559,9 +568,6 @@ Status inflateRecords(const OpenRequest& request, AuthenticatedContainer* value,
             break;
         }
     }
-    crypto::secureZero(compressed.data(), compressed.size());
-    crypto::secureZero(aad.data(), aad.size());
-    crypto::secureZero(record_key.data(), record_key.size());
     crypto::secureZero(record_info.data(), record_info.size());
     return result;
 }

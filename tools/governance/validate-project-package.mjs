@@ -395,6 +395,7 @@ const expectedAdrs = [
   "docs/adr/0008-chunk-authenticated-dex-container.md",
   "docs/adr/0009-native-cryptography-backend.md",
   "docs/adr/0010-environment-risk-policy.md",
+  "docs/adr/0011-memory-exposure-controls.md",
 ];
 const adrHeadings = [
   "## Status",

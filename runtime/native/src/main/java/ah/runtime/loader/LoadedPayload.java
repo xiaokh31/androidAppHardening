@@ -31,6 +31,13 @@ public final class LoadedPayload implements AutoCloseable {
         return authenticatedMetadata;
     }
 
+    synchronized MemoryProtectionCapabilities applyMemoryProfile(MemoryProfile profile) {
+        if (closed || memoryHandle == null) {
+            throw new IllegalStateException("AAH-RUNTIME-MEMORY-HANDLE");
+        }
+        return memoryHandle.applyMemoryProfile(profile);
+    }
+
     @Override
     public synchronized void close() {
         if (closed) {

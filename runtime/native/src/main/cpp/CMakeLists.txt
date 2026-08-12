@@ -63,6 +63,8 @@ set(
     crypto_backend.cpp
     container_format.cpp
     zip_assets.cpp
+    memory_controls.cpp
+    secure_buffer.cpp
     payload_memory.cpp
     payload_metadata.cpp
     risk_signals.cpp

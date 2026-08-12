@@ -22,6 +22,15 @@ using ah::jni::kCleanupCode;
 using ah::jni::throwCode;
 using ah::jni::throwCodeWithCleanup;
 
+void throwMemoryCode(JNIEnv* environment, const char* code) noexcept {
+    if (environment == nullptr || code == nullptr || environment->ExceptionCheck()) return;
+    jclass type = environment->FindClass("java/lang/IllegalStateException");
+    if (type != nullptr) {
+        environment->ThrowNew(type, code);
+        environment->DeleteLocalRef(type);
+    }
+}
+
 const char* payloadCode(ah::payload::Status status) noexcept {
     switch (status) {
         case ah::payload::Status::kInvalidArgument:
@@ -340,6 +349,35 @@ Java_ah_runtime_loader_NativePayloadBridge_nativeDexBuffers(
         throwCode(environment, "AAH-RUNTIME-CONTAINER-HANDLE");
     }
     return context.result;
+}
+
+extern "C" JNIEXPORT jlongArray JNICALL
+Java_ah_runtime_loader_NativePayloadBridge_nativeApplyMemoryProfile(
+    JNIEnv* environment, jclass, jlong handle, jint profile) {
+    if (environment == nullptr) return nullptr;
+    if (handle <= 0 || profile < 0 || profile > 2) {
+        throwMemoryCode(environment, "AAH-RUNTIME-MEMORY-ARGUMENT");
+        return nullptr;
+    }
+    ah::memory::Capabilities capabilities{};
+    const ah::handles::Status applied = ah::handles::applyProfile(
+        static_cast<std::uint64_t>(handle),
+        static_cast<ah::memory::Profile>(profile),
+        &capabilities);
+    if (applied != ah::handles::Status::kSuccess) {
+        throwMemoryCode(environment, "AAH-RUNTIME-MEMORY-HANDLE");
+        return nullptr;
+    }
+    const std::array<jlong, 4> values{
+        capabilities.dont_dump ? 1 : 0,
+        static_cast<jlong>(capabilities.locked_bytes),
+        capabilities.process_dumpable ? 1 : 0,
+        static_cast<jlong>(capabilities.jitter_milliseconds),
+    };
+    jlongArray result = environment->NewLongArray(static_cast<jsize>(values.size()));
+    if (result == nullptr) return nullptr;
+    environment->SetLongArrayRegion(result, 0, static_cast<jsize>(values.size()), values.data());
+    return result;
 }
 
 extern "C" JNIEXPORT void JNICALL

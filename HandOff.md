@@ -4,12 +4,12 @@ project: androidAppHardening
 handoff_id: HO-20260813-002406
 updated_at: 2026-08-13T00:24:06+08:00
 updated_by: /root
-state: ready
-source_branch: main
-base_commit: 815eb55f87bb37e50f00eb91293e930a950d60ac
-working_tree: clean
+state: active
+source_branch: feat/m2-06-memory-dump-controls
+base_commit: 644825e95d3338160df19021389d5ba8bd125eb1
+working_tree: dirty
 current_milestone: M2
-active_task: NONE
+active_task: M2-06
 next_owner: /root
 ---
 
@@ -17,12 +17,13 @@ next_owner: /root
 
 ## Objective
 
-Close M2-05 on merged `main`, synchronize public evidence, and make M2-06 the next authorized sequential task only after strict post-merge validation.
+Implement M2-06 bounded memory-exposure controls on the fixed Issue #17 branch without changing authenticated payload, signer, component-order or ABI contracts.
 
 ## Current State
 
+- M2-06 is active on `feat/m2-06-memory-dump-controls` from clean post-M2-05 `main@644825e95d3338160df19021389d5ba8bd125eb1`. Issue #17 is the sole task. ADR 0011 resolves the first-open ordering boundary: short-lived Native key buffers always make a bounded best-effort lock attempt before deterministic zeroization, while M2-05 risk selects only retained DEX edge locking, current-process dumpability and bounded jitter. No local emulator is authorized or started; device-only evidence will use the existing bounded API 29/36 KVM workflow once.
 - M2-05 is merged and complete. Final exact-head `a59345862e7a7ca164fbbc69ed6447efc9f5ddba` passed Build `31616216280`, Governance `31616216704` and API 29/36 KVM `31616216412`; independent full plus bounded incremental review returned `P0=0`, `P1=0`, `P2=0`. PR [#47](https://github.com/xiaokh31/androidAppHardening/pull/47) merged as `815eb55f87bb37e50f00eb91293e930a950d60ac` and Issue [#16](https://github.com/xiaokh31/androidAppHardening/issues/16) closed. API 29/36 ordinary policy, real JDWP, API 29 x86, extracted/direct Release/R8, late mapping aliases and cleanup all passed. The API 29 ARM64 Native probe passed; the MIUI policy APK was rejected before instrumentation with `INSTALL_FAILED_USER_RESTRICTED` and is not presented as a PASS. No local emulator or repeated install prompt was used.
-- ADR-0010 fixes version 1 weights/actions and two deduplicated internal mapping families. Java exposes immutable risk models and the sole `evaluate(ApplicationInfo)` entry; Native reads bounded current-process status/maps and returns schema/versioned normalized states. The final boundary fix raises the still-bounded maps input to 2 MiB so API 36 direct/R8 late mappings remain visible, while `2 MiB + 1`, deadline, no-throw allocation and clearing semantics remain fail-safe. M2-06 has not started; it is the next sequential task after this post-merge strict snapshot.
+- ADR-0010 fixes version 1 weights/actions and two deduplicated internal mapping families. Java exposes immutable risk models and the sole `evaluate(ApplicationInfo)` entry; Native reads bounded current-process status/maps and returns schema/versioned normalized states. The final boundary fix raises the still-bounded maps input to 2 MiB so API 36 direct/R8 late mappings remain visible, while `2 MiB + 1`, deadline, no-throw allocation and clearing semantics remain fail-safe. M2-06 is now the sole active task; M3/M4 remain unstarted.
 - PR [#46](https://github.com/xiaokh31/androidAppHardening/pull/46) was marked ready and merged with exact-head protection at `80fee2559073278eb55f94de4a9ac2065777ba6b` as merge commit `d5c74e7d3bfbcebff9c782134795f23ddd16c5e7`; Issue [#15](https://github.com/xiaokh31/androidAppHardening/issues/15) is closed. Local `main` is synchronized. This coordination change updates README/evidence/HandOff and triggers the final main gates; no device matrix is repeated.
 - M2-01 final implementation parent `6a5a2706dcbb1b2984fb2bc6edf4147e81f98773` passed local gates, Ubuntu/Windows Build and Governance, API 29/36 x86_64 KVM, and the independent read-only review with `P0=0`, `P1=0`, `P2=0`.
 - The sole PR [#45](https://github.com/xiaokh31/androidAppHardening/pull/45) was merged with expected-head protection as `8dc20e65ed87c029cf14add3d3f5769719e13862`; Issue [#12](https://github.com/xiaokh31/androidAppHardening/issues/12) is closed. Production Shell covers all six public callbacks, custom and absent original Factory paths, stable failure caching and exactly-once pre-READY session ownership.
@@ -192,7 +193,7 @@ Close M2-05 on merged `main`, synchronize public evidence, and make M2-06 the ne
 | M2-01 | `/root` | `main` | done | M0-05, M1-03, M1-04, M2-03 | PR #45、Issue #12、全零独立复核、Ubuntu/Windows、API 29/36 KVM、README 与 strict HandOff 已关闭 |
 | M2-04 | `/root` | `main` | done | M0-03, M1-01, M2-01, M2-02, M2-03 | PR #46、Issue #15、README、strict、final main Build/Governance/KVM 全部关闭 |
 | M2-05 | `/root` | `main` | done | M2-01, M2-03, M2-04 | PR #47、Issue #16、全零独立复核、Ubuntu/Windows、API 29/36 KVM、真实 JDWP、README 与 strict HandOff 已关闭 |
-| M2-06 | `/root` | not_created | planned | M2-02, M2-04, M2-05 | M2-05 post-merge strict 完成后，从同步 main 领取 Issue #17 |
+| M2-06 | `/root` | `feat/m2-06-memory-dump-controls` | in_progress | M2-02, M2-04, M2-05 | 冻结实现与本地证据后执行一次独立复核及一次 API 29/36 KVM/双平台 CI |
 
 ## Decisions and Invariants
 
@@ -1367,16 +1368,21 @@ Close M2-05 on merged `main`, synchronize public evidence, and make M2-06 the ne
 
 ## Blockers and Required Approvals
 
-None
+M2-06 implementation and local gates are in progress. Completion still requires a frozen implementation SHA, independent read-only security review, exact-head Ubuntu/Windows Build and bounded API 29/36 KVM evidence. No local emulator or physical-device rerun is planned.
 
 ## Ordered Next Actions
 
-1. Commit and push this M2-05 post-merge evidence/README/HandOff synchronization on `main`.
-2. Run Governance, diff check and strict HandOff without exemption; wait only for the post-merge main checks triggered by this coordination commit.
-3. Start M2-06 from synchronized `main` and Issue #17 after the final M2-05 main gates pass; do not start M3/M4.
+1. Freeze the bounded M2-06 implementation and local evidence on `feat/m2-06-memory-dump-controls`.
+2. Run the required independent read-only security review against the frozen implementation; close any P0/P1/P2 finding before publication.
+3. Push the reviewed branch, create the unique draft PR for Issue #17, and run one exact-head Ubuntu/Windows Build plus API 29/36 KVM matrix. Do not start M3/M4.
 
 ## Relevant Files and Artifacts
 
+- `docs/adr/0011-memory-exposure-controls.md`
+- `docs/tasks/M2-06-memory-dump-cost-controls.md`
+- `docs/evidence/M2-06/implementation-plan.md`
+- `docs/evidence/M2-06/memory-protection-report-sample.json`
+- ignored `build/m2-06/memory-controls.json`
 - `docs/tasks/M2-04-four-abi-runtime.md`
 - `docs/evidence/M2-04/local-validation.md`
 - `docs/evidence/M2-04/remote-validation.md`

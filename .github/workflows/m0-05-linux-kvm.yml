@@ -854,6 +854,7 @@ jobs:
           cat "build/m2-01/device-api${API}-x86_64/report.json"
 
           timeout 1200s node tools/validation/run-m2-02-device-acceptance.mjs \
+            --task-id M2-06 \
             --adb "$ANDROID_HOME/platform-tools/adb" \
             --serial "$serial" \
             --platform "api${API}-x86_64-linux-kvm" \
@@ -865,8 +866,8 @@ jobs:
             --direct-target-apk build/m2-02/m2-02-direct.apk \
             --direct-test-apk fixtures/android/build/outputs/apk/androidTest/m202Direct/debug/android-m202Direct-debug-androidTest.apk \
             --direct-vector-report build/m2-02/vector-direct/vector-report.json \
-            --evidence "build/m2-02/device-api${API}-x86_64"
-          cat "build/m2-02/device-api${API}-x86_64/report.json"
+            --evidence "build/m2-06/device-api${API}-x86_64"
+          cat "build/m2-06/device-api${API}-x86_64/report.json"
 
           m204_signing_env="$RUNNER_TEMP/m0-05-signing/m2-04.env"
           test -f "$m204_signing_env"
@@ -941,6 +942,7 @@ jobs:
           find build/m2-03 -maxdepth 2 -type f -print -exec sha256sum {} \; || true
           find build/m2-04 -maxdepth 4 -type f -print -exec sha256sum {} \; || true
           find build/m2-05 -maxdepth 5 -type f -print -exec sha256sum {} \; || true
+          find build/m2-06 -maxdepth 3 -type f -print -exec sha256sum {} \; || true
 
       - name: Upload bounded validation evidence
         if: always()
@@ -960,6 +962,7 @@ jobs:
             build/m0-05/device-api${{ matrix.api }}-x86_64/**/*.xml
             build/m2-04/device-api${{ matrix.api }}-x86_64/**/*
             build/m2-05/device-api${{ matrix.api }}-x86_64/**/*
+            build/m2-06/device-api${{ matrix.api }}-x86_64/**/*
             build/m2-01/**/*.json
             build/m2-01/**/*.txt
             build/m2-02/**/*.json

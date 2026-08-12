@@ -88,6 +88,25 @@ Status consume(
     return consumer(snapshot, context) ? Status::kSuccess : Status::kInvalidArgument;
 }
 
+Status applyProfile(
+    std::uint64_t handle,
+    memory::Profile profile,
+    memory::Capabilities* capabilities) noexcept {
+    std::size_t index = 0;
+    std::uint64_t generation = 0;
+    if (capabilities == nullptr || !decode(handle, &index, &generation)) {
+        return Status::kInvalidArgument;
+    }
+    const std::lock_guard<std::mutex> lock(g_mutex);
+    Slot& slot = g_slots[index];
+    if (!slot.occupied || slot.generation != generation) {
+        return Status::kUnknownHandle;
+    }
+    return slot.payload.applyProfile(profile, capabilities) == memory::Status::kSuccess
+               ? Status::kSuccess
+               : Status::kInvalidArgument;
+}
+
 Status close(std::uint64_t handle) noexcept {
     std::size_t index = 0;
     std::uint64_t generation = 0;

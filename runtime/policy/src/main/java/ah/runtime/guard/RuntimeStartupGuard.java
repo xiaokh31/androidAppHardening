@@ -1,10 +1,13 @@
 package ah.runtime.guard;
 
 import android.content.pm.ApplicationInfo;
+import ah.runtime.MemoryControls;
 import ah.runtime.loader.AuthenticatedPayloadMetadata;
 import ah.runtime.loader.LoadedPayload;
 import ah.runtime.loader.PayloadRuntime;
 import ah.runtime.loader.UntrustedPayloadBinding;
+import ah.runtime.risk.EnvironmentRiskEngine;
+import ah.runtime.risk.RiskReportV1;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -107,6 +110,8 @@ public final class RuntimeStartupGuard {
                 failureProbe.verifyMetadata(metadata, binding, packageNameSha256, measurement);
             }
             hit(failureProbe, GuardStage.METADATA);
+            RiskReportV1 risk = EnvironmentRiskEngine.evaluate(applicationInfo);
+            MemoryControls.apply(loadedPayload, risk);
             VerifiedSignerIdentity identity =
                     new VerifiedSignerIdentity(
                             measurement.currentSignerSha256(),

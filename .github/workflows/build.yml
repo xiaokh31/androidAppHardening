@@ -209,6 +209,27 @@ jobs:
             runtime/policy/build/reports/m2-05/risk-report-v1.json
             runtime/policy/build/outputs/aar/policy-release.aar
 
+      - name: Verify M2-06 memory controls
+        shell: bash
+        run: |
+          node tools/validation/verify-m2-06-memory-controls.mjs \
+            build/m2-06/memory-controls.json
+          sha256sum \
+            build/m2-06/memory-controls.json \
+            runtime/native/build/outputs/aar/native-release.aar \
+            runtime/policy/build/outputs/aar/policy-release.aar
+
+      - name: Upload M2-06 Ubuntu evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: m2-06-ubuntu-memory-controls-evidence
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            build/m2-06/memory-controls.json
+            runtime/native/build/outputs/aar/native-release.aar
+            runtime/policy/build/outputs/aar/policy-release.aar
+
       - name: Verify M1-01 byte-identical reports
         shell: bash
         run: |
@@ -561,6 +582,33 @@ jobs:
           path: |
             build/m2-05/environment-risk.json
             runtime/policy/build/reports/m2-05/risk-report-v1.json
+            runtime/policy/build/outputs/aar/policy-release.aar
+
+      - name: Verify M2-06 memory controls
+        shell: pwsh
+        run: |
+          & node tools/validation/verify-m2-06-memory-controls.mjs `
+            build/m2-06/memory-controls.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $files = @(
+            "build/m2-06/memory-controls.json",
+            "runtime/native/build/outputs/aar/native-release.aar",
+            "runtime/policy/build/outputs/aar/policy-release.aar"
+          )
+          foreach ($file in $files) {
+            if (-not (Test-Path -LiteralPath $file)) { throw "missing $file" }
+            Get-FileHash -Algorithm SHA256 -LiteralPath $file
+          }
+
+      - name: Upload M2-06 Windows evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: m2-06-windows-memory-controls-evidence
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            build/m2-06/memory-controls.json
+            runtime/native/build/outputs/aar/native-release.aar
             runtime/policy/build/outputs/aar/policy-release.aar
 
       - name: Verify M1-01 byte-identical reports

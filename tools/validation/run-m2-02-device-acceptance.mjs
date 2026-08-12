@@ -15,8 +15,8 @@ const coldStarts = Number(options.get("cold-starts") ?? "20");
 const timeout = Number(options.get("command-timeout-ms") ?? "60000");
 const selectedVariant = options.get("variant") ?? "all";
 const taskId = options.get("task-id") ?? "M2-02";
-if (!["M2-02", "M2-03", "M2-04"].includes(taskId)) fail("invalid task id");
-const isM203 = taskId === "M2-03";
+if (!["M2-02", "M2-03", "M2-04", "M2-05"].includes(taskId)) fail("invalid task id");
+const isM203 = taskId === "M2-03" || taskId === "M2-05";
 const isM204 = taskId === "M2-04";
 const expectedAbi = isM204 ? required("expected-abi") : null;
 if (isM204 && !["armeabi-v7a", "arm64-v8a", "x86", "x86_64"].includes(expectedAbi)) {

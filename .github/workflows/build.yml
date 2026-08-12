@@ -181,9 +181,33 @@ jobs:
       - name: Run full Linux checks
         shell: bash
         run: >-
-          ./gradlew --no-daemon clean check lint verifyGovernance :runtime:native:assembleRelease
+          ./gradlew --no-daemon clean check lint verifyGovernance
+          :runtime:policy:assembleRelease :runtime:native:assembleRelease
           -Paapt2Executable="$ANDROID_HOME/build-tools/36.1.0/aapt2"
           -Paapt2AndroidJar="$ANDROID_HOME/platforms/android-36/android.jar"
+
+      - name: Verify M2-05 environment risk policy
+        shell: bash
+        run: |
+          node tools/validation/verify-m2-05-environment-risk.mjs \
+            build/m2-05/environment-risk.json
+          test -f runtime/policy/build/reports/m2-05/risk-report-v1.json
+          test -f runtime/policy/build/outputs/aar/policy-release.aar
+          sha256sum \
+            build/m2-05/environment-risk.json \
+            runtime/policy/build/reports/m2-05/risk-report-v1.json \
+            runtime/policy/build/outputs/aar/policy-release.aar
+
+      - name: Upload M2-05 Ubuntu evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: m2-05-ubuntu-environment-risk-evidence
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            build/m2-05/environment-risk.json
+            runtime/policy/build/reports/m2-05/risk-report-v1.json
+            runtime/policy/build/outputs/aar/policy-release.aar
 
       - name: Verify M1-01 byte-identical reports
         shell: bash
@@ -507,9 +531,37 @@ jobs:
       - name: Run Windows checks
         shell: pwsh
         run: |
-          .\gradlew.bat --no-daemon clean check verifyGovernance :runtime:native:assembleRelease `
+          .\gradlew.bat --no-daemon clean check verifyGovernance `
+            :runtime:policy:assembleRelease :runtime:native:assembleRelease `
             "-Paapt2Executable=$env:ANDROID_HOME\build-tools\36.1.0\aapt2.exe" `
             "-Paapt2AndroidJar=$env:ANDROID_HOME\platforms\android-36\android.jar"
+
+      - name: Verify M2-05 environment risk policy
+        shell: pwsh
+        run: |
+          & node tools/validation/verify-m2-05-environment-risk.mjs `
+            build/m2-05/environment-risk.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $files = @(
+            "build/m2-05/environment-risk.json",
+            "runtime/policy/build/reports/m2-05/risk-report-v1.json",
+            "runtime/policy/build/outputs/aar/policy-release.aar"
+          )
+          foreach ($file in $files) {
+            if (-not (Test-Path -LiteralPath $file)) { throw "missing $file" }
+            Get-FileHash -Algorithm SHA256 -LiteralPath $file
+          }
+
+      - name: Upload M2-05 Windows evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: m2-05-windows-environment-risk-evidence
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            build/m2-05/environment-risk.json
+            runtime/policy/build/reports/m2-05/risk-report-v1.json
+            runtime/policy/build/outputs/aar/policy-release.aar
 
       - name: Verify M1-01 byte-identical reports
         shell: pwsh

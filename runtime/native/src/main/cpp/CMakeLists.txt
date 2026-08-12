@@ -65,6 +65,7 @@ set(
     zip_assets.cpp
     payload_memory.cpp
     payload_metadata.cpp
+    risk_signals.cpp
 )
 if(ANDROID OR UNIX)
     list(APPEND AH_RUNTIME_SOURCES authenticated_payload.cpp mapped_apk.cpp)
@@ -185,4 +186,15 @@ else()
                 "${AH_M2_02_VECTOR_ROOT}/slot-x86_64.bin"
         )
     endif()
+endif()
+
+if(NOT ANDROID)
+    add_executable(m2_05_risk_signals_test risk_signals_test.cpp risk_signals.cpp)
+    target_compile_features(m2_05_risk_signals_test PRIVATE cxx_std_17)
+    if(MSVC)
+        target_compile_options(m2_05_risk_signals_test PRIVATE /W4 /WX)
+    else()
+        target_compile_options(m2_05_risk_signals_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    endif()
+    add_test(NAME m2_05_risk_signals_test COMMAND m2_05_risk_signals_test)
 endif()

@@ -121,7 +121,7 @@ Guard 只能从 `LoadedPayload.authenticatedMetadata()` 构造 `VerifiedStartupC
 
 ### 4.4 Environment Risk Engine
 
-风险引擎将多个信号规范化为版本化决策，不允许启发式环境信号直接阻止启动。v0.1 输出固定为：
+风险引擎按 [ADR-0010](adr/0010-environment-risk-policy.md) 将多个信号规范化为版本化决策，不允许启发式环境信号直接阻止启动。v0.1 输出固定为：
 
 - `allow`：`LOW`，继续正常启动并保留基础内存控制；
 - `degrade`：`MEDIUM` 或 `HIGH`，逐级增强内存保护、降低诊断暴露并提高校验频率。

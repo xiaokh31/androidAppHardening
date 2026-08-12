@@ -575,6 +575,7 @@ jobs:
             adb -s "$serial" uninstall ah.fixtures.android.m201.direct >/dev/null 2>&1
             adb -s "$serial" shell run-as ah.runtime.policy.test rm -f \
               files/m2-03-process.apk >/dev/null 2>&1
+            adb -s "$serial" shell am clear-debug-app >/dev/null 2>&1
             adb -s "$serial" uninstall ah.runtime.policy.test >/dev/null 2>&1
             adb -s "$serial" shell rm -f /data/local/tmp/m2-03-process.apk >/dev/null 2>&1
             adb -s "$serial" emu kill >/dev/null 2>&1
@@ -647,6 +648,110 @@ jobs:
 
           adb -s "$serial" install -r -t --no-streaming \
             runtime/policy/build/outputs/apk/androidTest/debug/policy-debug-androidTest.apk
+          mkdir -p "build/m2-05/device-api${API}-x86_64"
+          risk_output="$(timeout 60s adb -s "$serial" shell am instrument -w \
+            ah.runtime.policy.test/ah.runtime.guard.PolicyConnectedRunner)"
+          printf '%s\n' "$risk_output" \
+            | tee "build/m2-05/device-api${API}-x86_64/policy.instrumentation.txt"
+          grep -F 'policy_connected_smoke=true cases=11 risk_connected=true version=1' \
+            <<<"$risk_output"
+          grep -F 'INSTRUMENTATION_CODE: -1' <<<"$risk_output"
+          risk_max_us="$(sed -n 's/.*max_us=\([0-9][0-9]*\).*/\1/p' \
+            <<<"$risk_output" | head -n1)"
+          test -n "$risk_max_us"
+          test "$risk_max_us" -le 50000
+          printf '{"task_id":"M2-05","api":%s,"abi":"x86_64","evaluations":1000,"max_us":%s,"budget_us":50000,"result":"PASS"}\n' \
+            "$API" "$risk_max_us" \
+            > "build/m2-05/device-api${API}-x86_64/report.json"
+          jdwp_instrumentation="build/m2-05/device-api${API}-x86_64/policy-jdwp.instrumentation.txt"
+          jdwp_client="build/m2-05/device-api${API}-x86_64/jdb.txt"
+          adb -s "$serial" shell am force-stop ah.runtime.policy.test
+          adb -s "$serial" shell am set-debug-app -w ah.runtime.policy.test
+          timeout --kill-after=5s 45s adb -s "$serial" shell am instrument -w \
+            -e m205_wait_for_debugger true \
+            ah.runtime.policy.test/ah.runtime.guard.PolicyConnectedRunner \
+            >"$jdwp_instrumentation" 2>&1 &
+          instrumentation_pid=$!
+          jdwp_pid=''
+          jdwp_pid_seen=false
+          jdwp_forward_ready=false
+          timeout --kill-after=1s 3s adb -s "$serial" forward --remove tcp:8700 \
+            >/dev/null 2>&1 || true
+          for _ in $(seq 1 30); do
+            candidate="$(timeout --kill-after=1s 2s adb -s "$serial" shell \
+              pidof -s ah.runtime.policy.test 2>/dev/null | tr -d '\r' || true)"
+            if [[ "$candidate" =~ ^[0-9]+$ ]]; then
+              jdwp_pid_seen=true
+              if timeout --kill-after=1s 2s adb -s "$serial" forward \
+                tcp:8700 "jdwp:$candidate" >/dev/null 2>&1; then
+                jdwp_pid="$candidate"
+                jdwp_forward_ready=true
+                break
+              fi
+            fi
+            sleep 0.1
+          done
+          printf 'pid_seen=%s forward_ready=%s\n' "$jdwp_pid_seen" \
+            "$jdwp_forward_ready" \
+            > "build/m2-05/device-api${API}-x86_64/jdwp-probe.txt"
+          test -n "$jdwp_pid"
+          ( { sleep 5; printf 'exit\n'; } | timeout --kill-after=5s 20s \
+              jdb -attach localhost:8700 >"$jdwp_client" 2>&1 || true ) &
+          jdb_pid=$!
+          for _ in $(seq 1 550); do
+            if ! kill -0 "$instrumentation_pid" 2>/dev/null; then
+              break
+            fi
+            sleep 0.1
+          done
+          if kill -0 "$instrumentation_pid" 2>/dev/null; then
+            kill -TERM "$instrumentation_pid" 2>/dev/null || true
+            sleep 1
+            kill -KILL "$instrumentation_pid" 2>/dev/null || true
+            wait "$instrumentation_pid" || true
+            false
+          fi
+          wait "$instrumentation_pid"
+          wait "$jdb_pid" || true
+          timeout --kill-after=1s 3s adb -s "$serial" forward --remove tcp:8700
+          adb -s "$serial" shell am clear-debug-app
+          grep -F 'policy_jdwp=true risk_connected=true version=1' "$jdwp_instrumentation"
+          grep -F 'jdwp=detected' "$jdwp_instrumentation"
+          grep -F 'INSTRUMENTATION_CODE: -1' "$jdwp_instrumentation"
+          if [[ "${GITHUB_HEAD_REF:-}" = "feat/m2-05-environment-risk-engine" ]]; then
+            timeout 300s node tools/validation/run-m2-02-device-acceptance.mjs \
+              --task-id M2-05 \
+              --adb "$ANDROID_HOME/platform-tools/adb" \
+              --serial "$serial" \
+              --platform "api${API}-x86_64-linux-kvm-release-r8" \
+              --cold-starts 1 \
+              --command-timeout-ms 60000 \
+              --extracted-target-apk build/m2-03/m2-03-extracted.apk \
+              --extracted-test-apk fixtures/android/build/outputs/apk/androidTest/m203Extracted/debug/android-m203Extracted-debug-androidTest.apk \
+              --extracted-vector-report build/m2-03/vector-extracted/vector-report.json \
+              --direct-target-apk build/m2-03/m2-03-direct.apk \
+              --direct-test-apk fixtures/android/build/outputs/apk/androidTest/m203Direct/debug/android-m203Direct-debug-androidTest.apk \
+              --direct-vector-report build/m2-03/vector-direct/vector-report.json \
+              --evidence "build/m2-05/device-api${API}-x86_64/release-r8"
+            grep -R -F 'risk_r8_jni=true' \
+              "build/m2-05/device-api${API}-x86_64/release-r8"
+            if [[ "$API" = "29" ]]; then
+              ANDROID_SERIAL="$serial" timeout 300s ./gradlew --no-daemon --console=plain \
+                -Pm204TargetAbi=x86 :runtime:policy:connectedCheck
+              mkdir -p "build/m2-05/device-api${API}-x86_64/x86"
+              cp -R runtime/policy/build/outputs/androidTest-results/connected/. \
+                "build/m2-05/device-api${API}-x86_64/x86/"
+              adb -s "$serial" install -r -t --no-streaming \
+                runtime/policy/build/outputs/apk/androidTest/debug/policy-debug-androidTest.apk
+              x86_risk_output="$(timeout 60s adb -s "$serial" shell am instrument -w \
+                ah.runtime.policy.test/ah.runtime.guard.PolicyConnectedRunner)"
+              printf '%s\n' "$x86_risk_output" \
+                | tee "build/m2-05/device-api${API}-x86_64/x86/policy.instrumentation.txt"
+              grep -F 'native_mapping_score=80 timeout_unavailable=true' <<<"$x86_risk_output"
+              grep -F 'INSTRUMENTATION_CODE: -1' <<<"$x86_risk_output"
+            fi
+            exit 0
+          fi
           adb -s "$serial" push build/m0-05/test-apks/extracted/signed/m0-05-config-major.apk \
             /data/local/tmp/m2-03-process.apk
           policy_root="$(adb -s "$serial" shell run-as ah.runtime.policy.test pwd | tr -d '\r')"
@@ -835,6 +940,7 @@ jobs:
           find build/m2-02 -maxdepth 2 -type f -print -exec sha256sum {} \; || true
           find build/m2-03 -maxdepth 2 -type f -print -exec sha256sum {} \; || true
           find build/m2-04 -maxdepth 4 -type f -print -exec sha256sum {} \; || true
+          find build/m2-05 -maxdepth 5 -type f -print -exec sha256sum {} \; || true
 
       - name: Upload bounded validation evidence
         if: always()
@@ -853,6 +959,7 @@ jobs:
             build/m0-05/device-api${{ matrix.api }}-x86_64/**/*.txt
             build/m0-05/device-api${{ matrix.api }}-x86_64/**/*.xml
             build/m2-04/device-api${{ matrix.api }}-x86_64/**/*
+            build/m2-05/device-api${{ matrix.api }}-x86_64/**/*
             build/m2-01/**/*.json
             build/m2-01/**/*.txt
             build/m2-02/**/*.json

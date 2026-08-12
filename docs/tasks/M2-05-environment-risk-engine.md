@@ -23,6 +23,7 @@ security_sensitive: true
 
 ## Inputs
 
+- [ADR-0010](../adr/0010-environment-risk-policy.md) 的版本化环境风险策略。
 - M2-01 的进程启动生命周期。
 - M2-03 的独立完整性结果。
 - `docs/THREAT_MODEL.md` 中允许采集的本地信号。

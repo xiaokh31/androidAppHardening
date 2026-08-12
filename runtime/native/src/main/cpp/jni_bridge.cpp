@@ -5,6 +5,7 @@
 #include "native_share_slot.hpp"
 #include "payload_handle_registry.hpp"
 #include "payload_metadata.hpp"
+#include "risk_signals.hpp"
 #include "zip_assets.hpp"
 
 #include <jni.h>
@@ -355,4 +356,21 @@ Java_ah_runtime_loader_NativePayloadBridge_nativeClosePayload(
     } else if (closed != ah::handles::Status::kSuccess) {
         throwCode(environment, "AAH-RUNTIME-CONTAINER-HANDLE");
     }
+}
+
+extern "C" JNIEXPORT jintArray JNICALL
+Java_ah_runtime_risk_NativeRiskSignals_collect(JNIEnv* environment, jclass) {
+    if (environment == nullptr) return nullptr;
+    const ah::risk::Collected collected = ah::risk::collectCurrentProcess();
+    const std::array<jint, 4> values{
+        1,
+        static_cast<jint>(collected.tracer),
+        static_cast<jint>(collected.mappings),
+        static_cast<jint>(collected.mapping_family_mask),
+    };
+    jintArray result = environment->NewIntArray(static_cast<jsize>(values.size()));
+    if (result != nullptr) {
+        environment->SetIntArrayRegion(result, 0, static_cast<jsize>(values.size()), values.data());
+    }
+    return result;
 }

@@ -8,12 +8,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.os.Bundle;
+import android.os.Debug;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Process;
 import android.os.SystemClock;
 import ah.runtime.AbiCompatibility;
 import ah.runtime.AbiCompatibilityPolicy;
+import ah.runtime.risk.RiskConnectedAssertions;
 import java.io.File;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
@@ -37,6 +39,14 @@ public final class PolicyConnectedRunner extends Instrumentation {
     public void onStart() {
         Bundle result = new Bundle();
         try {
+            if ("true".equals(arguments.getString("m205_wait_for_debugger"))) {
+                Debug.waitForDebugger();
+                require(Debug.isDebuggerConnected(), "jdwp-not-connected");
+                String summary = RiskConnectedAssertions.run(getTargetContext(), true);
+                result.putString("summary", "policy_jdwp=true " + summary);
+                finish(Activity.RESULT_OK, result);
+                return;
+            }
             if (arguments.containsKey("verify_apk")) {
                 runFixtureVerification(result);
                 finish(Activity.RESULT_OK, result);
@@ -64,7 +74,8 @@ public final class PolicyConnectedRunner extends Instrumentation {
                 require(compatibility.inputNativeAbis().equals(armOnly), "input-abis");
                 require(compatibility.outputEffectiveAbis().equals(armOnly), "output-abis");
                 require(compatibility.limitations().size() == 1, "abi-limitation");
-                result.putString("summary", "policy_connected_smoke=true cases=11");
+                String riskSummary = RiskConnectedAssertions.run(getTargetContext());
+                result.putString("summary", "policy_connected_smoke=true cases=11 " + riskSummary);
                 finish(Activity.RESULT_OK, result);
                 return;
             }

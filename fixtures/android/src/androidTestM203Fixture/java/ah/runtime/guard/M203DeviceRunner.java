@@ -4,6 +4,11 @@ import ah.runtime.loader.AuthenticatedPayloadMetadata;
 import ah.runtime.loader.LoadedPayload;
 import ah.runtime.loader.PayloadRuntime;
 import ah.runtime.loader.UntrustedPayloadBinding;
+import ah.runtime.risk.EnvironmentRiskEngine;
+import ah.runtime.risk.RiskReportV1;
+import ah.runtime.risk.RiskSignal;
+import ah.runtime.risk.RiskSignalId;
+import ah.runtime.risk.SignalState;
 import android.app.Activity;
 import android.app.Instrumentation;
 import android.content.Context;
@@ -12,24 +17,34 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.os.Bundle;
+import android.os.Build;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.io.PrintWriter;
+import java.io.RandomAccessFile;
 import java.io.StringWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.security.MessageDigest;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.Arrays;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 /** Real M2-03 signer, metadata, Guard ownership and loader acceptance runner. */
 public final class M203DeviceRunner extends Instrumentation {
     private static final byte[] DEX_MAGIC = {'d', 'e', 'x', '\n'};
+    private Bundle arguments = Bundle.EMPTY;
 
     @Override
     public void onCreate(Bundle arguments) {
         super.onCreate(arguments);
+        this.arguments = arguments == null ? Bundle.EMPTY : new Bundle(arguments);
         start();
     }
 
@@ -49,6 +64,10 @@ public final class M203DeviceRunner extends Instrumentation {
     private String runAcceptance() throws Exception {
         Context target = getTargetContext();
         ApplicationInfo applicationInfo = target.getApplicationInfo();
+        verifyRiskFacade(
+                target,
+                applicationInfo,
+                "true".equals(arguments.getString("m205_release_probe")));
         byte[] expectedSigner = installedSigner(target);
         int injected = 0;
         for (RuntimeStartupGuard.GuardStage stage : RuntimeStartupGuard.GuardStage.values()) {
@@ -153,7 +172,73 @@ public final class M203DeviceRunner extends Instrumentation {
                 + " guard_metadata_rejections=" + metadataRejections
                 + " signer=true metadata=true session_close=true multidex=true jni=true"
                 + " framework_package_rejection=true cleanup_suppressed=true"
-                + " mapping_cleanup=true plaintext_dex_files=0";
+                + " mapping_cleanup=true plaintext_dex_files=0 risk_r8_jni=true";
+
+    }
+
+    private static void verifyRiskFacade(
+            Context context, ApplicationInfo applicationInfo, boolean m205ReleaseProbe)
+            throws Exception {
+        long maxNanos = 0;
+        int evaluationCount = m205ReleaseProbe ? 1 : 50;
+        for (int index = 0; index < evaluationCount; index++) {
+            long started = android.os.SystemClock.elapsedRealtimeNanos();
+            RiskReportV1 report = EnvironmentRiskEngine.evaluate(applicationInfo);
+            long elapsed = android.os.SystemClock.elapsedRealtimeNanos() - started;
+            maxNanos = Math.max(maxNanos, elapsed);
+            require(report.version() == 1 && report.signals().size() == 5,
+                    "M2-05 R8 facade/JNI");
+            if (!m205ReleaseProbe) require(elapsed <= 50_000_000L, "M2-05 R8 budget");
+        }
+        require(maxNanos > 0, "M2-05 R8 clock");
+        File directory = new File(context.getCodeCacheDir(), "m205-risk-r8");
+        require(directory.isDirectory() || directory.mkdirs(), "M2-05 R8 mapping dir");
+        File frida = new File(directory, "libfrida-agent-r8.so");
+        File xposed = new File(directory, "libxposed-r8.so");
+        extractRuntimeLibrary(applicationInfo.sourceDir, frida);
+        extractRuntimeLibrary(applicationInfo.sourceDir, xposed);
+        try (RandomAccessFile first = new RandomAccessFile(frida, "r");
+                RandomAccessFile second = new RandomAccessFile(xposed, "r");
+                FileChannel firstChannel = first.getChannel();
+                FileChannel secondChannel = second.getChannel()) {
+            MappedByteBuffer firstMapping = firstChannel.map(
+                    FileChannel.MapMode.READ_ONLY, 0, firstChannel.size());
+            MappedByteBuffer secondMapping = secondChannel.map(
+                    FileChannel.MapMode.READ_ONLY, 0, secondChannel.size());
+            require(firstMapping.get(0) == 0x7f && secondMapping.get(0) == 0x7f,
+                    "M2-05 R8 mapped ELF");
+            RiskReportV1 mapped = EnvironmentRiskEngine.evaluate(applicationInfo);
+            RiskSignal mappingSignal = mapped.signals().stream()
+                    .filter(signal -> signal.id() == RiskSignalId.INSTRUMENTATION_MAPPING)
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("M2-05 R8 mapping signal"));
+            require(mappingSignal.state() == SignalState.DETECTED
+                            && mappingSignal.score() == 80,
+                    "M2-05 R8 JNI mapping score");
+        } finally {
+            require(frida.delete() && xposed.delete(), "M2-05 R8 mapping cleanup");
+            require(directory.delete(), "M2-05 R8 mapping dir cleanup");
+        }
+    }
+
+    private static void extractRuntimeLibrary(String apkPath, File output) throws Exception {
+        try (ZipFile apk = new ZipFile(apkPath)) {
+            ZipEntry selected = null;
+            for (String abi : Build.SUPPORTED_ABIS) {
+                ZipEntry candidate = apk.getEntry("lib/" + abi + "/libah_runtime.so");
+                if (candidate != null) {
+                    selected = candidate;
+                    break;
+                }
+            }
+            require(selected != null && selected.getSize() > 0, "M2-05 R8 Runtime ELF");
+            try (InputStream input = apk.getInputStream(selected);
+                    FileOutputStream target = new FileOutputStream(output, false)) {
+                byte[] buffer = new byte[8192];
+                int count;
+                while ((count = input.read(buffer)) != -1) target.write(buffer, 0, count);
+            }
+        }
     }
 
     private static void verifyFrameworkPackageRejection(

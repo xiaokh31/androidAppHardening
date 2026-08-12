@@ -82,9 +82,28 @@ val abiCompatibilitySelfTest by tasks.registering(JavaExec::class) {
     args(layout.buildDirectory.dir("reports/m2-04").get().asFile.absolutePath)
 }
 
+val environmentRiskSelfTest by tasks.registering(JavaExec::class) {
+    group = "verification"
+    description = "Runs the dependency-free M2-05 environment risk policy matrix."
+    dependsOn("compileDebugUnitTestJavaWithJavac", ":runtime:native:compileDebugJavaWithJavac")
+    classpath(
+        layout.buildDirectory.dir(
+            "intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes",
+        ),
+        layout.buildDirectory.dir(
+            "intermediates/javac/debug/compileDebugJavaWithJavac/classes",
+        ),
+        rootProject.layout.projectDirectory.dir(
+            "runtime/native/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes",
+        ),
+    )
+    mainClass.set("ah.runtime.risk.EnvironmentRiskEngineSelfTest")
+    args(layout.buildDirectory.dir("reports/m2-05").get().asFile.absolutePath)
+}
+
 afterEvaluate {
     tasks.named("test") {
-        dependsOn(policySelfTest, abiCompatibilitySelfTest)
+        dependsOn(policySelfTest, abiCompatibilitySelfTest, environmentRiskSelfTest)
     }
 }
 

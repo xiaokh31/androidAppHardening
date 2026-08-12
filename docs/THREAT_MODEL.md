@@ -81,7 +81,7 @@ Host 生成的 bootstrap、容器与元数据汇合。输出验证器必须独�
 | T-07 | 静态恢复内容密钥 | 每包随机密钥、分片、Native/Java 分离、signer 绑定 | 离线 Runtime 必须能恢复密钥，确定性逆向最终可行 |
 | T-08 | 运行时抓取明文 DEX | 内存 ClassLoader、短生命周期缓冲、清零、避免落盘和副本 | 进程控制、Hook 或内核能力可观察明文 |
 | T-09 | 调试或 Hook 绕过检查 | 多源信号、校验分散、策略版本化、关键结果交叉验证 | 高权限攻击者可以补丁 Runtime |
-| T-10 | 环境误报阻止合法用户 | 低置信信号只触发 `degrade`，矩阵与真实设备测试 | 新设备或 ROM 仍可能误报 |
+| T-10 | 环境误报阻止合法用户 | ADR-0010 固定权重、去重、封顶与 `allow/degrade`；不可用计零并执行真实设备矩阵 | 新设备或 ROM 仍可能误报，进程控制攻击者可伪造信号 |
 | T-11 | 自定义组件初始化次序改变 | API 29 公开 ClassLoader hook、原 Factory 委托、启动 fixture | 特殊框架不在支持范围 |
 | T-12 | 临时文件、未发布映射或日志泄露 | 不落盘明文 DEX；Native handle 创建前事务清理 completed/partial mappings；handle 到内部 `LoadedPayload` 交接、再到最终 `VerifiedPayloadSession` 发布的两个窗口均由 exactly-once finally close；最小日志与报告字段白名单 | 崩溃转储或恶意 Host 进程 |
 | T-13 | 依赖或 CI Action 被替换 | 固定版本/commit、校验和、依赖验证、SBOM、许可证审查 | 上游已固定版本本身可能含漏洞 |

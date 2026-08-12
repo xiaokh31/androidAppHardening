@@ -38,4 +38,7 @@
 -keep class ah.runtime.guard.VerifiedStartupConfiguration { *; }
 -keep class ah.fixtures.android.m203.M203ColdStartActivity { *; }
 -keep class ah.fixtures.android.m201.M201DeviceRunner { *; }
+# The separately installed M2-03 instrumentation fixture exercises the M2-05
+# public facade against this synthetic Release/R8 target.
+-keep class ah.runtime.risk.** { *; }
 -keepattributes *Annotation*,InnerClasses,EnclosingMethod

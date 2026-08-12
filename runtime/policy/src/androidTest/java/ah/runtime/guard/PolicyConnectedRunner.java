@@ -14,6 +14,7 @@ import android.os.Process;
 import android.os.SystemClock;
 import ah.runtime.AbiCompatibility;
 import ah.runtime.AbiCompatibilityPolicy;
+import ah.runtime.risk.RiskConnectedAssertions;
 import java.io.File;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
@@ -64,7 +65,8 @@ public final class PolicyConnectedRunner extends Instrumentation {
                 require(compatibility.inputNativeAbis().equals(armOnly), "input-abis");
                 require(compatibility.outputEffectiveAbis().equals(armOnly), "output-abis");
                 require(compatibility.limitations().size() == 1, "abi-limitation");
-                result.putString("summary", "policy_connected_smoke=true cases=11");
+                String riskSummary = RiskConnectedAssertions.run(getTargetContext().getApplicationInfo());
+                result.putString("summary", "policy_connected_smoke=true cases=11 " + riskSummary);
                 finish(Activity.RESULT_OK, result);
                 return;
             }

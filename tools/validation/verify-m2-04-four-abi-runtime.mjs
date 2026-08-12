@@ -19,6 +19,7 @@ const JNI_EXPORTS = [
   "Java_ah_runtime_loader_NativePayloadBridge_nativeDexBuffers",
   "Java_ah_runtime_loader_NativePayloadBridge_nativeInspectBinding",
   "Java_ah_runtime_loader_NativePayloadBridge_nativeOpenVerifiedPayload",
+  "Java_ah_runtime_risk_NativeRiskSignals_collect",
 ].sort();
 const PT_LOAD = 1;
 const PT_GNU_STACK = 0x6474e551;
@@ -187,7 +188,7 @@ function dynamicExports(nm, file) {
 
 function requireExactExports(exports, label) {
   if (exports.length !== JNI_EXPORTS.length || exports.some((value, index) => value !== JNI_EXPORTS[index])) {
-    fail(`${label} dynamic exports differ from the five-symbol JNI whitelist: ${exports.join(",")}`);
+    fail(`${label} dynamic exports differ from the approved JNI whitelist: ${exports.join(",")}`);
   }
 }
 

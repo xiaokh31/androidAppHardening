@@ -6,3 +6,5 @@
 -keep class ah.runtime.loader.PayloadLoadException {
     <init>(java.lang.String);
 }
+# M2-05 uses this package-private fixed JNI method and returns only normalized states.
+-keep class ah.runtime.risk.NativeRiskSignals { *; }

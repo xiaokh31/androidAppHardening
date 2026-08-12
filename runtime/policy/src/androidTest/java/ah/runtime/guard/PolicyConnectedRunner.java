@@ -39,7 +39,7 @@ public final class PolicyConnectedRunner extends Instrumentation {
     public void onStart() {
         Bundle result = new Bundle();
         try {
-            if (arguments.getBoolean("m205_wait_for_debugger", false)) {
+            if ("true".equals(arguments.getString("m205_wait_for_debugger"))) {
                 Debug.waitForDebugger();
                 require(Debug.isDebuggerConnected(), "jdwp-not-connected");
                 String summary = RiskConnectedAssertions.run(getTargetContext(), true);

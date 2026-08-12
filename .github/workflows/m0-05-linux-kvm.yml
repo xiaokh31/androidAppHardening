@@ -665,7 +665,7 @@ jobs:
           jdwp_instrumentation="build/m2-05/device-api${API}-x86_64/policy-jdwp.instrumentation.txt"
           jdwp_client="build/m2-05/device-api${API}-x86_64/jdb.txt"
           adb -s "$serial" shell am force-stop ah.runtime.policy.test
-          timeout 60s adb -s "$serial" shell am instrument -w \
+          timeout --kill-after=5s 45s adb -s "$serial" shell am instrument -w \
             -e m205_wait_for_debugger true \
             ah.runtime.policy.test/ah.runtime.guard.PolicyConnectedRunner \
             >"$jdwp_instrumentation" 2>&1 &
@@ -681,7 +681,8 @@ jobs:
           done
           test -n "$jdwp_pid"
           adb -s "$serial" forward tcp:8700 "jdwp:$jdwp_pid"
-          { sleep 5; printf 'exit\n'; } | timeout 20s jdb -attach localhost:8700 >"$jdwp_client" 2>&1 &
+          { sleep 5; printf 'exit\n'; } | timeout --kill-after=5s 20s \
+            jdb -attach localhost:8700 >"$jdwp_client" 2>&1 &
           jdb_pid=$!
           wait "$instrumentation_pid"
           wait "$jdb_pid" || true

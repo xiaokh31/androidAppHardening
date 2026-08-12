@@ -77,7 +77,15 @@ int main() {
     const std::string two = "/data/frida-agent.so\n/data/lsposed-module.so\n";
     require(ah::risk::parseMappings(two.data(), two.size()).mapping_family_mask == 3U,
             "family-two-cap");
-    std::string maps_overlong(512U * 1024U + 1U, 'x');
+    std::string maps_larger_than_legacy_limit(600U * 1024U, 'x');
+    maps_larger_than_legacy_limit += "\n7f00-7f10 r--p 0 00:00 0 libfrida-agent.so\n";
+    maps_larger_than_legacy_limit += "7f10-7f20 r--p 0 00:00 0 libxposed.so\n";
+    require(ah::risk::parseMappings(
+                    maps_larger_than_legacy_limit.data(),
+                    maps_larger_than_legacy_limit.size()).mapping_family_mask == 3U,
+            "late mapping aliases beyond legacy limit");
+
+    std::string maps_overlong(2U * 1024U * 1024U + 1U, 'x');
     require(ah::risk::parseMappings(maps_overlong.data(), maps_overlong.size()).mappings ==
                     State::kUnavailable,
             "maps-overlong");

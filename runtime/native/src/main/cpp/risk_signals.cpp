@@ -18,7 +18,10 @@ namespace ah::risk {
 namespace {
 
 constexpr std::size_t kStatusLimit = 64U * 1024U;
-constexpr std::size_t kMapsLimit = 512U * 1024U;
+// ART may exceed 512 KiB of mappings in Release/direct-loading processes on
+// newer Android versions. Keep the read bounded while leaving enough room for
+// late code-cache mappings that must still participate in risk classification.
+constexpr std::size_t kMapsLimit = 2U * 1024U * 1024U;
 constexpr std::uint32_t kDynamicInstrumentation = 1U;
 constexpr std::uint32_t kRuntimeHook = 2U;
 #if defined(__linux__)

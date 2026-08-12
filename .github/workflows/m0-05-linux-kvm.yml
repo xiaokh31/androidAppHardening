@@ -671,22 +671,38 @@ jobs:
             >"$jdwp_instrumentation" 2>&1 &
           instrumentation_pid=$!
           jdwp_pid=''
-          for _ in $(seq 1 100); do
-            candidate="$(adb -s "$serial" shell pidof -s ah.runtime.policy.test 2>/dev/null | tr -d '\r' || true)"
-            if [[ "$candidate" =~ ^[0-9]+$ ]] && adb -s "$serial" jdwp | grep -Fxq "$candidate"; then
+          for _ in $(seq 1 30); do
+            candidate="$(timeout --kill-after=1s 2s adb -s "$serial" shell \
+              pidof -s ah.runtime.policy.test 2>/dev/null | tr -d '\r' || true)"
+            if [[ "$candidate" =~ ^[0-9]+$ ]] \
+              && timeout --kill-after=1s 2s adb -s "$serial" jdwp \
+                | grep -Fxq "$candidate"; then
               jdwp_pid="$candidate"
               break
             fi
             sleep 0.1
           done
           test -n "$jdwp_pid"
-          adb -s "$serial" forward tcp:8700 "jdwp:$jdwp_pid"
+          timeout --kill-after=1s 3s adb -s "$serial" forward tcp:8700 "jdwp:$jdwp_pid"
           { sleep 5; printf 'exit\n'; } | timeout --kill-after=5s 20s \
             jdb -attach localhost:8700 >"$jdwp_client" 2>&1 &
           jdb_pid=$!
+          for _ in $(seq 1 550); do
+            if ! kill -0 "$instrumentation_pid" 2>/dev/null; then
+              break
+            fi
+            sleep 0.1
+          done
+          if kill -0 "$instrumentation_pid" 2>/dev/null; then
+            kill -TERM "$instrumentation_pid" 2>/dev/null || true
+            sleep 1
+            kill -KILL "$instrumentation_pid" 2>/dev/null || true
+            wait "$instrumentation_pid" || true
+            false
+          fi
           wait "$instrumentation_pid"
           wait "$jdb_pid" || true
-          adb -s "$serial" forward --remove tcp:8700
+          timeout --kill-after=1s 3s adb -s "$serial" forward --remove tcp:8700
           grep -F 'policy_jdwp=true risk_connected=true version=1' "$jdwp_instrumentation"
           grep -F 'jdwp=detected' "$jdwp_instrumentation"
           grep -F 'INSTRUMENTATION_CODE: -1' "$jdwp_instrumentation"

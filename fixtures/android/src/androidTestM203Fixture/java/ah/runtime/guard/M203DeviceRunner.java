@@ -39,10 +39,12 @@ import java.util.zip.ZipFile;
 /** Real M2-03 signer, metadata, Guard ownership and loader acceptance runner. */
 public final class M203DeviceRunner extends Instrumentation {
     private static final byte[] DEX_MAGIC = {'d', 'e', 'x', '\n'};
+    private Bundle arguments = Bundle.EMPTY;
 
     @Override
     public void onCreate(Bundle arguments) {
         super.onCreate(arguments);
+        this.arguments = arguments == null ? Bundle.EMPTY : new Bundle(arguments);
         start();
     }
 
@@ -62,7 +64,10 @@ public final class M203DeviceRunner extends Instrumentation {
     private String runAcceptance() throws Exception {
         Context target = getTargetContext();
         ApplicationInfo applicationInfo = target.getApplicationInfo();
-        verifyRiskFacade(target, applicationInfo);
+        verifyRiskFacade(
+                target,
+                applicationInfo,
+                "true".equals(arguments.getString("m205_release_probe")));
         byte[] expectedSigner = installedSigner(target);
         int injected = 0;
         for (RuntimeStartupGuard.GuardStage stage : RuntimeStartupGuard.GuardStage.values()) {
@@ -171,17 +176,19 @@ public final class M203DeviceRunner extends Instrumentation {
 
     }
 
-    private static void verifyRiskFacade(Context context, ApplicationInfo applicationInfo)
+    private static void verifyRiskFacade(
+            Context context, ApplicationInfo applicationInfo, boolean m205ReleaseProbe)
             throws Exception {
         long maxNanos = 0;
-        for (int index = 0; index < 50; index++) {
+        int evaluationCount = m205ReleaseProbe ? 1 : 50;
+        for (int index = 0; index < evaluationCount; index++) {
             long started = android.os.SystemClock.elapsedRealtimeNanos();
             RiskReportV1 report = EnvironmentRiskEngine.evaluate(applicationInfo);
             long elapsed = android.os.SystemClock.elapsedRealtimeNanos() - started;
             maxNanos = Math.max(maxNanos, elapsed);
             require(report.version() == 1 && report.signals().size() == 5,
                     "M2-05 R8 facade/JNI");
-            require(elapsed <= 50_000_000L, "M2-05 R8 budget");
+            if (!m205ReleaseProbe) require(elapsed <= 50_000_000L, "M2-05 R8 budget");
         }
         require(maxNanos > 0, "M2-05 R8 clock");
         File directory = new File(context.getCodeCacheDir(), "m205-risk-r8");

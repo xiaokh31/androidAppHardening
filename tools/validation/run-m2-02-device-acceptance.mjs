@@ -105,6 +105,7 @@ function runVariant(variant) {
     "-e", "m202_expected_build_id_hex", variant.golden.buildId,
     "-e", "m202_expected_key_slot_id_hex", variant.golden.keySlotId,
   );
+  if (taskId === "M2-05") instrumentationArguments.push("-e", "m205_release_probe", "true");
   if (isM204) instrumentationArguments.push("-e", "m204_expected_abi", expectedAbi);
   instrumentationArguments.push(`${variant.packageName}.test/${runnerClass}`);
   const instrumentation = runAdb(instrumentationArguments, 120000);

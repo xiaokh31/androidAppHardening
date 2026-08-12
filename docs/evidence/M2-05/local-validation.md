@@ -4,7 +4,7 @@
 
 - Timestamp: 2026-08-12T12:58:00+08:00
 - Branch base: `main@029f7af5a183b18704e088bcde89ab1e80f6a278`
-- Frozen implementation: `2f7ab58ae49638ae16ee70cef9549ebfe135797e`
+- Frozen implementation: `d791dd2312c271ef2b976664c5e44538e22a103f`
 - Host: Windows 10 x64, PowerShell, Node.js `24.12.0`
 - JDK: Eclipse Temurin `17.0.19+10`
 - Android toolchain: compileSdk 36, Build Tools 36.1.0, NDK 29.0.14206865, CMake 4.1.2
@@ -27,10 +27,10 @@
 | Artifact | Bytes | SHA-256 |
 |---|---:|---|
 | `runtime/policy/build/outputs/aar/policy-release.aar` | 33568 | `250df3267558d8e7a71defcf52c384265750bd8226fe7bb0e8c0a8e1b42dbb95` |
-| `runtime/native/build/outputs/aar/native-release.aar` | 442460 | `48adef8675c8d0357ae79c1f4f52eebf58d7fa5716dcf7bbde3a5819b1eec4b5` |
+| `runtime/native/build/outputs/aar/native-release.aar` | 442458 | `9a4a9c382497b8c099e4387f20004daed67e06f462eb830518ca7fc66c35632b` |
 | `runtime/policy/build/reports/m2-05/risk-report-v1.json` | 399 | `f24c51538702e7cbcfae17530d65c120080d5950d3cb09d30d8ec7f4c22477c1` |
-| ignored `build/m2-05/local/risk-policy-report.json` | 374 | `cd518aa1db804746870735dd0b5fbe0937148e03000de4f3e110a838f98bd545` |
-| ignored `build/m2-05/local/native-runtime.json` | 5241 | `87aa16b5aa2f1bf4d710001c758560037e5fc49b0dc2f30e53cbf730b57b1a17` |
+| ignored `build/m2-05/local/risk-policy-report.json` | 374 | `fc3582f6a670b3acd92fc1cf9f5f54ca8d06db6bab11a5e08f33c24908282660` |
+| ignored `build/m2-05/local/native-runtime.json` | 5241 | `2c9ec90d73a1bdf2ece34d8d25d49bf2c8500d74b0e88ccff31cc68233a7d130` |
 | ignored API 29 ARM64 probe executable | 64664 | `f462fd00e404d4d47c0e3735edc1968edcde5e63f6b002d7b06e55b8ab7b27c5` |
 
 The report surface contains only signal IDs, state/hit, score, total, level and action. Scans found no raw proc text, mapping path, process list, device identifier, credential, key or plaintext DEX. Environment signals remain bypassable cost inputs and cannot create a deny/integrity result.

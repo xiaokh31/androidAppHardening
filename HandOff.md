@@ -21,7 +21,7 @@ Complete M2-05 environment risk scoring and bounded current-process collection w
 
 ## Current State
 
-- M2-05 implementation is frozen at `2f7ab58ae49638ae16ee70cef9549ebfe135797e` but not yet independently reviewed or published. ADR-0010 fixes version 1 weights/actions and two deduplicated internal mapping families. Java exposes immutable risk models and the sole `evaluate(ApplicationInfo)` entry; Native reads only bounded current-process status/maps and returns schema/versioned normalized states. The 54-case JVM matrix, instrumentation compile/lint, 463-task clean root regression, four ABI Release/JNI verifier and API 29 ARM64 direct Native probe passed. MIUI rejected the optional policy test APK before execution with `INSTALL_FAILED_USER_RESTRICTED`; no false PASS was recorded, no retry loop was used, and API 29/36 KVM will provide the single full instrumentation round.
+- M2-05 corrected implementation is frozen at `d791dd2312c271ef2b976664c5e44538e22a103f` on draft PR #47 but not yet independently reviewed. ADR-0010 fixes version 1 weights/actions and two deduplicated internal mapping families. Java exposes immutable risk models and the sole `evaluate(ApplicationInfo)` entry; Native reads only bounded current-process status/maps and returns schema/versioned normalized states. The 54-case JVM matrix, instrumentation compile/lint, 463-task clean root regression, four ABI Release/JNI verifier and API 29 ARM64 direct Native probe passed. MIUI rejected the optional policy test APK before execution with `INSTALL_FAILED_USER_RESTRICTED`; no false PASS was recorded and no retry loop was used. Initial Build `31565208384` exposed only a missing policy-AAR task on Ubuntu and a non-Linux unused cleanup helper on Windows; the minimal cross-platform fix passed targeted policy/four-ABI validation and replacement exact-head CI is pending.
 - M2-04 is complete on `main@029f7af5a183b18704e088bcde89ab1e80f6a278`: final Build `31538243770`, Governance `31538243781` and API 29/36 KVM `31538276159` all passed. M2-05 Issue #16 is open, no prior branch or PR exists, and `feat/m2-05-environment-risk-engine` was created from that exact main. ADR-0010 and the bounded implementation plan are the current work; M2-06 has not started.
 - PR [#46](https://github.com/xiaokh31/androidAppHardening/pull/46) was marked ready and merged with exact-head protection at `80fee2559073278eb55f94de4a9ac2065777ba6b` as merge commit `d5c74e7d3bfbcebff9c782134795f23ddd16c5e7`; Issue [#15](https://github.com/xiaokh31/androidAppHardening/issues/15) is closed. Local `main` is synchronized. This coordination change updates README/evidence/HandOff and triggers the final main gates; no device matrix is repeated.
 - M2-01 final implementation parent `6a5a2706dcbb1b2984fb2bc6edf4147e81f98773` passed local gates, Ubuntu/Windows Build and Governance, API 29/36 x86_64 KVM, and the independent read-only review with `P0=0`, `P1=0`, `P2=0`.
@@ -359,13 +359,13 @@ Complete M2-05 environment risk scoring and bounded current-process collection w
 ### M2-05 local implementation candidate
 
 - task_id: M2-05
-- git_commit: 2f7ab58ae49638ae16ee70cef9549ebfe135797e
+- git_commit: d791dd2312c271ef2b976664c5e44538e22a103f
 - command: pinned offline `clean check lint verifyGovernance :runtime:native:assembleRelease`; targeted policy test/androidTest compile/lint/AAR; M2-04 four-ABI verifier; API 29 ARM64 direct Native risk probe
 - exit_code: 0
 - environment: Windows 10 x64; Temurin 17.0.19+10; Node 24.12.0; NDK 29.0.14206865/CMake 4.1.2; Xiaomi sirius API 29 arm64 user build; no local emulator
 - timestamp: 2026-08-12T12:58:00+08:00
 - artifact: `docs/evidence/M2-05/local-validation.md`; ignored `build/m2-05/local/`; policy AAR SHA-256 `250df3267558d8e7a71defcf52c384265750bd8226fe7bb0e8c0a8e1b42dbb95`
-- sha256: cd518aa1db804746870735dd0b5fbe0937148e03000de4f3e110a838f98bd545
+- sha256: fc3582f6a670b3acd92fc1cf9f5f54ca8d06db6bab11a5e08f33c24908282660
 - result: PASS_LOCAL; independent read-only security review and API 29/36 KVM remain required before completion
 
 ### M2-04 merger-ready acceptance and merge

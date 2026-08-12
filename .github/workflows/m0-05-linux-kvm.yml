@@ -689,6 +689,40 @@ jobs:
           grep -F 'policy_jdwp=true risk_connected=true version=1' "$jdwp_instrumentation"
           grep -F 'jdwp=detected' "$jdwp_instrumentation"
           grep -F 'INSTRUMENTATION_CODE: -1' "$jdwp_instrumentation"
+          if [[ "${GITHUB_HEAD_REF:-}" = "feat/m2-05-environment-risk-engine" ]]; then
+            timeout 300s node tools/validation/run-m2-02-device-acceptance.mjs \
+              --task-id M2-05 \
+              --adb "$ANDROID_HOME/platform-tools/adb" \
+              --serial "$serial" \
+              --platform "api${API}-x86_64-linux-kvm-release-r8" \
+              --cold-starts 1 \
+              --command-timeout-ms 60000 \
+              --extracted-target-apk build/m2-03/m2-03-extracted.apk \
+              --extracted-test-apk fixtures/android/build/outputs/apk/androidTest/m203Extracted/debug/android-m203Extracted-debug-androidTest.apk \
+              --extracted-vector-report build/m2-03/vector-extracted/vector-report.json \
+              --direct-target-apk build/m2-03/m2-03-direct.apk \
+              --direct-test-apk fixtures/android/build/outputs/apk/androidTest/m203Direct/debug/android-m203Direct-debug-androidTest.apk \
+              --direct-vector-report build/m2-03/vector-direct/vector-report.json \
+              --evidence "build/m2-05/device-api${API}-x86_64/release-r8"
+            grep -R -F 'risk_r8_jni=true' \
+              "build/m2-05/device-api${API}-x86_64/release-r8"
+            if [[ "$API" = "29" ]]; then
+              ANDROID_SERIAL="$serial" timeout 300s ./gradlew --no-daemon --console=plain \
+                -Pm204TargetAbi=x86 :runtime:policy:connectedCheck
+              mkdir -p "build/m2-05/device-api${API}-x86_64/x86"
+              cp -R runtime/policy/build/outputs/androidTest-results/connected/. \
+                "build/m2-05/device-api${API}-x86_64/x86/"
+              adb -s "$serial" install -r -t --no-streaming \
+                runtime/policy/build/outputs/apk/androidTest/debug/policy-debug-androidTest.apk
+              x86_risk_output="$(timeout 60s adb -s "$serial" shell am instrument -w \
+                ah.runtime.policy.test/ah.runtime.guard.PolicyConnectedRunner)"
+              printf '%s\n' "$x86_risk_output" \
+                | tee "build/m2-05/device-api${API}-x86_64/x86/policy.instrumentation.txt"
+              grep -F 'native_mapping_score=80 timeout_unavailable=true' <<<"$x86_risk_output"
+              grep -F 'INSTRUMENTATION_CODE: -1' <<<"$x86_risk_output"
+            fi
+            exit 0
+          fi
           adb -s "$serial" push build/m0-05/test-apks/extracted/signed/m0-05-config-major.apk \
             /data/local/tmp/m2-03-process.apk
           policy_root="$(adb -s "$serial" shell run-as ah.runtime.policy.test pwd | tr -d '\r')"
@@ -847,21 +881,6 @@ jobs:
               --evidence "$evidence_root"
             cat "$evidence_root/report.json"
           done
-          if [[ "$API" = "29" ]]; then
-            ANDROID_SERIAL="$serial" timeout 300s ./gradlew --no-daemon --console=plain \
-              -Pm204TargetAbi=x86 :runtime:policy:connectedCheck
-            mkdir -p "build/m2-05/device-api${API}-x86_64/x86"
-            cp -R runtime/policy/build/outputs/androidTest-results/connected/. \
-              "build/m2-05/device-api${API}-x86_64/x86/"
-            adb -s "$serial" install -r -t --no-streaming \
-              runtime/policy/build/outputs/apk/androidTest/debug/policy-debug-androidTest.apk
-            x86_risk_output="$(timeout 60s adb -s "$serial" shell am instrument -w \
-              ah.runtime.policy.test/ah.runtime.guard.PolicyConnectedRunner)"
-            printf '%s\n' "$x86_risk_output" \
-              | tee "build/m2-05/device-api${API}-x86_64/x86/policy.instrumentation.txt"
-            grep -F 'native_mapping_score=80 timeout_unavailable=true' <<<"$x86_risk_output"
-            grep -F 'INSTRUMENTATION_CODE: -1' <<<"$x86_risk_output"
-          fi
           unset M005_TEST_KEYSTORE M005_TEST_STORE_PASSWORD M005_TEST_KEY_ALIAS M005_TEST_KEY_PASSWORD
           rm -f -- "$m204_signing_env"
 

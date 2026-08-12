@@ -2,12 +2,12 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260813-002406
-updated_at: 2026-08-13T00:24:06+08:00
+updated_at: 2026-08-13T01:08:00+08:00
 updated_by: /root
 state: active
 source_branch: feat/m2-06-memory-dump-controls
 base_commit: 644825e95d3338160df19021389d5ba8bd125eb1
-working_tree: dirty
+working_tree: clean
 current_milestone: M2
 active_task: M2-06
 next_owner: /root
@@ -21,7 +21,7 @@ Implement M2-06 bounded memory-exposure controls on the fixed Issue #17 branch w
 
 ## Current State
 
-- M2-06 is active on `feat/m2-06-memory-dump-controls` from clean post-M2-05 `main@644825e95d3338160df19021389d5ba8bd125eb1`. Issue #17 is the sole task. ADR 0011 resolves the first-open ordering boundary: short-lived Native key buffers always make a bounded best-effort lock attempt before deterministic zeroization, while M2-05 risk selects only retained DEX edge locking, current-process dumpability and bounded jitter. No local emulator is authorized or started; device-only evidence will use the existing bounded API 29/36 KVM workflow once.
+- M2-06 implementation is frozen at `9839c8de321c82ddd12745006d6aca16f49ac370` on `feat/m2-06-memory-dump-controls` from clean post-M2-05 `main@644825e95d3338160df19021389d5ba8bd125eb1`. Issue #17 is the sole task. ADR 0011 resolves the first-open ordering boundary: short-lived Native key buffers always make a bounded best-effort lock attempt before deterministic zeroization, while M2-05 risk selects only retained DEX edge locking, current-process dumpability and bounded jitter. Local Native/Policy, four-ABI, extracted/direct androidTest compile, governance, strict HandOff and negative static gates pass. No local emulator or physical device was started; device-only evidence will use the existing bounded API 29/36 KVM workflow once.
 - M2-05 is merged and complete. Final exact-head `a59345862e7a7ca164fbbc69ed6447efc9f5ddba` passed Build `31616216280`, Governance `31616216704` and API 29/36 KVM `31616216412`; independent full plus bounded incremental review returned `P0=0`, `P1=0`, `P2=0`. PR [#47](https://github.com/xiaokh31/androidAppHardening/pull/47) merged as `815eb55f87bb37e50f00eb91293e930a950d60ac` and Issue [#16](https://github.com/xiaokh31/androidAppHardening/issues/16) closed. API 29/36 ordinary policy, real JDWP, API 29 x86, extracted/direct Release/R8, late mapping aliases and cleanup all passed. The API 29 ARM64 Native probe passed; the MIUI policy APK was rejected before instrumentation with `INSTALL_FAILED_USER_RESTRICTED` and is not presented as a PASS. No local emulator or repeated install prompt was used.
 - ADR-0010 fixes version 1 weights/actions and two deduplicated internal mapping families. Java exposes immutable risk models and the sole `evaluate(ApplicationInfo)` entry; Native reads bounded current-process status/maps and returns schema/versioned normalized states. The final boundary fix raises the still-bounded maps input to 2 MiB so API 36 direct/R8 late mappings remain visible, while `2 MiB + 1`, deadline, no-throw allocation and clearing semantics remain fail-safe. M2-06 is now the sole active task; M3/M4 remain unstarted.
 - PR [#46](https://github.com/xiaokh31/androidAppHardening/pull/46) was marked ready and merged with exact-head protection at `80fee2559073278eb55f94de4a9ac2065777ba6b` as merge commit `d5c74e7d3bfbcebff9c782134795f23ddd16c5e7`; Issue [#15](https://github.com/xiaokh31/androidAppHardening/issues/15) is closed. Local `main` is synchronized. This coordination change updates README/evidence/HandOff and triggers the final main gates; no device matrix is repeated.
@@ -1381,6 +1381,7 @@ M2-06 implementation and local gates are in progress. Completion still requires 
 - `docs/adr/0011-memory-exposure-controls.md`
 - `docs/tasks/M2-06-memory-dump-cost-controls.md`
 - `docs/evidence/M2-06/implementation-plan.md`
+- `docs/evidence/M2-06/local-validation.md`
 - `docs/evidence/M2-06/memory-protection-report-sample.json`
 - ignored `build/m2-06/memory-controls.json`
 - `docs/tasks/M2-04-four-abi-runtime.md`

@@ -40,12 +40,12 @@ bool containsAscii(const char* bytes, std::size_t size, const char* needle) noex
     return false;
 }
 
+#if defined(__linux__)
 void clearBytes(char* bytes, std::size_t size) noexcept {
     volatile char* cursor = bytes;
     while (cursor != nullptr && size-- > 0) *cursor++ = 0;
 }
 
-#if defined(__linux__)
 bool readBounded(const char* path, char* output, std::size_t capacity,
                  std::size_t* written) noexcept {
     if (path == nullptr || output == nullptr || capacity == 0 || written == nullptr) return false;

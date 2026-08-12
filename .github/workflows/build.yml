@@ -181,7 +181,8 @@ jobs:
       - name: Run full Linux checks
         shell: bash
         run: >-
-          ./gradlew --no-daemon clean check lint verifyGovernance :runtime:native:assembleRelease
+          ./gradlew --no-daemon clean check lint verifyGovernance
+          :runtime:policy:assembleRelease :runtime:native:assembleRelease
           -Paapt2Executable="$ANDROID_HOME/build-tools/36.1.0/aapt2"
           -Paapt2AndroidJar="$ANDROID_HOME/platforms/android-36/android.jar"
 
@@ -530,7 +531,8 @@ jobs:
       - name: Run Windows checks
         shell: pwsh
         run: |
-          .\gradlew.bat --no-daemon clean check verifyGovernance :runtime:native:assembleRelease `
+          .\gradlew.bat --no-daemon clean check verifyGovernance `
+            :runtime:policy:assembleRelease :runtime:native:assembleRelease `
             "-Paapt2Executable=$env:ANDROID_HOME\build-tools\36.1.0\aapt2.exe" `
             "-Paapt2AndroidJar=$env:ANDROID_HOME\platforms\android-36\android.jar"
 

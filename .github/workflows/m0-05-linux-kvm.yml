@@ -641,6 +641,12 @@ jobs:
             :runtime:bootstrap:connectedCheck \
             :runtime:policy:connectedCheck
 
+          mkdir -p "build/m2-04/device-api${API}-x86_64/x86_64"
+          cp -R runtime/native/build/outputs/androidTest-results/connected/. \
+            "build/m2-04/device-api${API}-x86_64/x86_64/"
+
+          adb -s "$serial" install -r -t --no-streaming \
+            runtime/policy/build/outputs/apk/androidTest/debug/policy-debug-androidTest.apk
           mkdir -p "build/m2-05/device-api${API}-x86_64"
           risk_output="$(timeout 60s adb -s "$serial" shell am instrument -w \
             ah.runtime.policy.test/ah.runtime.guard.PolicyConnectedRunner)"
@@ -656,13 +662,6 @@ jobs:
           printf '{"task_id":"M2-05","api":%s,"abi":"x86_64","evaluations":1000,"max_us":%s,"budget_us":50000,"result":"PASS"}\n' \
             "$API" "$risk_max_us" \
             > "build/m2-05/device-api${API}-x86_64/report.json"
-
-          mkdir -p "build/m2-04/device-api${API}-x86_64/x86_64"
-          cp -R runtime/native/build/outputs/androidTest-results/connected/. \
-            "build/m2-04/device-api${API}-x86_64/x86_64/"
-
-          adb -s "$serial" install -r -t --no-streaming \
-            runtime/policy/build/outputs/apk/androidTest/debug/policy-debug-androidTest.apk
           adb -s "$serial" push build/m0-05/test-apks/extracted/signed/m0-05-config-major.apk \
             /data/local/tmp/m2-03-process.apk
           policy_root="$(adb -s "$serial" shell run-as ah.runtime.policy.test pwd | tr -d '\r')"

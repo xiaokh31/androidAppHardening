@@ -1,15 +1,15 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260812-124200
-updated_at: 2026-08-12T12:42:00+08:00
+handoff_id: HO-20260813-002406
+updated_at: 2026-08-13T00:24:06+08:00
 updated_by: /root
-state: active
-source_branch: feat/m2-05-environment-risk-engine
-base_commit: 029f7af5a183b18704e088bcde89ab1e80f6a278
+state: ready
+source_branch: main
+base_commit: 815eb55f87bb37e50f00eb91293e930a950d60ac
 working_tree: clean
 current_milestone: M2
-active_task: M2-05
+active_task: NONE
 next_owner: /root
 ---
 
@@ -17,12 +17,12 @@ next_owner: /root
 
 ## Objective
 
-Complete M2-05 environment risk scoring and bounded current-process collection without starting M2-06.
+Close M2-05 on merged `main`, synchronize public evidence, and make M2-06 the next authorized sequential task only after strict post-merge validation.
 
 ## Current State
 
-- M2-05 production implementation is frozen at `d791dd2312c271ef2b976664c5e44538e22a103f`; evidence candidate `09ebbd89a0b06fc1a63bb80f59f025c5fd20447d` is on draft PR #47 but not yet independently reviewed. ADR-0010 fixes version 1 weights/actions and two deduplicated internal mapping families. Java exposes immutable risk models and the sole `evaluate(ApplicationInfo)` entry; Native reads only bounded current-process status/maps and returns schema/versioned normalized states. The 54-case JVM matrix, instrumentation compile/lint, 463-task clean root regression, four ABI Release/JNI verifier and API 29 ARM64 direct Native probe passed. MIUI rejected the optional policy test APK before execution with `INSTALL_FAILED_USER_RESTRICTED`; no false PASS was recorded and no retry loop was used. Replacement head `5d78007` passed Build `31565608533`, Governance `31565608508` and API 29/36 KVM `31565608574`; artifact inspection found the completed policy instrumentation performance summary was not retained, so evidence-only head `09ebbd8` captures and uploads it after the existing test-APK reinstall without changing production code.
-- M2-04 is complete on `main@029f7af5a183b18704e088bcde89ab1e80f6a278`: final Build `31538243770`, Governance `31538243781` and API 29/36 KVM `31538276159` all passed. M2-05 Issue #16 is open, no prior branch or PR exists, and `feat/m2-05-environment-risk-engine` was created from that exact main. ADR-0010 and the bounded implementation plan are the current work; M2-06 has not started.
+- M2-05 is merged and complete. Final exact-head `a59345862e7a7ca164fbbc69ed6447efc9f5ddba` passed Build `31616216280`, Governance `31616216704` and API 29/36 KVM `31616216412`; independent full plus bounded incremental review returned `P0=0`, `P1=0`, `P2=0`. PR [#47](https://github.com/xiaokh31/androidAppHardening/pull/47) merged as `815eb55f87bb37e50f00eb91293e930a950d60ac` and Issue [#16](https://github.com/xiaokh31/androidAppHardening/issues/16) closed. API 29/36 ordinary policy, real JDWP, API 29 x86, extracted/direct Release/R8, late mapping aliases and cleanup all passed. The API 29 ARM64 Native probe passed; the MIUI policy APK was rejected before instrumentation with `INSTALL_FAILED_USER_RESTRICTED` and is not presented as a PASS. No local emulator or repeated install prompt was used.
+- ADR-0010 fixes version 1 weights/actions and two deduplicated internal mapping families. Java exposes immutable risk models and the sole `evaluate(ApplicationInfo)` entry; Native reads bounded current-process status/maps and returns schema/versioned normalized states. The final boundary fix raises the still-bounded maps input to 2 MiB so API 36 direct/R8 late mappings remain visible, while `2 MiB + 1`, deadline, no-throw allocation and clearing semantics remain fail-safe. M2-06 has not started; it is the next sequential task after this post-merge strict snapshot.
 - PR [#46](https://github.com/xiaokh31/androidAppHardening/pull/46) was marked ready and merged with exact-head protection at `80fee2559073278eb55f94de4a9ac2065777ba6b` as merge commit `d5c74e7d3bfbcebff9c782134795f23ddd16c5e7`; Issue [#15](https://github.com/xiaokh31/androidAppHardening/issues/15) is closed. Local `main` is synchronized. This coordination change updates README/evidence/HandOff and triggers the final main gates; no device matrix is repeated.
 - M2-01 final implementation parent `6a5a2706dcbb1b2984fb2bc6edf4147e81f98773` passed local gates, Ubuntu/Windows Build and Governance, API 29/36 x86_64 KVM, and the independent read-only review with `P0=0`, `P1=0`, `P2=0`.
 - The sole PR [#45](https://github.com/xiaokh31/androidAppHardening/pull/45) was merged with expected-head protection as `8dc20e65ed87c029cf14add3d3f5769719e13862`; Issue [#12](https://github.com/xiaokh31/androidAppHardening/issues/12) is closed. Production Shell covers all six public callbacks, custom and absent original Factory paths, stable failure caching and exactly-once pre-READY session ownership.
@@ -191,7 +191,8 @@ Complete M2-05 environment risk scoring and bounded current-process collection w
 | M2-03 | `/root` | `main` | done | M1-02, M1-04, M2-02 | PR #44、Issue #14、全零复核、双平台 CI、API 29/36 KVM、arm64 真机、README 与 strict HandOff 已关闭 |
 | M2-01 | `/root` | `main` | done | M0-05, M1-03, M1-04, M2-03 | PR #45、Issue #12、全零独立复核、Ubuntu/Windows、API 29/36 KVM、README 与 strict HandOff 已关闭 |
 | M2-04 | `/root` | `main` | done | M0-03, M1-01, M2-01, M2-02, M2-03 | PR #46、Issue #15、README、strict、final main Build/Governance/KVM 全部关闭 |
-| M2-05 | `/root` | `feat/m2-05-environment-risk-engine` | in_progress | M2-01, M2-03, M2-04 | 本地实现/根回归/ARM Native probe 已通过；冻结提交后需独立只读安全复核与唯一 PR CI |
+| M2-05 | `/root` | `main` | done | M2-01, M2-03, M2-04 | PR #47、Issue #16、全零独立复核、Ubuntu/Windows、API 29/36 KVM、真实 JDWP、README 与 strict HandOff 已关闭 |
+| M2-06 | `/root` | not_created | planned | M2-02, M2-04, M2-05 | M2-05 post-merge strict 完成后，从同步 main 领取 Issue #17 |
 
 ## Decisions and Invariants
 
@@ -356,17 +357,17 @@ Complete M2-05 environment risk scoring and bounded current-process collection w
 
 ## Verification Evidence
 
-### M2-05 local implementation candidate
+### M2-05 final acceptance and merge
 
 - task_id: M2-05
-- git_commit: 09ebbd89a0b06fc1a63bb80f59f025c5fd20447d
-- command: pinned offline `clean check lint verifyGovernance :runtime:native:assembleRelease`; targeted policy test/androidTest compile/lint/AAR; M2-04 four-ABI verifier; API 29 ARM64 direct Native risk probe
+- git_commit: a59345862e7a7ca164fbbc69ed6447efc9f5ddba
+- command: pinned offline Host Native late-map regression; exact-head Build `31616216280`; Governance `31616216704`; API 29/36 KVM `31616216412`; independent full plus bounded incremental read-only review; expected-head merge
 - exit_code: 0
-- environment: Windows 10 x64; Temurin 17.0.19+10; Node 24.12.0; NDK 29.0.14206865/CMake 4.1.2; Xiaomi sirius API 29 arm64 user build; no local emulator
-- timestamp: 2026-08-12T12:58:00+08:00
-- artifact: `docs/evidence/M2-05/local-validation.md`; ignored `build/m2-05/local/`; policy AAR SHA-256 `250df3267558d8e7a71defcf52c384265750bd8226fe7bb0e8c0a8e1b42dbb95`
-- sha256: fc3582f6a670b3acd92fc1cf9f5f54ca8d06db6bab11a5e08f33c24908282660
-- result: PASS_LOCAL; independent read-only security review and API 29/36 KVM remain required before completion
+- environment: Windows 10 x64 local Host; Ubuntu 24.04 and Windows 2025 Build/Governance; API 29/36 x86_64 Linux/KVM; authorized Xiaomi API 29 ARM64 Native probe; no local emulator
+- timestamp: 2026-08-13T00:24:06+08:00
+- artifact: `docs/evidence/M2-05/local-validation.md`; `docs/evidence/M2-05/remote-validation.md`; `docs/evidence/M2-05/security-review-1.md`; ignored `build/m2-05/remote/a593458/`; PR #47; merge `815eb55f87bb37e50f00eb91293e930a950d60ac`; API 36 KVM artifact SHA-256 `6b10806a5f66431ad0fc45f65ed9c70f3f5a150169ef6d9dd11d20a3e82774ff`
+- sha256: e0897de1fb3a805cc5996a683221f82840dd565ef5899fbf704ccd434c3ce309
+- result: PASS; exact-head CI and independent review all green, PR merged and Issue #16 closed
 
 ### M2-04 merger-ready acceptance and merge
 
@@ -1370,10 +1371,9 @@ None
 
 ## Ordered Next Actions
 
-1. Freeze the M2-05 implementation/evidence commit and complete one independent read-only security review with P0/P1/P2 all closed; do not start M2-06.
-2. Push the fixed branch, create the unique draft PR closing Issue #16 and run one exact-head Build/Governance/API 29/36 KVM round. Do not repeat the M2-04 matrix or physical install prompt.
-3. After review and CI are green, obtain explicit ready/merge authorization, merge with expected-head protection, synchronize README/HandOff and close final main gates.
-4. Start M2-06 only after M2-05 is merged and final main gates pass.
+1. Commit and push this M2-05 post-merge evidence/README/HandOff synchronization on `main`.
+2. Run Governance, diff check and strict HandOff without exemption; wait only for the post-merge main checks triggered by this coordination commit.
+3. Start M2-06 from synchronized `main` and Issue #17 after the final M2-05 main gates pass; do not start M3/M4.
 
 ## Relevant Files and Artifacts
 
@@ -1575,6 +1575,7 @@ None
 
 ## Handoff Sign-off
 
+- `/root` verified M2-05 exact-head `a59345862e7a7ca164fbbc69ed6447efc9f5ddba`, Ubuntu/Windows Build/Governance, API 29/36 KVM, real JDWP, API 29 x86, extracted/direct Release/R8 artifacts and independent `P0=0/P1=0/P2=0` review. PR #47 merged as `815eb55f87bb37e50f00eb91293e930a950d60ac`, Issue #16 closed, README/evidence are synchronized, and M2-06 is next only after this main strict snapshot passes.
 - `/root` verified merger-ready M2-04 head `80fee2559073278eb55f94de4a9ac2065777ba6b`, exact-head Ubuntu/Windows Build/Governance, API 29/36 KVM, inherited API 29 ARM dual-ABI evidence and independent `P0=0/P1=0/P2=0` review. PR #46 merged as `d5c74e7d3bfbcebff9c782134795f23ddd16c5e7`, Issue #15 closed, and only final main coordination gates remain before M2-05.
 - `/root` verified final M2-01 head `6a5a2706dcbb1b2984fb2bc6edf4147e81f98773`, exact-head Ubuntu/Windows Build/Governance, API 29/36 x86_64 KVM artifacts and independent `P0=0/P1=0/P2=0` review. PR #45 merged as `8dc20e65ed87c029cf14add3d3f5769719e13862`, Issue #12 closed, README/evidence are synchronized, and no adjacent task has started.
 

@@ -4,8 +4,9 @@
 
 - Timestamp: 2026-08-12T12:58:00+08:00
 - Branch base: `main@029f7af5a183b18704e088bcde89ab1e80f6a278`
-- Frozen implementation: `d791dd2312c271ef2b976664c5e44538e22a103f`
-- Evidence candidate: `09ebbd89a0b06fc1a63bb80f59f025c5fd20447d`
+- Final reviewed production implementation: `9e37ed3b254066cf21e905920a9e409c35bf6609`
+- Final exact-head acceptance: `a59345862e7a7ca164fbbc69ed6447efc9f5ddba`
+- Merge commit: `815eb55f87bb37e50f00eb91293e930a950d60ac`
 - Host: Windows 10 x64, PowerShell, Node.js `24.12.0`
 - JDK: Eclipse Temurin `17.0.19+10`
 - Android toolchain: compileSdk 36, Build Tools 36.1.0, NDK 29.0.14206865, CMake 4.1.2
@@ -22,6 +23,7 @@
 | `node tools/validation/verify-m2-04-four-abi-runtime.mjs --self-test --report=build/m2-05/local/native-runtime.json` | 0 | four ABI ELF/share slot and approved six-symbol JNI surface passed |
 | API 29 ARM64 direct Native `risk_signals_test` | 0 | 10 parser/current-process cases passed; pushed executable removed and absence confirmed |
 | `gradlew :runtime:policy:connectedCheck` on the same physical device | 1 (pre-test) | installation stopped before tests with `INSTALL_FAILED_USER_RESTRICTED`; no result was counted. Full instrumentation is delegated once to API 29/36 KVM rather than repeating prompts. |
+| MSVC Host `m2_05_risk_signals_test` after the final maps-bound fix | 0 | late aliases beyond the old 512 KiB boundary detected; `2 MiB + 1` remains unavailable; 1/1 test passed in 0.13 s |
 
 ## Artifacts
 
@@ -35,3 +37,5 @@
 | ignored API 29 ARM64 probe executable | 64664 | `f462fd00e404d4d47c0e3735edc1968edcde5e63f6b002d7b06e55b8ab7b27c5` |
 
 The report surface contains only signal IDs, state/hit, score, total, level and action. Scans found no raw proc text, mapping path, process list, device identifier, credential, key or plaintext DEX. Environment signals remain bypassable cost inputs and cannot create a deny/integrity result.
+
+Final remote acceptance and artifact hashes are recorded in `remote-validation.md`. The physical-device policy APK did not execute because the OEM install gate rejected it before instrumentation; this is not presented as a PASS. API 29 ARM64 Native collection, API 29 x86/x86_64, API 36 x86_64, real JDWP and extracted/direct Release/R8 evidence cover the implemented signal engine without another local emulator or repeated physical install prompt.

@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-M0 基础建设与可行性验证以及 M1 Host 处理链已经完成。M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换器、M1-07 AHDC v2 分块认证容器合同、M1-04 AHDC v2 Host 实现、M1-05 APK 重打包与对齐、M1-06 CLI 与 JSON 报告均已合并并通过双平台门禁。M2 已完成独立前置任务 M2-07、Native AHDC v2 解密与内存 DEX loader M2-02、Runtime signer/authenticated metadata/启动事务所有权门禁 M2-03、生产 Shell `AppComponentFactory` 启动链 M2-01，以及四 ABI Runtime 构建与装配 M2-04。M2-04 已通过本地、Ubuntu/Windows、API 29/36 x86_64 KVM、API 29 ARM 双 ABI 真机、独立安全复核和 PR 合并门禁。生产 RuntimeBundle 与可发布端到端发行包仍属于后续任务。
+M0 基础建设与可行性验证以及 M1 Host 处理链已经完成。M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换器、M1-07 AHDC v2 分块认证容器合同、M1-04 AHDC v2 Host 实现、M1-05 APK 重打包与对齐、M1-06 CLI 与 JSON 报告均已合并并通过双平台门禁。M2 已完成独立前置任务 M2-07、Native AHDC v2 解密与内存 DEX loader M2-02、Runtime signer/authenticated metadata/启动事务所有权门禁 M2-03、生产 Shell `AppComponentFactory` 启动链 M2-01、四 ABI Runtime 构建与装配 M2-04，以及版本化环境风险信号与评分引擎 M2-05。M2-05 已通过独立安全复核、Ubuntu/Windows、API 29/36 x86_64 KVM、真实 JDWP、Release/R8 与 PR 合并门禁；API 29 ARM64 Native 收集器已通过，MIUI 对 policy 测试 APK 的 OEM USB 安装限制作为未执行项如实保留。下一项为 M2-06 内存 dump 成本控制；生产 RuntimeBundle 与可发布端到端发行包仍属于后续任务。
 
 开发者和 Agent 从 [`docs/README_FIRST.md`](docs/README_FIRST.md) 开始。项目统筹状态以 [`HandOff.md`](HandOff.md) 为准。
 
@@ -27,7 +27,9 @@ M0 基础建设与可行性验证以及 M1 Host 处理链已经完成。M1-01 �
 | [M2-03](docs/tasks/M2-03-runtime-signer-and-integrity.md) | 已完成 | PR #44、Issue #14、P0/P1/P2 全零复核、Ubuntu/Windows、API 29/36 KVM、API 29 arm64 非 root 真机与 strict HandOff 均已关闭 |
 | [M2-01](docs/tasks/M2-01-shell-app-component-factory.md) | 已完成 | PR #45、Issue #12、P0/P1/P2 全零复核、Ubuntu/Windows Build/Governance、API 29/36 KVM 与 strict HandOff 均已关闭 |
 | [M2-04](docs/tasks/M2-04-four-abi-runtime.md) | 已完成 | PR #46、Issue #15、P0/P1/P2 全零复核、Ubuntu/Windows、API 29/36 KVM、API 29 ARM 双 ABI 真机与 strict HandOff 均已关闭 |
-| M2-05 ～ M4 | 未启动 | 后续 Runtime、验证矩阵与发布阶段不得提前实现 |
+| [M2-05](docs/tasks/M2-05-environment-risk-engine.md) | 已完成 | PR #47、Issue #16、P0/P1/P2 全零复核、Ubuntu/Windows、API 29/36 KVM、真实 JDWP、x86 与 Release/R8 门禁均已关闭 |
+| [M2-06](docs/tasks/M2-06-memory-dump-cost-controls.md) | 下一项 | 仅在 M2-05 post-merge strict HandOff 完成后启动 |
+| M3 ～ M4 | 未启动 | 验证矩阵与发布阶段不得提前实现 |
 
 任务按 [`docs/tasks/INDEX.md`](docs/tasks/INDEX.md) 的依赖顺序执行。每个任务只有在 PR 合并、合并后门禁与证据完成后才在本表标记“已完成”；每个任务的收尾协调提交必须同步本 README，避免公开进度长期滞后。
 

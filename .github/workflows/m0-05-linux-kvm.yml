@@ -641,6 +641,22 @@ jobs:
             :runtime:bootstrap:connectedCheck \
             :runtime:policy:connectedCheck
 
+          mkdir -p "build/m2-05/device-api${API}-x86_64"
+          risk_output="$(timeout 60s adb -s "$serial" shell am instrument -w \
+            ah.runtime.policy.test/ah.runtime.guard.PolicyConnectedRunner)"
+          printf '%s\n' "$risk_output" \
+            | tee "build/m2-05/device-api${API}-x86_64/policy.instrumentation.txt"
+          grep -F 'policy_connected_smoke=true cases=11 risk_connected=true version=1' \
+            <<<"$risk_output"
+          grep -F 'INSTRUMENTATION_CODE: -1' <<<"$risk_output"
+          risk_max_us="$(sed -n 's/.*max_us=\([0-9][0-9]*\).*/\1/p' \
+            <<<"$risk_output" | head -n1)"
+          test -n "$risk_max_us"
+          test "$risk_max_us" -le 50000
+          printf '{"task_id":"M2-05","api":%s,"abi":"x86_64","evaluations":1000,"max_us":%s,"budget_us":50000,"result":"PASS"}\n' \
+            "$API" "$risk_max_us" \
+            > "build/m2-05/device-api${API}-x86_64/report.json"
+
           mkdir -p "build/m2-04/device-api${API}-x86_64/x86_64"
           cp -R runtime/native/build/outputs/androidTest-results/connected/. \
             "build/m2-04/device-api${API}-x86_64/x86_64/"
@@ -853,6 +869,7 @@ jobs:
             build/m0-05/device-api${{ matrix.api }}-x86_64/**/*.txt
             build/m0-05/device-api${{ matrix.api }}-x86_64/**/*.xml
             build/m2-04/device-api${{ matrix.api }}-x86_64/**/*
+            build/m2-05/device-api${{ matrix.api }}-x86_64/**/*
             build/m2-01/**/*.json
             build/m2-01/**/*.txt
             build/m2-02/**/*.json

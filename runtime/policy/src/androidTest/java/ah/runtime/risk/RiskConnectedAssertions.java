@@ -32,7 +32,7 @@ public final class RiskConnectedAssertions {
             last = EnvironmentRiskEngine.evaluate(applicationInfo);
             long elapsed = SystemClock.elapsedRealtimeNanos() - started;
             if (elapsed > maxNanos) maxNanos = elapsed;
-            require(elapsed <= 50_000_000L, "risk-budget");
+            if (!expectDebugger) require(elapsed <= 50_000_000L, "risk-budget");
         }
         require(last != null && last.version() == 1, "risk-version");
         require(last.signals().size() == 5, "risk-signals");

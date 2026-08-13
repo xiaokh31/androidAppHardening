@@ -444,11 +444,11 @@ object RepackerSelfTest {
         val is64 = abi == RuntimeAbi.ARM64_V8A || abi == RuntimeAbi.X86_64
         val header = if (is64) 64 else 52
         val sectionHeader = if (is64) 64 else 40
-        val stringTable = byteArrayOf(0) + ".shstrtab\u0000.ah_share_v1\u0000".toByteArray(StandardCharsets.US_ASCII)
+        val stringTable = byteArrayOf(0) + ".shstrtab\u0000.ah_share_v1\u0000.bss\u0000".toByteArray(StandardCharsets.US_ASCII)
         val stringOffset = header
         val slotOffset = align(stringOffset + stringTable.size, 16)
         val sectionOffset = align(slotOffset + SHARE_SLOT_BYTES, 16)
-        val bytes = ByteArray(sectionOffset + sectionHeader * 3)
+        val bytes = ByteArray(sectionOffset + sectionHeader * 4)
         bytes[0] = 0x7f
         bytes[1] = 'E'.code.toByte(); bytes[2] = 'L'.code.toByte(); bytes[3] = 'F'.code.toByte()
         bytes[4] = if (is64) 2 else 1; bytes[5] = 1; bytes[6] = 1
@@ -461,22 +461,33 @@ object RepackerSelfTest {
         })
         if (is64) {
             putTestU8(bytes, 40, sectionOffset.toLong())
-            putTestU2(bytes, 58, sectionHeader); putTestU2(bytes, 60, 3); putTestU2(bytes, 62, 1)
+            putTestU2(bytes, 58, sectionHeader); putTestU2(bytes, 60, 4); putTestU2(bytes, 62, 1)
         } else {
             putTestU4(bytes, 32, sectionOffset.toLong())
-            putTestU2(bytes, 46, sectionHeader); putTestU2(bytes, 48, 3); putTestU2(bytes, 50, 1)
+            putTestU2(bytes, 46, sectionHeader); putTestU2(bytes, 48, 4); putTestU2(bytes, 50, 1)
         }
         stringTable.copyInto(bytes, stringOffset)
-        writeSection(bytes, sectionOffset + sectionHeader, is64, 1, 0, stringOffset, stringTable.size)
-        writeSection(bytes, sectionOffset + sectionHeader * 2, is64, 11, 2, slotOffset, SHARE_SLOT_BYTES)
+        writeSection(bytes, sectionOffset + sectionHeader, is64, 1, 3, 0, stringOffset, stringTable.size)
+        writeSection(bytes, sectionOffset + sectionHeader * 2, is64, 11, 1, 2, slotOffset, SHARE_SLOT_BYTES)
+        writeSection(bytes, sectionOffset + sectionHeader * 3, is64, 24, 8, 3, bytes.size + 4096, 512)
         "AHP0".toByteArray().copyInto(bytes, slotOffset)
         putTestU2(bytes, slotOffset + 4, 1)
         putTestU2(bytes, slotOffset + 6, abi.abiId)
         return bytes
     }
 
-    private fun writeSection(bytes: ByteArray, offset: Int, is64: Boolean, name: Int, flags: Long, data: Int, size: Int) {
+    private fun writeSection(
+        bytes: ByteArray,
+        offset: Int,
+        is64: Boolean,
+        name: Int,
+        type: Int,
+        flags: Long,
+        data: Int,
+        size: Int,
+    ) {
         putTestU4(bytes, offset, name.toLong())
+        putTestU4(bytes, offset + 4, type.toLong())
         if (is64) {
             putTestU8(bytes, offset + 8, flags); putTestU8(bytes, offset + 24, data.toLong()); putTestU8(bytes, offset + 32, size.toLong())
         } else {

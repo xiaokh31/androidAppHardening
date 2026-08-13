@@ -1,15 +1,15 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260813-154010
-updated_at: 2026-08-13T15:40:10+08:00
+handoff_id: HO-20260814-011013
+updated_at: 2026-08-14T02:23:00+08:00
 updated_by: /root
-state: ready
-source_branch: main
-base_commit: aa934080d37dd7590034829fbd436c21e69074a3
-working_tree: clean
-current_milestone: M2
-active_task: NONE
+state: active
+source_branch: chore/m3-01-android-fixtures
+base_commit: 6a1aa6a68ac58e0861f1e866c613138c5a9bc24c
+working_tree: dirty
+current_milestone: M3
+active_task: M3-01
 next_owner: /root
 ---
 
@@ -17,10 +17,11 @@ next_owner: /root
 
 ## Objective
 
-Implement M2-06 bounded memory-exposure controls on the fixed Issue #17 branch without changing authenticated payload, signer, component-order or ABI contracts.
+Implement the nine public M3-01 Android fixtures, deterministic catalog/build contract, and bounded full-flow fixture driver on the fixed Issue #18 branch without starting M3-02 through M3-05.
 
 ## Current State
 
+- M3-01 local implementation is ready on `chore/m3-01-android-fixtures` from clean `main@6a1aa6a68ac58e0861f1e866c613138c5a9bc24c`. All nine Release/R8 fixture contracts and deterministic unsigned builds pass; the bounded Host matrix passed nine product flows plus unsigned/multiple-current negatives in 5m16s, and removed all ephemeral signing material. The implementation also fixes the existing ELF parser to accept file-less `SHT_NOBITS` sections, with a focused repacker regression. No local emulator or physical device was started. Publication, API 29/36 x86_64 KVM, ARM device validation, README and merge gates remain pending.
 - M2-06 is complete. Production implementation `ac374ad03bce87ac7068cf124f4721441f79f59f` and independent review remain `P0=0/P1=0/P2=0`; merger-ready head `9cbc6b6681b8fe1c4bb45c4cd86eaba6fe0086e7` passed Build `31677309988`, Governance `31677309943`, and API 29/36 KVM `31677309937`. PR [#48](https://github.com/xiaokh31/androidAppHardening/pull/48) merged with expected-head protection as `aa934080d37dd7590034829fbd436c21e69074a3`, and Issue #17 closed. The bounded JDWP acceptance fix changed test orchestration only; production Runtime/Native behavior and the 50 ms fail-safe are unchanged. No local emulator or physical device was started.
 - M2-05 is merged and complete. Final exact-head `a59345862e7a7ca164fbbc69ed6447efc9f5ddba` passed Build `31616216280`, Governance `31616216704` and API 29/36 KVM `31616216412`; independent full plus bounded incremental review returned `P0=0`, `P1=0`, `P2=0`. PR [#47](https://github.com/xiaokh31/androidAppHardening/pull/47) merged as `815eb55f87bb37e50f00eb91293e930a950d60ac` and Issue [#16](https://github.com/xiaokh31/androidAppHardening/issues/16) closed. API 29/36 ordinary policy, real JDWP, API 29 x86, extracted/direct Release/R8, late mapping aliases and cleanup all passed. The API 29 ARM64 Native probe passed; the MIUI policy APK was rejected before instrumentation with `INSTALL_FAILED_USER_RESTRICTED` and is not presented as a PASS. No local emulator or repeated install prompt was used.
 - ADR-0010 fixes version 1 weights/actions and two deduplicated internal mapping families. Java exposes immutable risk models and the sole `evaluate(ApplicationInfo)` entry; Native reads bounded current-process status/maps and returns schema/versioned normalized states. The final boundary fix raises the still-bounded maps input to 2 MiB so API 36 direct/R8 late mappings remain visible, while `2 MiB + 1`, deadline, no-throw allocation and clearing semantics remain fail-safe. M2-06 is complete; M3/M4 remain unstarted and require a separate task start.
@@ -194,6 +195,7 @@ Implement M2-06 bounded memory-exposure controls on the fixed Issue #17 branch w
 | M2-04 | `/root` | `main` | done | M0-03, M1-01, M2-01, M2-02, M2-03 | PR #46、Issue #15、README、strict、final main Build/Governance/KVM 全部关闭 |
 | M2-05 | `/root` | `main` | done | M2-01, M2-03, M2-04 | PR #47、Issue #16、全零独立复核、Ubuntu/Windows、API 29/36 KVM、真实 JDWP、README 与 strict HandOff 已关闭 |
 | M2-06 | `/root` | `main` | done | M2-02, M2-04, M2-05 | PR #48 已 expected-head 合并，Issue #17 已关闭，全零独立复核、Ubuntu/Windows、API 29/36 KVM、README 与 post-merge strict HandOff 均关闭 |
+| M3-01 | `/root` | `chore/m3-01-android-fixtures` | in_progress | M1-06, M2-04 | 九类 unsigned Fixture、catalog/schema、主机合同测试与 runtime bundle 已通过；等待 API 29/36 KVM full-flow 验收与冻结证据 |
 
 ## Decisions and Invariants
 

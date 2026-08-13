@@ -557,6 +557,18 @@ jobs:
 
           cleanup() {
             set +e
+            for package_name in \
+              ah.fixtures.android.m301.java_single \
+              ah.fixtures.android.m301.kotlin_single \
+              ah.fixtures.android.m301.kotlin_multidex \
+              ah.fixtures.android.m301.custom_application \
+              ah.fixtures.android.m301.custom_factory \
+              ah.fixtures.android.m301.startup_provider \
+              ah.fixtures.android.m301.multi_process \
+              ah.fixtures.android.m301.jni_four \
+              ah.fixtures.android.m301.jni_arm; do
+              adb -s "$serial" uninstall "$package_name" >/dev/null 2>&1
+            done
             adb -s "$serial" uninstall ah.fixtures.android.m005.extracted.test >/dev/null 2>&1
             adb -s "$serial" uninstall ah.fixtures.android.m005.extracted >/dev/null 2>&1
             adb -s "$serial" uninstall ah.fixtures.android.m005.direct.test >/dev/null 2>&1
@@ -636,6 +648,13 @@ jobs:
             'until [[ "$(adb -s "$1" shell getprop sys.boot_completed 2>/dev/null | tr -d "\r")" = 1 ]]; do sleep 2; done' \
             _ "$serial"
           adb -s "$serial" shell input keyevent 82
+
+          if [[ "${GITHUB_HEAD_REF:-${GITHUB_REF_NAME:-}}" = "chore/m3-01-android-fixtures" ]]; then
+            ANDROID_SERIAL="$serial" timeout 1200s ./gradlew --no-daemon --console=plain \
+              :integration-tests:runFixtureMatrix
+            cat integration-tests/build/reports/fixture-results.json
+            exit 0
+          fi
 
           ANDROID_SERIAL="$serial" timeout 300s ./gradlew --no-daemon --console=plain \
             :runtime:native:connectedCheck \
@@ -943,6 +962,7 @@ jobs:
           find build/m2-04 -maxdepth 4 -type f -print -exec sha256sum {} \; || true
           find build/m2-05 -maxdepth 5 -type f -print -exec sha256sum {} \; || true
           find build/m2-06 -maxdepth 3 -type f -print -exec sha256sum {} \; || true
+          find integration-tests/build/reports -maxdepth 1 -type f -print -exec sha256sum {} \; || true
 
       - name: Upload bounded validation evidence
         if: always()
@@ -958,6 +978,7 @@ jobs:
             build/m0-05/*.txt
             build/m0-05/test-apks/**/*.json
             build/m0-05/device-api${{ matrix.api }}-x86_64/**/*.json
+            integration-tests/build/reports/fixture-results.json
             build/m0-05/device-api${{ matrix.api }}-x86_64/**/*.txt
             build/m0-05/device-api${{ matrix.api }}-x86_64/**/*.xml
             build/m2-04/device-api${{ matrix.api }}-x86_64/**/*

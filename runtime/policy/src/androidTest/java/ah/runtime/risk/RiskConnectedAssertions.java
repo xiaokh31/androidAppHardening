@@ -15,6 +15,8 @@ import java.util.zip.ZipFile;
 
 /** Device-only assertions invoked by the fixed policy instrumentation runner. */
 public final class RiskConnectedAssertions {
+    private static final long JDWP_WAIT_MILLIS = 3_000L;
+
     private RiskConnectedAssertions() {}
 
     public static String run(android.content.Context context) throws Exception {
@@ -26,13 +28,24 @@ public final class RiskConnectedAssertions {
         ApplicationInfo applicationInfo = context.getApplicationInfo();
         long maxNanos = 0;
         RiskReportV1 last = null;
-        int evaluationCount = expectDebugger ? 1 : 1000;
-        for (int index = 0; index < evaluationCount; index++) {
-            long started = SystemClock.elapsedRealtimeNanos();
-            last = EnvironmentRiskEngine.evaluate(applicationInfo);
-            long elapsed = SystemClock.elapsedRealtimeNanos() - started;
-            if (elapsed > maxNanos) maxNanos = elapsed;
-            if (!expectDebugger) require(elapsed <= 50_000_000L, "risk-budget");
+        if (expectDebugger) {
+            long deadline = SystemClock.elapsedRealtime() + JDWP_WAIT_MILLIS;
+            do {
+                long started = SystemClock.elapsedRealtimeNanos();
+                last = EnvironmentRiskEngine.evaluate(applicationInfo);
+                long elapsed = SystemClock.elapsedRealtimeNanos() - started;
+                if (elapsed > maxNanos) maxNanos = elapsed;
+                if (debuggerDetected(last)) break;
+                SystemClock.sleep(25L);
+            } while (SystemClock.elapsedRealtime() < deadline);
+        } else {
+            for (int index = 0; index < 1000; index++) {
+                long started = SystemClock.elapsedRealtimeNanos();
+                last = EnvironmentRiskEngine.evaluate(applicationInfo);
+                long elapsed = SystemClock.elapsedRealtimeNanos() - started;
+                if (elapsed > maxNanos) maxNanos = elapsed;
+                require(elapsed <= 50_000_000L, "risk-budget");
+            }
         }
         require(last != null && last.version() == 1, "risk-version");
         require(last.signals().size() == 5, "risk-signals");
@@ -109,6 +122,13 @@ public final class RiskConnectedAssertions {
                         && !summary.contains("maps"),
                 "summary-redacted");
         return summary;
+    }
+
+    private static boolean debuggerDetected(RiskReportV1 report) {
+        return report != null && report.signals().stream().anyMatch(signal ->
+                signal.id() == RiskSignalId.JDWP
+                        && signal.state() == SignalState.DETECTED
+                        && signal.score() == 50);
     }
 
     private static RiskReportV1 evaluateMappedFixture(

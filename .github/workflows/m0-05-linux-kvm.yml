@@ -695,7 +695,7 @@ jobs:
             "$jdwp_forward_ready" \
             > "build/m2-05/device-api${API}-x86_64/jdwp-probe.txt"
           test -n "$jdwp_pid"
-          ( { sleep 5; printf 'exit\n'; } | timeout --kill-after=5s 20s \
+          ( { sleep 5; printf 'exit\n' || true; } | timeout --kill-after=5s 20s \
               jdb -attach localhost:8700 >"$jdwp_client" 2>&1 || true ) &
           jdb_pid=$!
           for _ in $(seq 1 550); do

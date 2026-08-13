@@ -301,7 +301,11 @@ object FixtureDriver {
         fun abi(): String = shell("getprop", "ro.product.cpu.abi").output.trim()
 
         fun install(apk: Path) {
-            val result = command("install", "-r", "-t", apk.toString(), allowFailure = true, timeout = Duration.ofMinutes(2))
+            val result = command(
+                "install", "--no-incremental", "-r", "-t", apk.toString(),
+                allowFailure = true,
+                timeout = Duration.ofMinutes(2),
+            )
             check(result.exit == 0 && "Success" in result.output) { "adb install failed: ${result.output.take(300)}" }
         }
 

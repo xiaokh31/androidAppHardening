@@ -1,15 +1,4 @@
-import java.security.MessageDigest
-import java.util.Properties
-import java.util.zip.ZipFile
-import org.gradle.api.DefaultTask
-import org.gradle.api.GradleException
-import org.gradle.api.file.DirectoryProperty
-import org.gradle.api.tasks.CacheableTask
-import org.gradle.api.tasks.InputDirectory
-import org.gradle.api.tasks.OutputDirectory
-import org.gradle.api.tasks.PathSensitive
-import org.gradle.api.tasks.PathSensitivity
-import org.gradle.api.tasks.TaskAction
+import java.io.File
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.testing.Test
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
@@ -35,73 +24,37 @@ dependencies {
     implementation(project(":host:cli"))
 }
 
-@CacheableTask
-abstract class GenerateM301RuntimeBundle : DefaultTask() {
-    @get:InputDirectory
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val sourceApkDirectory: DirectoryProperty
-
-    @get:InputDirectory
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val runtimeTemplateDirectory: DirectoryProperty
-
-    @get:OutputDirectory
-    abstract val outputDirectory: DirectoryProperty
-
-    @TaskAction
-    fun generate() {
-        val apks = sourceApkDirectory.get().asFile.listFiles { file -> file.isFile && file.extension == "apk" }?.toList().orEmpty()
-        if (apks.size != 1) throw GradleException("M3-01 expected one M2-03 runtime source APK, found ${apks.size}")
-        val root = outputDirectory.get().asFile.resolve("ah/runtime")
-        root.deleteRecursively()
-        root.mkdirs()
-        val properties = Properties()
-        properties["version"] = "1"
-        ZipFile(apks.single()).use { zip ->
-            val dexEntries = zip.entries().asSequence().filter { !it.isDirectory && it.name.matches(Regex("classes(?:[2-9][0-9]*)?\\.dex")) }.toList()
-            if (dexEntries.size != 1) throw GradleException("M3-01 runtime bootstrap must be one DEX, found ${dexEntries.size}")
-            val bootstrap = zip.getInputStream(dexEntries.single()).use { it.readBytes() }
-            val bootstrapText = bootstrap.toString(Charsets.ISO_8859_1)
-            listOf(
-                "Lah/runtime/bootstrap/ShellAppComponentFactory;",
-                "Lah/runtime/guard/RuntimeStartupGuard;",
-                "Lah/runtime/loader/PayloadRuntime;",
-            ).forEach { descriptor ->
-                if (!bootstrapText.contains(descriptor)) {
-                    throw GradleException("M3-01 runtime bootstrap is missing $descriptor")
-                }
-            }
-            root.resolve("bootstrap.dex").writeBytes(bootstrap)
-            properties["bootstrap.sha256"] = sha256(bootstrap)
-            listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64").forEach { abi ->
-                val template = runtimeTemplateDirectory.get().asFile.resolve("$abi/libah_runtime.so")
-                if (!template.isFile) throw GradleException("M3-01 runtime release lacks $abi template")
-                val bytes = template.readBytes()
-                val target = root.resolve("$abi/libah_runtime.so")
-                target.parentFile.mkdirs()
-                target.writeBytes(bytes)
-                properties["$abi.sha256"] = sha256(bytes)
-            }
-        }
-        root.resolve("runtime-bundle-v1.properties").outputStream().use { output ->
-            val lines = properties.stringPropertyNames().sorted().joinToString("\n") { key -> "$key=${properties.getProperty(key)}" } + "\n"
-            output.write(lines.toByteArray(Charsets.ISO_8859_1))
-        }
-    }
-
-    private fun sha256(bytes: ByteArray): String =
-        MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it.toInt() and 0xff) }
-}
-
 val generatedRuntimeBundle = layout.buildDirectory.dir("generated/m3-01/runtime-bundle")
+val androidHome = providers.environmentVariable("ANDROID_HOME")
+    .orElse(providers.environmentVariable("ANDROID_SDK_ROOT"))
+val executableSuffix = if (System.getProperty("os.name").startsWith("Windows", ignoreCase = true)) ".bat" else ""
+val bootstrapAar = project(":runtime:bootstrap").layout.buildDirectory.file("outputs/aar/bootstrap-release.aar")
+val policyAar = project(":runtime:policy").layout.buildDirectory.file("outputs/aar/policy-release.aar")
+val nativeAar = project(":runtime:native").layout.buildDirectory.file("outputs/aar/native-release.aar")
+val runtimeTemplates = project(":runtime:native").layout.buildDirectory.dir("intermediates/stripped_native_libs/release/out/lib")
+val d8Executable = layout.file(androidHome.map { File(it, "build-tools/36.1.0/d8$executableSuffix") })
+val androidJar = layout.file(androidHome.map { File(it, "platforms/android-36/android.jar") })
 
-val generateM301RuntimeBundle by tasks.registering(GenerateM301RuntimeBundle::class) {
-    dependsOn(":fixtures:android:assembleM201DirectRelease", ":runtime:native:stageM204RuntimeTemplates")
-    sourceApkDirectory.set(project(":fixtures:android").layout.buildDirectory.dir("outputs/apk/m201Direct/release"))
-    runtimeTemplateDirectory.set(
-        project(":runtime:native").layout.buildDirectory.dir("intermediates/stripped_native_libs/release/out/lib"),
+val generateM301RuntimeBundle by tasks.registering(JavaExec::class) {
+    dependsOn(
+        tasks.named("classes"),
+        ":runtime:bootstrap:assembleRelease",
+        ":runtime:policy:assembleRelease",
+        ":runtime:native:assembleRelease",
+        ":runtime:native:stageM204RuntimeTemplates",
     )
-    outputDirectory.set(generatedRuntimeBundle)
+    inputs.files(bootstrapAar, policyAar, nativeAar, d8Executable, androidJar)
+    inputs.dir(runtimeTemplates)
+    outputs.dir(generatedRuntimeBundle)
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("ah.integration.fixtures.RuntimeBundleGenerator")
+    systemProperty("m301.bootstrapAar", bootstrapAar.get().asFile.absolutePath)
+    systemProperty("m301.policyAar", policyAar.get().asFile.absolutePath)
+    systemProperty("m301.nativeAar", nativeAar.get().asFile.absolutePath)
+    systemProperty("m301.d8", d8Executable.get().asFile.absolutePath)
+    systemProperty("m301.androidJar", androidJar.get().asFile.absolutePath)
+    systemProperty("m301.runtimeTemplates", runtimeTemplates.get().asFile.absolutePath)
+    systemProperty("m301.runtimeBundle", generatedRuntimeBundle.get().asFile.absolutePath)
 }
 
 val fixtureContractTest by tasks.registering(JavaExec::class) {

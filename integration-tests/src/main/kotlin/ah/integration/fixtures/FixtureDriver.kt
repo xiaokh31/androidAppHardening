@@ -314,16 +314,16 @@ object FixtureDriver {
         }
 
         fun start(packageName: String): Result {
-            val result = launch(packageName)
+            val result = shell(
+                "am", "start", "-W", "-n", "$packageName/ah.fixtures.android.m301.FixtureActivity",
+                allowFailure = true,
+            )
             check(result.exit == 0 && "Starting: Intent" in result.output) { "fixture start failed: ${result.output.take(300)}" }
             return result
         }
 
         fun launch(packageName: String): Result =
-            shell(
-                "am", "start", "-W", "-n", "$packageName/ah.fixtures.android.m301.FixtureActivity",
-                allowFailure = true,
-            )
+            shell("am", "start", "-n", "$packageName/ah.fixtures.android.m301.FixtureActivity", allowFailure = true)
 
         fun observeEvents(packageName: String, expected: List<String>, duration: Duration): List<String> {
             Thread.sleep(duration.toMillis())

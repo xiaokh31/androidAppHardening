@@ -4,6 +4,7 @@
 
     <application
         android:name="${fixtureApplication}"
+        android:appComponentFactory="ah.fixtures.android.m301.CustomFixtureFactory"
         android:allowBackup="false"
         android:hasCode="true"
         android:label="M3-01 Fixture"

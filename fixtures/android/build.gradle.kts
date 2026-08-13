@@ -698,8 +698,6 @@ android {
                 buildConfigField("boolean", "M301_JNI", (id.startsWith("jni-")).toString())
                 manifestPlaceholders["fixtureApplication"] =
                     if (id == "custom-application") "ah.fixtures.android.m301.CustomFixtureApplication" else "android.app.Application"
-                manifestPlaceholders["fixtureFactory"] =
-                    if (id == "custom-factory") "ah.fixtures.android.m301.CustomFixtureFactory" else "android.app.AppComponentFactory"
                 if (id == "kotlin-multidex") multiDexEnabled = true
             }
         }
@@ -805,7 +803,13 @@ android {
             "m301JniArmOnly",
         ).forEach { flavor ->
             getByName(flavor) {
-                manifest.srcFile("src/m301Common/AndroidManifest.xml")
+                manifest.srcFile(
+                    if (flavor == "m301CustomFactory") {
+                        "src/m301CustomFactory/AndroidManifest.xml"
+                    } else {
+                        "src/m301Common/AndroidManifest.xml"
+                    },
+                )
                 java.srcDir("src/m301Common/java")
             }
         }

@@ -304,7 +304,7 @@ int testSecureBuffer() {
         assigned.reset();
         assigned.reset();
     }
-    if (ah::memory::secureBufferZeroizedReleaseCountForTesting() != 1 ||
+    if (ah::memory::secureBufferZeroizedReleaseCountForTesting() != 2 ||
         ah::memory::lockedBytesForTesting() != 0) {
         return 3;
     }

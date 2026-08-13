@@ -63,6 +63,19 @@ public final class RiskConnectedAssertions {
                     .orElseThrow(() -> new AssertionError("jdwp-signal-missing"));
             require(jdwp.state() == SignalState.DETECTED && jdwp.score() == 50,
                     "real-jdwp-detected");
+            String summary = "risk_connected=true version=1 api=" + Build.VERSION.SDK_INT
+                    + " total=" + last.totalScore()
+                    + " level=" + last.level().name()
+                    + " action=" + last.action().name()
+                    + " max_us=" + (maxNanos / 1000L)
+                    + " signals=" + last.signals().size()
+                    + " native_mapping_score=not_required"
+                    + " timeout_unavailable=not_required"
+                    + " jdwp=detected";
+            require(!summary.contains("/proc") && !summary.contains("/data/")
+                            && !summary.contains("maps"),
+                    "summary-redacted");
+            return summary;
         }
 
         AtomicLong timeoutClock = new AtomicLong(1L);

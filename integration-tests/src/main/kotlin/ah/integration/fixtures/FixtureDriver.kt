@@ -55,11 +55,11 @@ object FixtureDriver {
             }
             fixtures.forEach { fixture ->
                 println("M3-01 fixture case start: ${fixture.id}")
-                rows += runCase(fixture, signing.resolve("cases/${fixture.id}"), tools, adb, credentials)
+                rows += runCase(fixture, work.resolve("cases/${fixture.id}"), tools, adb, credentials)
             }
-            runSignerNegatives(fixtures.first(), signing.resolve("negative"), tools, credentials, alternate)
+            runSignerNegatives(fixtures.first(), work.resolve("negative"), tools, credentials, alternate)
             if (adb != null) {
-                runDifferentSignerRuntimeNegative(fixtures.first(), signing.resolve("different-signer"), tools, adb, credentials, alternate)
+                runDifferentSignerRuntimeNegative(fixtures.first(), work.resolve("different-signer"), tools, adb, credentials, alternate)
             }
         } catch (caught: Throwable) {
             failure = caught
@@ -124,8 +124,9 @@ object FixtureDriver {
         if (adb != null) try {
             if (shouldInstall) {
                 adb.install(signedOutput)
-                adb.start(packageName)
-                events = adb.awaitEvents(packageName, fixture.expectedEvents)
+                adb.clearLogcat()
+                val launch = adb.start(packageName)
+                events = adb.awaitEvents(packageName, fixture.expectedEvents, launch)
             } else {
                 val text = Files.readString(productReport, StandardCharsets.UTF_8)
                 val armOnlyLimitation = Regex(
@@ -304,9 +305,14 @@ object FixtureDriver {
             check(result.exit == 0 && "Success" in result.output) { "adb install failed: ${result.output.take(300)}" }
         }
 
-        fun start(packageName: String) {
+        fun clearLogcat() {
+            command("logcat", "-c", allowFailure = true)
+        }
+
+        fun start(packageName: String): Result {
             val result = launch(packageName)
             check(result.exit == 0 && "Starting: Intent" in result.output) { "fixture start failed: ${result.output.take(300)}" }
+            return result
         }
 
         fun launch(packageName: String): Result =
@@ -322,14 +328,34 @@ object FixtureDriver {
             return observed
         }
 
-        fun awaitEvents(packageName: String, expected: List<String>): List<String> {
+        fun awaitEvents(packageName: String, expected: List<String>, launch: Result): List<String> {
             repeat(40) {
                 val observed = events(packageName)
                 if (observed == expected) return observed
                 Thread.sleep(250)
             }
-            error("$packageName events did not reach $expected; observed=${events(packageName)}")
+            val diagnostics = focusedDiagnostics(packageName)
+            error(
+                "$packageName events did not reach $expected; observed=${events(packageName)}; " +
+                    "launch=${sanitize(launch.output).take(300)}; diagnostics=$diagnostics",
+            )
         }
+
+        private fun focusedDiagnostics(packageName: String): String {
+            val pid = shell("pidof", packageName, allowFailure = true).output.trim()
+            val logcat = command("logcat", "-d", "-t", "400", allowFailure = true).output
+            val relevant = logcat.lineSequence().filter { line ->
+                packageName in line || "AAH-RUNTIME" in line || "AndroidRuntime" in line ||
+                    "FATAL EXCEPTION" in line || "ClassNotFoundException" in line ||
+                    "UnsatisfiedLinkError" in line || "VerifyError" in line
+            }.toList().takeLast(40).joinToString(" | ")
+            return "pid=${sanitize(pid)} log=${sanitize(relevant).takeLast(6_000)}"
+        }
+
+        private fun sanitize(value: String): String = value
+            .replace(Regex("(?i)\\b[0-9a-f]{64}\\b")) { it.value.take(12) + "<redacted>" }
+            .replace(Regex("/(?:data|sdcard|storage|proc|system|vendor|product|apex|mnt)/[^\\s:;,]+"), "<device-path>")
+            .replace(Regex("[\\r\\n]+"), " ")
 
         fun events(packageName: String): List<String> {
             val result = shell("content", "query", "--uri", "content://$packageName.events/events", allowFailure = true)

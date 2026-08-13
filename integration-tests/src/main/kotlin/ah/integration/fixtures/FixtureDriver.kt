@@ -320,27 +320,27 @@ object FixtureDriver {
         }
 
         fun launch(packageName: String): Result =
-            shell("am", "start", "-n", "$packageName/ah.fixtures.android.m301.FixtureActivity", allowFailure = true)
+            shell(
+                "am", "start", "-W", "-n", "$packageName/ah.fixtures.android.m301.FixtureActivity",
+                allowFailure = true,
+            )
 
         fun observeEvents(packageName: String, expected: List<String>, duration: Duration): List<String> {
-            val deadline = System.nanoTime() + duration.toNanos()
-            var observed = events(packageName)
-            while (observed.none(expected::contains) && System.nanoTime() < deadline) {
-                Thread.sleep(100)
-                observed = events(packageName)
-            }
-            return observed
+            Thread.sleep(duration.toMillis())
+            return events(packageName)
         }
 
         fun awaitEvents(packageName: String, expected: List<String>, launch: Result): List<String> {
-            repeat(40) {
-                val observed = events(packageName)
-                if (observed == expected) return observed
-                Thread.sleep(250)
-            }
+            // `content query` starts the exported provider when the application process is not yet
+            // ready. Polling it concurrently with `am start` can therefore create a second startup
+            // on slower API 29 devices. `am start -W` supplies the synchronization boundary; allow
+            // the remote worker process a bounded settle window, then observe exactly once.
+            Thread.sleep(if ("worker.create" in expected) 1_000 else 250)
+            val observed = events(packageName)
+            if (observed == expected) return observed
             val diagnostics = focusedDiagnostics(packageName)
             error(
-                "$packageName events did not reach $expected; observed=${events(packageName)}; " +
+                "$packageName events did not reach $expected; observed=$observed; " +
                     "launch=${sanitize(launch.output).take(300)}; diagnostics=$diagnostics",
             )
         }

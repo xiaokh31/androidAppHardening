@@ -61,6 +61,16 @@ abstract class GenerateM301RuntimeBundle : DefaultTask() {
             val dexEntries = zip.entries().asSequence().filter { !it.isDirectory && it.name.matches(Regex("classes(?:[2-9][0-9]*)?\\.dex")) }.toList()
             if (dexEntries.size != 1) throw GradleException("M3-01 runtime bootstrap must be one DEX, found ${dexEntries.size}")
             val bootstrap = zip.getInputStream(dexEntries.single()).use { it.readBytes() }
+            val bootstrapText = bootstrap.toString(Charsets.ISO_8859_1)
+            listOf(
+                "Lah/runtime/bootstrap/ShellAppComponentFactory;",
+                "Lah/runtime/guard/RuntimeStartupGuard;",
+                "Lah/runtime/loader/PayloadRuntime;",
+            ).forEach { descriptor ->
+                if (!bootstrapText.contains(descriptor)) {
+                    throw GradleException("M3-01 runtime bootstrap is missing $descriptor")
+                }
+            }
             root.resolve("bootstrap.dex").writeBytes(bootstrap)
             properties["bootstrap.sha256"] = sha256(bootstrap)
             listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64").forEach { abi ->
@@ -86,8 +96,8 @@ abstract class GenerateM301RuntimeBundle : DefaultTask() {
 val generatedRuntimeBundle = layout.buildDirectory.dir("generated/m3-01/runtime-bundle")
 
 val generateM301RuntimeBundle by tasks.registering(GenerateM301RuntimeBundle::class) {
-    dependsOn(":fixtures:android:assembleM203DirectRelease", ":runtime:native:stageM204RuntimeTemplates")
-    sourceApkDirectory.set(project(":fixtures:android").layout.buildDirectory.dir("outputs/apk/m203Direct/release"))
+    dependsOn(":fixtures:android:assembleM201DirectRelease", ":runtime:native:stageM204RuntimeTemplates")
+    sourceApkDirectory.set(project(":fixtures:android").layout.buildDirectory.dir("outputs/apk/m201Direct/release"))
     runtimeTemplateDirectory.set(
         project(":runtime:native").layout.buildDirectory.dir("intermediates/stripped_native_libs/release/out/lib"),
     )

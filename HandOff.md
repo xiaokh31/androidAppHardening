@@ -2,12 +2,12 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260814-011013
-updated_at: 2026-08-14T02:23:00+08:00
+updated_at: 2026-08-14T03:09:15+08:00
 updated_by: /root
 state: active
 source_branch: chore/m3-01-android-fixtures
 base_commit: 6a1aa6a68ac58e0861f1e866c613138c5a9bc24c
-working_tree: dirty
+working_tree: clean
 current_milestone: M3
 active_task: M3-01
 next_owner: /root
@@ -21,7 +21,7 @@ Implement the nine public M3-01 Android fixtures, deterministic catalog/build co
 
 ## Current State
 
-- M3-01 local implementation is ready on `chore/m3-01-android-fixtures` from clean `main@6a1aa6a68ac58e0861f1e866c613138c5a9bc24c`. All nine Release/R8 fixture contracts and deterministic unsigned builds pass; the bounded Host matrix passed nine product flows plus unsigned/multiple-current negatives in 5m16s, and removed all ephemeral signing material. The implementation also fixes the existing ELF parser to accept file-less `SHT_NOBITS` sections, with a focused repacker regression. No local emulator or physical device was started. Publication, API 29/36 x86_64 KVM, ARM device validation, README and merge gates remain pending.
+- M3-01 is published on `chore/m3-01-android-fixtures`; the unique draft PR [#49](https://github.com/xiaokh31/androidAppHardening/pull/49) closes Issue #18. All nine Release/R8 fixture contracts and deterministic unsigned builds pass; the bounded Host matrix passed nine product flows plus unsigned/multiple-current negatives in 5m16s and removed all ephemeral signing material. API 29 ARM64 validation reached the authorized non-root device, but MIUI rejected unattended installation with `INSTALL_FAILED_USER_RESTRICTED`; ADB also denied input injection and verifier-setting changes, so no bypass or repeated prompt loop was used. All temporary APK/signing material and fixture packages were removed. Head `4ff1ac5103e58876df4cc4810bfaf2d0b98f6009` removes the OEM-sensitive `am start -W` wait while preserving exact event assertions and has local compile/fixture-contract PASS. Exact-head Build and API 29/36 KVM are running; Governance exposed only this stale clean-state declaration. ARM completion, README, ready/merge and final gates remain pending.
 - M2-06 is complete. Production implementation `ac374ad03bce87ac7068cf124f4721441f79f59f` and independent review remain `P0=0/P1=0/P2=0`; merger-ready head `9cbc6b6681b8fe1c4bb45c4cd86eaba6fe0086e7` passed Build `31677309988`, Governance `31677309943`, and API 29/36 KVM `31677309937`. PR [#48](https://github.com/xiaokh31/androidAppHardening/pull/48) merged with expected-head protection as `aa934080d37dd7590034829fbd436c21e69074a3`, and Issue #17 closed. The bounded JDWP acceptance fix changed test orchestration only; production Runtime/Native behavior and the 50 ms fail-safe are unchanged. No local emulator or physical device was started.
 - M2-05 is merged and complete. Final exact-head `a59345862e7a7ca164fbbc69ed6447efc9f5ddba` passed Build `31616216280`, Governance `31616216704` and API 29/36 KVM `31616216412`; independent full plus bounded incremental review returned `P0=0`, `P1=0`, `P2=0`. PR [#47](https://github.com/xiaokh31/androidAppHardening/pull/47) merged as `815eb55f87bb37e50f00eb91293e930a950d60ac` and Issue [#16](https://github.com/xiaokh31/androidAppHardening/issues/16) closed. API 29/36 ordinary policy, real JDWP, API 29 x86, extracted/direct Release/R8, late mapping aliases and cleanup all passed. The API 29 ARM64 Native probe passed; the MIUI policy APK was rejected before instrumentation with `INSTALL_FAILED_USER_RESTRICTED` and is not presented as a PASS. No local emulator or repeated install prompt was used.
 - ADR-0010 fixes version 1 weights/actions and two deduplicated internal mapping families. Java exposes immutable risk models and the sole `evaluate(ApplicationInfo)` entry; Native reads bounded current-process status/maps and returns schema/versioned normalized states. The final boundary fix raises the still-bounded maps input to 2 MiB so API 36 direct/R8 late mappings remain visible, while `2 MiB + 1`, deadline, no-throw allocation and clearing semantics remain fail-safe. M2-06 is complete; M3/M4 remain unstarted and require a separate task start.
@@ -362,6 +362,18 @@ Implement the nine public M3-01 Android fixtures, deterministic catalog/build co
 - M2-02 第三实现层已完成本地检查点：同一 `sourceDir` 只读文件映射、OS 只读 DEX commit、generation+slot 类型化 JNI handle、同 handle `AHMD` 认证 metadata、精确五 JNI 方法、Java primitive/finally 交接窗口、幂等 `LoadedPayload` owner，以及 M0-05 等价 Native 搜索路径和三参数 API 29 `InMemoryDexClassLoader` 已接通。Java 17 编译/lint、NDK 四 ABI warnings-as-errors 与离线根 `assembleRelease check` 284-task 均 PASS，四个 ELF 都含唯一 104-byte alloc/read-only `.ah_share_v1`，未启动设备或模拟器。证据更新于 `docs/evidence/M2-02/local-validation.md`；任务仍未完成或发布，下一步仅补 failure injection、Host sanitizer/fuzz/OOM 与已授权 KVM/arm64 验收，不启动 M2-03。
 
 ## Verification Evidence
+
+### M3-01 active publication and ARM gate
+
+- task_id: M3-01
+- git_commit: 4ff1ac5103e58876df4cc4810bfaf2d0b98f6009
+- command: `:integration-tests:compileKotlin :integration-tests:fixtureContractTest`; local nine-fixture Host full-flow matrix and cleanup
+- exit_code: 0
+- environment: Windows 10 x64 local; API 29 arm64-v8a non-root `user`, `ro.debuggable=0` physical device; Ubuntu/Windows Build and API 29/36 x86_64 KVM pending; no local emulator
+- timestamp: 2026-08-14T03:09:15+08:00
+- artifact: `docs/evidence/M3-01/local-validation.md`; PR #49; local ignored fixture report/build outputs; no APK, keystore, password or device identifier committed
+- sha256: 385174c5a355dc3cfb3fb2606de8a72c931b7b88640a90c640fc8670abbb032f
+- result: IN_PROGRESS; Host/build contracts pass and cleanup is complete; the separate ARM run exited nonzero at `INSTALL_FAILED_USER_RESTRICTED` and requires one platform installation confirmation; exact-head CI and README/merge gates remain open
 
 ### M2-06 final acceptance and merge
 

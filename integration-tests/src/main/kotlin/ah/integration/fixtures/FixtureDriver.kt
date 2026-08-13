@@ -210,8 +210,8 @@ object FixtureDriver {
         val packageName = packageName(fixture.id)
         try {
             adb.install(mismatched)
-            val launch = adb.shell("am", "start", "-W", "-n", "$packageName/ah.fixtures.android.m301.FixtureActivity", allowFailure = true)
-            val events = adb.events(packageName)
+            val launch = adb.launch(packageName)
+            val events = adb.observeEvents(packageName, fixture.expectedEvents, Duration.ofSeconds(3))
             check(launch.exit != 0 || events.none(fixture.expectedEvents::contains)) {
                 "different signer reached business events: $events"
             }
@@ -305,8 +305,21 @@ object FixtureDriver {
         }
 
         fun start(packageName: String) {
-            val result = shell("am", "start", "-W", "-n", "$packageName/ah.fixtures.android.m301.FixtureActivity", allowFailure = true)
-            check(result.exit == 0 && "Status: ok" in result.output) { "fixture start failed: ${result.output.take(300)}" }
+            val result = launch(packageName)
+            check(result.exit == 0 && "Starting: Intent" in result.output) { "fixture start failed: ${result.output.take(300)}" }
+        }
+
+        fun launch(packageName: String): Result =
+            shell("am", "start", "-n", "$packageName/ah.fixtures.android.m301.FixtureActivity", allowFailure = true)
+
+        fun observeEvents(packageName: String, expected: List<String>, duration: Duration): List<String> {
+            val deadline = System.nanoTime() + duration.toNanos()
+            var observed = events(packageName)
+            while (observed.none(expected::contains) && System.nanoTime() < deadline) {
+                Thread.sleep(100)
+                observed = events(packageName)
+            }
+            return observed
         }
 
         fun awaitEvents(packageName: String, expected: List<String>): List<String> {

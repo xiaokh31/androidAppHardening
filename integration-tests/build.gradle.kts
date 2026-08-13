@@ -118,6 +118,7 @@ tasks.register<JavaExec>("runFixtureMatrix") {
     systemProperty("m301.report", layout.buildDirectory.file("reports/fixture-results.json").get().asFile.absolutePath)
     systemProperty("m301.signing", layout.buildDirectory.dir("test-signing").get().asFile.absolutePath)
     systemProperty("m301.work", layout.buildDirectory.dir("fixture-matrix").get().asFile.absolutePath)
+    providers.gradleProperty("m301Case").orNull?.let { systemProperty("m301.case", it) }
 }
 
 tasks.register<JavaExec>("runFixtureHostMatrix") {

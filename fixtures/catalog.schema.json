@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xiaokh31/androidAppHardening/fixtures/catalog.schema.json",
+  "title": "M3-01 Android fixture catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "fixtures"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "fixtures": {
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "unsigned_fixture_apk", "language", "dex_mode", "startup_customization", "expected_events", "payload_abis", "expected_outcome"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+          "unsigned_fixture_apk": { "type": "string", "pattern": "^android/build/fixtures/[a-z0-9-]+\\.apk$" },
+          "language": { "enum": ["java", "kotlin"] },
+          "dex_mode": { "enum": ["single", "multi"] },
+          "startup_customization": { "enum": ["none", "application", "app_component_factory", "provider", "multi_process_service"] },
+          "expected_events": { "type": "array", "minItems": 2, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z0-9_.-]+$" } },
+          "payload_abis": { "type": "array", "uniqueItems": true, "items": { "enum": ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"] } },
+          "expected_outcome": { "enum": ["compatible", "arm_device_only"] }
+        }
+      }
+    }
+  }
+}

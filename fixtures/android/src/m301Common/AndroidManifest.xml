@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application
+        android:name="${fixtureApplication}"
+        android:allowBackup="false"
+        android:hasCode="true"
+        android:label="M3-01 Fixture"
+        tools:replace="android:hasCode">
+
+        <activity
+            android:name="ah.fixtures.android.m301.FixtureActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <provider
+            android:name="ah.fixtures.android.m301.FixtureEventProvider"
+            android:authorities="${applicationId}.events"
+            android:exported="true"
+            android:initOrder="100" />
+
+        <service
+            android:name="ah.fixtures.android.m301.WorkerService"
+            android:exported="false"
+            android:process=":worker" />
+    </application>
+</manifest>

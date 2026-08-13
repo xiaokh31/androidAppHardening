@@ -1,0 +1,74 @@
+schema_version: 1
+fixtures:
+  - id: java-single-dex
+    unsigned_fixture_apk: android/build/fixtures/java-single-dex.apk
+    language: java
+    dex_mode: single
+    startup_customization: none
+    expected_events: [provider.ready, activity.create]
+    payload_abis: []
+    expected_outcome: compatible
+  - id: kotlin-single-dex
+    unsigned_fixture_apk: android/build/fixtures/kotlin-single-dex.apk
+    language: kotlin
+    dex_mode: single
+    startup_customization: none
+    expected_events: [provider.ready, activity.create, kotlin.marker]
+    payload_abis: []
+    expected_outcome: compatible
+  - id: kotlin-multidex
+    unsigned_fixture_apk: android/build/fixtures/kotlin-multidex.apk
+    language: kotlin
+    dex_mode: multi
+    startup_customization: none
+    expected_events: [provider.ready, activity.create, kotlin.marker, multidex.class]
+    payload_abis: []
+    expected_outcome: compatible
+  - id: custom-application
+    unsigned_fixture_apk: android/build/fixtures/custom-application.apk
+    language: java
+    dex_mode: single
+    startup_customization: application
+    expected_events: [provider.ready, custom_application.create, activity.create]
+    payload_abis: []
+    expected_outcome: compatible
+  - id: custom-factory
+    unsigned_fixture_apk: android/build/fixtures/custom-factory.apk
+    language: java
+    dex_mode: single
+    startup_customization: app_component_factory
+    expected_events: [factory.classloader, factory.application, provider.ready, activity.create]
+    payload_abis: []
+    expected_outcome: compatible
+  - id: startup-provider
+    unsigned_fixture_apk: android/build/fixtures/startup-provider.apk
+    language: java
+    dex_mode: single
+    startup_customization: provider
+    expected_events: [provider.ready, startup_provider.create, activity.create]
+    payload_abis: []
+    expected_outcome: compatible
+  - id: multi-process
+    unsigned_fixture_apk: android/build/fixtures/multi-process.apk
+    language: java
+    dex_mode: single
+    startup_customization: multi_process_service
+    expected_events: [provider.ready, activity.create, worker.create]
+    payload_abis: []
+    expected_outcome: compatible
+  - id: jni-four-abi
+    unsigned_fixture_apk: android/build/fixtures/jni-four-abi.apk
+    language: java
+    dex_mode: single
+    startup_customization: none
+    expected_events: [provider.ready, activity.create, jni.marker]
+    payload_abis: [armeabi-v7a, arm64-v8a, x86, x86_64]
+    expected_outcome: compatible
+  - id: jni-arm-only
+    unsigned_fixture_apk: android/build/fixtures/jni-arm-only.apk
+    language: java
+    dex_mode: single
+    startup_customization: none
+    expected_events: [provider.ready, activity.create, jni.marker]
+    payload_abis: [armeabi-v7a, arm64-v8a]
+    expected_outcome: arm_device_only

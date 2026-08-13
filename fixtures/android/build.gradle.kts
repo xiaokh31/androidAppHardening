@@ -1,8 +1,13 @@
 import java.io.File
 import java.io.FileOutputStream
+import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.charset.StandardCharsets
+import java.util.zip.CRC32
+import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
+import java.util.zip.ZipOutputStream
 import javax.inject.Inject
 import javax.tools.ToolProvider
 import org.gradle.api.DefaultTask
@@ -14,6 +19,7 @@ import org.gradle.api.provider.Property
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.PathSensitive
@@ -146,6 +152,209 @@ abstract class GenerateM202Placeholders : DefaultTask() {
         assetRoot.mkdirs()
         assetRoot.resolve("config.bin").writeBytes(ByteArray(768))
         assetRoot.resolve("payload.ahdc").writeBytes(ByteArray(160))
+    }
+}
+
+@CacheableTask
+abstract class GenerateM301SecondaryDex
+@Inject
+constructor(private val execOperations: ExecOperations) : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val source: RegularFileProperty
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val androidJar: RegularFileProperty
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val d8Executable: RegularFileProperty
+
+    @get:Input
+    abstract val jdkRuntimeVersion: Property<String>
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun generate() {
+        if (jdkRuntimeVersion.get() != "17.0.19+10") {
+            throw GradleException("M3-01 requires JDK 17.0.19+10, got ${jdkRuntimeVersion.get()}")
+        }
+        val compiler = ToolProvider.getSystemJavaCompiler()
+            ?: throw GradleException("M3-01 requires the pinned JDK, not a JRE")
+        val classes = temporaryDir.resolve("classes")
+        val dex = outputDirectory.get().asFile
+        classes.deleteRecursively()
+        dex.deleteRecursively()
+        classes.mkdirs()
+        dex.mkdirs()
+        compiler.getStandardFileManager(null, null, Charsets.UTF_8).use { manager ->
+            val units = manager.getJavaFileObjects(source.get().asFile)
+            val options = listOf(
+                "-encoding", "UTF-8", "-source", "17", "-target", "17",
+                "-classpath", androidJar.get().asFile.absolutePath,
+                "-d", classes.absolutePath,
+            )
+            if (compiler.getTask(null, manager, null, options, null, units).call() != true) {
+                throw GradleException("M3-01 secondary DEX javac failed")
+            }
+        }
+        val classFiles = classes.walkTopDown().filter { it.isFile && it.extension == "class" }.toList()
+        if (classFiles.size != 1) throw GradleException("M3-01 expected one secondary class")
+        val arguments = listOf(
+            d8Executable.get().asFile.absolutePath,
+            "--min-api", "29",
+            "--lib", androidJar.get().asFile.absolutePath,
+            "--output", dex.absolutePath,
+            classFiles.single().absolutePath,
+        )
+        execOperations.exec {
+            if (System.getProperty("os.name").startsWith("Windows")) {
+                commandLine(listOf("cmd.exe", "/d", "/c") + arguments)
+            } else {
+                commandLine(arguments)
+            }
+        }.assertNormalExitValue()
+        if (dex.resolve("classes.dex").length() < 112) {
+            throw GradleException("M3-01 secondary DEX is missing or truncated")
+        }
+    }
+}
+
+@CacheableTask
+abstract class AssembleM301Fixtures : DefaultTask() {
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val sourceApkDirectories: ConfigurableFileCollection
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val secondaryDex: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun assemble() {
+        val outputRoot = outputDirectory.get().asFile
+        outputRoot.deleteRecursively()
+        outputRoot.mkdirs()
+        val specs = listOf(
+            "m301JavaSingleDex" to "java-single-dex",
+            "m301KotlinSingleDex" to "kotlin-single-dex",
+            "m301KotlinMultidex" to "kotlin-multidex",
+            "m301CustomApplication" to "custom-application",
+            "m301CustomFactory" to "custom-factory",
+            "m301StartupProvider" to "startup-provider",
+            "m301MultiProcess" to "multi-process",
+            "m301JniFourAbi" to "jni-four-abi",
+            "m301JniArmOnly" to "jni-arm-only",
+        )
+        val sourceDirectories = sourceApkDirectories.files.associateBy { it.parentFile.name }
+        specs.forEach { (flavor, id) ->
+            val sourceDirectory = sourceDirectories[flavor]
+                ?: throw GradleException("M3-01 source directory missing for $flavor")
+            val candidates = sourceDirectory.listFiles { file -> file.isFile && file.extension == "apk" }?.toList().orEmpty()
+            if (candidates.size != 1) {
+                throw GradleException("M3-01 expected one $flavor Release APK, found ${candidates.size}")
+            }
+            val target = outputRoot.resolve("$id.apk")
+            canonicalize(candidates.single(), target, id)
+            verify(target, id)
+            val rebuilt = temporaryDir.resolve("reproducibility/$id.apk")
+            rebuilt.parentFile.mkdirs()
+            canonicalize(candidates.single(), rebuilt, id)
+            if (!target.readBytes().contentEquals(rebuilt.readBytes())) {
+                throw GradleException("M3-01 $id unsigned fixture is not reproducible")
+            }
+        }
+    }
+
+    private fun canonicalize(source: File, target: File, id: String) {
+        ZipFile(source).use { input ->
+            val bytes = ByteArrayOutputStream()
+            ZipOutputStream(bytes).use { output ->
+                output.setLevel(9)
+                input.entries().asSequence()
+                    .filterNot(ZipEntry::isDirectory)
+                    .filter { entry -> !isSignatureEntry(entry.name) }
+                    .filter { entry -> id != "kotlin-multidex" || entry.name != "classes2.dex" }
+                    .filter { entry -> includeNativeEntry(id, entry.name) }
+                    .sortedBy(ZipEntry::getName)
+                    .forEach { entry ->
+                        val content = input.getInputStream(entry).use { it.readBytes() }
+                        val canonical = ZipEntry(entry.name)
+                        canonical.time = 315_532_800_000L // 1980-01-01, representable without timestamp extras.
+                        if (entry.name == "resources.arsc") {
+                            val crc = CRC32().apply { update(content) }
+                            canonical.method = ZipEntry.STORED
+                            canonical.size = content.size.toLong()
+                            canonical.compressedSize = content.size.toLong()
+                            canonical.crc = crc.value
+                            canonical.extra = zipAlignmentExtra(bytes.size(), entry.name)
+                        }
+                        output.putNextEntry(canonical)
+                        output.write(content)
+                        output.closeEntry()
+                    }
+                if (id == "kotlin-multidex") {
+                    val secondary = ZipEntry("classes2.dex")
+                    secondary.time = 315_532_800_000L
+                    output.putNextEntry(secondary)
+                    secondaryDex.get().asFile.inputStream().use { it.copyTo(output) }
+                    output.closeEntry()
+                }
+            }
+            target.writeBytes(bytes.toByteArray())
+        }
+    }
+
+    private fun zipAlignmentExtra(offset: Int, name: String): ByteArray? {
+        val nameBytes = name.toByteArray(StandardCharsets.UTF_8).size
+        val required = (4 - ((offset + 30 + nameBytes) and 3)) and 3
+        if (required == 0) return null
+        val extra = ByteArray(required + 4)
+        extra[0] = 0xfe.toByte()
+        extra[1] = 0xca.toByte()
+        extra[2] = required.toByte()
+        extra[3] = 0
+        return extra
+    }
+
+    private fun isSignatureEntry(name: String): Boolean {
+        val upper = name.uppercase()
+        return upper == "META-INF/MANIFEST.MF" ||
+            (upper.startsWith("META-INF/") && listOf(".SF", ".RSA", ".DSA", ".EC").any(upper::endsWith))
+    }
+
+    private fun includeNativeEntry(id: String, name: String): Boolean {
+        if (!name.startsWith("lib/")) return true
+        if (id != "jni-four-abi" && id != "jni-arm-only") return false
+        if (!name.endsWith("/libfixture_jni.so")) return false
+        return id != "jni-arm-only" || name.startsWith("lib/armeabi-v7a/") || name.startsWith("lib/arm64-v8a/")
+    }
+
+    private fun verify(apk: File, id: String) {
+        ZipFile(apk).use { zip ->
+            val names = zip.entries().asSequence().filterNot(ZipEntry::isDirectory).map(ZipEntry::getName).toList()
+            if (names.any(::isSignatureEntry)) throw GradleException("M3-01 $id retained signing metadata")
+            val dexCount = names.count { it.matches(Regex("classes(?:[2-9][0-9]*)?\\.dex")) }
+            if (id == "kotlin-multidex") {
+                if (dexCount < 2) throw GradleException("M3-01 kotlin-multidex did not produce multiple DEX files")
+            } else if (dexCount != 1) {
+                throw GradleException("M3-01 $id expected one DEX, found $dexCount")
+            }
+            val abis = names.filter { it.startsWith("lib/") && it.endsWith("/libfixture_jni.so") }
+                .map { it.split('/')[1] }.toSet()
+            val expected = when (id) {
+                "jni-four-abi" -> setOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+                "jni-arm-only" -> setOf("armeabi-v7a", "arm64-v8a")
+                else -> emptySet()
+            }
+            if (abis != expected) throw GradleException("M3-01 $id ABI mismatch: $abis != $expected")
+        }
     }
 }
 
@@ -463,6 +672,35 @@ android {
             applicationIdSuffix = ".m201.direct"
             testInstrumentationRunner = "ah.fixtures.android.m201.M201DeviceRunner"
         }
+        val m301 = listOf(
+            Triple("m301JavaSingleDex", "java-single-dex", ".m301.java_single"),
+            Triple("m301KotlinSingleDex", "kotlin-single-dex", ".m301.kotlin_single"),
+            Triple("m301KotlinMultidex", "kotlin-multidex", ".m301.kotlin_multidex"),
+            Triple("m301CustomApplication", "custom-application", ".m301.custom_application"),
+            Triple("m301CustomFactory", "custom-factory", ".m301.custom_factory"),
+            Triple("m301StartupProvider", "startup-provider", ".m301.startup_provider"),
+            Triple("m301MultiProcess", "multi-process", ".m301.multi_process"),
+            Triple("m301JniFourAbi", "jni-four-abi", ".m301.jni_four"),
+            Triple("m301JniArmOnly", "jni-arm-only", ".m301.jni_arm"),
+        )
+        m301.forEach { (name, id, suffix) ->
+            create(name) {
+                dimension = "poc"
+                applicationIdSuffix = suffix
+                ndk {
+                    // Keep this literal so Android Lint can prove the synthetic fixture includes ChromeOS ABIs.
+                    abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+                }
+                buildConfigField("String", "FIXTURE_ID", "\"$id\"")
+                buildConfigField("boolean", "M301_KOTLIN", (id.startsWith("kotlin-")).toString())
+                buildConfigField("boolean", "M301_STARTUP_PROVIDER", (id == "startup-provider").toString())
+                buildConfigField("boolean", "M301_MULTI_PROCESS", (id == "multi-process").toString())
+                buildConfigField("boolean", "M301_JNI", (id.startsWith("jni-")).toString())
+                manifestPlaceholders["fixtureApplication"] =
+                    if (id == "custom-application") "ah.fixtures.android.m301.CustomFixtureApplication" else "android.app.Application"
+                if (id == "kotlin-multidex") multiDexEnabled = true
+            }
+        }
     }
 
     androidResources {
@@ -553,6 +791,28 @@ android {
         getByName("androidTestM203Direct") {
             java.srcDir("src/androidTestM203Fixture/java")
         }
+        listOf(
+            "m301JavaSingleDex",
+            "m301KotlinSingleDex",
+            "m301KotlinMultidex",
+            "m301CustomApplication",
+            "m301CustomFactory",
+            "m301StartupProvider",
+            "m301MultiProcess",
+            "m301JniFourAbi",
+            "m301JniArmOnly",
+        ).forEach { flavor ->
+            getByName(flavor) {
+                manifest.srcFile(
+                    if (flavor == "m301CustomFactory") {
+                        "src/m301CustomFactory/AndroidManifest.xml"
+                    } else {
+                        "src/m301Common/AndroidManifest.xml"
+                    },
+                )
+                java.srcDir("src/m301Common/java")
+            }
+        }
     }
 
     compileOptions {
@@ -587,6 +847,11 @@ val d8Command = if (System.getProperty("os.name").startsWith("Windows")) "d8.bat
 val d8ExecutableFile = File(androidHome, "build-tools/$buildToolsVersion/$d8Command")
 
 androidComponents {
+    onVariants(selector().all()) { variant ->
+        if (variant.productFlavors.any { (_, flavor) -> flavor.startsWith("m301") }) {
+            variant.packaging.jniLibs.useLegacyPackaging.set(true)
+        }
+    }
     onVariants(selector().withFlavor("poc" to "classloaderPoc")) { variant ->
         val taskName =
             "generate${variant.name.replaceFirstChar { character -> character.uppercase() }}PayloadDex"
@@ -641,6 +906,37 @@ androidComponents {
         variant.packaging.jniLibs.useLegacyPackaging.set(false)
         registerM202Placeholders(variant)
     }
+}
+
+val m301FixtureFlavors = listOf(
+    "M301JavaSingleDex",
+    "M301KotlinSingleDex",
+    "M301KotlinMultidex",
+    "M301CustomApplication",
+    "M301CustomFactory",
+    "M301StartupProvider",
+    "M301MultiProcess",
+    "M301JniFourAbi",
+    "M301JniArmOnly",
+)
+
+val generateM301SecondaryDex = tasks.register<GenerateM301SecondaryDex>("generateM301SecondaryDex") {
+    source.set(layout.projectDirectory.file("src/m301KotlinMultidex/secondary/SecondaryMarker.java"))
+    androidJar.set(androidJarFile)
+    d8Executable.set(d8ExecutableFile)
+    jdkRuntimeVersion.set(providers.systemProperty("java.runtime.version"))
+    outputDirectory.set(layout.buildDirectory.dir("generated/m3-01/secondary-dex"))
+}
+
+tasks.register<AssembleM301Fixtures>("assembleFixtures") {
+    group = "verification"
+    description = "Builds the nine deterministic unsigned M3-01 Android fixtures."
+    dependsOn(m301FixtureFlavors.map { "assemble${it}Release" })
+    sourceApkDirectories.from(m301FixtureFlavors.map { flavor ->
+        layout.buildDirectory.dir("outputs/apk/${flavor.replaceFirstChar { it.lowercase() }}/release")
+    })
+    secondaryDex.set(generateM301SecondaryDex.flatMap { it.outputDirectory.file("classes.dex") })
+    outputDirectory.set(layout.buildDirectory.dir("fixtures"))
 }
 
 fun registerM202Placeholders(variant: com.android.build.api.variant.ApplicationVariant) {
@@ -704,4 +1000,6 @@ dependencies {
     add("m201DirectImplementation", project(":runtime:bootstrap"))
     add("androidTestCompileOnly", project(":runtime:native"))
     add("androidTestCompileOnly", project(":runtime:policy"))
+    add("m301KotlinSingleDexImplementation", "org.jetbrains.kotlin:kotlin-stdlib:${libs.versions.kotlin.get()}")
+    add("m301KotlinMultidexImplementation", "org.jetbrains.kotlin:kotlin-stdlib:${libs.versions.kotlin.get()}")
 }

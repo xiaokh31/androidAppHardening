@@ -46,3 +46,7 @@
 # public facade against this synthetic Release/R8 target.
 -keep class ah.runtime.risk.** { *; }
 -keepattributes *Annotation*,InnerClasses,EnclosingMethod
+# M3-01 release fixtures deliberately reflect these marker classes. The rules are fixture-only
+# and do not enter any runtime or consumer ProGuard configuration.
+-keep class ah.fixtures.android.m301.KotlinMarker { *; }
+-keep class ah.fixtures.android.payload.PayloadJni { *; }

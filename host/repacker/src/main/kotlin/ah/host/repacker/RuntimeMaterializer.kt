@@ -210,6 +210,7 @@ private class ElfLayout(val elfClass: Int, val machine: Int, val sections: List<
                 return if (elfClass == 1) {
                     SectionHeader(
                         leU4(bytes, base).toIntChecked("elfName"),
+                        leU4(bytes, base + 4).toIntChecked("elfType"),
                         leU4(bytes, base + 8),
                         leU4(bytes, base + 16),
                         leU4(bytes, base + 20),
@@ -217,6 +218,7 @@ private class ElfLayout(val elfClass: Int, val machine: Int, val sections: List<
                 } else {
                     SectionHeader(
                         leU4(bytes, base).toIntChecked("elfName"),
+                        leU4(bytes, base + 4).toIntChecked("elfType"),
                         leU8(bytes, base + 8),
                         leU8(bytes, base + 24),
                         leU8(bytes, base + 32),
@@ -234,7 +236,9 @@ private class ElfLayout(val elfClass: Int, val machine: Int, val sections: List<
             val sections = ArrayList<ElfSection>(sectionCount)
             repeat(sectionCount) { index ->
                 val header = sectionHeader(index)
-                if (header.offset < 0L || header.size < 0L || header.offset > bytes.size.toLong() - header.size) {
+                if (header.offset < 0L || header.size < 0L ||
+                    (header.type != ELF_SHT_NOBITS && header.offset > bytes.size.toLong() - header.size)
+                ) {
                     packageFailure(PackageErrorCode.PACKAGE_ABI_MISMATCH, "elfSectionRange")
                 }
                 val name = readCString(bytes, stringStart, stringSize, header.nameOffset)
@@ -245,7 +249,7 @@ private class ElfLayout(val elfClass: Int, val machine: Int, val sections: List<
     }
 }
 
-private data class SectionHeader(val nameOffset: Int, val flags: Long, val offset: Long, val size: Long)
+private data class SectionHeader(val nameOffset: Int, val type: Int, val flags: Long, val offset: Long, val size: Long)
 
 private fun readCString(bytes: ByteArray, start: Int, size: Int, offset: Int): String {
     if (offset !in 0 until size) packageFailure(PackageErrorCode.PACKAGE_ABI_MISMATCH, "elfSectionName")
@@ -306,3 +310,4 @@ private const val ELF_SHF_ALLOC: Long = 0x2L
 private const val MAX_ELF_SECTIONS: Int = 4_096
 private const val MAX_STRING_TABLE_BYTES: Long = 1024L * 1024L
 private const val MAX_SECTION_NAME_BYTES: Int = 255
+private const val ELF_SHT_NOBITS: Int = 8

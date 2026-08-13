@@ -1,16 +1,16 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260814-071719
-updated_at: 2026-08-14T07:17:19+08:00
+handoff_id: HO-20260814-073100
+updated_at: 2026-08-14T07:31:00+08:00
 updated_by: /root
 state: ready
 source_branch: main
-base_commit: c281a3a011229632cfe7a361d998eb8255b22b75
+base_commit: 9150f6a64ef7022116d2b7575d6eda273b83301e
 working_tree: clean
 current_milestone: M3
-active_task: M3-01
-next_owner: /root
+active_task: NONE
+next_owner: unassigned
 ---
 
 # Project HandOff
@@ -21,7 +21,7 @@ Implement the nine public M3-01 Android fixtures, deterministic catalog/build co
 
 ## Current State
 
-- M3-01 is merger-ready on `chore/m3-01-android-fixtures`; the unique draft PR [#49](https://github.com/xiaokh31/androidAppHardening/pull/49) closes Issue #18. Exact implementation freeze `c281a3a011229632cfe7a361d998eb8255b22b75` passed the nine-fixture Host matrix, Ubuntu/Windows Build `31744719469`, Governance `31744719457`, API 29/36 x86_64 KVM `31744719467`, and a bounded API 29 arm64-v8a physical-device full-flow run. All exact event contracts, ARM-only JNI, signer negatives, input immutability, unsigned product output, ephemeral signing cleanup and package cleanup passed. README/task/evidence/HandOff are reconciled for an evidence-only child; exact-head CI, ready/merge and post-merge gates remain.
+- M3-01 is complete. Exact implementation freeze `c281a3a011229632cfe7a361d998eb8255b22b75` and merger-ready evidence head `e702e8d1c60fc2e675a63fdcaed84f95efcc0aed` passed the nine-fixture Host matrix, Ubuntu/Windows Build/Governance, API 29/36 x86_64 KVM, and a bounded API 29 arm64-v8a physical-device full-flow run. All exact event contracts, ARM-only JNI, signer negatives, input immutability, unsigned product output, ephemeral signing cleanup and package cleanup passed. PR [#49](https://github.com/xiaokh31/androidAppHardening/pull/49) merged with expected-head protection as `9150f6a64ef7022116d2b7575d6eda273b83301e`; Issue #18 closed. README/task/evidence are synchronized and no later M3/M4 task has started.
 - M2-06 is complete. Production implementation `ac374ad03bce87ac7068cf124f4721441f79f59f` and independent review remain `P0=0/P1=0/P2=0`; merger-ready head `9cbc6b6681b8fe1c4bb45c4cd86eaba6fe0086e7` passed Build `31677309988`, Governance `31677309943`, and API 29/36 KVM `31677309937`. PR [#48](https://github.com/xiaokh31/androidAppHardening/pull/48) merged with expected-head protection as `aa934080d37dd7590034829fbd436c21e69074a3`, and Issue #17 closed. The bounded JDWP acceptance fix changed test orchestration only; production Runtime/Native behavior and the 50 ms fail-safe are unchanged. No local emulator or physical device was started.
 - M2-05 is merged and complete. Final exact-head `a59345862e7a7ca164fbbc69ed6447efc9f5ddba` passed Build `31616216280`, Governance `31616216704` and API 29/36 KVM `31616216412`; independent full plus bounded incremental review returned `P0=0`, `P1=0`, `P2=0`. PR [#47](https://github.com/xiaokh31/androidAppHardening/pull/47) merged as `815eb55f87bb37e50f00eb91293e930a950d60ac` and Issue [#16](https://github.com/xiaokh31/androidAppHardening/issues/16) closed. API 29/36 ordinary policy, real JDWP, API 29 x86, extracted/direct Release/R8, late mapping aliases and cleanup all passed. The API 29 ARM64 Native probe passed; the MIUI policy APK was rejected before instrumentation with `INSTALL_FAILED_USER_RESTRICTED` and is not presented as a PASS. No local emulator or repeated install prompt was used.
 - ADR-0010 fixes version 1 weights/actions and two deduplicated internal mapping families. Java exposes immutable risk models and the sole `evaluate(ApplicationInfo)` entry; Native reads bounded current-process status/maps and returns schema/versioned normalized states. The final boundary fix raises the still-bounded maps input to 2 MiB so API 36 direct/R8 late mappings remain visible, while `2 MiB + 1`, deadline, no-throw allocation and clearing semantics remain fail-safe. M2-06 is complete; M3/M4 remain unstarted and require a separate task start.
@@ -195,7 +195,7 @@ Implement the nine public M3-01 Android fixtures, deterministic catalog/build co
 | M2-04 | `/root` | `main` | done | M0-03, M1-01, M2-01, M2-02, M2-03 | PR #46、Issue #15、README、strict、final main Build/Governance/KVM 全部关闭 |
 | M2-05 | `/root` | `main` | done | M2-01, M2-03, M2-04 | PR #47、Issue #16、全零独立复核、Ubuntu/Windows、API 29/36 KVM、真实 JDWP、README 与 strict HandOff 已关闭 |
 | M2-06 | `/root` | `main` | done | M2-02, M2-04, M2-05 | PR #48 已 expected-head 合并，Issue #17 已关闭，全零独立复核、Ubuntu/Windows、API 29/36 KVM、README 与 post-merge strict HandOff 均关闭 |
-| M3-01 | `/root` | `chore/m3-01-android-fixtures` | review | M1-06, M2-04 | Host、Build/Governance、API 29/36 KVM 与 API 29 arm64-v8a 真机全通过；等待 evidence-only exact-head CI 和 PR #49 合并 |
+| M3-01 | `/root` | `main` | done | M1-06, M2-04 | PR #49、Issue #18、九 fixture Host、双平台 CI、API 29/36 KVM、API 29 arm64-v8a 真机、README 与 strict HandOff 全部关闭 |
 
 ## Decisions and Invariants
 
@@ -221,6 +221,7 @@ Implement the nine public M3-01 Android fixtures, deterministic catalog/build co
 
 - M3-01 implementation freeze `c281a3a011229632cfe7a361d998eb8255b22b75` closes the API 29 observer-startup race without weakening exact event equality. Build/Governance and API 29/36 KVM are all green with immutable report/artifact hashes. The only open acceptance gate is a foreground-confirmed API 29 arm64-v8a run; the latest bounded attempt stopped at the first OEM installation rejection and cleaned all owned state.
 - The foreground-confirmed API 29 arm64-v8a full-flow subsequently passed all nine fixtures in 6m29s. Report SHA-256 `37fafda7ebe08513dcd381c3658cfce2b50bef272ee1412d88ec480001683160` proves `jni-arm-only`, exact events, three signer negatives and cleanup; no local emulator was started.
+- Evidence-only head `e702e8d1c60fc2e675a63fdcaed84f95efcc0aed` passed Build `31753584940`, Governance `31753584886`, and API 29/36 KVM `31753584905`. PR #49 then merged with expected-head protection as `9150f6a64ef7022116d2b7575d6eda273b83301e`; Issue #18 closed.
 
 - M2-06 production implementation `ac374ad03bce87ac7068cf124f4721441f79f59f` and merger-ready head `9cbc6b6681b8fe1c4bb45c4cd86eaba6fe0086e7` are frozen. Independent full/corrective/final incremental review is P0 `0`, P1 `0`, P2 `0`; exact-head Build `31677309988`, Governance `31677309943`, and API 29/36 KVM `31677309937` all passed before merge commit `aa934080d37dd7590034829fbd436c21e69074a3`.
 - API 29/36 extracted/direct Release/R8 evidence proves deterministic secret/temp clearing, read-only payload mappings, per-mapping `MADV_DONTDUMP`, 12,288 locked bytes, HIGH jitter within 20-50 ms, 20 cold starts per variant, JNI/cross-DEX/metadata, zero plaintext DEX and cleanup. API 36's merged adjacent VMA remains covered by the page-aligned 12,288-byte check. README and remote evidence now record M2-06 as complete; no M3/M4 work has started.
@@ -369,14 +370,14 @@ Implement the nine public M3-01 Android fixtures, deterministic catalog/build co
 ### M3-01 active publication and ARM gate
 
 - task_id: M3-01
-- git_commit: c281a3a011229632cfe7a361d998eb8255b22b75
-- command: local `:integration-tests:compileKotlin :integration-tests:fixtureContractTest` and nine-fixture Host matrix; Build `31744719469`; Governance `31744719457`; API 29/36 KVM `31744719467`; one bounded API 29 arm64-v8a `:integration-tests:runFixtureMatrix`
+- git_commit: 9150f6a64ef7022116d2b7575d6eda273b83301e
+- command: local `:integration-tests:compileKotlin :integration-tests:fixtureContractTest` and nine-fixture Host matrix; implementation Build `31744719469`, Governance `31744719457`, KVM `31744719467`; API 29 arm64-v8a `:integration-tests:runFixtureMatrix`; evidence-only Build `31753584940`, Governance `31753584886`, KVM `31753584905`; expected-head merge of PR #49
 - exit_code: 0
 - environment: Windows 10 x64 local; API 29 arm64-v8a non-root `user` physical device; Ubuntu 24.04/Windows 2025 Build/Governance; API 29/36 x86_64 Linux/KVM; no local emulator
 - timestamp: 2026-08-14T07:16:41+08:00
 - artifact: `docs/evidence/M3-01/local-validation.md`; `docs/evidence/M3-01/remote-validation.md`; PR #49; ARM report SHA-256 `37fafda7ebe08513dcd381c3658cfce2b50bef272ee1412d88ec480001683160`; KVM reports `3c47db443ae624bea7be9e9364695c59d88380274d6595a0edb392dd0feef080` and `28f6a0bc029bfa77da557bf92239b1e59c33df5e1ba8ea569a5a40be6099f23f`
 - sha256: 37fafda7ebe08513dcd381c3658cfce2b50bef272ee1412d88ec480001683160
-- result: PASS; Host, dual-platform CI, API 29/36 x86_64 KVM and API 29 arm64-v8a physical full-flow all pass; nine exact event contracts, ARM-only JNI, signer negatives, package cleanup and ephemeral signing cleanup are closed
+- result: PASS; Host, dual-platform CI, API 29/36 x86_64 KVM and API 29 arm64-v8a physical full-flow all pass; nine exact event contracts, ARM-only JNI, signer negatives, package cleanup and ephemeral signing cleanup are closed; PR #49 merged and Issue #18 closed
 
 ### M2-06 final acceptance and merge
 
@@ -1404,9 +1405,8 @@ None
 
 ## Ordered Next Actions
 
-1. Commit and push the M3-01 evidence-only merger-ready child, then require exact-head Build/Governance/KVM success without repeating the physical-device matrix.
-2. Mark PR #49 ready, merge with expected-head protection, synchronize `main`, mark M3-01 complete in README/task/HandOff, and verify post-merge strict/CI gates.
-3. Do not start M3-02 through M3-05 before M3-01 is complete.
+1. Commit and push this post-merge README/task/HandOff reconciliation on `main`, then verify final main Build/Governance/KVM gates.
+2. Keep M3-02 through M3-05 unstarted until the user explicitly selects the next task.
 
 ## Relevant Files and Artifacts
 
@@ -1513,7 +1513,8 @@ None
 - [x] M3-01 Host matrix, deterministic fixture contract, Build/Governance and API 29/36 x86_64 KVM passed on implementation freeze `c281a3a`.
 - [x] The failed ARM attempt stopped at the first OEM installation rejection; package and ephemeral signing cleanup are proven and no retry loop was used.
 - [x] With the user present, one bounded API 29 arm64-v8a full-flow matrix passed nine exact event contracts, ARM-only JNI, signer negatives and cleanup.
-- [ ] Push the evidence-only merger-ready child, pass exact-head CI, merge PR #49 and close post-merge `main` gates.
+- [x] Evidence-only head passed exact-head CI; PR #49 merged with expected-head protection and Issue #18 closed.
+- [ ] Commit/push this post-merge reconciliation and verify final `main` strict/CI gates.
 
 - [x] M2-06 production implementation and bounded review corrections are frozen; independent full plus incremental reviews returned P0/P1/P2 all zero.
 - [x] Exact-head Ubuntu/Windows Build/Governance and API 29/36 KVM passed both extracted/direct Release/R8 variants with immutable artifacts and cleanup.
@@ -1632,7 +1633,7 @@ None
 
 ## Handoff Sign-off
 
-- `/root` verified M3-01 implementation freeze `c281a3a011229632cfe7a361d998eb8255b22b75`, nine-fixture Host full-flow, Ubuntu/Windows Build/Governance, API 29/36 x86_64 KVM, API 29 arm64-v8a physical full-flow, immutable report hashes and complete package/signing cleanup. PR #49 is ready for an evidence-only exact-head gate and expected-head merge; M3-02 through M3-05 remain unstarted.
+- `/root` verified M3-01 implementation freeze `c281a3a011229632cfe7a361d998eb8255b22b75`, merger-ready evidence head `e702e8d1c60fc2e675a63fdcaed84f95efcc0aed`, nine-fixture Host full-flow, Ubuntu/Windows Build/Governance, API 29/36 x86_64 KVM, API 29 arm64-v8a physical full-flow, immutable report hashes and complete package/signing cleanup. PR #49 merged with expected-head protection as `9150f6a64ef7022116d2b7575d6eda273b83301e`, Issue #18 closed, and M3-02 through M3-05 remain unstarted.
 
 - `/root` verified M2-06 production implementation `ac374ad03bce87ac7068cf124f4721441f79f59f`, exact-head `9cbc6b6681b8fe1c4bb45c4cd86eaba6fe0086e7`, Build `31677309988`, Governance `31677309943`, API 29/36 KVM `31677309937`, immutable artifact hashes and independent `P0=0/P1=0/P2=0` review. PR #48 merged as `aa934080d37dd7590034829fbd436c21e69074a3`, Issue #17 closed, README/evidence are synchronized, and M3/M4 have not started.
 

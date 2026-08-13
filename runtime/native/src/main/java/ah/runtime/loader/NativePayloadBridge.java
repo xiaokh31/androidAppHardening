@@ -20,5 +20,7 @@ final class NativePayloadBridge {
 
     static native ByteBuffer[] nativeDexBuffers(long handle);
 
+    static native long[] nativeApplyMemoryProfile(long handle, int profile);
+
     static native void nativeClosePayload(long handle);
 }

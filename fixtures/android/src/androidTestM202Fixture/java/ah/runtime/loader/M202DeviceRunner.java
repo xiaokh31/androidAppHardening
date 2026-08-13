@@ -8,8 +8,13 @@ import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.os.Bundle;
 import android.os.Build;
+import android.os.SystemClock;
+import android.system.Os;
+import android.system.OsConstants;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileReader;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -87,6 +92,7 @@ public final class M202DeviceRunner extends Instrumentation {
             }
         }
 
+        SmapsDontDump dontDumpBefore = dontDumpMappings();
         final long[] committedHandle = {0};
         LoadedPayload payload =
                 PayloadRuntime.openVerifiedForTesting(
@@ -95,6 +101,27 @@ public final class M202DeviceRunner extends Instrumentation {
                         signer,
                         (current, nativeHandle) -> committedHandle[0] = nativeHandle);
         require(committedHandle[0] != 0, "committed handle was not captured");
+        MemoryProtectionCapabilities baseline =
+                PayloadRuntime.applyMemoryProfile(payload, MemoryProfile.BASELINE);
+        require(baseline.dontDump(), "baseline DONTDUMP unavailable");
+        require(baseline.lockedBytes() == 0, "baseline retained DEX unexpectedly locked");
+        ByteBuffer[] protectedDexBuffers = NativePayloadBridge.nativeDexBuffers(committedHandle[0]);
+        require(protectedDexBuffers != null && protectedDexBuffers.length == 2,
+                "protected DEX buffer count changed");
+        long pageSize = Os.sysconf(OsConstants._SC_PAGESIZE);
+        require(pageSize > 0, "page size unavailable");
+        long expectedDontDumpBytes = 0;
+        for (ByteBuffer buffer : protectedDexBuffers) {
+            require(buffer != null && buffer.capacity() > 0, "protected DEX buffer unavailable");
+            expectedDontDumpBytes += roundUp(buffer.capacity(), pageSize);
+        }
+        SmapsDontDump dontDumpAfterBaseline = dontDumpMappings();
+        int dontDumpMappingDelta = dontDumpAfterBaseline.count - dontDumpBefore.count;
+        long dontDumpBytesDelta = dontDumpAfterBaseline.bytes - dontDumpBefore.bytes;
+        require(dontDumpMappingDelta >= 1,
+                "smaps did not expose a payload DONTDUMP mapping");
+        require(dontDumpBytesDelta >= expectedDontDumpBytes,
+                "smaps DONTDUMP bytes did not cover both DEX mappings");
         byte[] encodedMetadata =
                 NativePayloadBridge.nativeAuthenticatedMetadata(committedHandle[0]);
         verifyMetadataParserMatrix(encodedMetadata);
@@ -117,6 +144,15 @@ public final class M202DeviceRunner extends Instrumentation {
 
         LoadedPayload independent =
                 PayloadRuntime.openVerified(target.getClassLoader(), applicationInfo, signer);
+        MemoryProtectionCapabilities elevated =
+                PayloadRuntime.applyMemoryProfile(independent, MemoryProfile.ELEVATED);
+        require(elevated.dontDump(), "elevated DONTDUMP unavailable");
+        require(elevated.lockedBytes() >= 0 && elevated.lockedBytes() <= 1024L * 1024L,
+                "elevated lock budget invalid");
+        MemoryProtectionCapabilities monotonic =
+                PayloadRuntime.applyMemoryProfile(independent, MemoryProfile.BASELINE);
+        require(monotonic.lockedBytes() == elevated.lockedBytes(),
+                "memory profile was downgraded");
         requireMetadataEqual(metadata, independent.authenticatedMetadata());
 
         Class<?> secondary = loader.loadClass("ah.fixtures.android.payload.SecondaryApi");
@@ -144,6 +180,26 @@ public final class M202DeviceRunner extends Instrumentation {
         independent.close();
         independent.close();
         verifyJniCleanupBoundaries(loader, target, applicationInfo, signer);
+
+        LoadedPayload highPayload =
+                PayloadRuntime.openVerified(target.getClassLoader(), applicationInfo, signer);
+        long jitterStart = SystemClock.elapsedRealtimeNanos();
+        MemoryProtectionCapabilities high =
+                PayloadRuntime.applyMemoryProfile(highPayload, MemoryProfile.HIGH);
+        long jitterMillis = (SystemClock.elapsedRealtimeNanos() - jitterStart) / 1_000_000L;
+        require(jitterMillis >= 20L && jitterMillis <= 250L,
+                "high-risk jitter outside bounded window: " + jitterMillis);
+        require(high.dontDump(), "high DONTDUMP unavailable");
+        require(high.lockedBytes() >= 0 && high.lockedBytes() <= 1024L * 1024L,
+                "high lock budget invalid");
+        require(!high.processDumpable(), "high profile left process dumpable");
+        require(high.jitterMillis() >= 20L && high.jitterMillis() <= 50L,
+                "high requested jitter outside contract");
+        Class<?> highSecondary =
+                highPayload.classLoader().loadClass("ah.fixtures.android.payload.SecondaryApi");
+        require(highSecondary != null, "high profile invalidated class loading");
+        highPayload.close();
+        highPayload.close();
         requireNoPlaintextDex(applicationInfo.dataDir, 0);
         if (applicationInfo.deviceProtectedDataDir != null) {
             requireNoPlaintextDex(applicationInfo.deviceProtectedDataDir, 0);
@@ -155,7 +211,50 @@ public final class M202DeviceRunner extends Instrumentation {
         return "runtime_abi=" + runtimeAbi + " failure_injection=" + injected
                 + " multidex=true jni=true native_path=true metadata=true"
                 + " metadata_negative=true metadata_golden=true cross_handle=true"
-                + " jni_cleanup=true plaintext_dex_files=0";
+                + " jni_cleanup=true plaintext_dex_files=0"
+                + " memory_baseline_dontdump=" + baseline.dontDump()
+                + " memory_locked_bytes=" + high.lockedBytes()
+                + " memory_process_dumpable=" + high.processDumpable()
+                + " memory_jitter_ms=" + high.jitterMillis()
+                + " memory_jitter_wall_ms=" + jitterMillis
+                + " smaps_dontdump_delta=" + dontDumpMappingDelta
+                + " smaps_dontdump_bytes_delta=" + dontDumpBytesDelta
+                + " smaps_dontdump_expected_bytes=" + expectedDontDumpBytes;
+    }
+
+    private static SmapsDontDump dontDumpMappings() throws Exception {
+        int count = 0;
+        long bytes = 0;
+        long mappingBytes = 0;
+        try (BufferedReader reader = new BufferedReader(new FileReader("/proc/self/smaps"))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.startsWith("Size:")) {
+                    String[] fields = line.trim().split("\\s+");
+                    require(fields.length >= 2, "invalid smaps Size line");
+                    mappingBytes = Long.parseLong(fields[1]) * 1024L;
+                }
+                if (line.startsWith("VmFlags:") && (" " + line + " ").contains(" dd ")) {
+                    count++;
+                    bytes += mappingBytes;
+                }
+            }
+        }
+        return new SmapsDontDump(count, bytes);
+    }
+
+    private static long roundUp(long value, long alignment) {
+        return Math.addExact(value, alignment - 1) / alignment * alignment;
+    }
+
+    private static final class SmapsDontDump {
+        final int count;
+        final long bytes;
+
+        SmapsDontDump(int count, long bytes) {
+            this.count = count;
+            this.bytes = bytes;
+        }
     }
 
     private static String runtimeAbi(ApplicationInfo applicationInfo) throws Exception {

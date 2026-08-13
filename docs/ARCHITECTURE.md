@@ -132,6 +132,8 @@ Guard 只能从 `LoadedPayload.authenticatedMetadata()` 构造 `VerifiedStartupC
 
 控制包括按需解密、短生命周期缓冲、显式清零、避免内存重复副本、禁止明文落盘和减少敏感 crash 内容。这些控制不阻止拥有进程调试或内核能力的攻击者读取内存。
 
+M2-06 进一步固定：Native 敏感 owner 在释放前显式清零，完成的 DEX 匿名映射在发布前只读并尽力标记 `MADV_DONTDUMP`；短生命周期密钥页始终受共享 1 MiB 上限的 best-effort 锁页保护，风险等级只逐级增加保留 DEX 的首尾锁页、本进程不可 dump 与 20–50 ms 有界随机抖动。能力失败只进入不可变报告，不得改变 signer、AEAD、容器校验或回退到磁盘明文。映射仍由 `LoadedPayload` 持有至 ART 生命周期结束，进程控制/root/内核攻击者仍可能读取明文。
+
 ## 5. 物理产物布局
 
 规划的源码模块边界为：

@@ -1,6 +1,7 @@
 #include "payload_memory.hpp"
 
 #include "crypto_backend.hpp"
+#include "memory_controls.hpp"
 
 #if defined(AH_M2_02_HOST_TESTING)
 #include <atomic>
@@ -89,6 +90,9 @@ bool releaseAnonymous(Mapping* mapping) noexcept {
         }
 #endif
     }
+    for (std::size_t index = 0; index < mapping->locked_region_count; ++index) {
+        unlockRegion(&mapping->locked_regions[index]);
+    }
 #if defined(_WIN32)
     const bool released = VirtualFree(mapping->data, 0, MEM_RELEASE) != 0;
 #else
@@ -105,13 +109,16 @@ bool releaseAnonymous(Mapping* mapping) noexcept {
     mapping->data = nullptr;
     mapping->size = 0;
     mapping->read_only = false;
+    mapping->dont_dump = false;
+    mapping->lock_attempted = false;
+    mapping->locked_region_count = 0;
     return released && writable && !injected_failure;
 }
 
-bool makeReadOnly(Mapping* mapping) noexcept {
-    if (mapping == nullptr || mapping->data == nullptr || mapping->size == 0 || mapping->read_only) {
-        return false;
-    }
+}  // namespace
+
+bool Mapping::seal() noexcept {
+    if (data == nullptr || size == 0 || read_only) return false;
 #if defined(AH_M2_02_HOST_TESTING)
     if (failNow(&g_protection_countdown)) {
         return false;
@@ -119,17 +126,53 @@ bool makeReadOnly(Mapping* mapping) noexcept {
 #endif
 #if defined(_WIN32)
     DWORD prior = 0;
-    if (VirtualProtect(mapping->data, mapping->size, PAGE_READONLY, &prior) == 0) {
+    if (VirtualProtect(data, size, PAGE_READONLY, &prior) == 0) {
         return false;
     }
 #else
-    if (mprotect(mapping->data, mapping->size, PROT_READ) != 0) {
+    if (mprotect(data, size, PROT_READ) != 0) {
         return false;
     }
 #endif
-    mapping->read_only = true;
+    read_only = true;
+    dont_dump = adviseDontDump(data, size);
     return true;
 }
+
+std::size_t Mapping::lockEdgesBestEffort() noexcept {
+    if (data == nullptr || size == 0 || lock_attempted) return lockedBytes();
+    lock_attempted = true;
+    if (size <= 2U * kDexEdgeBytes) {
+        if (lockRegionBestEffort(data, size, &locked_regions[0])) locked_region_count = 1;
+        return lockedBytes();
+    }
+    if (lockRegionBestEffort(data, kDexEdgeBytes, &locked_regions[0])) {
+        locked_region_count = 1;
+    }
+    std::uint8_t* suffix_data = data + size - kDexEdgeBytes;
+    std::uint8_t* mapping_end = data + size;
+    if (locked_region_count == 1) {
+        std::uint8_t* prefix_end = locked_regions[0].data + locked_regions[0].size;
+        if (suffix_data < prefix_end) suffix_data = prefix_end;
+    }
+    LockedRegion suffix{};
+    if (suffix_data < mapping_end &&
+        lockRegionBestEffort(
+            suffix_data, static_cast<std::size_t>(mapping_end - suffix_data), &suffix)) {
+        locked_regions[locked_region_count++] = suffix;
+    }
+    return lockedBytes();
+}
+
+std::size_t Mapping::lockedBytes() const noexcept {
+    std::size_t total = 0;
+    for (std::size_t index = 0; index < locked_region_count; ++index) {
+        total += locked_regions[index].size;
+    }
+    return total;
+}
+
+namespace {
 
 Status clearAll(std::array<Mapping, container::kMaxDex>* mappings,
                 std::size_t* count) noexcept {
@@ -181,7 +224,45 @@ PayloadHandle::~PayloadHandle() noexcept {
 }
 
 Status PayloadHandle::close() noexcept {
-    return clearAll(&mappings_, &count_);
+    const Status result = clearAll(&mappings_, &count_);
+    profile_ = Profile::kBaseline;
+    high_applied_ = false;
+    jitter_milliseconds_ = 0;
+    return result;
+}
+
+Capabilities PayloadHandle::capabilities() const noexcept {
+    Capabilities result{};
+    result.dont_dump = count_ != 0;
+    for (std::size_t index = 0; index < count_; ++index) {
+        result.dont_dump = result.dont_dump && mappings_[index].dont_dump;
+        result.locked_bytes += mappings_[index].lockedBytes();
+    }
+    bool dumpable = true;
+    if (currentProcessDumpable(&dumpable)) result.process_dumpable = dumpable;
+    result.jitter_milliseconds = jitter_milliseconds_;
+    return result;
+}
+
+Status PayloadHandle::applyProfile(Profile profile, Capabilities* output) noexcept {
+    if (output == nullptr || count_ == 0 || static_cast<unsigned>(profile) > 2U) {
+        return Status::kInvalidArgument;
+    }
+    if (static_cast<unsigned>(profile) > static_cast<unsigned>(profile_)) {
+        profile_ = profile;
+    }
+    if (profile_ == Profile::kElevated || profile_ == Profile::kHigh) {
+        for (std::size_t index = 0; index < count_; ++index) {
+            (void) mappings_[index].lockEdgesBestEffort();
+        }
+    }
+    if (profile_ == Profile::kHigh && !high_applied_) {
+        (void) disableCurrentProcessDumping();
+        (void) applyHighRiskJitter(&jitter_milliseconds_);
+        high_applied_ = true;
+    }
+    *output = capabilities();
+    return Status::kSuccess;
 }
 
 Status PayloadHandle::transferTo(PayloadHandle* output) noexcept {
@@ -193,7 +274,13 @@ Status PayloadHandle::transferTo(PayloadHandle* output) noexcept {
         mappings_[index] = Mapping{};
     }
     output->count_ = count_;
+    output->profile_ = profile_;
+    output->high_applied_ = high_applied_;
+    output->jitter_milliseconds_ = jitter_milliseconds_;
     count_ = 0;
+    profile_ = Profile::kBaseline;
+    high_applied_ = false;
+    jitter_milliseconds_ = 0;
     return Status::kSuccess;
 }
 
@@ -215,7 +302,9 @@ Status PayloadTransaction::allocate(std::size_t size, Mapping** output) noexcept
     if (data == nullptr) {
         return Status::kOutOfMemory;
     }
-    mappings_[count_] = {data, size, false};
+    mappings_[count_] = Mapping{};
+    mappings_[count_].data = data;
+    mappings_[count_].size = size;
     *output = &mappings_[count_++];
     return Status::kSuccess;
 }
@@ -232,7 +321,7 @@ Status PayloadTransaction::commit(PayloadHandle* output) noexcept {
         return Status::kInvalidArgument;
     }
     for (std::size_t index = 0; index < count_; ++index) {
-        if (!makeReadOnly(&mappings_[index])) {
+        if (!mappings_[index].seal()) {
             return Status::kProtectionFailed;
         }
     }

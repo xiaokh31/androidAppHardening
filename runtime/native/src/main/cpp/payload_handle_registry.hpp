@@ -32,6 +32,11 @@ Status consume(
     SnapshotConsumer consumer,
     void* context) noexcept;
 
+Status applyProfile(
+    std::uint64_t handle,
+    memory::Profile profile,
+    memory::Capabilities* capabilities) noexcept;
+
 Status close(std::uint64_t handle) noexcept;
 
 }  // namespace ah::handles

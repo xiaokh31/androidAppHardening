@@ -53,10 +53,23 @@ const runtimeProduction = ["bootstrap", "native", "policy"]
 const callers = runtimeProduction
   .filter((file) => !file.includes(`${path.sep}runtime${path.sep}native${path.sep}`))
   .filter((file) => readFileSync(file, "utf8").includes("PayloadRuntime."))
-  .map((file) => path.relative(root, file).replaceAll("\\", "/"));
+  .map((file) => path.relative(root, file).replaceAll("\\", "/"))
+  .sort();
+const guard = read("runtime/policy/src/main/java/ah/runtime/guard/RuntimeStartupGuard.java");
+const memoryControls = read("runtime/policy/src/main/java/ah/runtime/MemoryControls.java");
+const guardRuntimeCalls = [...guard.matchAll(/PayloadRuntime\.(\w+)\s*\(/gu)].map((match) => match[1]).sort();
+const memoryControlRuntimeCalls = [...memoryControls.matchAll(/PayloadRuntime\.(\w+)\s*\(/gu)]
+  .map((match) => match[1])
+  .sort();
 check(
-  callers.length === 1 && callers[0] === "runtime/policy/src/main/java/ah/runtime/guard/RuntimeStartupGuard.java",
-  "RuntimeStartupGuard is sole production PayloadRuntime caller",
+  JSON.stringify(callers) ===
+    JSON.stringify([
+      "runtime/policy/src/main/java/ah/runtime/MemoryControls.java",
+      "runtime/policy/src/main/java/ah/runtime/guard/RuntimeStartupGuard.java",
+    ]) &&
+    JSON.stringify(guardRuntimeCalls) === JSON.stringify(["inspectBinding", "openVerified"]) &&
+    JSON.stringify(memoryControlRuntimeCalls) === JSON.stringify(["applyMemoryProfile"]),
+  "Guard open and MemoryControls profile are the fixed PayloadRuntime caller boundary",
 );
 
 const policyProduction = filesBelow("runtime/policy/src/main/java")
@@ -74,7 +87,6 @@ const forbiddenCapabilities = [
 check(forbiddenCapabilities.every((pattern) => !pattern.test(policyProduction)), "no product signing or private-key capability");
 check(!/android\.content\.Context|PackageManager|SigningInfo/u.test(policyProduction), "no Context or PackageManager startup dependency");
 
-const guard = read("runtime/policy/src/main/java/ah/runtime/guard/RuntimeStartupGuard.java");
 const sequence = [
   "RuntimeSignerVerifier.verify",
   "PayloadRuntime.inspectBinding",

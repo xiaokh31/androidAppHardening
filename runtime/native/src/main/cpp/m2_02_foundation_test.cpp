@@ -2,6 +2,7 @@
 #include "crypto_backend.hpp"
 #include "payload_metadata.hpp"
 #include "payload_memory.hpp"
+#include "secure_buffer.hpp"
 #include "zip_assets.hpp"
 
 #include <algorithm>
@@ -255,7 +256,15 @@ int testMappingTransaction() {
     ah::memory::PayloadHandle handle{};
     if (transaction.commit(&handle) != ah::memory::Status::kSuccess || handle.size() != 2 ||
         !handle.mapping(0).read_only || !handle.mapping(1).read_only ||
-        handle.close() != ah::memory::Status::kSuccess || handle.size() != 0) {
+        handle.capabilities().locked_bytes != 0) {
+        return 2;
+    }
+    ah::memory::Capabilities elevated{};
+    if (handle.applyProfile(ah::memory::Profile::kElevated, &elevated) !=
+            ah::memory::Status::kSuccess ||
+        elevated.locked_bytes > ah::memory::kMaximumLockedBytes ||
+        handle.close() != ah::memory::Status::kSuccess || handle.size() != 0 ||
+        ah::memory::lockedBytesForTesting() != 0) {
         return 2;
     }
     ah::memory::PayloadTransaction rollback{};
@@ -263,7 +272,51 @@ int testMappingTransaction() {
         rollback.rollback() != ah::memory::Status::kSuccess || rollback.size() != 0) {
         return 3;
     }
+    ah::memory::setMemoryControlUnavailableForTesting(true);
+    ah::memory::PayloadTransaction unavailable{};
+    ah::memory::PayloadHandle unavailable_handle{};
+    ah::memory::Capabilities unavailable_capabilities{};
+    if (unavailable.allocate(4096, &first) != ah::memory::Status::kSuccess ||
+        unavailable.commit(&unavailable_handle) != ah::memory::Status::kSuccess ||
+        unavailable_handle.applyProfile(
+            ah::memory::Profile::kElevated, &unavailable_capabilities) !=
+            ah::memory::Status::kSuccess ||
+        unavailable_capabilities.dont_dump || unavailable_capabilities.locked_bytes != 0 ||
+        unavailable_handle.close() != ah::memory::Status::kSuccess) {
+        ah::memory::setMemoryControlUnavailableForTesting(false);
+        return 4;
+    }
+    ah::memory::setMemoryControlUnavailableForTesting(false);
     return 0;
+}
+
+int testSecureBuffer() {
+    ah::memory::resetSecureBufferEvidenceForTesting();
+    {
+        ah::memory::SecureBuffer first{32, true};
+        if (first.size() != 32) return 1;
+        std::fill(first.begin(), first.end(), static_cast<std::uint8_t>(0xa5));
+        ah::memory::SecureBuffer moved{std::move(first)};
+        if (!first.empty() || moved.size() != 32 || moved[0] != 0xa5) return 2;
+        ah::memory::SecureBuffer assigned{16};
+        assigned = std::move(moved);
+        if (!moved.empty() || assigned.size() != 32 || assigned[0] != 0xa5) return 2;
+        assigned.reset();
+        assigned.reset();
+    }
+    if (ah::memory::secureBufferZeroizedReleaseCountForTesting() != 2 ||
+        ah::memory::lockedBytesForTesting() != 0) {
+        return 3;
+    }
+    try {
+        ah::memory::SecureBuffer exception_owner{4096};
+        if (exception_owner.size() != 4096) return 4;
+        std::fill(exception_owner.begin(), exception_owner.end(), static_cast<std::uint8_t>(0x5a));
+        throw 7;
+    } catch (int value) {
+        if (value != 7) return 5;
+    }
+    return ah::memory::secureBufferZeroizedReleaseCountForTesting() == 3 ? 0 : 6;
 }
 
 int testMetadataEncoding() {
@@ -370,9 +423,11 @@ int runM202FoundationSelfTests() {
     const int crypto = testCryptoExtensions();
     const int format = testSlotAndZip();
     const int mapping = testMappingTransaction();
+    const int secure = testSecureBuffer();
     const int metadata = testMetadataEncoding();
     const int fuzz = testDeterministicParserFuzz();
-    return crypto == 0 && format == 0 && mapping == 0 && metadata == 0 && fuzz == 0
+    return crypto == 0 && format == 0 && mapping == 0 && secure == 0 && metadata == 0 && fuzz == 0
                ? 0
-               : 10000 * crypto + 1000 * format + 100 * mapping + 10 * metadata + fuzz;
+               : 100000 * crypto + 10000 * format + 1000 * mapping + 100 * secure
+                     + 10 * metadata + fuzz;
 }

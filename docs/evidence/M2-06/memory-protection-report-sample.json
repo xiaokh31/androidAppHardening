@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "task_id": "M2-06",
+  "sample_kind": "deterministic-contract-example",
+  "risk_level": "HIGH",
+  "risk_action": "DEGRADE",
+  "memory_profile": "HIGH",
+  "dont_dump": true,
+  "locked_bytes": 131072,
+  "process_dumpable": false,
+  "requested_jitter_ms": 37,
+  "limitations": [
+    "best-effort controls do not prevent extraction by root, kernel, injection, or process-control attackers"
+  ]
+}

@@ -72,7 +72,12 @@ requireText(unit.includes("unavailable-zero") && unit.includes("emulator-cap")
 requireText(read(files.nativeTest).includes("read-failure-unavailable")
     && read(files.nativeTest).includes("forced-timeout-unavailable"),
   "native failure matrix incomplete");
-requireText(connected.includes("expectDebugger ? 1 : 1000") && connected.includes("50_000_000L")
+requireText(connected.includes("JDWP_WAIT_MILLIS = 3_000L")
+    && connected.includes("debuggerDetected(last)")
+    && connected.includes("SystemClock.sleep(25L)")
+    && connected.includes("native_mapping_score=not_required")
+    && connected.indexOf("return summary;") < connected.indexOf("timeout-all-unavailable")
+    && connected.includes("50_000_000L")
     && connected.includes("injection-debugger-high")
     && connected.includes("libfrida-agent-fixture.so")
     && connected.includes("timeout-all-unavailable"), "connected matrix incomplete");

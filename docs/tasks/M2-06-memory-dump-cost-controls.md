@@ -55,8 +55,8 @@ ART 可能在 payload `ClassLoader` 生命周期内继续依赖解密 DEX 映射
 - Native 实现固定在 `runtime/native/src/main/cpp`，Java 策略接口固定在 `runtime/policy/src/main/java` 并使用 Java 17；Android Runtime 模块不得应用 Kotlin Android plugin。
 - 所有密钥与短期明文使用 `SecureBuffer`，释放时调用不会被编译器优化掉的显式清零函数；异常路径采用同一 RAII 清理。
 - payload 映射认证完成后切换为只读，并调用 `madvise(MADV_DONTDUMP)`；不支持时记录稳定能力位，不降低为磁盘明文。
-- `mlock` 只覆盖密钥页和每个 DEX 首尾各 64 KiB，进程总上限 1 MiB；失败是可观测的 best-effort 结果，不造成兼容性崩溃。
-- `LOW` 启用清零、只读与 `DONTDUMP`；`MEDIUM` 额外启用受限 `mlock`；`HIGH` 再调用 `prctl(PR_SET_DUMPABLE, 0)` 并施加 20–50 ms 的密码学随机启动抖动。
+- `mlock` 只覆盖密钥页和每个 DEX 首尾各 64 KiB，进程总上限 1 MiB；失败是可观测的 best-effort 结果，不造成兼容性崩溃。由于首个 `LoadedPayload` 返回前密钥已销毁，密钥 `SecureBuffer` 在自身生命周期内始终作受限 best-effort 锁页尝试；风险等级只控制返回后仍保留的 DEX 边缘锁页，详见 ADR 0011。
+- `LOW` 启用清零、只读与 `DONTDUMP`，同时继承上述短生命周期密钥锁页不变量；`MEDIUM` 额外启用受限 DEX 边缘 `mlock`；`HIGH` 再调用 `prctl(PR_SET_DUMPABLE, 0)` 并施加 20–50 ms 的密码学随机启动抖动。
 - `RiskAction.ALLOW` 使用 `LOW` 基础控制，`RiskAction.DEGRADE` 再按 `MEDIUM`/`HIGH` 逐级增强；环境结果没有拒绝动作，任何等级都不允许降低签名/容器校验，x86/x86_64 ABI 本身不能改变策略。
 - payload 映射保留到 `PayloadMemoryHandle` 安全关闭；接口注释必须说明 ART 生命周期约束和残余可读窗口。
 

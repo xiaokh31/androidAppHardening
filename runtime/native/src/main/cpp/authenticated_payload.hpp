@@ -94,6 +94,9 @@ void resetZlibCleanupEvidenceForTesting() noexcept;
 std::size_t zlibLiveAllocationCountForTesting() noexcept;
 std::size_t zlibTotalFreeCountForTesting() noexcept;
 std::size_t zlibZeroizedFreeCountForTesting() noexcept;
+void resetShareScrubEvidenceForTesting() noexcept;
+std::size_t shareScrubRunCountForTesting() noexcept;
+std::size_t shareScrubZeroizedRunCountForTesting() noexcept;
 Status inflateCompressedForTesting(
     container::ByteView compressed, std::uint8_t* output, std::size_t output_size) noexcept;
 #endif

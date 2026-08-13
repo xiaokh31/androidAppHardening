@@ -48,6 +48,19 @@ public final class PayloadRuntime {
                 shellLoader, applicationInfo, installedSignerSha256, null);
     }
 
+    /**
+     * Applies a monotonic best-effort profile to this payload's retained anonymous mappings.
+     * The mappings remain owned until LoadedPayload.close() because ART may continue
+     * reading them; these controls raise capture cost but do not prevent privileged extraction.
+     */
+    public static MemoryProtectionCapabilities applyMemoryProfile(
+            LoadedPayload payload, MemoryProfile profile) {
+        if (payload == null || profile == null) {
+            throw new IllegalArgumentException("AAH-RUNTIME-MEMORY-ARGUMENT");
+        }
+        return payload.applyMemoryProfile(profile);
+    }
+
     static LoadedPayload openVerifiedForTesting(
             ClassLoader shellLoader,
             ApplicationInfo applicationInfo,

@@ -15,6 +15,7 @@ const ABI = [
 ];
 const JNI_EXPORTS = [
   "Java_ah_runtime_loader_NativePayloadBridge_nativeAuthenticatedMetadata",
+  "Java_ah_runtime_loader_NativePayloadBridge_nativeApplyMemoryProfile",
   "Java_ah_runtime_loader_NativePayloadBridge_nativeClosePayload",
   "Java_ah_runtime_loader_NativePayloadBridge_nativeDexBuffers",
   "Java_ah_runtime_loader_NativePayloadBridge_nativeInspectBinding",

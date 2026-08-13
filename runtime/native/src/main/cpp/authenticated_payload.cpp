@@ -1,6 +1,7 @@
 #include "authenticated_payload.hpp"
 
 #include "crypto_backend.hpp"
+#include "secure_buffer.hpp"
 
 #include <algorithm>
 #include <array>
@@ -36,7 +37,44 @@ struct alignas(std::max_align_t) ZlibAllocationHeader {
 std::atomic<std::size_t> g_zlib_live_allocations{0};
 std::atomic<std::size_t> g_zlib_total_frees{0};
 std::atomic<std::size_t> g_zlib_zeroized_frees{0};
+std::atomic<std::size_t> g_share_scrub_runs{0};
+std::atomic<std::size_t> g_share_scrub_zeroized_runs{0};
 #endif
+
+class ShareScrubber final {
+public:
+    ShareScrubber(container::ConfigV2* config, container::NativeShareSlotV1* slot) noexcept
+        : config_(config), slot_(slot) {}
+    ~ShareScrubber() noexcept {
+        if (config_ != nullptr) {
+            crypto::secureZero(config_->r_java.data(), config_->r_java.size());
+        }
+        if (slot_ != nullptr) {
+            crypto::secureZero(slot_->r_native.data(), slot_->r_native.size());
+        }
+#if defined(AH_M2_02_HOST_TESTING)
+        bool all_zero = config_ != nullptr || slot_ != nullptr;
+        if (config_ != nullptr) {
+            all_zero = all_zero &&
+                       std::all_of(config_->r_java.begin(), config_->r_java.end(),
+                                   [](std::uint8_t value) { return value == 0; });
+        }
+        if (slot_ != nullptr) {
+            all_zero = all_zero &&
+                       std::all_of(slot_->r_native.begin(), slot_->r_native.end(),
+                                   [](std::uint8_t value) { return value == 0; });
+        }
+        g_share_scrub_runs.fetch_add(1, std::memory_order_relaxed);
+        if (all_zero) g_share_scrub_zeroized_runs.fetch_add(1, std::memory_order_relaxed);
+#endif
+    }
+    ShareScrubber(const ShareScrubber&) = delete;
+    ShareScrubber& operator=(const ShareScrubber&) = delete;
+
+private:
+    container::ConfigV2* config_;
+    container::NativeShareSlotV1* slot_;
+};
 
 voidpf zlibAllocate(voidpf, uInt items, uInt size) noexcept {
     if (items == 0 || size == 0 ||
@@ -94,12 +132,9 @@ struct AuthenticatedContainer {
     container::ByteView encoded_records{};
     container::ByteView encoded_chunks{};
     container::ByteView payload{};
-    std::array<std::uint8_t, 32> cek{};
+    memory::SecureBuffer r_java{32, true};
+    memory::SecureBuffer cek{32, true};
     std::array<std::uint8_t, 32> package_sha256{};
-
-    ~AuthenticatedContainer() noexcept {
-        crypto::secureZero(cek.data(), cek.size());
-    }
 };
 
 bool valid(container::ByteView bytes) noexcept {
@@ -134,10 +169,16 @@ Status parseStructure(const OpenRequest& request, AuthenticatedContainer* output
         !valid(request.assets.payload)) {
         return Status::kInvalidArgument;
     }
+    ShareScrubber config_scrubber{&output->config, nullptr};
     container::Status parsed = container::parseConfigV2(request.assets.config, &output->config);
     if (parsed != container::Status::kSuccess) {
         return parsed == container::Status::kVersion ? Status::kVersion : Status::kFormat;
     }
+    if (output->r_java.size() != output->config.r_java.size()) {
+        return Status::kOutOfMemory;
+    }
+    std::copy(output->config.r_java.begin(), output->config.r_java.end(), output->r_java.begin());
+    crypto::secureZero(output->config.r_java.data(), output->config.r_java.size());
     output->encoded_header = {request.assets.payload.data, container::kHeaderBytes};
     parsed = container::parseHeaderV2(output->encoded_header, &output->header);
     if (parsed != container::Status::kSuccess) {
@@ -188,11 +229,21 @@ Status parseStructure(const OpenRequest& request, AuthenticatedContainer* output
 }
 
 Status authenticate(const OpenRequest& request, AuthenticatedContainer* value) noexcept {
+    if (value == nullptr || value->r_java.size() != 32 || value->cek.size() != 32) {
+        return Status::kOutOfMemory;
+    }
     container::NativeShareSlotV1 slot{};
+    ShareScrubber share_scrubber{nullptr, &slot};
     if (container::parseNativeShareSlotV1(request.native_share_slot, request.expected_abi_id, &slot) !=
         container::Status::kSuccess) {
         return Status::kBinding;
     }
+    memory::SecureBuffer r_native{32, true};
+    if (r_native.size() != slot.r_native.size()) {
+        return Status::kOutOfMemory;
+    }
+    std::copy(slot.r_native.begin(), slot.r_native.end(), r_native.begin());
+    crypto::secureZero(slot.r_native.data(), slot.r_native.size());
     std::array<std::uint8_t, 32> digest{};
     crypto::Status crypto_status = crypto::sha256(
         request.native_share_slot.data, 72, digest.data(), digest.size());
@@ -216,11 +267,15 @@ Status authenticate(const OpenRequest& request, AuthenticatedContainer* value) n
         return Status::kCrypto;
     }
 
-    std::array<std::uint8_t, 32> root{};
-    std::array<std::uint8_t, 32> kek{};
-    std::array<std::uint8_t, sizeof(kKekDomain) - 1 + 64> kek_info{};
+    memory::SecureBuffer root{32, true};
+    memory::SecureBuffer kek{32, true};
+    memory::SecureBuffer kek_info{sizeof(kKekDomain) - 1 + 64};
+    if (root.size() != 32 || kek.size() != 32 ||
+        kek_info.size() != sizeof(kKekDomain) - 1 + 64) {
+        return Status::kOutOfMemory;
+    }
     for (std::size_t index = 0; index < root.size(); ++index) {
-        root[index] = slot.r_native[index] ^ value->config.r_java[index];
+        root[index] = r_native[index] ^ value->r_java[index];
     }
     std::memcpy(kek_info.data(), kKekDomain, sizeof(kKekDomain) - 1);
     std::memcpy(kek_info.data() + sizeof(kKekDomain) - 1,
@@ -230,10 +285,7 @@ Status authenticate(const OpenRequest& request, AuthenticatedContainer* value) n
     crypto_status = crypto::hkdfSha256(
         root.data(), root.size(), value->config.build_id.data(), value->config.build_id.size(),
         kek_info.data(), kek_info.size(), kek.data(), kek.size());
-    crypto::secureZero(root.data(), root.size());
-    crypto::secureZero(kek_info.data(), kek_info.size());
     if (crypto_status != crypto::Status::kSuccess) {
-        crypto::secureZero(kek.data(), kek.size());
         return Status::kCrypto;
     }
     std::size_t cek_size = 0;
@@ -243,12 +295,14 @@ Status authenticate(const OpenRequest& request, AuthenticatedContainer* value) n
         value->config.wrapped_cek.data(), value->config.wrapped_cek.size(),
         value->config.wrapped_cek_tag.data(), value->config.wrapped_cek_tag.size(),
         value->cek.data(), value->cek.size(), &cek_size);
-    crypto::secureZero(kek.data(), kek.size());
     if (crypto_status != crypto::Status::kSuccess || cek_size != value->cek.size()) {
         return cryptoStatus(crypto_status);
     }
 
-    std::array<std::uint8_t, 32> manifest_key{};
+    memory::SecureBuffer manifest_key{32, true};
+    if (manifest_key.size() != 32) {
+        return Status::kOutOfMemory;
+    }
     crypto_status = crypto::hkdfSha256(
         value->cek.data(), value->cek.size(), value->config.build_id.data(), value->config.build_id.size(),
         reinterpret_cast<const std::uint8_t*>(kManifestDomain), sizeof(kManifestDomain) - 1,
@@ -265,18 +319,18 @@ Status authenticate(const OpenRequest& request, AuthenticatedContainer* value) n
         {value->encoded_records.data, value->encoded_records.size},
         {value->encoded_chunks.data, value->encoded_chunks.size},
     }};
-    std::array<std::uint8_t, 32> manifest_mac{};
+    memory::SecureBuffer manifest_mac{32};
+    if (manifest_mac.size() != 32) {
+        return Status::kOutOfMemory;
+    }
     crypto_status = crypto::hmacSha256(
         manifest_key.data(), manifest_key.size(), manifest_inputs.data(), manifest_inputs.size(),
         manifest_mac.data(), manifest_mac.size());
-    crypto::secureZero(manifest_key.data(), manifest_key.size());
     crypto::secureZero(zero_mac_header.data(), zero_mac_header.size());
     if (crypto_status != crypto::Status::kSuccess ||
         !equal(manifest_mac.data(), value->header.manifest_mac.data(), manifest_mac.size())) {
-        crypto::secureZero(manifest_mac.data(), manifest_mac.size());
         return crypto_status == crypto::Status::kSuccess ? Status::kAuthentication : Status::kCrypto;
     }
-    crypto::secureZero(manifest_mac.data(), manifest_mac.size());
 
     crypto_status = crypto::sha256(
         request.assets.config.data, request.assets.config.size, digest.data(), digest.size());
@@ -420,14 +474,21 @@ Status inflateRecords(const OpenRequest& request, AuthenticatedContainer* value,
 #if !defined(AH_M2_02_HOST_TESTING)
     (void) request;
 #endif
-    std::array<std::uint8_t, container::kChunkPlaintextMax> compressed{};
-    std::array<std::uint8_t, kChunkAadBytes> aad{};
-    std::array<std::uint8_t, 32> record_key{};
+    memory::SecureBuffer compressed{container::kChunkPlaintextMax};
+    memory::SecureBuffer aad{kChunkAadBytes};
     std::array<std::uint8_t, sizeof(kRecordDomain) - 1 + 4> record_info{};
+    if (compressed.size() != container::kChunkPlaintextMax || aad.size() != kChunkAadBytes) {
+        return Status::kOutOfMemory;
+    }
     Status result = Status::kSuccess;
 
     for (std::size_t record_index = 0; record_index < value->header.dex_count; ++record_index) {
         const container::RecordV2& record = value->records[record_index];
+        memory::SecureBuffer record_key{32, true};
+        if (record_key.size() != 32) {
+            result = Status::kOutOfMemory;
+            break;
+        }
         memory::Mapping* mapping = nullptr;
         if (transaction->allocate(static_cast<std::size_t>(record.original_length), &mapping) !=
             memory::Status::kSuccess) {
@@ -542,7 +603,6 @@ Status inflateRecords(const OpenRequest& request, AuthenticatedContainer* value,
             }
         }
         result = inflater.finish(result);
-        crypto::secureZero(record_key.data(), record_key.size());
         crypto::secureZero(record_info.data(), record_info.size());
         if (result != Status::kSuccess) {
             break;
@@ -559,9 +619,6 @@ Status inflateRecords(const OpenRequest& request, AuthenticatedContainer* value,
             break;
         }
     }
-    crypto::secureZero(compressed.data(), compressed.size());
-    crypto::secureZero(aad.data(), aad.size());
-    crypto::secureZero(record_key.data(), record_key.size());
     crypto::secureZero(record_info.data(), record_info.size());
     return result;
 }
@@ -586,6 +643,19 @@ std::size_t zlibTotalFreeCountForTesting() noexcept {
 
 std::size_t zlibZeroizedFreeCountForTesting() noexcept {
     return g_zlib_zeroized_frees.load(std::memory_order_relaxed);
+}
+
+void resetShareScrubEvidenceForTesting() noexcept {
+    g_share_scrub_runs.store(0, std::memory_order_relaxed);
+    g_share_scrub_zeroized_runs.store(0, std::memory_order_relaxed);
+}
+
+std::size_t shareScrubRunCountForTesting() noexcept {
+    return g_share_scrub_runs.load(std::memory_order_relaxed);
+}
+
+std::size_t shareScrubZeroizedRunCountForTesting() noexcept {
+    return g_share_scrub_zeroized_runs.load(std::memory_order_relaxed);
 }
 
 Status inflateCompressedForTesting(

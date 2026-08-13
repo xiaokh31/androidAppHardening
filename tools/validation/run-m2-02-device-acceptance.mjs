@@ -15,9 +15,10 @@ const coldStarts = Number(options.get("cold-starts") ?? "20");
 const timeout = Number(options.get("command-timeout-ms") ?? "60000");
 const selectedVariant = options.get("variant") ?? "all";
 const taskId = options.get("task-id") ?? "M2-02";
-if (!["M2-02", "M2-03", "M2-04", "M2-05"].includes(taskId)) fail("invalid task id");
+if (!["M2-02", "M2-03", "M2-04", "M2-05", "M2-06"].includes(taskId)) fail("invalid task id");
 const isM203 = taskId === "M2-03" || taskId === "M2-05";
 const isM204 = taskId === "M2-04";
+const isM206 = taskId === "M2-06";
 const expectedAbi = isM204 ? required("expected-abi") : null;
 if (isM204 && !["armeabi-v7a", "arm64-v8a", "x86", "x86_64"].includes(expectedAbi)) {
   fail("invalid expected ABI");
@@ -122,6 +123,17 @@ function runVariant(variant) {
       instrumentation.stdout.includes("metadata_golden=true") &&
       instrumentation.stdout.includes("cross_handle=true") &&
       instrumentation.stdout.includes("jni_cleanup=true") &&
+      (!isM206 || (
+        instrumentation.stdout.includes("memory_baseline_dontdump=true") &&
+        instrumentation.stdout.includes("memory_process_dumpable=false") &&
+        markerNumber(instrumentation.stdout, "memory_jitter_ms") >= 20 &&
+        markerNumber(instrumentation.stdout, "memory_jitter_ms") <= 50 &&
+        markerNumber(instrumentation.stdout, "memory_locked_bytes") <= 1024 * 1024 &&
+        markerNumber(instrumentation.stdout, "smaps_dontdump_delta") >= 1 &&
+        markerNumber(instrumentation.stdout, "smaps_dontdump_expected_bytes") > 0 &&
+        markerNumber(instrumentation.stdout, "smaps_dontdump_bytes_delta") >=
+          markerNumber(instrumentation.stdout, "smaps_dontdump_expected_bytes")
+      )) &&
       (!isM204 || instrumentation.stdout.includes(`runtime_abi=${expectedAbi}`));
   if (!instrumentation.stdout.includes("OK (1 test)") || !taskSpecificPassed ||
       !instrumentation.stdout.includes("plaintext_dex_files=0") ||
@@ -181,7 +193,21 @@ function runVariant(variant) {
     cold_start_p50_ms: percentile(sorted, 0.50),
     cold_start_p95_ms: percentile(sorted, 0.95),
     peak_total_pss_kb: Math.max(...pss),
+    memory_protection: isM206 ? {
+      dont_dump: true,
+      locked_bytes: markerNumber(instrumentation.stdout, "memory_locked_bytes"),
+      process_dumpable: false,
+      jitter_ms: markerNumber(instrumentation.stdout, "memory_jitter_ms"),
+      smaps_dontdump_delta: markerNumber(instrumentation.stdout, "smaps_dontdump_delta"),
+      smaps_dontdump_bytes_delta: markerNumber(instrumentation.stdout, "smaps_dontdump_bytes_delta"),
+      smaps_dontdump_expected_bytes: markerNumber(instrumentation.stdout, "smaps_dontdump_expected_bytes"),
+    } : undefined,
   };
+}
+
+function markerNumber(output, name) {
+  const match = output.match(new RegExp(`(?:^|\\s)${name}=(\\d+)(?:\\s|$)`, "mu"));
+  return match ? Number(match[1]) : Number.NaN;
 }
 
 function vectorGolden(argument) {

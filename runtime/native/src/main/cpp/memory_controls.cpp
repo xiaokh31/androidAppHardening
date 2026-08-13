@@ -1,5 +1,7 @@
 #include "memory_controls.hpp"
 
+#include "crypto_backend.hpp"
+
 #include <atomic>
 #include <cerrno>
 #include <cstdint>
@@ -18,6 +20,17 @@
 
 namespace ah::memory {
 namespace {
+
+class RandomValueScrubber final {
+public:
+    explicit RandomValueScrubber(std::uint32_t* value) noexcept : value_(value) {}
+    ~RandomValueScrubber() noexcept { crypto::secureZero(value_, sizeof(*value_)); }
+    RandomValueScrubber(const RandomValueScrubber&) = delete;
+    RandomValueScrubber& operator=(const RandomValueScrubber&) = delete;
+
+private:
+    std::uint32_t* value_;
+};
 
 std::atomic<std::size_t> g_locked_bytes{0};
 #if defined(AH_M2_02_HOST_TESTING)
@@ -168,6 +181,7 @@ bool applyHighRiskJitter(std::uint32_t* applied_milliseconds) noexcept {
     return false;
 #else
     std::uint32_t random_value = 0;
+    RandomValueScrubber random_scrubber{&random_value};
     const ssize_t received = getrandom(&random_value, sizeof(random_value), 0);
     if (received != static_cast<ssize_t>(sizeof(random_value))) {
         return false;

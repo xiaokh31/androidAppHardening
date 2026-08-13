@@ -259,6 +259,7 @@ int runM202PayloadVector(const char* config_path, const char* container_path,
     }
 
     ah::payload::resetZlibCleanupEvidenceForTesting();
+    ah::payload::resetShareScrubEvidenceForTesting();
     ah::memory::PayloadHandle handle{};
     ah::payload::AuthenticatedMetadata metadata{};
     bool cleanup_failed = true;
@@ -269,6 +270,10 @@ int runM202PayloadVector(const char* config_path, const char* container_path,
         handle.close() != ah::memory::Status::kSuccess || !zlibCleanupWasComplete()) {
         return 2;
     }
+    if (ah::payload::shareScrubRunCountForTesting() != 2 ||
+        ah::payload::shareScrubZeroizedRunCountForTesting() != 2) {
+        return 2;
+    }
 
     auto tampered_config = config;
     tampered_config[164] ^= 1;
@@ -277,7 +282,12 @@ int runM202PayloadVector(const char* config_path, const char* container_path,
     }
     auto tampered_slot = slot;
     tampered_slot[40] ^= 1;
+    ah::payload::resetShareScrubEvidenceForTesting();
     if (openExpect(config, container, tampered_slot, ah::payload::Status::kBinding) != 0) {
+        return 4;
+    }
+    if (ah::payload::shareScrubRunCountForTesting() != 2 ||
+        ah::payload::shareScrubZeroizedRunCountForTesting() != 2) {
         return 4;
     }
     auto tampered_manifest = container;

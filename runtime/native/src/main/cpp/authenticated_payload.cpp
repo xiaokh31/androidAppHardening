@@ -37,7 +37,44 @@ struct alignas(std::max_align_t) ZlibAllocationHeader {
 std::atomic<std::size_t> g_zlib_live_allocations{0};
 std::atomic<std::size_t> g_zlib_total_frees{0};
 std::atomic<std::size_t> g_zlib_zeroized_frees{0};
+std::atomic<std::size_t> g_share_scrub_runs{0};
+std::atomic<std::size_t> g_share_scrub_zeroized_runs{0};
 #endif
+
+class ShareScrubber final {
+public:
+    ShareScrubber(container::ConfigV2* config, container::NativeShareSlotV1* slot) noexcept
+        : config_(config), slot_(slot) {}
+    ~ShareScrubber() noexcept {
+        if (config_ != nullptr) {
+            crypto::secureZero(config_->r_java.data(), config_->r_java.size());
+        }
+        if (slot_ != nullptr) {
+            crypto::secureZero(slot_->r_native.data(), slot_->r_native.size());
+        }
+#if defined(AH_M2_02_HOST_TESTING)
+        bool all_zero = config_ != nullptr || slot_ != nullptr;
+        if (config_ != nullptr) {
+            all_zero = all_zero &&
+                       std::all_of(config_->r_java.begin(), config_->r_java.end(),
+                                   [](std::uint8_t value) { return value == 0; });
+        }
+        if (slot_ != nullptr) {
+            all_zero = all_zero &&
+                       std::all_of(slot_->r_native.begin(), slot_->r_native.end(),
+                                   [](std::uint8_t value) { return value == 0; });
+        }
+        g_share_scrub_runs.fetch_add(1, std::memory_order_relaxed);
+        if (all_zero) g_share_scrub_zeroized_runs.fetch_add(1, std::memory_order_relaxed);
+#endif
+    }
+    ShareScrubber(const ShareScrubber&) = delete;
+    ShareScrubber& operator=(const ShareScrubber&) = delete;
+
+private:
+    container::ConfigV2* config_;
+    container::NativeShareSlotV1* slot_;
+};
 
 voidpf zlibAllocate(voidpf, uInt items, uInt size) noexcept {
     if (items == 0 || size == 0 ||
@@ -95,6 +132,7 @@ struct AuthenticatedContainer {
     container::ByteView encoded_records{};
     container::ByteView encoded_chunks{};
     container::ByteView payload{};
+    memory::SecureBuffer r_java{32, true};
     memory::SecureBuffer cek{32, true};
     std::array<std::uint8_t, 32> package_sha256{};
 };
@@ -131,10 +169,16 @@ Status parseStructure(const OpenRequest& request, AuthenticatedContainer* output
         !valid(request.assets.payload)) {
         return Status::kInvalidArgument;
     }
+    ShareScrubber config_scrubber{&output->config, nullptr};
     container::Status parsed = container::parseConfigV2(request.assets.config, &output->config);
     if (parsed != container::Status::kSuccess) {
         return parsed == container::Status::kVersion ? Status::kVersion : Status::kFormat;
     }
+    if (output->r_java.size() != output->config.r_java.size()) {
+        return Status::kOutOfMemory;
+    }
+    std::copy(output->config.r_java.begin(), output->config.r_java.end(), output->r_java.begin());
+    crypto::secureZero(output->config.r_java.data(), output->config.r_java.size());
     output->encoded_header = {request.assets.payload.data, container::kHeaderBytes};
     parsed = container::parseHeaderV2(output->encoded_header, &output->header);
     if (parsed != container::Status::kSuccess) {
@@ -185,14 +229,21 @@ Status parseStructure(const OpenRequest& request, AuthenticatedContainer* output
 }
 
 Status authenticate(const OpenRequest& request, AuthenticatedContainer* value) noexcept {
-    if (value == nullptr || value->cek.size() != 32) {
+    if (value == nullptr || value->r_java.size() != 32 || value->cek.size() != 32) {
         return Status::kOutOfMemory;
     }
     container::NativeShareSlotV1 slot{};
+    ShareScrubber share_scrubber{nullptr, &slot};
     if (container::parseNativeShareSlotV1(request.native_share_slot, request.expected_abi_id, &slot) !=
         container::Status::kSuccess) {
         return Status::kBinding;
     }
+    memory::SecureBuffer r_native{32, true};
+    if (r_native.size() != slot.r_native.size()) {
+        return Status::kOutOfMemory;
+    }
+    std::copy(slot.r_native.begin(), slot.r_native.end(), r_native.begin());
+    crypto::secureZero(slot.r_native.data(), slot.r_native.size());
     std::array<std::uint8_t, 32> digest{};
     crypto::Status crypto_status = crypto::sha256(
         request.native_share_slot.data, 72, digest.data(), digest.size());
@@ -224,7 +275,7 @@ Status authenticate(const OpenRequest& request, AuthenticatedContainer* value) n
         return Status::kOutOfMemory;
     }
     for (std::size_t index = 0; index < root.size(); ++index) {
-        root[index] = slot.r_native[index] ^ value->config.r_java[index];
+        root[index] = r_native[index] ^ value->r_java[index];
     }
     std::memcpy(kek_info.data(), kKekDomain, sizeof(kKekDomain) - 1);
     std::memcpy(kek_info.data() + sizeof(kKekDomain) - 1,
@@ -592,6 +643,19 @@ std::size_t zlibTotalFreeCountForTesting() noexcept {
 
 std::size_t zlibZeroizedFreeCountForTesting() noexcept {
     return g_zlib_zeroized_frees.load(std::memory_order_relaxed);
+}
+
+void resetShareScrubEvidenceForTesting() noexcept {
+    g_share_scrub_runs.store(0, std::memory_order_relaxed);
+    g_share_scrub_zeroized_runs.store(0, std::memory_order_relaxed);
+}
+
+std::size_t shareScrubRunCountForTesting() noexcept {
+    return g_share_scrub_runs.load(std::memory_order_relaxed);
+}
+
+std::size_t shareScrubZeroizedRunCountForTesting() noexcept {
+    return g_share_scrub_zeroized_runs.load(std::memory_order_relaxed);
 }
 
 Status inflateCompressedForTesting(

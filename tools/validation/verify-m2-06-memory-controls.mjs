@@ -15,6 +15,7 @@ const files = [
   "runtime/native/src/main/cpp/memory_controls.cpp",
   "runtime/native/src/main/cpp/secure_buffer.hpp",
   "runtime/native/src/main/cpp/secure_buffer.cpp",
+  "runtime/native/src/main/cpp/authenticated_payload.cpp",
   "runtime/native/src/main/cpp/payload_memory.hpp",
   "runtime/native/src/main/cpp/payload_memory.cpp",
   "runtime/native/src/main/java/ah/runtime/loader/PayloadRuntime.java",
@@ -71,20 +72,28 @@ function verify(values) {
   requireText(values, files[1], "PR_SET_DUMPABLE, 0");
   requireText(values, files[1], "getrandom(&random_value");
   requireText(values, files[1], "20U + random_value % 31U");
+  requireText(values, files[1], "RandomValueScrubber random_scrubber");
   requireText(values, files[2], "SecureBuffer(const SecureBuffer&) = delete");
   requireText(values, files[2], "SecureBuffer(SecureBuffer&& other) noexcept");
   const release = values.get(files[3]);
   const zero = release.indexOf("crypto::secureZero(data_, allocation_size_)");
   const unlock = release.indexOf("unlockRegion(&locked_)");
   if (zero < 0 || unlock < 0 || zero >= unlock) fail("SecureBuffer does not zero before unlock");
-  requireText(values, files[5], "dont_dump = adviseDontDump(data, size)");
-  requireText(values, files[5], "lockEdgesBestEffort()");
-  requireText(values, files[6], "applyMemoryProfile(");
-  requireText(values, files[7], "RiskLevel.LOW && action == RiskAction.ALLOW");
-  requireText(values, files[7], "RiskLevel.MEDIUM && action == RiskAction.DEGRADE");
-  requireText(values, files[7], "RiskLevel.HIGH && action == RiskAction.DEGRADE");
-  requireText(values, files[7], "AAH-RUNTIME-MEMORY-POLICY");
-  requireText(values, files[8], "1024L * 1024L");
+  requireText(values, files[4], "ShareScrubber config_scrubber");
+  requireText(values, files[4], "ShareScrubber share_scrubber");
+  requireText(values, files[4], "memory::SecureBuffer r_java{32, true}");
+  requireText(values, files[4], "memory::SecureBuffer r_native{32, true}");
+  requireText(values, files[4], "crypto::secureZero(config_->r_java.data()");
+  requireText(values, files[4], "crypto::secureZero(slot_->r_native.data()");
+  requireText(values, files[4], "root[index] = r_native[index] ^ value->r_java[index]");
+  requireText(values, files[6], "dont_dump = adviseDontDump(data, size)");
+  requireText(values, files[6], "lockEdgesBestEffort()");
+  requireText(values, files[7], "applyMemoryProfile(");
+  requireText(values, files[8], "RiskLevel.LOW && action == RiskAction.ALLOW");
+  requireText(values, files[8], "RiskLevel.MEDIUM && action == RiskAction.DEGRADE");
+  requireText(values, files[8], "RiskLevel.HIGH && action == RiskAction.DEGRADE");
+  requireText(values, files[8], "AAH-RUNTIME-MEMORY-POLICY");
+  requireText(values, files[9], "1024L * 1024L");
   for (const [file, text] of values) {
     if (/__arm__|__aarch64__|__i386__|__x86_64__|ANDROID_ABI/u.test(text)) {
       fail(`architecture-specific policy branch in ${file}`);

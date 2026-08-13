@@ -1,26 +1,27 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260814-073100
-updated_at: 2026-08-14T07:31:00+08:00
+handoff_id: HO-20260814-074643
+updated_at: 2026-08-14T07:46:43+08:00
 updated_by: /root
-state: ready
-source_branch: main
-base_commit: 9150f6a64ef7022116d2b7575d6eda273b83301e
+state: active
+source_branch: fix/m2-07-windows-runner-lock
+base_commit: fde701a5bb60942d1bf79e47abb19fff75ad6565
 working_tree: clean
-current_milestone: M3
-active_task: NONE
-next_owner: unassigned
+current_milestone: M2
+active_task: M2-07
+next_owner: /root
 ---
 
 # Project HandOff
 
 ## Objective
 
-Implement the nine public M3-01 Android fixtures, deterministic catalog/build contract, and bounded full-flow fixture driver on the fixed Issue #18 branch without starting M3-02 through M3-05.
+Maintain the M2-07 fail-closed Windows hosted-runner lock for exact image `20260810.198.2` under Issue #50, restore Ubuntu/Windows Build and Governance, and avoid all Android/KVM/device work.
 
 ## Current State
 
+- Final M3-01 `main` Build `31754337214` exposed only a Windows hosted-runner rollout: the M2-07 allowlist correctly rejected unreviewed `ImageVersion=20260810.198.2` before compiler invocation. Issue [#50](https://github.com/xiaokh31/androidAppHardening/issues/50) and branch `fix/m2-07-windows-runner-lock` own a bounded supply-chain maintenance change. Official ref `win25-vs2026/20260810.198` is fixed to commit `9669462631cac120f4f558e7dadd31a14d1f1a41` and manifest blob `e5e0527a4cc19153e7e8daf98780ff18e7062ac1`; its LLVM, Visual Studio, x64 tools and Windows SDK inventory matches the existing contract. Local lock self-test, expanded mutation matrix, Governance, syntax and diff checks pass. No crypto implementation, Runtime, fixture, KVM or device file is in scope.
 - M3-01 is complete. Exact implementation freeze `c281a3a011229632cfe7a361d998eb8255b22b75` and merger-ready evidence head `e702e8d1c60fc2e675a63fdcaed84f95efcc0aed` passed the nine-fixture Host matrix, Ubuntu/Windows Build/Governance, API 29/36 x86_64 KVM, and a bounded API 29 arm64-v8a physical-device full-flow run. All exact event contracts, ARM-only JNI, signer negatives, input immutability, unsigned product output, ephemeral signing cleanup and package cleanup passed. PR [#49](https://github.com/xiaokh31/androidAppHardening/pull/49) merged with expected-head protection as `9150f6a64ef7022116d2b7575d6eda273b83301e`; Issue #18 closed. README/task/evidence are synchronized and no later M3/M4 task has started.
 - M2-06 is complete. Production implementation `ac374ad03bce87ac7068cf124f4721441f79f59f` and independent review remain `P0=0/P1=0/P2=0`; merger-ready head `9cbc6b6681b8fe1c4bb45c4cd86eaba6fe0086e7` passed Build `31677309988`, Governance `31677309943`, and API 29/36 KVM `31677309937`. PR [#48](https://github.com/xiaokh31/androidAppHardening/pull/48) merged with expected-head protection as `aa934080d37dd7590034829fbd436c21e69074a3`, and Issue #17 closed. The bounded JDWP acceptance fix changed test orchestration only; production Runtime/Native behavior and the 50 ms fail-safe are unchanged. No local emulator or physical device was started.
 - M2-05 is merged and complete. Final exact-head `a59345862e7a7ca164fbbc69ed6447efc9f5ddba` passed Build `31616216280`, Governance `31616216704` and API 29/36 KVM `31616216412`; independent full plus bounded incremental review returned `P0=0`, `P1=0`, `P2=0`. PR [#47](https://github.com/xiaokh31/androidAppHardening/pull/47) merged as `815eb55f87bb37e50f00eb91293e930a950d60ac` and Issue [#16](https://github.com/xiaokh31/androidAppHardening/issues/16) closed. API 29/36 ordinary policy, real JDWP, API 29 x86, extracted/direct Release/R8, late mapping aliases and cleanup all passed. The API 29 ARM64 Native probe passed; the MIUI policy APK was rejected before instrumentation with `INSTALL_FAILED_USER_RESTRICTED` and is not presented as a PASS. No local emulator or repeated install prompt was used.
@@ -187,7 +188,7 @@ Implement the nine public M3-01 Android fixtures, deterministic catalog/build co
 | M1-04 | `/root` | `feat/m1-04-encrypted-dex-container` | done | M1-01, M1-02, M1-07 | PR #38、Issue #9、独立复核、merger-ready 六项 CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-05 | `/root` | `feat/m1-05-apk-repacker-and-alignment` | done | M1-02, M1-03, M1-04 | PR #39、Issue #10、独立复核、merger-ready CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-06 | `/root` | `feat/m1-06-cli-and-json-report` | done | M1-01, M1-02, M1-03, M1-04, M1-05 | PR #40、Issue #11、独立复核、merger-ready 与 post-merge main 双平台 CI、README 和 strict HandOff 均已关闭 |
-| M2-07 | `/root` | `main` | done | M0-03, M1-04 | PR #42、Issue #41、最终独立复核、README、strict 与 post-merge Build/Governance/KVM 均已关闭 |
+| M2-07 | `/root` | `fix/m2-07-windows-runner-lock` | in_progress | M0-03, M1-04 | Issue #50 限定维护：固定 Windows image `20260810.198.2`，通过双平台 Build/Governance 后保持未知镜像失败关闭 |
 | M2-02 | `/root` | `main` | done | M0-04, M1-04, M2-07 | PR #43、Issue #13、全零复核、双平台 CI、API 29/36 KVM、arm64 真机、README 与 strict HandOff 已关闭 |
 
 | M2-03 | `/root` | `main` | done | M1-02, M1-04, M2-02 | PR #44、Issue #14、全零复核、双平台 CI、API 29/36 KVM、arm64 真机、README 与 strict HandOff 已关闭 |
@@ -199,6 +200,7 @@ Implement the nine public M3-01 Android fixtures, deterministic catalog/build co
 
 ## Decisions and Invariants
 
+- M2-07 Windows runner maintenance adds only exact mapping `20260810.198.2` -> `win25-vs2026/20260810.198`; all prior mappings and exact compiler/SDK assertions remain, and every unknown future image remains fail-closed. No retry against an older hosted image is accepted as evidence.
 - 继续遵守 ADR 0001 至 ADR 0003、ADR 0005 至 ADR 0008；ADR 0004 已被 ADR 0008 supersede。ADR 0007 固定 sourceDir 配置通道，ADR 0006 保持 768-byte ConfigV2 且 `container_major=2`。
 - AHDC v2 是 v0.1 唯一容器 major：64 KiB canonical compressed-plaintext chunk，每 chunk 独立 AES-256-GCM tag；tag 成功后才进入每 DEX 唯一连续 zlib inflater，AHDC v1 不得回退接受。
 - 输入 APK 只读；产品输出必须为新的未签名 APK；生产模块不得读取、传递或使用签名凭据。
@@ -219,6 +221,7 @@ Implement the nine public M3-01 Android fixtures, deterministic catalog/build co
 
 ## Changes Since Previous Handoff
 
+- GitHub final-main Build `31754337214` failed only in Windows job `94626822969` because the hosted pool assigned new exact image `20260810.198.2`; the gate failed before compiler invocation. Official `actions/runner-images` ref/commit/blob and installed LLVM/VS/x64-tools/SDK inventory were independently checked. Issue #50 and the bounded maintenance branch were created; no Android/KVM/device test is repeated.
 - M3-01 implementation freeze `c281a3a011229632cfe7a361d998eb8255b22b75` closes the API 29 observer-startup race without weakening exact event equality. Build/Governance and API 29/36 KVM are all green with immutable report/artifact hashes. The only open acceptance gate is a foreground-confirmed API 29 arm64-v8a run; the latest bounded attempt stopped at the first OEM installation rejection and cleaned all owned state.
 - The foreground-confirmed API 29 arm64-v8a full-flow subsequently passed all nine fixtures in 6m29s. Report SHA-256 `37fafda7ebe08513dcd381c3658cfce2b50bef272ee1412d88ec480001683160` proves `jni-arm-only`, exact events, three signer negatives and cleanup; no local emulator was started.
 - Evidence-only head `e702e8d1c60fc2e675a63fdcaed84f95efcc0aed` passed Build `31753584940`, Governance `31753584886`, and API 29/36 KVM `31753584905`. PR #49 then merged with expected-head protection as `9150f6a64ef7022116d2b7575d6eda273b83301e`; Issue #18 closed.
@@ -366,6 +369,18 @@ Implement the nine public M3-01 Android fixtures, deterministic catalog/build co
 - M2-02 第三实现层已完成本地检查点：同一 `sourceDir` 只读文件映射、OS 只读 DEX commit、generation+slot 类型化 JNI handle、同 handle `AHMD` 认证 metadata、精确五 JNI 方法、Java primitive/finally 交接窗口、幂等 `LoadedPayload` owner，以及 M0-05 等价 Native 搜索路径和三参数 API 29 `InMemoryDexClassLoader` 已接通。Java 17 编译/lint、NDK 四 ABI warnings-as-errors 与离线根 `assembleRelease check` 284-task 均 PASS，四个 ELF 都含唯一 104-byte alloc/read-only `.ah_share_v1`，未启动设备或模拟器。证据更新于 `docs/evidence/M2-02/local-validation.md`；任务仍未完成或发布，下一步仅补 failure injection、Host sanitizer/fuzz/OOM 与已授权 KVM/arm64 验收，不启动 M2-03。
 
 ## Verification Evidence
+
+### M2-07 Windows runner lock maintenance
+
+- task_id: M2-07
+- git_commit: fde701a5bb60942d1bf79e47abb19fff75ad6565
+- command: inspect failed Build run 31754337214/job 94626822969; query official actions/runner-images ref win25-vs2026/20260810.198, ref commit and manifest blob/inventory; `node tools/validation/verify-m2-07-native-crypto.mjs --self-test`; Governance; Node syntax; diff check; strict HandOff with pending-clean allowance
+- exit_code: 0
+- environment: Windows 10 x64 coordinator; GitHub windows-2025 hosted runner metadata; no emulator, KVM or physical device
+- timestamp: 2026-08-14T07:46:43+08:00
+- artifact: `docs/evidence/M2-07/windows-runner-20260810-maintenance.md`; Issue #50; official ref commit `9669462631cac120f4f558e7dadd31a14d1f1a41`; manifest blob `e5e0527a4cc19153e7e8daf98780ff18e7062ac1`
+- sha256: ee83042ed3e6d175b27bf2b5e31a2a9b80f1775dd1fd5d9c96f54774d4a31288
+- result: PASS; root cause, immutable inventory, exact machine lock and negative self-test are verified; exact-head PR Build/Governance remains pending
 
 ### M3-01 active publication and ARM gate
 
@@ -1405,11 +1420,17 @@ None
 
 ## Ordered Next Actions
 
-1. Verify the final post-merge `main` Build/Governance gates; the API 29/36 KVM evidence remains bound to the merger-ready exact head because this reconciliation changes documentation only.
-2. Keep M3-02 through M3-05 unstarted until the user explicitly selects the next task.
+1. Run the M2-07 lock self-test, Governance, strict HandOff and diff/sensitive scans on the bounded branch.
+2. Commit and push the Issue #50 branch, create its unique draft PR, and require exact-head Ubuntu/Windows Build plus Governance.
+3. Do not run KVM, emulator, physical-device or M3-02 through M3-05 work.
 
 ## Relevant Files and Artifacts
 
+- `tools/validation/m2-07-native-crypto.json`
+- `tools/validation/verify-m2-07-native-crypto.mjs`
+- `docs/adr/0009-native-cryptography-backend.md`
+- `docs/TOOLCHAIN_AND_PROVENANCE.md`
+- `docs/evidence/M2-07/windows-runner-20260810-maintenance.md`
 - `docs/tasks/M3-01-android-fixtures.md`
 - `fixtures/catalog.yaml`
 - `integration-tests/src/main/kotlin/ah/integration/fixtures/FixtureDriver.kt`
@@ -1509,6 +1530,12 @@ None
 - ignored `build/m2-04/remote/ed6b21b/`
 
 ## Resume Checklist
+
+- [x] Confirm the failure occurred before compiler invocation on exact unreviewed Windows image `20260810.198.2`.
+- [x] Verify the official immutable ref commit, manifest blob and unchanged LLVM/VS/x64-tools/SDK inventory.
+- [x] Pass local lock self-test, Governance, pending-clean strict HandOff and diff/sensitive scans.
+- [ ] Push the bounded branch, create the unique Issue #50 draft PR and pass exact-head Ubuntu/Windows Build/Governance.
+- [x] Keep KVM, emulator and physical-device work out of scope.
 
 - [x] M3-01 Host matrix, deterministic fixture contract, Build/Governance and API 29/36 x86_64 KVM passed on implementation freeze `c281a3a`.
 - [x] The failed ARM attempt stopped at the first OEM installation rejection; package and ephemeral signing cleanup are proven and no retry loop was used.

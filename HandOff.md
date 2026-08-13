@@ -1405,7 +1405,7 @@ None
 
 ## Ordered Next Actions
 
-1. Commit and push this post-merge README/task/HandOff reconciliation on `main`, then verify final main Build/Governance/KVM gates.
+1. Verify the final post-merge `main` Build/Governance gates; the API 29/36 KVM evidence remains bound to the merger-ready exact head because this reconciliation changes documentation only.
 2. Keep M3-02 through M3-05 unstarted until the user explicitly selects the next task.
 
 ## Relevant Files and Artifacts

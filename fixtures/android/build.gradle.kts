@@ -1,8 +1,10 @@
 import java.io.File
 import java.io.FileOutputStream
+import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.charset.StandardCharsets
+import java.util.zip.CRC32
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
@@ -272,7 +274,8 @@ abstract class AssembleM301Fixtures : DefaultTask() {
 
     private fun canonicalize(source: File, target: File, id: String) {
         ZipFile(source).use { input ->
-            ZipOutputStream(target.outputStream().buffered()).use { output ->
+            val bytes = ByteArrayOutputStream()
+            ZipOutputStream(bytes).use { output ->
                 output.setLevel(9)
                 input.entries().asSequence()
                     .filterNot(ZipEntry::isDirectory)
@@ -281,21 +284,43 @@ abstract class AssembleM301Fixtures : DefaultTask() {
                     .filter { entry -> includeNativeEntry(id, entry.name) }
                     .sortedBy(ZipEntry::getName)
                     .forEach { entry ->
+                        val content = input.getInputStream(entry).use { it.readBytes() }
                         val canonical = ZipEntry(entry.name)
-                        canonical.time = 0L
+                        canonical.time = 315_532_800_000L // 1980-01-01, representable without timestamp extras.
+                        if (entry.name == "resources.arsc") {
+                            val crc = CRC32().apply { update(content) }
+                            canonical.method = ZipEntry.STORED
+                            canonical.size = content.size.toLong()
+                            canonical.compressedSize = content.size.toLong()
+                            canonical.crc = crc.value
+                            canonical.extra = zipAlignmentExtra(bytes.size(), entry.name)
+                        }
                         output.putNextEntry(canonical)
-                        input.getInputStream(entry).use { it.copyTo(output) }
+                        output.write(content)
                         output.closeEntry()
                     }
                 if (id == "kotlin-multidex") {
                     val secondary = ZipEntry("classes2.dex")
-                    secondary.time = 0L
+                    secondary.time = 315_532_800_000L
                     output.putNextEntry(secondary)
                     secondaryDex.get().asFile.inputStream().use { it.copyTo(output) }
                     output.closeEntry()
                 }
             }
+            target.writeBytes(bytes.toByteArray())
         }
+    }
+
+    private fun zipAlignmentExtra(offset: Int, name: String): ByteArray? {
+        val nameBytes = name.toByteArray(StandardCharsets.UTF_8).size
+        val required = (4 - ((offset + 30 + nameBytes) and 3)) and 3
+        if (required == 0) return null
+        val extra = ByteArray(required + 4)
+        extra[0] = 0xfe.toByte()
+        extra[1] = 0xca.toByte()
+        extra[2] = required.toByte()
+        extra[3] = 0
+        return extra
     }
 
     private fun isSignatureEntry(name: String): Boolean {

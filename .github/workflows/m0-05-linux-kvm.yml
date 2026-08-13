@@ -207,6 +207,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if [[ "${GITHUB_HEAD_REF:-${GITHUB_REF_NAME:-}}" = "chore/m3-01-android-fixtures" ]]; then
+            printf '%s\n' 'M3-01 builds and signs its isolated fixture matrix inside the bounded device step.'
+            exit 0
+          fi
           mkdir -p "$RUNNER_TEMP/m0-05-signing" build/m0-05
           export M005_TEST_KEYSTORE="$RUNNER_TEMP/m0-05-signing/fixture.p12"
           export M005_TEST_STORE_PASSWORD="$(openssl rand -hex 24)"

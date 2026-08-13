@@ -574,7 +574,7 @@ android {
         )
 
         ndk {
-            abiFilters += m204TargetAbi?.let(::listOf) ?: m204SupportedAbis
+            abiFilters += m204TargetAbi?.let(::listOf) ?: listOf("arm64-v8a", "x86_64")
         }
     }
 
@@ -662,6 +662,10 @@ android {
             create(name) {
                 dimension = "poc"
                 applicationIdSuffix = suffix
+                ndk {
+                    // Keep this literal so Android Lint can prove the synthetic fixture includes ChromeOS ABIs.
+                    abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+                }
                 buildConfigField("String", "FIXTURE_ID", "\"$id\"")
                 buildConfigField("boolean", "M301_KOTLIN", (id.startsWith("kotlin-")).toString())
                 buildConfigField("boolean", "M301_STARTUP_PROVIDER", (id == "startup-provider").toString())

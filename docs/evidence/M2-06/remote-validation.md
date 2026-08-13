@@ -2,11 +2,11 @@
 
 ## Frozen acceptance
 
-- Timestamp: 2026-08-13T14:39:34+08:00
+- Timestamp: 2026-08-13T15:40:10+08:00
 - Production implementation: `ac374ad03bce87ac7068cf124f4721441f79f59f`
-- Final validated branch head: `6cd2bc221ecfd1ea203813facf94519baa885fca`
-- Pull request: [#48](https://github.com/xiaokh31/androidAppHardening/pull/48), draft pending ready/merge authorization
-- Tracking issue: [#17](https://github.com/xiaokh31/androidAppHardening/issues/17)
+- Final validated branch head: `9cbc6b6681b8fe1c4bb45c4cd86eaba6fe0086e7`
+- Pull request: [#48](https://github.com/xiaokh31/androidAppHardening/pull/48), merged with expected-head protection as `aa934080d37dd7590034829fbd436c21e69074a3`
+- Tracking issue: [#17](https://github.com/xiaokh31/androidAppHardening/issues/17), closed by the merge
 - Independent review: PASS, P0 `0`, P1 `0`, P2 `0`
 - Validation mode: `pre-cli`
 
@@ -19,6 +19,8 @@
 | M0-05 Linux KVM | [31671159539](https://github.com/xiaokh31/androidAppHardening/actions/runs/31671159539) | PASS | API 29 and API 36 x86_64; extracted/direct Release/R8, memory controls, 20 cold starts and forced cleanup |
 
 The three workflows resolve to exact head `6cd2bc221ecfd1ea203813facf94519baa885fca`. The final three commits after the reviewed production implementation only correct test expectations, constrain the approved Runtime caller surface, and make `smaps` validation accept API 36's adjacent-VMA merge while preserving per-mapping capability and byte-coverage checks. A bounded independent review of `ac374ad..6cd2bc2` found no P0, P1 or P2 issue.
+
+The merger-ready test-orchestration successor `9cbc6b6681b8fe1c4bb45c4cd86eaba6fe0086e7` changes no production Runtime or Native code. It separates the real-JDWP probe from the already-passed ordinary mapping/timeout matrix and retains a three-second hard bound while leaving the production 50 ms fail-safe unchanged. Exact-head Build [31677309988](https://github.com/xiaokh31/androidAppHardening/actions/runs/31677309988), Governance [31677309943](https://github.com/xiaokh31/androidAppHardening/actions/runs/31677309943), and API 29/36 KVM [31677309937](https://github.com/xiaokh31/androidAppHardening/actions/runs/31677309937) all passed before expected-head merge.
 
 ## Device evidence
 
@@ -40,6 +42,8 @@ Every variant also passed non-root instrumentation, ten failure-injection window
 | API 29 x86_64 KVM evidence | 9170059737 | 3786551 | `2ee6eb6abe7ec2eca840b151a944c2ed312ec81677086287d6b5ac8699982fe6` |
 | API 36 x86_64 KVM evidence | 9170024907 | 3137906 | `ce0e6ae2365ad5cd7ccdf1174963c899f36b922252477e0082bc0e1313939388` |
 
+Merger-ready successor artifacts: Ubuntu M2-06 Build `9172120779`, 494492 bytes, `692f804827196c22e3ec485ecc89a32a85ccf562d6a46b214d651328112e2de5`; Windows M2-06 Build `9172160152`, 494485 bytes, `ea4c985dc5c8084f1a5747b78fc4dfd4452f82cdf961f8d081dbde9f8371b7f5`; API 29 KVM `9172447698`, 3779910 bytes, `aa4383daa8e5a3a74ab539a26810fe772bd71d69c92e5755331beee5679f619d`; API 36 KVM `9172530459`, 3160238 bytes, `88ad50b05881dfeb638b05fa3df6dd11e60a0bba26f6029dbb8d90ed54d134d7`.
+
 Representative retained file hashes:
 
 - Ubuntu Native AAR: `bcbb291543b95f41df8c41602fffd5256d6816c97bda6e425958f9103f4712b0`
@@ -54,4 +58,4 @@ Downloaded copies remain confined to ignored `build/m2-06/remote/6cd2bc2/`. No l
 
 ## Residual risk
 
-M2-06 raises the cost of opportunistic memory dumping; it does not prevent an attacker with root, kernel, injection, debugger or full process-control capability from reading plaintext while ART legitimately uses it. `mlock`, `MADV_DONTDUMP` and `PR_SET_DUMPABLE` are capability-dependent and are reported rather than misrepresented as absolute protection. Merge and post-merge `main` coordination remain pending; no M3/M4 implementation is authorized before that boundary closes.
+M2-06 raises the cost of opportunistic memory dumping; it does not prevent an attacker with root, kernel, injection, debugger or full process-control capability from reading plaintext while ART legitimately uses it. `mlock`, `MADV_DONTDUMP` and `PR_SET_DUMPABLE` are capability-dependent and are reported rather than misrepresented as absolute protection. PR #48 is merged and Issue #17 is closed; no M3/M4 implementation was started as part of this task.

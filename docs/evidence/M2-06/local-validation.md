@@ -1,6 +1,7 @@
 # M2-06 local validation
 
-- Final reviewed implementation SHA: `ac374ad03bce87ac7068cf124f4721441f79f59f`
+- Final reviewed production implementation SHA: `ac374ad03bce87ac7068cf124f4721441f79f59f`
+- Final exact-head CI candidate SHA: `6cd2bc221ecfd1ea203813facf94519baa885fca`
 - Initial rejected implementation SHA: `9839c8de321c82ddd12745006d6aca16f49ac370`
 - Base SHA: `644825e95d3338160df19021389d5ba8bd125eb1`
 - Branch: `feat/m2-06-memory-dump-controls`
@@ -20,7 +21,9 @@ All commands exited `0` unless the explicitly documented host-compiler boundary 
 6. `node tools/governance/validate-project-package.mjs`; result: 28 task cards, 11 core docs and 11 ADRs accepted.
 7. `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict` and `git diff --check`; both passed before freeze.
 
-The new Native M2-06 object files compile with the local MSVC toolchain. The complete Windows Host target remains unsuitable as a local execution oracle because the already pinned Mbed TLS configuration triggers its pre-existing zero-sized PK-structure `C2229` failure under MSVC; the repository CI uses its fixed clang-cl path for that Host target. Exact-head Ubuntu CI must therefore execute the complete Native Host test once. No local emulator or physical device was started.
+The new Native M2-06 object files compile with the local MSVC toolchain. The complete Windows Host target remains unsuitable as a local execution oracle because the already pinned Mbed TLS configuration triggers its pre-existing zero-sized PK-structure `C2229` failure under MSVC; exact-head Ubuntu CI executed the complete Native Host test successfully. No local emulator or physical device was started.
+
+After the independent production review, three bounded test/validation corrections were made without changing production code: SecureBuffer move-assignment release accounting, the fixed M2-03 Runtime caller boundary, and API 36 adjacent-`dd`-VMA byte coverage. Their final bounded independent review returned P0 `0`, P1 `0`, P2 `0`; exact-head remote evidence is recorded in `remote-validation.md`.
 
 ## Artifact hashes
 
@@ -38,5 +41,5 @@ The new Native M2-06 object files compile with the local MSVC toolchain. The com
 
 ## Remaining gates
 
-- One exact-head Ubuntu/Windows Build and bounded API 29/36 x86_64 KVM run with forced cleanup.
-- Evidence-only reconciliation, README update, unique Issue #17 PR, and post-merge strict HandOff. These controls remain cost controls and do not prevent root, kernel, injection, or process-control extraction.
+- PR #48 ready/merge authorization, expected-head merge, and post-merge `main` strict HandOff.
+- These controls remain cost controls and do not prevent root, kernel, injection, debugger, or process-control extraction.

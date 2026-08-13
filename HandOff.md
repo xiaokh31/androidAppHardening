@@ -1,10 +1,10 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260813-002406
-updated_at: 2026-08-13T01:24:00+08:00
+handoff_id: HO-20260813-143934
+updated_at: 2026-08-13T14:39:34+08:00
 updated_by: /root
-state: active
+state: blocked
 source_branch: feat/m2-06-memory-dump-controls
 base_commit: 644825e95d3338160df19021389d5ba8bd125eb1
 working_tree: clean
@@ -21,7 +21,7 @@ Implement M2-06 bounded memory-exposure controls on the fixed Issue #17 branch w
 
 ## Current State
 
-- M2-06 final production implementation is frozen at `ac374ad03bce87ac7068cf124f4721441f79f59f` on `feat/m2-06-memory-dump-controls` from clean post-M2-05 `main@644825e95d3338160df19021389d5ba8bd125eb1`. Issue #17 is the sole task. The first independent review rejected `9839c8d` with P1/P2 Native temporary-secret scrub findings; the bounded correction moves both shares to locked SecureBuffer ownership, scrubs wire copies and HIGH jitter state on all exits, and passed independent incremental review with `P0=0/P1=0/P2=0`. Local Native/Policy, four-ABI, extracted/direct androidTest compile, governance, strict HandOff and negative static gates pass. No local emulator or physical device was started; device-only evidence will use the existing bounded API 29/36 KVM workflow once.
+- M2-06 is merger-ready on `feat/m2-06-memory-dump-controls`: production implementation `ac374ad03bce87ac7068cf124f4721441f79f59f`, exact-head validated candidate `6cd2bc221ecfd1ea203813facf94519baa885fca`, unique Issue #17 and draft PR [#48](https://github.com/xiaokh31/androidAppHardening/pull/48). The first independent review rejected `9839c8d`; the bounded correction and final CI-fix increment both passed independent review with `P0=0/P1=0/P2=0`. Build `31671159532`, Governance `31671159537`, and API 29/36 KVM `31671159539` are all green. Extracted/direct Release/R8 passed secure clearing, read-only/DONTDUMP, 12,288 locked bytes, 20-50 ms HIGH jitter, 20 cold starts, JNI/cross-DEX/metadata, zero plaintext DEX and cleanup. No local emulator or physical device was started; only ready/merge authorization and post-merge coordination remain.
 - M2-05 is merged and complete. Final exact-head `a59345862e7a7ca164fbbc69ed6447efc9f5ddba` passed Build `31616216280`, Governance `31616216704` and API 29/36 KVM `31616216412`; independent full plus bounded incremental review returned `P0=0`, `P1=0`, `P2=0`. PR [#47](https://github.com/xiaokh31/androidAppHardening/pull/47) merged as `815eb55f87bb37e50f00eb91293e930a950d60ac` and Issue [#16](https://github.com/xiaokh31/androidAppHardening/issues/16) closed. API 29/36 ordinary policy, real JDWP, API 29 x86, extracted/direct Release/R8, late mapping aliases and cleanup all passed. The API 29 ARM64 Native probe passed; the MIUI policy APK was rejected before instrumentation with `INSTALL_FAILED_USER_RESTRICTED` and is not presented as a PASS. No local emulator or repeated install prompt was used.
 - ADR-0010 fixes version 1 weights/actions and two deduplicated internal mapping families. Java exposes immutable risk models and the sole `evaluate(ApplicationInfo)` entry; Native reads bounded current-process status/maps and returns schema/versioned normalized states. The final boundary fix raises the still-bounded maps input to 2 MiB so API 36 direct/R8 late mappings remain visible, while `2 MiB + 1`, deadline, no-throw allocation and clearing semantics remain fail-safe. M2-06 is now the sole active task; M3/M4 remain unstarted.
 - PR [#46](https://github.com/xiaokh31/androidAppHardening/pull/46) was marked ready and merged with exact-head protection at `80fee2559073278eb55f94de4a9ac2065777ba6b` as merge commit `d5c74e7d3bfbcebff9c782134795f23ddd16c5e7`; Issue [#15](https://github.com/xiaokh31/androidAppHardening/issues/15) is closed. Local `main` is synchronized. This coordination change updates README/evidence/HandOff and triggers the final main gates; no device matrix is repeated.
@@ -193,7 +193,7 @@ Implement M2-06 bounded memory-exposure controls on the fixed Issue #17 branch w
 | M2-01 | `/root` | `main` | done | M0-05, M1-03, M1-04, M2-03 | PR #45、Issue #12、全零独立复核、Ubuntu/Windows、API 29/36 KVM、README 与 strict HandOff 已关闭 |
 | M2-04 | `/root` | `main` | done | M0-03, M1-01, M2-01, M2-02, M2-03 | PR #46、Issue #15、README、strict、final main Build/Governance/KVM 全部关闭 |
 | M2-05 | `/root` | `main` | done | M2-01, M2-03, M2-04 | PR #47、Issue #16、全零独立复核、Ubuntu/Windows、API 29/36 KVM、真实 JDWP、README 与 strict HandOff 已关闭 |
-| M2-06 | `/root` | `feat/m2-06-memory-dump-controls` | review | M2-02, M2-04, M2-05 | 推送全零复核分支，创建 Issue #17 唯一草稿 PR，运行一次 API 29/36 KVM/双平台 CI |
+| M2-06 | `/root` | `feat/m2-06-memory-dump-controls` | review | M2-02, M2-04, M2-05 | PR #48、Issue #17、全零独立复核、Ubuntu/Windows 与 API 29/36 KVM 已关闭；待授权 ready/merge 与 post-merge strict HandOff |
 
 ## Decisions and Invariants
 
@@ -216,6 +216,9 @@ Implement M2-06 bounded memory-exposure controls on the fixed Issue #17 branch w
 - 根 `README.md` 必须维护公开任务进度表；任务仅在合并后门禁完成时标记“已完成”，每个任务的收尾协调提交必须同步该表，不能以 README 替代 `HandOff.md` 的证据。
 
 ## Changes Since Previous Handoff
+
+- M2-06 production implementation `ac374ad03bce87ac7068cf124f4721441f79f59f` and final CI candidate `6cd2bc221ecfd1ea203813facf94519baa885fca` are frozen. Independent full/corrective/final incremental review is P0 `0`, P1 `0`, P2 `0`; exact-head Build `31671159532`, Governance `31671159537`, and API 29/36 KVM `31671159539` all passed.
+- API 29/36 extracted/direct Release/R8 evidence proves deterministic secret/temp clearing, read-only payload mappings, per-mapping `MADV_DONTDUMP`, 12,288 locked bytes, HIGH jitter within 20-50 ms, 20 cold starts per variant, JNI/cross-DEX/metadata, zero plaintext DEX and cleanup. API 36's merged adjacent VMA remains covered by the page-aligned 12,288-byte check. PR #48 remains draft pending ready/merge authorization; no M3/M4 work has started.
 
 - M2-01 review remediation closed the authenticated no-original-Factory device path, removed the production public test-only surface, and made hostile failure classification total without invoking untrusted `Throwable` methods. Final head `6a5a2706dcbb1b2984fb2bc6edf4147e81f98773` passed Build `31453271122`, Governance `31453271096`, KVM `31453271138` and an independent `P0=0/P1=0/P2=0` review. PR #45 merged as `8dc20e65ed87c029cf14add3d3f5769719e13862`; Issue #12 closed; M2-04 remains unstarted.
 - 用户明确启动 M2-01 并预授权任务内推送、唯一 PR、CI 修复、ready 与 expected-head 普通合并。协调者已核验唯一 Issue #12、无重复分支/PR、clean main 与全部依赖，并创建固定任务分支；验证模式固定为 `pre-cli` 的 M2 test-only integration driver，不启动本机模拟器。
@@ -357,6 +360,18 @@ Implement M2-06 bounded memory-exposure controls on the fixed Issue #17 branch w
 - M2-02 第三实现层已完成本地检查点：同一 `sourceDir` 只读文件映射、OS 只读 DEX commit、generation+slot 类型化 JNI handle、同 handle `AHMD` 认证 metadata、精确五 JNI 方法、Java primitive/finally 交接窗口、幂等 `LoadedPayload` owner，以及 M0-05 等价 Native 搜索路径和三参数 API 29 `InMemoryDexClassLoader` 已接通。Java 17 编译/lint、NDK 四 ABI warnings-as-errors 与离线根 `assembleRelease check` 284-task 均 PASS，四个 ELF 都含唯一 104-byte alloc/read-only `.ah_share_v1`，未启动设备或模拟器。证据更新于 `docs/evidence/M2-02/local-validation.md`；任务仍未完成或发布，下一步仅补 failure injection、Host sanitizer/fuzz/OOM 与已授权 KVM/arm64 验收，不启动 M2-03。
 
 ## Verification Evidence
+
+### M2-06 merger-ready acceptance
+
+- task_id: M2-06
+- git_commit: 6cd2bc221ecfd1ea203813facf94519baa885fca
+- command: local Native/Policy/four-ABI/Release-R8/static/governance gates; independent full, corrective and bounded final read-only review; exact-head Build `31671159532`; Governance `31671159537`; API 29/36 KVM `31671159539`
+- exit_code: 0
+- environment: Windows 10 x64 local validation; Ubuntu 24.04 and Windows 2025 Build/Governance; API 29 r8 and API 36 r2 x86_64 Linux/KVM; no local emulator or physical-device installation
+- timestamp: 2026-08-13T14:39:34+08:00
+- artifact: `docs/evidence/M2-06/local-validation.md`; `docs/evidence/M2-06/remote-validation.md`; `docs/evidence/M2-06/security-review.md`; ignored `build/m2-06/remote/6cd2bc2/`; PR #48; API 29 artifact SHA-256 `2ee6eb6abe7ec2eca840b151a944c2ed312ec81677086287d6b5ac8699982fe6`; API 36 artifact SHA-256 `ce0e6ae2365ad5cd7ccdf1174963c899f36b922252477e0082bc0e1313939388`
+- sha256: bcbb291543b95f41df8c41602fffd5256d6816c97bda6e425958f9103f4712b0
+- result: PASS; secure buffers and wire-copy scrub, read-only/DONTDUMP mappings, bounded mlock, dumpable policy, HIGH jitter, extracted/direct Release/R8, 20 cold starts, JNI/cross-DEX/metadata, zero plaintext DEX, cleanup and independent P0=0/P1=0/P2=0 review all passed; ready/merge and post-merge strict HandOff remain
 
 ### M2-05 final acceptance and merge
 
@@ -1368,13 +1383,13 @@ Implement M2-06 bounded memory-exposure controls on the fixed Issue #17 branch w
 
 ## Blockers and Required Approvals
 
-M2-06 completion still requires exact-head Ubuntu/Windows Build and bounded API 29/36 KVM evidence, evidence reconciliation, merge and post-merge main strict HandOff. No local emulator or physical-device rerun is planned.
+M2-06 implementation, independent review, exact-head Ubuntu/Windows Build/Governance and API 29/36 KVM evidence are complete. Completion now requires explicit ready/merge authorization for draft PR #48, expected-head merge, and post-merge `main` strict HandOff. No local emulator or physical-device rerun is planned.
 
 ## Ordered Next Actions
 
-1. Push the reviewed M2-06 branch and create the unique draft PR for Issue #17.
-2. Run one exact-head Ubuntu/Windows Build plus API 29/36 KVM matrix and reconcile immutable artifact/run evidence.
-3. Update README only after completion gates close, merge with expected-head protection, and run post-merge main strict HandOff. Do not start M3/M4.
+1. Commit and push this evidence-only merger-ready reconciliation to the existing unique draft PR #48.
+2. Obtain explicit authorization, mark PR #48 ready, and merge with expected-head protection after required checks remain green.
+3. Synchronize `main`, close Issue #17 through the PR, update README to “已完成”, and run post-merge strict HandOff. Do not start M3/M4 before that boundary closes.
 
 ## Relevant Files and Artifacts
 
@@ -1383,6 +1398,7 @@ M2-06 completion still requires exact-head Ubuntu/Windows Build and bounded API 
 - `docs/evidence/M2-06/implementation-plan.md`
 - `docs/evidence/M2-06/local-validation.md`
 - `docs/evidence/M2-06/security-review.md`
+- `docs/evidence/M2-06/remote-validation.md`
 - `docs/evidence/M2-06/memory-protection-report-sample.json`
 - ignored `build/m2-06/memory-controls.json`
 - `docs/tasks/M2-04-four-abi-runtime.md`
@@ -1470,6 +1486,11 @@ M2-06 completion still requires exact-head Ubuntu/Windows Build and bounded API 
 - ignored `build/m2-04/remote/ed6b21b/`
 
 ## Resume Checklist
+
+- [x] M2-06 production implementation and bounded review corrections are frozen; independent full plus incremental reviews returned P0/P1/P2 all zero.
+- [x] Exact-head Ubuntu/Windows Build/Governance and API 29/36 KVM passed both extracted/direct Release/R8 variants with immutable artifacts and cleanup.
+- [x] README, local/remote/review evidence and HandOff are reconciled to merger-ready PR #48 without repeating a local emulator or physical-device run.
+- [ ] Obtain explicit ready/merge authorization, merge PR #48 with expected-head protection, then run post-merge `main` strict HandOff before M3/M4.
 
 - [x] M2-01 production Shell, state machine, stable failure mapping and six callback delegation implemented without hidden APIs.
 - [x] Custom original Factory and authenticated no-original-Factory Release/R8 paths passed API 29/36 x86_64 KVM with cleanup.
@@ -1582,6 +1603,8 @@ M2-06 completion still requires exact-head Ubuntu/Windows Build and bounded API 
 - [x] 对当前 clean 冻结提交完成新的独立 parser/security 复核；P0/P1/P2 全零。
 
 ## Handoff Sign-off
+
+- `/root` verified M2-06 production implementation `ac374ad03bce87ac7068cf124f4721441f79f59f`, exact-head candidate `6cd2bc221ecfd1ea203813facf94519baa885fca`, Build `31671159532`, Governance `31671159537`, API 29/36 KVM `31671159539`, immutable artifact hashes and independent `P0=0/P1=0/P2=0` review. PR #48 remains draft pending explicit ready/merge authorization; M3/M4 have not started.
 
 - `/root` verified M2-05 exact-head `a59345862e7a7ca164fbbc69ed6447efc9f5ddba`, Ubuntu/Windows Build/Governance, API 29/36 KVM, real JDWP, API 29 x86, extracted/direct Release/R8 artifacts and independent `P0=0/P1=0/P2=0` review. PR #47 merged as `815eb55f87bb37e50f00eb91293e930a950d60ac`, Issue #16 closed, README/evidence are synchronized, and M2-06 is next only after this main strict snapshot passes.
 - `/root` verified merger-ready M2-04 head `80fee2559073278eb55f94de4a9ac2065777ba6b`, exact-head Ubuntu/Windows Build/Governance, API 29/36 KVM, inherited API 29 ARM dual-ABI evidence and independent `P0=0/P1=0/P2=0` review. PR #46 merged as `d5c74e7d3bfbcebff9c782134795f23ddd16c5e7`, Issue #15 closed, and only final main coordination gates remain before M2-05.

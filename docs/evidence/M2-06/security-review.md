@@ -26,4 +26,13 @@ Result: `PASS`, P0 `0`, P1 `0`, P2 `0`.
 - `RandomValueScrubber` covers successful jitter, short `getrandom`, and failed/interrupted `nanosleep` exits.
 - The M2-06 static verifier now locks the production share-scrubbers, secure-buffer consumption path, and jitter scrubber.
 
-The bounded increment introduced no new P0, P1, or P2 finding. Exact-head Ubuntu/Windows Build and API 29/36 KVM remain external completion gates.
+The bounded increment introduced no new P0, P1, or P2 finding.
+
+## Final CI-fix review
+
+- Reviewed range: `ac374ad03bce87ac7068cf124f4721441f79f59f..6cd2bc221ecfd1ea203813facf94519baa885fca`
+- Result: `PASS`, P0 `0`, P1 `0`, P2 `0`
+
+The release-count correction matches the actual SecureBuffer move/reset lifecycle and preserves the injected-failure total. The Runtime caller verifier admits only the frozen `MemoryControls.applyMemoryProfile` entry while retaining Guard ownership of authenticated open operations. The `smaps` check now accepts API 36's adjacent-VMA merge only when at least one new `dd` VMA exists and its total bytes cover both page-aligned DEX buffers; per-mapping Native capability bits, exact buffer count and the Node-side numeric check remain mandatory.
+
+Exact-head Build `31671159532`, Governance `31671159537`, and API 29/36 KVM `31671159539` all passed. The independent conclusion is final for this production candidate unless production or security-boundary code changes.

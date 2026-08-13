@@ -129,7 +129,10 @@ function runVariant(variant) {
         markerNumber(instrumentation.stdout, "memory_jitter_ms") >= 20 &&
         markerNumber(instrumentation.stdout, "memory_jitter_ms") <= 50 &&
         markerNumber(instrumentation.stdout, "memory_locked_bytes") <= 1024 * 1024 &&
-        markerNumber(instrumentation.stdout, "smaps_dontdump_delta") >= 2
+        markerNumber(instrumentation.stdout, "smaps_dontdump_delta") >= 1 &&
+        markerNumber(instrumentation.stdout, "smaps_dontdump_expected_bytes") > 0 &&
+        markerNumber(instrumentation.stdout, "smaps_dontdump_bytes_delta") >=
+          markerNumber(instrumentation.stdout, "smaps_dontdump_expected_bytes")
       )) &&
       (!isM204 || instrumentation.stdout.includes(`runtime_abi=${expectedAbi}`));
   if (!instrumentation.stdout.includes("OK (1 test)") || !taskSpecificPassed ||
@@ -196,6 +199,8 @@ function runVariant(variant) {
       process_dumpable: false,
       jitter_ms: markerNumber(instrumentation.stdout, "memory_jitter_ms"),
       smaps_dontdump_delta: markerNumber(instrumentation.stdout, "smaps_dontdump_delta"),
+      smaps_dontdump_bytes_delta: markerNumber(instrumentation.stdout, "smaps_dontdump_bytes_delta"),
+      smaps_dontdump_expected_bytes: markerNumber(instrumentation.stdout, "smaps_dontdump_expected_bytes"),
     } : undefined,
   };
 }

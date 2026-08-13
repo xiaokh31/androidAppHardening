@@ -9,6 +9,8 @@ import android.content.pm.Signature;
 import android.os.Bundle;
 import android.os.Build;
 import android.os.SystemClock;
+import android.system.Os;
+import android.system.OsConstants;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -90,7 +92,7 @@ public final class M202DeviceRunner extends Instrumentation {
             }
         }
 
-        int dontDumpBefore = dontDumpMappingCount();
+        SmapsDontDump dontDumpBefore = dontDumpMappings();
         final long[] committedHandle = {0};
         LoadedPayload payload =
                 PayloadRuntime.openVerifiedForTesting(
@@ -103,9 +105,23 @@ public final class M202DeviceRunner extends Instrumentation {
                 PayloadRuntime.applyMemoryProfile(payload, MemoryProfile.BASELINE);
         require(baseline.dontDump(), "baseline DONTDUMP unavailable");
         require(baseline.lockedBytes() == 0, "baseline retained DEX unexpectedly locked");
-        int dontDumpAfterBaseline = dontDumpMappingCount();
-        require(dontDumpAfterBaseline >= dontDumpBefore + 2,
-                "smaps did not expose two DONTDUMP DEX mappings");
+        ByteBuffer[] protectedDexBuffers = NativePayloadBridge.nativeDexBuffers(committedHandle[0]);
+        require(protectedDexBuffers != null && protectedDexBuffers.length == 2,
+                "protected DEX buffer count changed");
+        long pageSize = Os.sysconf(OsConstants._SC_PAGESIZE);
+        require(pageSize > 0, "page size unavailable");
+        long expectedDontDumpBytes = 0;
+        for (ByteBuffer buffer : protectedDexBuffers) {
+            require(buffer != null && buffer.capacity() > 0, "protected DEX buffer unavailable");
+            expectedDontDumpBytes += roundUp(buffer.capacity(), pageSize);
+        }
+        SmapsDontDump dontDumpAfterBaseline = dontDumpMappings();
+        int dontDumpMappingDelta = dontDumpAfterBaseline.count - dontDumpBefore.count;
+        long dontDumpBytesDelta = dontDumpAfterBaseline.bytes - dontDumpBefore.bytes;
+        require(dontDumpMappingDelta >= 1,
+                "smaps did not expose a payload DONTDUMP mapping");
+        require(dontDumpBytesDelta >= expectedDontDumpBytes,
+                "smaps DONTDUMP bytes did not cover both DEX mappings");
         byte[] encodedMetadata =
                 NativePayloadBridge.nativeAuthenticatedMetadata(committedHandle[0]);
         verifyMetadataParserMatrix(encodedMetadata);
@@ -201,20 +217,44 @@ public final class M202DeviceRunner extends Instrumentation {
                 + " memory_process_dumpable=" + high.processDumpable()
                 + " memory_jitter_ms=" + high.jitterMillis()
                 + " memory_jitter_wall_ms=" + jitterMillis
-                + " smaps_dontdump_delta=" + (dontDumpAfterBaseline - dontDumpBefore);
+                + " smaps_dontdump_delta=" + dontDumpMappingDelta
+                + " smaps_dontdump_bytes_delta=" + dontDumpBytesDelta
+                + " smaps_dontdump_expected_bytes=" + expectedDontDumpBytes;
     }
 
-    private static int dontDumpMappingCount() throws Exception {
+    private static SmapsDontDump dontDumpMappings() throws Exception {
         int count = 0;
+        long bytes = 0;
+        long mappingBytes = 0;
         try (BufferedReader reader = new BufferedReader(new FileReader("/proc/self/smaps"))) {
             String line;
             while ((line = reader.readLine()) != null) {
+                if (line.startsWith("Size:")) {
+                    String[] fields = line.trim().split("\\s+");
+                    require(fields.length >= 2, "invalid smaps Size line");
+                    mappingBytes = Long.parseLong(fields[1]) * 1024L;
+                }
                 if (line.startsWith("VmFlags:") && (" " + line + " ").contains(" dd ")) {
                     count++;
+                    bytes += mappingBytes;
                 }
             }
         }
-        return count;
+        return new SmapsDontDump(count, bytes);
+    }
+
+    private static long roundUp(long value, long alignment) {
+        return Math.addExact(value, alignment - 1) / alignment * alignment;
+    }
+
+    private static final class SmapsDontDump {
+        final int count;
+        final long bytes;
+
+        SmapsDontDump(int count, long bytes) {
+            this.count = count;
+            this.bytes = bytes;
+        }
     }
 
     private static String runtimeAbi(ApplicationInfo applicationInfo) throws Exception {

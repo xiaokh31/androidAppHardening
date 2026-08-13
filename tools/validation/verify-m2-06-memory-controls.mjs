@@ -23,8 +23,20 @@ const files = [
   "runtime/policy/src/main/java/ah/runtime/MemoryProtectionReport.java",
 ];
 const sources = new Map(files.map((file) => [file, readFileSync(file, "utf8")]));
+const deviceRunner = readFileSync(
+  "fixtures/android/src/androidTestM202Fixture/java/ah/runtime/loader/M202DeviceRunner.java",
+  "utf8",
+);
+const deviceAcceptance = readFileSync("tools/validation/run-m2-02-device-acceptance.mjs", "utf8");
 
 verify(sources);
+if (!deviceRunner.includes("expectedDontDumpBytes += roundUp(buffer.capacity(), pageSize)") ||
+    !deviceRunner.includes("dontDumpBytesDelta >= expectedDontDumpBytes") ||
+    !deviceRunner.includes("smaps_dontdump_bytes_delta=") ||
+    !deviceAcceptance.includes('markerNumber(instrumentation.stdout, "smaps_dontdump_bytes_delta") >=') ||
+    !deviceAcceptance.includes('markerNumber(instrumentation.stdout, "smaps_dontdump_expected_bytes")')) {
+  fail("device smaps byte-coverage gate is missing");
+}
 const report = {
   task_id: "M2-06",
   validation_mode: "pre-cli",

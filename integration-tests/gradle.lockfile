@@ -1,7 +1,7 @@
 # This is a Gradle generated file for dependency locking.
 # Manual edits can break the build and are not advised.
 # This file is expected to be part of source control.
-com.android.tools.build:apksig:9.3.0=runtimeClasspath,testRuntimeClasspath
+com.android.tools.build:apksig:9.3.0=m301Apksig,runtimeClasspath,testRuntimeClasspath
 net.java.dev.jna:jna-platform:5.19.1=runtimeClasspath,testRuntimeClasspath
 net.java.dev.jna:jna:5.19.1=runtimeClasspath,testRuntimeClasspath
 org.jetbrains.kotlin:kotlin-build-tools-api:2.4.0=kotlinAbiValidationCompatClasspath

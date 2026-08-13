@@ -13,6 +13,7 @@ object RuntimeBundleGenerator {
     fun main(args: Array<String>) {
         require(args.isEmpty())
         val output = propertyPath("m301.runtimeBundle")
+        val apksig = output.parent.parent.parent.resolve("intermediates/m3-01/apksig/apksig-9.3.0.jar")
         val work = output.resolveSibling("runtime-bundle-work")
         output.toFile().deleteRecursively()
         work.toFile().deleteRecursively()
@@ -32,7 +33,8 @@ object RuntimeBundleGenerator {
             }
             val dexDirectory = work.resolve("d8")
             Files.createDirectories(dexDirectory)
-            runD8(jars, dexDirectory, work.resolve("d8-output.txt"))
+            check(Files.isRegularFile(apksig)) { "M3-01 staged apksig dependency is missing" }
+            runD8(jars + listOf(apksig), dexDirectory, work.resolve("d8-output.txt"))
             val dexFiles = Files.list(dexDirectory).use { entries ->
                 entries.filter { Files.isRegularFile(it) && it.fileName.toString().endsWith(".dex") }.toList()
             }
@@ -43,6 +45,7 @@ object RuntimeBundleGenerator {
                 "Lah/runtime/bootstrap/ShellAppComponentFactory;",
                 "Lah/runtime/guard/RuntimeStartupGuard;",
                 "Lah/runtime/loader/PayloadRuntime;",
+                "Lcom/android/apksig/ApkVerifier;",
             ).forEach { descriptor ->
                 check(bootstrapText.contains(descriptor)) { "M3-01 runtime bootstrap is missing $descriptor" }
             }
@@ -72,17 +75,14 @@ object RuntimeBundleGenerator {
 
     private fun runD8(jars: List<Path>, output: Path, log: Path) {
         val arguments = listOf(
-            propertyPath("m301.d8").toString(),
+            javaExecutable().toString(),
+            "-cp", propertyPath("m301.d8Jar").toString(),
+            "com.android.tools.r8.D8",
             "--min-api", "29",
             "--lib", propertyPath("m301.androidJar").toString(),
             "--output", output.toString(),
         ) + jars.map(Path::toString)
-        val command = if (System.getProperty("os.name").startsWith("Windows", ignoreCase = true)) {
-            listOf("cmd.exe", "/d", "/c") + arguments
-        } else {
-            arguments
-        }
-        val process = ProcessBuilder(command)
+        val process = ProcessBuilder(arguments)
             .redirectErrorStream(true)
             .redirectOutput(log.toFile())
             .start()
@@ -97,6 +97,11 @@ object RuntimeBundleGenerator {
 
     private fun propertyPath(name: String): Path =
         Path.of(requireNotNull(System.getProperty(name))).toAbsolutePath().normalize()
+
+    private fun javaExecutable(): Path {
+        val executable = if (System.getProperty("os.name").startsWith("Windows", ignoreCase = true)) "java.exe" else "java"
+        return Path.of(System.getProperty("java.home"), "bin", executable).toAbsolutePath().normalize()
+    }
 
     private fun sha256(bytes: ByteArray): String =
         MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it.toInt() and 0xff) }

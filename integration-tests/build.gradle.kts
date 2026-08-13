@@ -20,30 +20,44 @@ tasks.withType<KotlinCompile>().configureEach {
     compilerExecutionStrategy.set(KotlinCompilerExecutionStrategy.IN_PROCESS)
 }
 
+val m301Apksig by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isTransitive = false
+}
+
 dependencies {
     implementation(project(":host:cli"))
+    add(m301Apksig.name, libs.android.apksig)
 }
 
 val generatedRuntimeBundle = layout.buildDirectory.dir("generated/m3-01/runtime-bundle")
 val androidHome = providers.environmentVariable("ANDROID_HOME")
     .orElse(providers.environmentVariable("ANDROID_SDK_ROOT"))
-val executableSuffix = if (System.getProperty("os.name").startsWith("Windows", ignoreCase = true)) ".bat" else ""
 val bootstrapAar = project(":runtime:bootstrap").layout.buildDirectory.file("outputs/aar/bootstrap-release.aar")
 val policyAar = project(":runtime:policy").layout.buildDirectory.file("outputs/aar/policy-release.aar")
 val nativeAar = project(":runtime:native").layout.buildDirectory.file("outputs/aar/native-release.aar")
+val stagedApksigDirectory = layout.buildDirectory.dir("intermediates/m3-01/apksig")
+val stagedApksig = stagedApksigDirectory.map { it.file("apksig-9.3.0.jar") }
+val stageM301Apksig by tasks.registering(Sync::class) {
+    from(m301Apksig)
+    into(stagedApksigDirectory)
+    rename { "apksig-9.3.0.jar" }
+}
 val runtimeTemplates = project(":runtime:native").layout.buildDirectory.dir("intermediates/stripped_native_libs/release/out/lib")
-val d8Executable = layout.file(androidHome.map { File(it, "build-tools/36.1.0/d8$executableSuffix") })
+val d8Jar = layout.file(androidHome.map { File(it, "build-tools/36.1.0/lib/d8.jar") })
 val androidJar = layout.file(androidHome.map { File(it, "platforms/android-36/android.jar") })
 
 val generateM301RuntimeBundle by tasks.registering(JavaExec::class) {
     dependsOn(
         tasks.named("classes"),
+        stageM301Apksig,
         ":runtime:bootstrap:assembleRelease",
         ":runtime:policy:assembleRelease",
         ":runtime:native:assembleRelease",
         ":runtime:native:stageM204RuntimeTemplates",
     )
-    inputs.files(bootstrapAar, policyAar, nativeAar, d8Executable, androidJar)
+    inputs.files(bootstrapAar, policyAar, nativeAar, stagedApksig, d8Jar, androidJar)
     inputs.dir(runtimeTemplates)
     outputs.dir(generatedRuntimeBundle)
     classpath = sourceSets["main"].runtimeClasspath
@@ -51,7 +65,7 @@ val generateM301RuntimeBundle by tasks.registering(JavaExec::class) {
     systemProperty("m301.bootstrapAar", bootstrapAar.get().asFile.absolutePath)
     systemProperty("m301.policyAar", policyAar.get().asFile.absolutePath)
     systemProperty("m301.nativeAar", nativeAar.get().asFile.absolutePath)
-    systemProperty("m301.d8", d8Executable.get().asFile.absolutePath)
+    systemProperty("m301.d8Jar", d8Jar.get().asFile.absolutePath)
     systemProperty("m301.androidJar", androidJar.get().asFile.absolutePath)
     systemProperty("m301.runtimeTemplates", runtimeTemplates.get().asFile.absolutePath)
     systemProperty("m301.runtimeBundle", generatedRuntimeBundle.get().asFile.absolutePath)

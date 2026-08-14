@@ -118,7 +118,7 @@ function runVariant(variant) {
       instrumentation.stdout.includes("cleanup_suppressed=true") &&
       instrumentation.stdout.includes("mapping_cleanup=true") &&
       instrumentation.stdout.includes("session_close=true")
-    : instrumentation.stdout.includes("failure_injection=10") &&
+    : instrumentation.stdout.includes("failure_injection=20") &&
       instrumentation.stdout.includes("metadata_negative=true") &&
       instrumentation.stdout.includes("metadata_golden=true") &&
       instrumentation.stdout.includes("cross_handle=true") &&
@@ -183,8 +183,22 @@ function runVariant(variant) {
     target_apk: fileEvidence(variant.target),
     test_apk: fileEvidence(variant.test),
     instrumentation_passed: true,
-    failure_injection_windows: isM203 ? 12 : 10,
+    failure_injection_windows: isM203 ? 12 : 20,
     guard_metadata_rejections: isM203 ? 12 : 0,
+    failure_publication_contract: {
+      payload_loaded: false,
+      payload_class_lookup_attempted: false,
+      byte_buffers_published: false,
+      loaded_payload_published: isM203,
+      verified_payload_session_published: false,
+      native_close_count_exactly_once: true,
+      partial_java_references_cleared: true,
+      partial_guard_references_cleared: isM203 ? true : "not_applicable",
+      completed_mappings_zeroized_unmapped: true,
+      partial_mapping_zeroized_unmapped: true,
+      primary_code_preserved: true,
+      cleanup_failure_suppressed: true,
+    },
     multidex_verified: true,
     jni_verified: true,
     authenticated_metadata_verified: true,

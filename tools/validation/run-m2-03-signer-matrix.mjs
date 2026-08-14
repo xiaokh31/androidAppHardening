@@ -42,6 +42,13 @@ try {
   verifyStartup("factory-slot-tamper", "factory-target-apk", "CONTAINER", false);
   verifyStartup("binding-slot-tamper", "binding-target-apk", "CONTAINER", false);
   verifyStartup("container-ciphertext-tamper", "container-target-apk", "CONTAINER", false);
+  verifyStartup("m302-nonce", "m302-nonce-target-apk", "CONTAINER", false);
+  verifyStartup("m302-tag-first", "m302-tag-first-target-apk", "CONTAINER", false);
+  verifyStartup("m302-tag-middle", "m302-tag-middle-target-apk", "CONTAINER", false);
+  verifyStartup("m302-tag-last", "m302-tag-last-target-apk", "CONTAINER", false);
+  verifyStartup("m302-ciphertext-first", "m302-ciphertext-first-target-apk", "CONTAINER", false);
+  verifyStartup("m302-ciphertext-middle", "m302-ciphertext-middle-target-apk", "CONTAINER", false);
+  verifyStartup("m302-ciphertext-last", "m302-ciphertext-last-target-apk", "CONTAINER", false);
   const cleanupPassed = cleanup();
   if (!cleanupPassed) fail("cleanup verification failed");
 
@@ -51,6 +58,7 @@ try {
     serial_sha256: sha256(Buffer.from(serial, "utf8")),
     signer_fixture_matrix: fixtureResults,
     startup_rejection_matrix: startupResults,
+    m302_runtime_tamper_matrix: startupResults.filter((value) => value.name.startsWith("m302-")),
     cleanup_passed: cleanupPassed,
     result: "PASS",
   };

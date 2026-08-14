@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 4.1.2)
 project(ah_runtime_native_crypto LANGUAGES C CXX)
 
 option(AH_M2_02_SANITIZERS "Enable Host ASan and UBSan for M2-02" OFF)
+option(AH_M3_02_LIBFUZZER "Build the bounded M3-02 Native libFuzzer target" OFF)
 
 set(AH_MBEDTLS_ROOT "" CACHE PATH "Path to the verified Mbed TLS 4.1.1 source tree")
 if(NOT IS_ABSOLUTE "${AH_MBEDTLS_ROOT}")
@@ -171,6 +172,29 @@ else()
         target_compile_options(ah_crypto_self_test PRIVATE
             -fsanitize=address,undefined -fno-omit-frame-pointer)
         target_link_options(ah_crypto_self_test PRIVATE -fsanitize=address,undefined)
+    endif()
+    if(AH_M3_02_LIBFUZZER)
+        if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+            message(FATAL_ERROR "M3-02 libFuzzer requires Clang")
+        endif()
+        target_compile_options(ah_crypto_backend PRIVATE
+            -fsanitize=fuzzer-no-link,address,undefined -fno-omit-frame-pointer)
+        target_link_options(ah_crypto_self_test PRIVATE -fsanitize=address,undefined)
+        add_executable(
+            m3_02_container_fuzz
+            m3_02_container_fuzz.cpp
+            $<TARGET_OBJECTS:ah_crypto_backend>
+        )
+        target_compile_definitions(m3_02_container_fuzz PRIVATE AH_M2_02_HOST_TESTING=1)
+        target_compile_features(m3_02_container_fuzz PRIVATE cxx_std_17)
+        target_compile_options(m3_02_container_fuzz PRIVATE
+            -Wall -Wextra -Wpedantic -Werror
+            -fsanitize=fuzzer,address,undefined -fno-omit-frame-pointer)
+        target_link_options(m3_02_container_fuzz PRIVATE -fsanitize=fuzzer,address,undefined)
+        target_link_libraries(
+            m3_02_container_fuzz
+            PRIVATE TF-PSA-Crypto::tfpsacrypto Threads::Threads ZLIB::ZLIB
+        )
     endif()
     add_test(NAME m2_07_native_crypto_vectors COMMAND ah_crypto_self_test)
     if(UNIX AND DEFINED AH_M2_02_VECTOR_ROOT AND NOT AH_M2_02_VECTOR_ROOT STREQUAL "")

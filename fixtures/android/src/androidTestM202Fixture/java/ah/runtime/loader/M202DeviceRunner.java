@@ -72,23 +72,37 @@ public final class M202DeviceRunner extends Instrumentation {
 
         int injected = 0;
         for (PayloadRuntime.OpenStage stage : PayloadRuntime.OpenStage.values()) {
-            final long[] capturedHandle = {0};
-            try {
-                PayloadRuntime.openVerifiedForTesting(
-                        target.getClassLoader(),
-                        applicationInfo,
-                        signer,
-                        (current, nativeHandle) -> {
-                            capturedHandle[0] = nativeHandle;
-                            if (current == stage) {
-                                throw new OutOfMemoryError("synthetic-" + stage.name());
-                            }
-                        });
-                throw new AssertionError("failure stage returned: " + stage);
-            } catch (OutOfMemoryError expected) {
-                require(capturedHandle[0] != 0, "failure stage did not capture handle: " + stage);
-                requireClosedHandle(capturedHandle[0], stage);
-                injected++;
+            for (boolean oom : new boolean[] {false, true}) {
+                final long[] capturedHandle = {0};
+                try {
+                    PayloadRuntime.openVerifiedForTesting(
+                            target.getClassLoader(),
+                            applicationInfo,
+                            signer,
+                            (current, nativeHandle) -> {
+                                capturedHandle[0] = nativeHandle;
+                                if (current == stage) {
+                                    if (oom) {
+                                        throw new OutOfMemoryError("synthetic-" + stage.name());
+                                    }
+                                    throw new IllegalStateException("synthetic-" + stage.name());
+                                }
+                            });
+                    throw new AssertionError("failure stage returned: " + stage + ":" + oom);
+                } catch (Throwable expected) {
+                    require(capturedHandle[0] != 0,
+                            "failure stage did not capture handle: " + stage + ":" + oom);
+                    requireClosedHandle(capturedHandle[0], stage.name() + ":" + oom);
+                    if (oom) {
+                        require(expected instanceof OutOfMemoryError, "OOM primary replaced: " + stage);
+                    } else {
+                        require(expected instanceof IllegalStateException,
+                                "exception primary replaced: " + stage);
+                        require(("synthetic-" + stage.name()).equals(expected.getMessage()),
+                                "exception primary value changed: " + stage);
+                    }
+                    injected++;
+                }
             }
         }
 

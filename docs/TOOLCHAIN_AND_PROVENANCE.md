@@ -20,6 +20,8 @@ M0-03 必须以仓库配置固化以下基线，不允许依赖开发者全局�
 | Native 密码后端 | Mbed TLS `4.1.1` 官方完整归档；仅静态链接 bundled TF-PSA-Crypto `1.1.1` |
 | 治理脚本 | Node.js `24.12.0` |
 | Host 测试 | Windows x64 与 Ubuntu x64 |
+| JVM fuzz | Jazzer/Jazzer API `0.29.1`；Maven Central 固定 JAR/POM SHA-256 |
+| Native fuzz | Ubuntu 24.04、Clang `18.1.3`、libFuzzer + ASan + UBSan |
 | Runtime 最低平台 | `minSdk 29`；fixture `targetSdk 36`，输入 APK 的 targetSdk 保持不变 |
 | Runtime ABI | `armeabi-v7a`、`arm64-v8a`、`x86`、`x86_64` |
 | 签名读取与验证 | Android `apksig` 官方库，版本与 AGP 工具链统一锁定 |
@@ -99,6 +101,8 @@ GitHub 的 `windows-2025` 托管池会在滚动发布期间分配多个已发布
 M2-07 Ubuntu Host 与 KVM 固定到 run 自报的 `ImageOS=ubuntu24`，并使用精确、有限且机器锁定的不可变 allowlist：runtime `ImageVersion=20260720.247.2` 对应[清单 ref `ubuntu24/20260720.247`](https://github.com/actions/runner-images/blob/ubuntu24/20260720.247/images/ubuntu/Ubuntu2404-Readme.md)，runtime `ImageVersion=20260804.265.1` 对应[清单 ref `ubuntu24/20260804.265`](https://github.com/actions/runner-images/blob/ubuntu24/20260804.265/images/ubuntu/Ubuntu2404-Readme.md)。两份清单均提供 GNU C/C++ `13.3.0`，workflow 精确映射 runtime 到清单 ref 并断言编译器版本。机器锁 `ci_toolchains.ubuntu` 固定顺序、runner label、两个 runtime/ref、编译器命令与版本，字段或顺序变更均由负例拒绝；不接受范围、第三个镜像或 `latest`，托管池再出现新值时必须失败关闭并重新审查。
 
 Ubuntu 24.04 KVM runner 还固定安装 `libpulse0=1:16.1+dfsg1-2ubuntu10.1`，版本记录在同一机器可读锁的 `host_packages` 中。workflow 必须以精确版本安装并在启动 Emulator 前逐字比对 `dpkg-query` 结果，不得接受仓库候选版本漂移。
+
+M3-02 的持续 fuzz 机器锁位于 `tools/validation/m3-02-fuzz-toolchain.json`。JVM 引擎固定为 Jazzer/Jazzer API `0.29.1`，来源仅为 Maven Central；四个 JAR/POM 的 SHA-256 同时写入该机器锁和 `gradle/verification-metadata.xml`。Native 引擎固定使用 Ubuntu runner 随镜像提供的 Clang `18.1.3`、libFuzzer、ASan 与 UBSan。PR 每个 target 固定 `600` 秒，nightly 每个 target 固定 `3600` 秒；子进程 RSS 上限 `2048 MiB`、单输入超时 `5` 秒、最大输入 `4 MiB`。Ubuntu/Windows runner 只接受锁中列出的精确 `ImageOS`/`ImageVersion`，未知镜像失败关闭；语料与变异副本仅写入忽略的 `build/fuzz-work/`。
 
 ## 6. GitHub Actions
 

@@ -313,12 +313,26 @@ function verifyLocalEquivalence(semantics, projections, random) {
 
 function verifyNegatives(root, schema) {
   const rows = {};
+  const expected = {
+    unsigned: { status: "rejected", error_code: "SIGNER_UNSIGNED", stage: "signer" },
+    invalid: { status: "rejected", error_code: "INPUT_ZIP_STRUCTURE", stage: "inspect" },
+  };
   for (const name of ["unsigned", "invalid"]) {
-    const report = JSON.parse(readFileSync(join(root, "negative", `${name}-report.json`), "utf8"));
-    validateSchemaKeys(report, schema, schema, "$");
+    const result = JSON.parse(readFileSync(join(root, "negative", `${name}-result.json`), "utf8"));
     const exit = Number(readFileSync(join(root, "negative", `${name}-exit.txt`), "ascii").trim());
-    invariant(exit !== 0 && report.result.status !== "success", `${name}: negative accepted`);
-    rows[name] = { exit, error_code: report.result.error_code, stage: report.errors[0]?.stage ?? null, partial_output: false };
+    invariant(exit !== 0 && result.status !== "success" && result.partial_output === false, `${name}: negative accepted`);
+    invariant(result.status === expected[name].status && result.error_code === expected[name].error_code, `${name}: unstable failure`);
+    let stage = null;
+    if (result.report_present) {
+      const report = JSON.parse(readFileSync(join(root, "negative", `${name}-report.json`), "utf8"));
+      validateSchemaKeys(report, schema, schema, "$");
+      invariant(report.result.status === result.status && report.result.error_code === result.error_code, `${name}: report/CLI divergence`);
+      invariant(report.output.report_basename === result.report_basename, `${name}: report basename divergence`);
+      stage = report.errors[0]?.stage ?? null;
+      invariant(stage === expected[name].stage, `${name}: failure stage`);
+    }
+    rows[name] = { exit, status: result.status, error_code: result.error_code, report_basename: result.report_basename,
+      report_present: result.report_present, stage, partial_output: false };
   }
   writeJson(join(root, "negative-results.json"), { schema_version: 1, cases: rows });
 }

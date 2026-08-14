@@ -158,8 +158,20 @@ object CrossPlatformCorpus {
                 Duration.ofMinutes(2),
                 allowFailure = true,
             )
+            val lines = result.output.lineSequence().map(String::trim).filter(String::isNotEmpty).toList()
+            check(lines.size == 1) { "$name did not emit the canonical one-line CLI result" }
+            val match = Regex("^(rejected|failed)/([A-Z0-9_]+)/([^/]+)$").matchEntire(lines.single())
+                ?: error("$name emitted a non-canonical CLI result")
+            val report = destination.resolve("$name-report.json")
             check(result.exit != 0 && !Files.exists(destination.resolve("$name-output.apk")))
             Files.writeString(destination.resolve("$name-exit.txt"), "${result.exit}\n", StandardCharsets.US_ASCII)
+            Files.writeString(
+                destination.resolve("$name-result.json"),
+                "{\"schema_version\":1,\"status\":\"${match.groupValues[1]}\"," +
+                    "\"error_code\":\"${match.groupValues[2]}\",\"report_basename\":\"${match.groupValues[3]}\"," +
+                    "\"report_present\":${Files.isRegularFile(report)},\"partial_output\":false}\n",
+                StandardCharsets.UTF_8,
+            )
         }
     }
 

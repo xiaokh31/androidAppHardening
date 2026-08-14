@@ -14,7 +14,7 @@
 - Run every fixture twice per platform. Require distinct output/container hashes, build IDs, key-slot IDs, nonce prefixes, MACs, tags, and ciphertext while comparing deterministic ZIP, Runtime, Manifest, authenticated-container, decrypted-DEX, and report semantics.
 - Parse ZIP/AHDC independently of the product implementation. Authenticate the manifest, recover the test-only CEK in memory, authenticate/decrypt every chunk, inflate each record, and verify DEX order, length, topology, and SHA-256 without persisting CEK or plaintext DEX.
 - Reject unknown report fields and unclassified drift. Normalize only the reviewed randomized Native share slot; do not normalize whole artifacts or delete whole report objects.
-- Lock Java `17.0.19`, Gradle `9.5.0`, Android build-tools `36.1.0`, `UTC`, `Locale.ROOT`, and UTF-8. Exercise a deep non-ASCII work path and scan published reports for absolute runner paths.
+- Lock Java `17.0.19`, Gradle `9.5.0`, Android build-tools `36.1.0`, `UTC`, `Locale.ROOT`, and the deterministic `C.UTF-8` process locale. Exercise a deep non-ASCII work path and scan published reports for absolute runner paths.
 - Keep the two negative inputs fail-closed on both platforms, require identical stable failure semantics, no partial output, immutable inputs, and deleted test-signing material.
 
 ## Evidence and completion boundary

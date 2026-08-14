@@ -78,45 +78,24 @@ if (byId.size !== catalog.length) fail("duplicate runtime catalog ID");
 const signer = readJson(signerPath, "signer report");
 const loader = readJson(loaderPath, "loader report");
 const guard = readJson(guardPath, "Guard report");
-if (signer.result !== "PASS" || signer.cleanup_passed !== true || !Array.isArray(signer.startup_rejection_matrix)) {
+if (signer.result !== "PASS" || signer.cleanup_passed !== true || !Array.isArray(signer.m302_cases)) {
   fail("startup matrix did not pass");
 }
 if (loader.task_id !== "M2-02" || loader.result !== "PASS" || loader.cleanup_passed !== true) fail("loader report");
 if (guard.task_id !== "M2-03" || guard.result !== "PASS" || guard.cleanup_passed !== true) fail("Guard report");
 
-const startupDefinitions = new Map([
-  ["m302-runtime-different-signer", ["different-signer", "signer_flip", "SIGNER_POLICY", false]],
-  ["m302-runtime-config-version", ["config-version-tamper", "config_version", "NATIVE_CONFIG", false]],
-  ["m302-runtime-factory-flags", ["factory-slot-tamper", "factory_flags", "NATIVE_CONFIG", false]],
-  ["m302-runtime-binding-slot", ["binding-slot-tamper", "binding_slot", "NATIVE_BINDING", false]],
-  ["m302-runtime-container", ["container-ciphertext-tamper", "container_flip", "NATIVE_AUTH", true]],
-  ["m302-runtime-nonce", ["m302-nonce", "nonce_flip", "NATIVE_AUTH", true]],
-  ["m302-runtime-tag-first", ["m302-tag-first", "tag_first_flip", "NATIVE_AUTH", true]],
-  ["m302-runtime-tag-middle", ["m302-tag-middle", "tag_middle_flip", "NATIVE_AUTH", true]],
-  ["m302-runtime-tag-last", ["m302-tag-last", "tag_last_flip", "NATIVE_AUTH", true]],
-  ["m302-runtime-ciphertext-first", ["m302-ciphertext-first", "ciphertext_first_flip", "NATIVE_AUTH", true]],
-  ["m302-runtime-ciphertext-middle", ["m302-ciphertext-middle", "ciphertext_middle_flip", "NATIVE_AUTH", true]],
-  ["m302-runtime-ciphertext-last", ["m302-ciphertext-last", "ciphertext_last_flip", "NATIVE_AUTH", true]],
-]);
 const observed = new Map();
-for (const [id, [name, mutation, stage, mapping]] of startupDefinitions) {
-  const expected = byId.get(id);
-  const result = signer.startup_rejection_matrix.find((entry) => entry.name === name);
-  if (!expected || !result || result.result !== "PASS" || result.install_rejected !== false ||
-      result.expected_code !== expected.expectedCode || result.actual_code !== expected.expectedCode ||
-      result.lookup_count !== 0 || result.session_published !== false) {
-    fail(`invalid tokenized startup result ${id}`);
-  }
-  observed.set(id, exact(expected, {
-    id, target: "runtime-prehandle", mutation, expectedStage: stage,
-    expectedCode: result.actual_code, payloadLoaded: "false", payloadClassLookupAttempted: "false",
-    nativeHandleAcquired: "false", loadedPayloadPublished: "false",
-    verifiedPayloadSessionPublished: "false", byteBuffersPublished: "false", nativeCloseCount: "0",
-    partialJavaReferencesCleared: "not_applicable", partialGuardReferencesCleared: "not_applicable",
-    completedMappingsZeroizedUnmapped: "not_applicable",
-    partialMappingZeroizedUnmapped: mapping ? "true" : "not_applicable",
-    primaryCodePreserved: "true", cleanupFailureSuppressed: "false",
-  }, mapping ? "tokenized-startup+M2-02-transaction-cleanup" : "tokenized-startup-rejection"));
+const startupCatalog = catalog.filter((entry) => entry.target === "runtime-prehandle");
+if (signer.m302_cases.length !== startupCatalog.length) fail("startup named case count");
+const startupCases = new Map();
+for (const entry of signer.m302_cases) {
+  if (startupCases.has(entry.id)) fail(`duplicate startup case ${entry.id}`);
+  startupCases.set(entry.id, entry);
+}
+for (const expected of startupCatalog) {
+  const actual = startupCases.get(expected.id);
+  if (!actual) fail(`missing startup case ${expected.id}`);
+  observed.set(expected.id, exact(expected, actual, "tokenized-startup+transaction-cleanup"));
 }
 
 const loaderCases = variantCases(loader, "M202DeviceRunner", 21);

@@ -16,6 +16,8 @@ function fail(message) {
   throw new Error(`M3-02 JVM corpus failed: ${message}`);
 }
 
+const APK_SIGNING_BLOCK_MAGIC = Buffer.from("APK Sig Block 42", "ascii");
+
 function entries(bytes) {
   let eocd = -1;
   for (let offset = bytes.length - 22; offset >= Math.max(0, bytes.length - 65_557); offset -= 1) {
@@ -23,7 +25,8 @@ function entries(bytes) {
   }
   if (eocd < 0) fail("missing EOCD");
   const count = bytes.readUInt16LE(eocd + 10);
-  let offset = bytes.readUInt32LE(eocd + 16);
+  const centralDirectoryOffset = bytes.readUInt32LE(eocd + 16);
+  let offset = centralDirectoryOffset;
   const output = new Map();
   for (let index = 0; index < count; index += 1) {
     if (bytes.readUInt32LE(offset) !== 0x02014b50) fail("invalid central directory");
@@ -45,7 +48,28 @@ function entries(bytes) {
     output.set(name, value);
     offset += 46 + nameLength + extraLength + commentLength;
   }
-  return {eocd, values: output};
+  return {centralDirectoryOffset, eocd, values: output};
+}
+
+function hasApkSigningBlock(bytes, centralDirectoryOffset) {
+  const footerLength = 8 + APK_SIGNING_BLOCK_MAGIC.length;
+  if (centralDirectoryOffset < footerLength + 8) return false;
+  const magicOffset = centralDirectoryOffset - APK_SIGNING_BLOCK_MAGIC.length;
+  if (!bytes.subarray(magicOffset, centralDirectoryOffset).equals(APK_SIGNING_BLOCK_MAGIC)) return false;
+  const size = bytes.readBigUInt64LE(centralDirectoryOffset - footerLength);
+  if (size < BigInt(footerLength) || size > BigInt(centralDirectoryOffset - 8)) return false;
+  const blockOffset = centralDirectoryOffset - Number(size) - 8;
+  return blockOffset >= 0 && bytes.readBigUInt64LE(blockOffset) === size;
+}
+
+function assertUnsigned(apk, parsed, label) {
+  if ([...parsed.values.keys()].some((name) =>
+    /^META-INF\/(?:MANIFEST\.MF|.*\.(?:RSA|DSA|EC|SF))$/iu.test(name))) {
+    fail(`${label} contains v1 signing metadata`);
+  }
+  if (hasApkSigningBlock(apk, parsed.centralDirectoryOffset)) {
+    fail(`${label} contains an APK v2/v3 signing block`);
+  }
 }
 
 function validate() {
@@ -54,9 +78,7 @@ function validate() {
   if (!parsed.values.has("AndroidManifest.xml") || !parsed.values.has("classes.dex")) {
     fail("valid APK seed lacks manifest or classes.dex");
   }
-  if ([...parsed.values.keys()].some((name) => /^META-INF\/.*\.(?:RSA|DSA|EC|SF)$/iu.test(name))) {
-    fail("valid APK seed must remain unsigned");
-  }
+  assertUnsigned(apk, parsed, "valid APK seed");
   const axml = readFileSync(axmlSeed);
   if (axml.length < 8 || axml.readUInt16LE(0) !== 0x0003 || axml.readUInt16LE(2) !== 8 ||
       axml.readUInt32LE(4) !== axml.length || !parsed.values.get("AndroidManifest.xml").equals(axml)) {
@@ -78,6 +100,7 @@ if (process.argv[2] === "--write") {
   if (!source) fail("--write requires a generated unsigned synthetic APK");
   const apk = readFileSync(source);
   const parsed = entries(apk);
+  assertUnsigned(apk, parsed, "source APK");
   const manifest = parsed.values.get("AndroidManifest.xml");
   if (!manifest) fail("source APK lacks AndroidManifest.xml");
   mkdirSync(path.dirname(apkSeed), {recursive: true});

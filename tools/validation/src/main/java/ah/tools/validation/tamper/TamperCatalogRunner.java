@@ -86,9 +86,13 @@ public final class TamperCatalogRunner {
         String target = current.get("target");
         String mutation = current.get("mutation");
         String code = current.get("expectedCode");
-        String stage = current.get("expectedStage");
+        String stage;
         String inputHash;
         if (target.equals("apk")) {
+            stage = "INSPECT";
+            if (!stage.equals(current.get("expectedStage"))) {
+                throw new AssertionError("APK stage mismatch for " + current.get("id"));
+            }
             String fixture = APK_FIXTURES.get(mutation);
             if (fixture == null) throw new AssertionError("unmapped APK catalog mutation: " + mutation);
             Matcher match = Pattern.compile("\\{\\\"name\\\":\\\"" + Pattern.quote(fixture) +
@@ -97,6 +101,10 @@ public final class TamperCatalogRunner {
             if (!match.find()) throw new AssertionError("APK evidence mismatch for " + current.get("id"));
             inputHash = match.group(1);
         } else if (target.equals("axml")) {
+            stage = "MANIFEST";
+            if (!stage.equals(current.get("expectedStage"))) {
+                throw new AssertionError("AXML stage mismatch for " + current.get("id"));
+            }
             String fixture = AXML_FIXTURES.get(mutation);
             if (fixture == null) throw new AssertionError("unmapped AXML catalog mutation: " + mutation);
             Matcher match = Pattern.compile("\\{\\\"case\\\":\\\"" + Pattern.quote(fixture) +
@@ -105,6 +113,7 @@ public final class TamperCatalogRunner {
             if (!match.find()) throw new AssertionError("AXML evidence mismatch for " + current.get("id"));
             inputHash = match.group(1);
         } else {
+            stage = current.get("expectedStage");
             String fixture = mutation.replace('_', '-');
             Matcher match = Pattern.compile("\\{\\\"name\\\": \\\"" + Pattern.quote(fixture) +
                     "\\\", \\\"stage\\\": \\\"" + Pattern.quote(stage) +

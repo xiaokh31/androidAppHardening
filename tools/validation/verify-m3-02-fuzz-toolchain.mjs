@@ -47,6 +47,10 @@ const nativeRunner = readFileSync("tools/validation/run-m3-02-native-fuzz.mjs", 
 const workflow = readFileSync(".github/workflows/m3-02-fuzz.yml", "utf8");
 const deviceRunner = readFileSync("tools/validation/run-m2-02-device-acceptance.mjs", "utf8");
 const deviceSummary = readFileSync("tools/validation/summarize-m3-02-device-tamper.mjs", "utf8");
+const signerMatrix = readFileSync("tools/validation/run-m2-03-signer-matrix.mjs", "utf8");
+const jvmCorpus = readFileSync("tools/validation/generate-m3-02-jvm-corpus.mjs", "utf8");
+const tamperRunner = readFileSync(
+  "tools/validation/src/main/java/ah/tools/validation/tamper/TamperCatalogRunner.java", "utf8");
 check(versions.includes('jazzer = "0.29.1"'), "version catalog lock");
 for (const hash of Object.values(lock.jazzer.artifacts)) check(verification.includes(hash), `verification hash ${hash}`);
 check(gradleTask.includes("-rss_limit_mb=2048") && gradleTask.includes("-timeout=5") &&
@@ -68,8 +72,16 @@ check(workflow.includes("M302_SECONDS: ${{ github.event_name == 'schedule' && '3
 check((workflow.match(/actions\/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093/gu) ?? []).length === 5,
   "five exact target artifact downloads");
 check(deviceRunner.includes("parseM302Cases") && deviceRunner.includes("m302_cases: m302Cases") &&
+  signerMatrix.includes("m302_cases: m302Cases") &&
+  deviceSummary.includes("signer.m302_cases.length !== startupCatalog.length") &&
+  deviceSummary.includes("duplicate startup case") &&
   deviceSummary.includes("for (const field of fields)") && deviceSummary.includes("variantCases"),
 "named per-case device evidence");
+check(jvmCorpus.includes("hasApkSigningBlock") &&
+  jvmCorpus.includes('assertUnsigned(apk, parsed, "source APK")'),
+"v1 and v2/v3 unsigned corpus boundary");
+check(tamperRunner.includes('stage = "INSPECT"') && tamperRunner.includes('stage = "MANIFEST"') &&
+  tamperRunner.includes("stage mismatch"), "fixed Host stage evidence");
 const catalogCheck = spawnSync(process.execPath,
   ["tools/validation/generate-m3-02-tamper-catalog.mjs", "--check"], {encoding: "utf8"});
 check(catalogCheck.status === 0, "generated tamper catalog");

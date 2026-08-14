@@ -32,6 +32,8 @@ object FixtureDriver {
         val work = Path.of(requireNotNull(System.getProperty("m301.work"))).toAbsolutePath().normalize()
         val ownedBuild = root.resolve("integration-tests/build").toAbsolutePath().normalize()
         val hostOnly = System.getProperty("m301.hostOnly") == "true"
+        val signedInputCorpus = System.getProperty("m303.signedInputCorpus")?.let { Path.of(it) }?.toAbsolutePath()?.normalize()
+        val skipNegatives = System.getProperty("m303.skipNegatives") == "true"
         require(signing.startsWith(ownedBuild) && work.startsWith(ownedBuild))
         signing.toFile().deleteRecursively()
         work.toFile().deleteRecursively()
@@ -45,8 +47,10 @@ object FixtureDriver {
             val tools = Tools.find()
             val adb = if (hostOnly) null else Adb(tools.adb)
             device = adb?.deviceInfo() ?: linkedMapOf("mode" to "host-only")
-            val credentials = Credentials.create(tools, signing.resolve("primary.jks"), "m301-primary")
-            val alternate = Credentials.create(tools, signing.resolve("alternate.jks"), "m301-alternate")
+            val credentials = if (signedInputCorpus == null || !skipNegatives) {
+                Credentials.create(tools, signing.resolve("primary.jks"), "m301-primary")
+            } else null
+            val alternate = if (!skipNegatives) Credentials.create(tools, signing.resolve("alternate.jks"), "m301-alternate") else null
             val requestedCase = System.getProperty("m301.case").orEmpty()
             val fixtures = FixtureCatalog.load(root).let { catalog ->
                 if (requestedCase.isEmpty()) catalog else catalog.filter { it.id == requestedCase }.also {
@@ -55,11 +59,15 @@ object FixtureDriver {
             }
             fixtures.forEach { fixture ->
                 println("M3-01 fixture case start: ${fixture.id}")
-                rows += runCase(fixture, work.resolve("cases/${fixture.id}"), tools, adb, credentials)
+                rows += runCase(fixture, work.resolve("cases/${fixture.id}"), tools, adb, credentials, signedInputCorpus)
             }
-            runSignerNegatives(fixtures.first(), work.resolve("negative"), tools, credentials, alternate)
-            if (adb != null) {
-                runDifferentSignerRuntimeNegative(fixtures.first(), work.resolve("different-signer"), tools, adb, credentials, alternate)
+            if (!skipNegatives) runSignerNegatives(
+                fixtures.first(), work.resolve("negative"), tools, checkNotNull(credentials), checkNotNull(alternate),
+            )
+            if (!skipNegatives && adb != null) {
+                runDifferentSignerRuntimeNegative(
+                    fixtures.first(), work.resolve("different-signer"), tools, adb, checkNotNull(credentials), checkNotNull(alternate),
+                )
             }
         } catch (caught: Throwable) {
             failure = caught
@@ -74,7 +82,9 @@ object FixtureDriver {
             "fixture_count" to rows.size,
             "device" to device,
             "fixtures" to rows,
-            "negative_matrix" to if (hostOnly) {
+            "negative_matrix" to if (skipNegatives) {
+                emptyList<String>()
+            } else if (hostOnly) {
                 listOf("unsigned_input", "multiple_current_signer")
             } else {
                 listOf("unsigned_input", "multiple_current_signer", "different_output_signer")
@@ -92,14 +102,21 @@ object FixtureDriver {
         caseRoot: Path,
         tools: Tools,
         adb: Adb?,
-        credentials: Credentials,
+        credentials: Credentials?,
+        signedInputCorpus: Path?,
     ): Map<String, Any?> {
         Files.createDirectories(caseRoot)
         val signedInput = caseRoot.resolve("signed-input.apk")
         val unsignedOutput = caseRoot.resolve("protected-unsigned.apk")
         val signedOutput = caseRoot.resolve("protected-signed.apk")
         val productReport = caseRoot.resolve("protect-report.json")
-        credentials.sign(tools, fixture.unsignedFixtureApk, signedInput)
+        if (signedInputCorpus == null) {
+            checkNotNull(credentials).sign(tools, fixture.unsignedFixtureApk, signedInput)
+        } else {
+            val supplied = signedInputCorpus.resolve("${fixture.id}.apk").normalize()
+            check(supplied.startsWith(signedInputCorpus) && Files.isRegularFile(supplied)) { "missing fixed M3-03 input ${fixture.id}" }
+            Files.copy(supplied, signedInput)
+        }
         val inputBefore = sha256(signedInput)
         val inputSigner = signerDigest(tools, signedInput)
         val protect = runProduct(signedInput, unsignedOutput, productReport)
@@ -112,9 +129,12 @@ object FixtureDriver {
         check(run(listOf(tools.apksigner.toString(), "verify", unsignedOutput.toString()), Duration.ofSeconds(30), allowFailure = true).exit != 0) {
             "${fixture.id} product output is signed"
         }
-        credentials.sign(tools, unsignedOutput, signedOutput)
-        val outputSigner = signerDigest(tools, signedOutput)
-        check(inputSigner == outputSigner) { "${fixture.id} signer changed" }
+        val outputSigner = if (signedInputCorpus == null) {
+            checkNotNull(credentials).sign(tools, unsignedOutput, signedOutput)
+            signerDigest(tools, signedOutput).also { digest ->
+                check(inputSigner == digest) { "${fixture.id} signer changed" }
+            }
+        } else null
 
         val packageName = packageName(fixture.id)
         val abi = adb?.abi().orEmpty()
@@ -123,7 +143,7 @@ object FixtureDriver {
         var events: List<String> = emptyList()
         if (adb != null) try {
             if (shouldInstall) {
-                adb.install(signedOutput)
+                adb.install(checkNotNull(if (signedInputCorpus == null) signedOutput else null))
                 adb.clearLogcat()
                 val launch = adb.start(packageName)
                 events = adb.awaitEvents(packageName, fixture.expectedEvents, launch)
@@ -150,9 +170,9 @@ object FixtureDriver {
             "expected_outcome" to fixture.expectedOutcome,
             "input_sha256" to inputBefore,
             "unsigned_output_sha256" to sha256(unsignedOutput),
-            "signed_output_sha256" to sha256(signedOutput),
+            "signed_output_sha256" to if (outputSigner == null) null else sha256(signedOutput),
             "product_report_sha256" to sha256(productReport),
-            "same_current_signer" to true,
+            "same_current_signer" to (outputSigner == null || inputSigner == outputSigner),
             "product_output_unsigned" to true,
             "package_cleanup" to (adb == null || !adb.isInstalled(packageName)),
         )

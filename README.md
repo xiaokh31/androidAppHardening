@@ -29,6 +29,7 @@ M0 基础建设与可行性验证以及 M1 Host 处理链已经完成。M1-01 �
 | [M2-04](docs/tasks/M2-04-four-abi-runtime.md) | 已完成 | PR #46、Issue #15、P0/P1/P2 全零复核、Ubuntu/Windows、API 29/36 KVM、API 29 ARM 双 ABI 真机与 strict HandOff 均已关闭 |
 | [M2-05](docs/tasks/M2-05-environment-risk-engine.md) | 已完成 | PR #47、Issue #16、P0/P1/P2 全零复核、Ubuntu/Windows、API 29/36 KVM、真实 JDWP、x86 与 Release/R8 门禁均已关闭 |
 | [M2-06](docs/tasks/M2-06-memory-dump-cost-controls.md) | 已完成 | PR #48、Issue #17、P0/P1/P2 全零独立复核、Ubuntu/Windows、API 29/36 KVM、Release/R8、清零/只读/`DONTDUMP`/锁页/抖动、expected-head 合并与 post-merge strict HandOff 均已关闭 |
+| [M2-08](docs/tasks/M2-08-native-parser-topology-bounds.md) | 已完成 | PR #54、Issue #53、精确 399-byte 回归、Ubuntu ASan/UBSan、Ubuntu/Windows Build/Governance、P0/P1/P2 全零独立复核及 expected-head 合并均已关闭；无需设备或 KVM |
 | [M3-01](docs/tasks/M3-01-android-fixtures.md) | 已完成 | 九个公开 fixture、Host full-flow、Ubuntu/Windows、API 29/36 x86_64 KVM、API 29 arm64 真机与清理均已通过；PR #49、Issue #18 已关闭 |
 | M3-02 ～ M4 | 未启动 | 后续验证矩阵与发布阶段不得提前实现 |
 

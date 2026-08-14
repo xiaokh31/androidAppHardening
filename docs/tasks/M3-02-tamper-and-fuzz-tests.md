@@ -11,6 +11,7 @@ depends_on:
   - M2-02
   - M2-03
   - M2-06
+  - M2-08
   - M3-01
 required_skills:
   - validate-protected-apk

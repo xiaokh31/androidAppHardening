@@ -140,6 +140,11 @@ function runVariant(variant) {
       instrumentation.stdout.includes("FAILURES!!!")) {
     fail(`${variant.name} instrumentation failed:\n${instrumentation.stdout}\n${instrumentation.stderr}`);
   }
+  const m302Cases = parseM302Cases(instrumentation.stdout);
+  const expectedM302Cases = isM203 ? 24 : 21;
+  if (m302Cases.length !== expectedM302Cases) {
+    fail(`${variant.name} M3-02 named evidence count ${m302Cases.length} != ${expectedM302Cases}`);
+  }
   writeFileSync(path.join(evidence, `${variant.name}.instrumentation.txt`), instrumentation.stdout);
 
   const timings = [];
@@ -185,6 +190,7 @@ function runVariant(variant) {
     instrumentation_passed: true,
     failure_injection_windows: isM203 ? 12 : 20,
     guard_metadata_rejections: isM203 ? 12 : 0,
+    m302_cases: m302Cases,
     failure_publication_contract: {
       payload_loaded: false,
       payload_class_lookup_attempted: false,
@@ -217,6 +223,32 @@ function runVariant(variant) {
       smaps_dontdump_expected_bytes: markerNumber(instrumentation.stdout, "smaps_dontdump_expected_bytes"),
     } : undefined,
   };
+}
+
+function parseM302Cases(output) {
+  const required = [
+    "id", "target", "mutation", "expectedStage", "expectedCode", "payloadLoaded",
+    "payloadClassLookupAttempted", "nativeHandleAcquired", "loadedPayloadPublished",
+    "verifiedPayloadSessionPublished", "byteBuffersPublished", "nativeCloseCount",
+    "partialJavaReferencesCleared", "partialGuardReferencesCleared",
+    "completedMappingsZeroizedUnmapped", "partialMappingZeroizedUnmapped",
+    "primaryCodePreserved", "cleanupFailureSuppressed",
+  ];
+  const observed = [];
+  const ids = new Set();
+  for (const match of output.matchAll(/^M302_CASE ([^\r\n]+)$/gmu)) {
+    const entry = Object.fromEntries(match[1].split(" ").map((token) => {
+      const split = token.indexOf("=");
+      if (split <= 0) fail(`invalid M3-02 marker token: ${token}`);
+      return [token.slice(0, split), token.slice(split + 1)];
+    }));
+    if (JSON.stringify(Object.keys(entry)) !== JSON.stringify(required) || ids.has(entry.id)) {
+      fail(`invalid or duplicate M3-02 marker: ${entry.id ?? "missing"}`);
+    }
+    ids.add(entry.id);
+    observed.push(entry);
+  }
+  return observed;
 }
 
 function markerNumber(output, name) {

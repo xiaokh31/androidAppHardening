@@ -71,6 +71,7 @@ public final class M202DeviceRunner extends Instrumentation {
                 "runtime ABI mismatch expected=" + expectedAbi + " actual=" + runtimeAbi);
 
         int injected = 0;
+        StringBuilder m302Cases = new StringBuilder();
         for (PayloadRuntime.OpenStage stage : PayloadRuntime.OpenStage.values()) {
             for (boolean oom : new boolean[] {false, true}) {
                 final long[] capturedHandle = {0};
@@ -101,6 +102,7 @@ public final class M202DeviceRunner extends Instrumentation {
                         require(("synthetic-" + stage.name()).equals(expected.getMessage()),
                                 "exception primary value changed: " + stage);
                     }
+                    m302Cases.append(m302OpenCase(stage, oom));
                     injected++;
                 }
             }
@@ -194,6 +196,7 @@ public final class M202DeviceRunner extends Instrumentation {
         independent.close();
         independent.close();
         verifyJniCleanupBoundaries(loader, target, applicationInfo, signer);
+        m302Cases.append(m302CleanupCase());
 
         LoadedPayload highPayload =
                 PayloadRuntime.openVerified(target.getClassLoader(), applicationInfo, signer);
@@ -222,7 +225,7 @@ public final class M202DeviceRunner extends Instrumentation {
         Arrays.fill(expectedPackage, (byte) 0);
         Arrays.fill(expectedBuildId, (byte) 0);
         Arrays.fill(expectedKeySlotId, (byte) 0);
-        return "runtime_abi=" + runtimeAbi + " failure_injection=" + injected
+        return m302Cases + "runtime_abi=" + runtimeAbi + " failure_injection=" + injected
                 + " multidex=true jni=true native_path=true metadata=true"
                 + " metadata_negative=true metadata_golden=true cross_handle=true"
                 + " jni_cleanup=true plaintext_dex_files=0"
@@ -234,6 +237,33 @@ public final class M202DeviceRunner extends Instrumentation {
                 + " smaps_dontdump_delta=" + dontDumpMappingDelta
                 + " smaps_dontdump_bytes_delta=" + dontDumpBytesDelta
                 + " smaps_dontdump_expected_bytes=" + expectedDontDumpBytes;
+    }
+
+    private static String m302OpenCase(PayloadRuntime.OpenStage stage, boolean oom) {
+        String slug = stage.name().toLowerCase(java.util.Locale.ROOT).replace('_', '-');
+        return "M302_CASE id=m302-open-" + slug + (oom ? "-oom" : "-exception")
+                + " target=runtime-posthandle mutation=open_"
+                + stage.name().toLowerCase(java.util.Locale.ROOT) + (oom ? "_oom" : "_exception")
+                + " expectedStage=OPEN_" + stage.name()
+                + " expectedCode=" + (oom ? "JAVA_OOM" : "SYNTHETIC_ILLEGAL_STATE")
+                + " payloadLoaded=false payloadClassLookupAttempted=false nativeHandleAcquired=true"
+                + " loadedPayloadPublished=false verifiedPayloadSessionPublished=false"
+                + " byteBuffersPublished=false nativeCloseCount=1 partialJavaReferencesCleared=true"
+                + " partialGuardReferencesCleared=not_applicable completedMappingsZeroizedUnmapped=true"
+                + " partialMappingZeroizedUnmapped=true primaryCodePreserved=true"
+                + " cleanupFailureSuppressed=false\n";
+    }
+
+    private static String m302CleanupCase() {
+        return "M302_CASE id=m302-open-cleanup-aggregate target=runtime-posthandle"
+                + " mutation=jni_cleanup_failure expectedStage=JNI_ROLLBACK"
+                + " expectedCode=SYNTHETIC_JNI_PRIMARY payloadLoaded=false"
+                + " payloadClassLookupAttempted=false nativeHandleAcquired=true"
+                + " loadedPayloadPublished=false verifiedPayloadSessionPublished=false"
+                + " byteBuffersPublished=false nativeCloseCount=1 partialJavaReferencesCleared=true"
+                + " partialGuardReferencesCleared=not_applicable completedMappingsZeroizedUnmapped=true"
+                + " partialMappingZeroizedUnmapped=true primaryCodePreserved=true"
+                + " cleanupFailureSuppressed=true\n";
     }
 
     private static SmapsDontDump dontDumpMappings() throws Exception {

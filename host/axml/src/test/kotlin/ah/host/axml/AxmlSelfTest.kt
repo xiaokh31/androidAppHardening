@@ -149,7 +149,7 @@ object AxmlSelfTest {
                 base.copy(bytes = pair.first, originalCopy = pair.first.copyOf())
             }
             expectCode(name, pair.second) { BinaryManifestTransformer.transform(pair.first, requestFor(fixture)) }
-            rows += jsonObject("case" to name, "code" to pair.second.name)
+            rows += jsonObject("case" to name, "sha256" to hex(sha256(pair.first)), "code" to pair.second.name)
         }
         val mismatchSummary = ManifestSummary(
             "ah.fixtures.wrong",
@@ -163,12 +163,14 @@ object AxmlSelfTest {
         expectCode("summary-mismatch", AxmlErrorCode.AXML_DIFF_VIOLATION) {
             BinaryManifestTransformer.transform(base.bytes, ManifestTransformRequest(mismatchSummary))
         }
-        rows += jsonObject("case" to "summary-mismatch", "code" to AxmlErrorCode.AXML_DIFF_VIOLATION.name)
+        rows += jsonObject("case" to "summary-mismatch", "sha256" to hex(sha256(base.bytes)),
+            "code" to AxmlErrorCode.AXML_DIFF_VIOLATION.name)
         val oversized = ByteArray(16 * 1024 * 1024 + 1)
         expectCode("manifest-limit", AxmlErrorCode.AXML_LIMIT_EXCEEDED) {
             BinaryManifestTransformer.transform(oversized, requestFor(base))
         }
-        rows += jsonObject("case" to "manifest-limit", "code" to AxmlErrorCode.AXML_LIMIT_EXCEEDED.name)
+        rows += jsonObject("case" to "manifest-limit", "sha256" to hex(sha256(oversized)),
+            "code" to AxmlErrorCode.AXML_LIMIT_EXCEEDED.name)
         return rows
     }
 

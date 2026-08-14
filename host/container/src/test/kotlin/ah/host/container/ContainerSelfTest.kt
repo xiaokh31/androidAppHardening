@@ -28,6 +28,7 @@ import javax.crypto.Cipher
 
 object ContainerSelfTest {
     private val passed = ArrayList<String>()
+    private val tamperEvidence = ArrayList<TamperEvidence>()
 
     @JvmStatic
     fun main(arguments: Array<String>) {
@@ -73,6 +74,16 @@ object ContainerSelfTest {
             passed.forEachIndexed { index, name ->
                 append("    {\"name\": \"").append(name).append("\", \"status\": \"pass\"}")
                 if (index != passed.lastIndex) append(',')
+                append('\n')
+            }
+            append("  ],\n  \"tamper_results\": [\n")
+            tamperEvidence.forEachIndexed { index, evidence ->
+                append("    {\"name\": \"").append(evidence.name)
+                    .append("\", \"stage\": \"").append(evidence.stage)
+                    .append("\", \"code\": \"").append(evidence.code)
+                    .append("\", \"input_sha256\": \"").append(evidence.inputSha256)
+                    .append("\", \"result\": \"PASS\"}")
+                if (index != tamperEvidence.lastIndex) append(',')
                 append('\n')
             }
             append("  ]\n}\n")
@@ -360,12 +371,13 @@ object ContainerSelfTest {
                     Triple("chunk-offset", chunkTableOffset + 8, ContainerErrorCode.CONTAINER_FORMAT),
                 )
                 structural.forEach { (name, offset, code) ->
-                    verifyFileTamper(fixture, clean, config, nativeShare, work.resolve("tamper-$name.ahdc"), offset, code)
+                    verifyFileTamper(name, fixture, clean, config, nativeShare,
+                        work.resolve("tamper-$name.ahdc"), offset, code)
                 }
                 val payloadBase = 160L + cleanHeader.signerPolicySize + cleanHeader.recordTableSize + cleanHeader.chunkTableSize
-                verifyFileTamper(fixture, clean, config, nativeShare, work.resolve("tamper-cipher.ahdc"), payloadBase,
+                verifyFileTamper("cipher", fixture, clean, config, nativeShare, work.resolve("tamper-cipher.ahdc"), payloadBase,
                     ContainerErrorCode.CONTAINER_AUTH_FAILED)
-                verifyFileTamper(fixture, clean, config, nativeShare, work.resolve("tamper-tag.ahdc"),
+                verifyFileTamper("tag", fixture, clean, config, nativeShare, work.resolve("tamper-tag.ahdc"),
                     payloadBase + minOf(65_536L, firstRecord.compressedLength), ContainerErrorCode.CONTAINER_AUTH_FAILED)
                 verifyAuthenticatedZlibTamper(
                     fixture,
@@ -879,6 +891,7 @@ object ContainerSelfTest {
     }
 
     private fun verifyFileTamper(
+        name: String,
         fixture: Fixture,
         clean: Path,
         config: ByteArray,
@@ -896,6 +909,18 @@ object ContainerSelfTest {
             channel.write(ByteBuffer.wrap(changed), offset)
         }
         verifyWithCopies(fixture, tampered, config, nativeShare, expectedCode)
+        val stage = when (name) {
+            "version", "payload-length" -> "CONTAINER_HEADER"
+            "record-length" -> "CONTAINER_RECORDS"
+            "chunk-ordinal" -> "CONTAINER_CHUNKS"
+            else -> "CONTAINER_STRUCTURE"
+        }
+        tamperEvidence += TamperEvidence(
+            name,
+            stage,
+            expectedCode.name,
+            ContainerCrypto.sha256(tampered).joinToString("") { "%02x".format(it.toInt() and 0xff) },
+        )
     }
 
     private fun verifyAuthenticatedZlibTamper(
@@ -1134,6 +1159,13 @@ object ContainerSelfTest {
         val inspection: ApkInspection,
         val signer: SignerPolicyV1,
         val markers: List<ByteArray>,
+    )
+
+    private data class TamperEvidence(
+        val name: String,
+        val stage: String,
+        val code: String,
+        val inputSha256: String,
     )
 }
 

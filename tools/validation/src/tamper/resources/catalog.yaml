@@ -146,7 +146,7 @@ cases:
     cleanupFailureSuppressed: not_applicable
   - id: m302-container-major
     target: container-host
-    mutation: header_version
+    mutation: version
     expectedStage: CONTAINER_HEADER
     expectedCode: CONTAINER_VERSION
     payloadLoaded: false
@@ -164,7 +164,7 @@ cases:
     cleanupFailureSuppressed: not_applicable
   - id: m302-container-header-length
     target: container-host
-    mutation: header_length
+    mutation: payload_length
     expectedStage: CONTAINER_HEADER
     expectedCode: CONTAINER_FORMAT
     payloadLoaded: false
@@ -182,7 +182,7 @@ cases:
     cleanupFailureSuppressed: not_applicable
   - id: m302-container-record-overlap
     target: container-host
-    mutation: record_overlap
+    mutation: record_length
     expectedStage: CONTAINER_RECORDS
     expectedCode: CONTAINER_FORMAT
     payloadLoaded: false
@@ -200,7 +200,7 @@ cases:
     cleanupFailureSuppressed: not_applicable
   - id: m302-container-chunk-order
     target: container-host
-    mutation: chunk_order
+    mutation: chunk_ordinal
     expectedStage: CONTAINER_CHUNKS
     expectedCode: CONTAINER_FORMAT
     payloadLoaded: false

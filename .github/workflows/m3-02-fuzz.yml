@@ -34,15 +34,19 @@ jobs:
           - os: ubuntu-24.04
             target: apk
             task: jazzerApkPr
+            result_target: ApkInspectorFuzzTarget
           - os: ubuntu-24.04
             target: axml
             task: jazzerAxmlPr
+            result_target: BinaryAxmlFuzzTarget
           - os: windows-2025
             target: apk
             task: jazzerApkPr
+            result_target: ApkInspectorFuzzTarget
           - os: windows-2025
             target: axml
             task: jazzerAxmlPr
+            result_target: BinaryAxmlFuzzTarget
 
     steps:
       - name: Check out repository
@@ -133,9 +137,9 @@ jobs:
             exit 1
           fi
           node tools/validation/write-m3-02-target-result.mjs \
-            jazzer "${{ matrix.target }}" "${{ matrix.os }}" "$M302_SECONDS" \
+            jazzer "${{ matrix.result_target }}" "${{ matrix.os }}" "$M302_SECONDS" \
             "build/m3-02/jvm-${{ matrix.target }}-${{ runner.os }}/jazzer.txt" \
-            "tools/validation/src/fuzz/resources/corpus/${{ matrix.target }}" \
+            "tools/validation/build/fuzz-work/${{ matrix.task }}/corpus" \
             "build/m3-02/jvm-${{ matrix.target }}-${{ runner.os }}/target-result.json"
 
       - name: Upload bounded JVM evidence
@@ -279,7 +283,7 @@ jobs:
           node tools/validation/write-m3-02-target-result.mjs \
             libfuzzer AHDCNativeFuzzTarget ubuntu-24.04 "$M302_SECONDS" \
             build/m3-02/native-libfuzzer.txt \
-            tools/validation/src/fuzz/resources/corpus/native \
+            tools/validation/build/fuzz-work/nativePrFuzz/corpus \
             build/m3-02/native-target-result.json
 
       - name: Upload bounded Native evidence
@@ -314,9 +318,44 @@ jobs:
           node-version: 24.12.0
           check-latest: false
 
+      - name: Download Ubuntu APK result
+        # actions/download-artifact v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: m3-02-jvm-apk-Linux
+          path: build/m3-02/targets/apk-ubuntu
+
+      - name: Download Ubuntu AXML result
+        # actions/download-artifact v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: m3-02-jvm-axml-Linux
+          path: build/m3-02/targets/axml-ubuntu
+
+      - name: Download Windows APK result
+        # actions/download-artifact v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: m3-02-jvm-apk-Windows
+          path: build/m3-02/targets/apk-windows
+
+      - name: Download Windows AXML result
+        # actions/download-artifact v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: m3-02-jvm-axml-Windows
+          path: build/m3-02/targets/axml-windows
+
+      - name: Download Native result
+        # actions/download-artifact v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: m3-02-native-Linux
+          path: build/m3-02/targets/native-ubuntu
+
       - name: Write unified result
         shell: bash
-        run: node tools/validation/write-m3-02-ci-summary.mjs "$M302_MODE" "$M302_SECONDS" build/reports/security/fuzz-summary.json
+        run: node tools/validation/write-m3-02-ci-summary.mjs "$M302_MODE" "$M302_SECONDS" build/m3-02/targets build/reports/security/fuzz-summary.json
 
       - name: Upload unified result
         # actions/upload-artifact v4

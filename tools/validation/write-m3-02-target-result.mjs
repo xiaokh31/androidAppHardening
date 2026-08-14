@@ -30,11 +30,13 @@ const seconds = Number(secondsValue);
 const logPath = path.resolve(logValue ?? "");
 const corpusPath = path.resolve(corpusValue ?? "");
 const outputPath = path.resolve(outputValue ?? "");
+const commit = process.env.GITHUB_SHA ?? "local";
 if (!['jazzer', 'libfuzzer'].includes(engine)) fail("invalid engine");
 if (!/^[A-Za-z0-9_.-]+$/u.test(target ?? "")) fail("invalid target");
 if (!['ubuntu-24.04', 'windows-2025'].includes(platform)) fail("invalid platform");
 if (!Number.isInteger(seconds) || ![600, 3600].includes(seconds)) fail("invalid duration");
 if (!outputPath.startsWith(`${path.resolve("build")}${path.sep}`)) fail("output must be under build/");
+if (commit !== "local" && !/^[0-9a-f]{40}$/u.test(commit)) fail("invalid GITHUB_SHA");
 
 const log = readFileSync(logPath, "utf8");
 const executions = [...log.matchAll(/#(\d+)\s+DONE\b/gu)].map((match) => Number(match[1]));
@@ -47,6 +49,8 @@ const report = {
   schema_version: 1,
   task_id: "M3-02",
   validation_mode: "full-flow",
+  commit,
+  mode: seconds === 600 ? "pr" : "nightly",
   engine: engine === "jazzer" ? "Jazzer 0.29.1" : "libFuzzer Clang 18.1.3 ASan UBSan",
   target,
   platform,

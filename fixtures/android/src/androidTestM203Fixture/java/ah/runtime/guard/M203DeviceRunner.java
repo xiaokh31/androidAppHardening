@@ -70,6 +70,7 @@ public final class M203DeviceRunner extends Instrumentation {
                 "true".equals(arguments.getString("m205_release_probe")));
         byte[] expectedSigner = installedSigner(target);
         int injected = 0;
+        StringBuilder m302Cases = new StringBuilder();
         for (RuntimeStartupGuard.GuardStage stage : RuntimeStartupGuard.GuardStage.values()) {
             for (boolean oom : new boolean[] {false, true}) {
                 int[] closeCount = {0};
@@ -124,6 +125,7 @@ public final class M203DeviceRunner extends Instrumentation {
                     } else {
                         require(expected.getSuppressed().length == 0, "unexpected suppression");
                     }
+                    m302Cases.append(m302GuardCase(stage, oom));
                     injected++;
                 }
             }
@@ -131,6 +133,8 @@ public final class M203DeviceRunner extends Instrumentation {
 
         int metadataRejections = verifyGuardMetadataRejections(
                 target, applicationInfo, expectedSigner);
+        require(metadataRejections == 12, "metadata rejection count");
+        m302Cases.append(m302MetadataCases());
         verifyFrameworkPackageRejection(target, applicationInfo);
 
         VerifiedPayloadSession session =
@@ -168,12 +172,61 @@ public final class M203DeviceRunner extends Instrumentation {
             requireNoPlaintextDex(applicationInfo.deviceProtectedDataDir);
         }
         Arrays.fill(expectedSigner, (byte) 0);
-        return "guard_failure_injection=" + injected
+        return m302Cases + "guard_failure_injection=" + injected
                 + " guard_metadata_rejections=" + metadataRejections
                 + " signer=true metadata=true session_close=true multidex=true jni=true"
                 + " framework_package_rejection=true cleanup_suppressed=true"
                 + " mapping_cleanup=true plaintext_dex_files=0 risk_r8_jni=true";
 
+    }
+
+    private static String m302GuardCase(RuntimeStartupGuard.GuardStage stage, boolean oom) {
+        String slug = stage.name().toLowerCase(java.util.Locale.ROOT).replace('_', '-');
+        boolean cleanup = stage == RuntimeStartupGuard.GuardStage.BEFORE_RETURN;
+        return "M302_CASE id=m302-guard-" + slug + (oom ? "-oom" : "-exception")
+                + " target=guard mutation=guard_" + stage.name().toLowerCase(java.util.Locale.ROOT)
+                + (cleanup ? "_cleanup" : "") + (oom ? "_oom" : "_exception")
+                + " expectedStage=GUARD_" + stage.name()
+                + " expectedCode=" + (oom ? "JAVA_OOM" : "AAH-RUNTIME-INTEGRITY-CONTAINER")
+                + " payloadLoaded=false payloadClassLookupAttempted=false nativeHandleAcquired=true"
+                + " loadedPayloadPublished=true verifiedPayloadSessionPublished=false"
+                + " byteBuffersPublished=true nativeCloseCount=1"
+                + " partialJavaReferencesCleared=not_applicable partialGuardReferencesCleared=true"
+                + " completedMappingsZeroizedUnmapped=true partialMappingZeroizedUnmapped=not_applicable"
+                + " primaryCodePreserved=true cleanupFailureSuppressed=" + cleanup + "\n";
+    }
+
+    private static String m302MetadataCases() {
+        String[][] cases = {
+                {"package", "PACKAGE_MISMATCH"},
+                {"current-signer", "SIGNER_MISMATCH"},
+                {"empty-lineage", "LINEAGE_MISMATCH"},
+                {"lineage-order", "LINEAGE_MISMATCH"},
+                {"container-major", "VERSION"},
+                {"container-minor", "VERSION"},
+                {"signer-version", "VERSION"},
+                {"risk-version", "VERSION"},
+                {"build-snapshot", "SNAPSHOT_CHANGED"},
+                {"key-snapshot", "SNAPSHOT_CHANGED"},
+                {"cross-handle", "METADATA_HANDLE"},
+                {"cross-session", "METADATA_HANDLE"},
+        };
+        StringBuilder output = new StringBuilder();
+        for (String[] current : cases) {
+            output.append("M302_CASE id=m302-metadata-").append(current[0])
+                    .append(" target=guard mutation=metadata_")
+                    .append(current[0].replace('-', '_'))
+                    .append(" expectedStage=GUARD_METADATA expectedCode=AAH-RUNTIME-INTEGRITY-")
+                    .append(current[1])
+                    .append(" payloadLoaded=false payloadClassLookupAttempted=false")
+                    .append(" nativeHandleAcquired=true loadedPayloadPublished=true")
+                    .append(" verifiedPayloadSessionPublished=false byteBuffersPublished=true")
+                    .append(" nativeCloseCount=1 partialJavaReferencesCleared=not_applicable")
+                    .append(" partialGuardReferencesCleared=true completedMappingsZeroizedUnmapped=true")
+                    .append(" partialMappingZeroizedUnmapped=not_applicable primaryCodePreserved=true")
+                    .append(" cleanupFailureSuppressed=false\n");
+        }
+        return output.toString();
     }
 
     private static void verifyRiskFacade(

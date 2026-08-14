@@ -46,12 +46,13 @@ fun registerJazzerTarget(
     val crashes = work.resolve("crashes")
     val prepareCorpus = tasks.register<Sync>("prepare${taskName.replaceFirstChar(Char::uppercaseChar)}Corpus") {
         from(m302CorpusRoot.dir(corpusName))
+        from(m302RegressionRoot.dir(corpusName))
         into(isolatedCorpus)
     }
     return tasks.register<JavaExec>(taskName) {
         group = "verification"
         description = "Runs the pinned Jazzer target $targetClass with bounded resources."
-        dependsOn(tasks.named("classes"), prepareCorpus)
+        dependsOn(tasks.named("classes"), prepareCorpus, "regressionFuzz")
         classpath = sourceSets["main"].runtimeClasspath
         mainClass.set("com.code_intelligence.jazzer.Jazzer")
         maxHeapSize = "2g"

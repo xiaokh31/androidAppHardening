@@ -74,6 +74,7 @@
     "x86_64"
   ],
   "ci_toolchains": {
+    "reviewed_at": "2026-08-14",
     "ubuntu": {
       "runs_on": "ubuntu-24.04",
       "image_os": "ubuntu24",
@@ -102,6 +103,10 @@
         {
           "image_version": "20260803.193.1",
           "manifest_ref": "win25-vs2026/20260803.193"
+        },
+        {
+          "image_version": "20260810.198.2",
+          "manifest_ref": "win25-vs2026/20260810.198"
         }
       ],
       "clang_cl_version": "20.1.8",

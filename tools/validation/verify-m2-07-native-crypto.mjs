@@ -88,6 +88,7 @@ const expectedLock = {
   },
   android_abis: ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"],
   ci_toolchains: {
+    reviewed_at: "2026-08-14",
     ubuntu: {
       runs_on: "ubuntu-24.04",
       image_os: "ubuntu24",
@@ -116,6 +117,10 @@ const expectedLock = {
         {
           image_version: "20260803.193.1",
           manifest_ref: "win25-vs2026/20260803.193",
+        },
+        {
+          image_version: "20260810.198.2",
+          manifest_ref: "win25-vs2026/20260810.198",
         },
       ],
       clang_cl_version: "20.1.8",
@@ -360,6 +365,7 @@ if (selfTest) {
     ["Native internal symbol type", (candidate) => { candidate.native_profile.required_internal_symbols[0] = `t${candidate.native_profile.required_internal_symbols[0].slice(1)}`; }],
     ["Native internal symbol order", (candidate) => { candidate.native_profile.required_internal_symbols.reverse(); }],
     ["ABI list", (candidate) => { candidate.android_abis.reverse(); }],
+    ["CI toolchain review date", (candidate) => { candidate.ci_toolchains.reviewed_at = "1970-01-01"; }],
     ["Ubuntu runner label", (candidate) => { candidate.ci_toolchains.ubuntu.runs_on = "ubuntu-latest"; }],
     ["Ubuntu image OS", (candidate) => { candidate.ci_toolchains.ubuntu.image_os = "changed"; }],
     ["Ubuntu reviewed image", (candidate) => { candidate.ci_toolchains.ubuntu.reviewed_images[0].image_version += ".changed"; }],
@@ -371,7 +377,9 @@ if (selfTest) {
     ["Windows runner label", (candidate) => { candidate.ci_toolchains.windows.runs_on = "windows-latest"; }],
     ["Windows image OS", (candidate) => { candidate.ci_toolchains.windows.image_os = "changed"; }],
     ["Windows reviewed image", (candidate) => { candidate.ci_toolchains.windows.reviewed_images[0].image_version += ".changed"; }],
-    ["Windows manifest ref", (candidate) => { candidate.ci_toolchains.windows.reviewed_images[1].manifest_ref += ".changed"; }],
+    ["Windows manifest ref", (candidate) => { candidate.ci_toolchains.windows.reviewed_images[2].manifest_ref += ".changed"; }],
+    ["Windows reviewed image removal", (candidate) => { candidate.ci_toolchains.windows.reviewed_images.pop(); }],
+    ["Windows unreviewed image addition", (candidate) => { candidate.ci_toolchains.windows.reviewed_images.push({ image_version: "20990101.1.1", manifest_ref: "win25-vs2026/20990101.1" }); }],
     ["Windows reviewed image order", (candidate) => { candidate.ci_toolchains.windows.reviewed_images.reverse(); }],
     ["Windows clang-cl", (candidate) => { candidate.ci_toolchains.windows.clang_cl_version = "changed"; }],
     ["Windows Visual Studio", (candidate) => { candidate.ci_toolchains.windows.visual_studio_version = "changed"; }],

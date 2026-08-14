@@ -1,27 +1,27 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260814-082421
-updated_at: 2026-08-14T08:24:21+08:00
+handoff_id: HO-20260814-083524
+updated_at: 2026-08-14T08:35:24+08:00
 updated_by: /root
-state: active
-source_branch: fix/m2-07-windows-runner-lock
-base_commit: fde701a5bb60942d1bf79e47abb19fff75ad6565
+state: ready
+source_branch: main
+base_commit: 09345a99d44b3faac2e3a24b71012e03546a451f
 working_tree: clean
-current_milestone: M2
-active_task: M2-07
-next_owner: /root
+current_milestone: M3
+active_task: NONE
+next_owner: unassigned
 ---
 
 # Project HandOff
 
 ## Objective
 
-Maintain the M2-07 fail-closed Windows hosted-runner lock for exact image `20260810.198.2` under Issue #50, restore Ubuntu/Windows Build and Governance, and avoid all Android/KVM/device work.
+Record the completed M2-07 Windows hosted-runner lock maintenance, synchronize public status and close the final `main` gates without repeating Android/KVM/device work.
 
 ## Current State
 
-- Final M3-01 `main` Build `31754337214` exposed only a Windows hosted-runner rollout: the M2-07 allowlist correctly rejected unreviewed `ImageVersion=20260810.198.2` before compiler invocation. Issue [#50](https://github.com/xiaokh31/androidAppHardening/issues/50) and branch `fix/m2-07-windows-runner-lock` own a bounded supply-chain maintenance change. Official ref `win25-vs2026/20260810.198` is fixed to commit `9669462631cac120f4f558e7dadd31a14d1f1a41` and manifest blob `e5e0527a4cc19153e7e8daf98780ff18e7062ac1`; its LLVM, Visual Studio, x64 tools and Windows SDK inventory matches the existing contract. Frozen head `67049c62986e1def03a48665bd3413ec4b5667d9` passed Ubuntu/Windows Build `31755950097`, Governance `31755950100`, and an independent full read-only review with `P0=0/P1=0/P2=0` and no findings. Draft PR [#51](https://github.com/xiaokh31/androidAppHardening/pull/51) remains OPEN/MERGEABLE/draft pending evidence-only exact-head Build/Governance and separate ready/merge authorization. Automatically triggered KVM runs were cancelled per explicit scope and are not acceptance evidence. No crypto implementation, Runtime, fixture, KVM or device file is in scope.
+- M2-07 Windows runner lock maintenance is merged and complete. Frozen `67049c62986e1def03a48665bd3413ec4b5667d9` passed an independent read-only review with `P0=0/P1=0/P2=0`; evidence-only head `150fac76dd0fe1c462445a73dd41043a00b7624b` passed Build `31757448127` and Governance `31757448107` on Ubuntu/Windows. PR [#51](https://github.com/xiaokh31/androidAppHardening/pull/51) was made ready and merged with expected-head protection as `09345a99d44b3faac2e3a24b71012e03546a451f`; Issue #50 closed. Official ref `win25-vs2026/20260810.198` remains fixed to commit `9669462631cac120f4f558e7dadd31a14d1f1a41` and manifest blob `e5e0527a4cc19153e7e8daf98780ff18e7062ac1`. Automatically triggered KVM runs were cancelled by scope and are not acceptance evidence. No crypto implementation, Runtime, fixture, KVM or device file changed.
 - M3-01 is complete. Exact implementation freeze `c281a3a011229632cfe7a361d998eb8255b22b75` and merger-ready evidence head `e702e8d1c60fc2e675a63fdcaed84f95efcc0aed` passed the nine-fixture Host matrix, Ubuntu/Windows Build/Governance, API 29/36 x86_64 KVM, and a bounded API 29 arm64-v8a physical-device full-flow run. All exact event contracts, ARM-only JNI, signer negatives, input immutability, unsigned product output, ephemeral signing cleanup and package cleanup passed. PR [#49](https://github.com/xiaokh31/androidAppHardening/pull/49) merged with expected-head protection as `9150f6a64ef7022116d2b7575d6eda273b83301e`; Issue #18 closed. README/task/evidence are synchronized and no later M3/M4 task has started.
 - M2-06 is complete. Production implementation `ac374ad03bce87ac7068cf124f4721441f79f59f` and independent review remain `P0=0/P1=0/P2=0`; merger-ready head `9cbc6b6681b8fe1c4bb45c4cd86eaba6fe0086e7` passed Build `31677309988`, Governance `31677309943`, and API 29/36 KVM `31677309937`. PR [#48](https://github.com/xiaokh31/androidAppHardening/pull/48) merged with expected-head protection as `aa934080d37dd7590034829fbd436c21e69074a3`, and Issue #17 closed. The bounded JDWP acceptance fix changed test orchestration only; production Runtime/Native behavior and the 50 ms fail-safe are unchanged. No local emulator or physical device was started.
 - M2-05 is merged and complete. Final exact-head `a59345862e7a7ca164fbbc69ed6447efc9f5ddba` passed Build `31616216280`, Governance `31616216704` and API 29/36 KVM `31616216412`; independent full plus bounded incremental review returned `P0=0`, `P1=0`, `P2=0`. PR [#47](https://github.com/xiaokh31/androidAppHardening/pull/47) merged as `815eb55f87bb37e50f00eb91293e930a950d60ac` and Issue [#16](https://github.com/xiaokh31/androidAppHardening/issues/16) closed. API 29/36 ordinary policy, real JDWP, API 29 x86, extracted/direct Release/R8, late mapping aliases and cleanup all passed. The API 29 ARM64 Native probe passed; the MIUI policy APK was rejected before instrumentation with `INSTALL_FAILED_USER_RESTRICTED` and is not presented as a PASS. No local emulator or repeated install prompt was used.
@@ -188,7 +188,7 @@ Maintain the M2-07 fail-closed Windows hosted-runner lock for exact image `20260
 | M1-04 | `/root` | `feat/m1-04-encrypted-dex-container` | done | M1-01, M1-02, M1-07 | PR #38、Issue #9、独立复核、merger-ready 六项 CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-05 | `/root` | `feat/m1-05-apk-repacker-and-alignment` | done | M1-02, M1-03, M1-04 | PR #39、Issue #10、独立复核、merger-ready CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-06 | `/root` | `feat/m1-06-cli-and-json-report` | done | M1-01, M1-02, M1-03, M1-04, M1-05 | PR #40、Issue #11、独立复核、merger-ready 与 post-merge main 双平台 CI、README 和 strict HandOff 均已关闭 |
-| M2-07 | `/root` | `fix/m2-07-windows-runner-lock` | review | M0-03, M1-04 | Issue #50 / draft PR #51：冻结点独立只读复核 P0/P1/P2 全零；等待 evidence-only exact-head Build/Governance 与单独 ready/merge 授权 |
+| M2-07 | `/root` | `main` | done | M0-03, M1-04 | PR #51 已 expected-head 合并为 `09345a9`，Issue #50 已关闭；独立复核、双平台 Build/Governance、README 与 strict HandOff 已关闭 |
 | M2-02 | `/root` | `main` | done | M0-04, M1-04, M2-07 | PR #43、Issue #13、全零复核、双平台 CI、API 29/36 KVM、arm64 真机、README 与 strict HandOff 已关闭 |
 
 | M2-03 | `/root` | `main` | done | M1-02, M1-04, M2-02 | PR #44、Issue #14、全零复核、双平台 CI、API 29/36 KVM、arm64 真机、README 与 strict HandOff 已关闭 |
@@ -221,6 +221,7 @@ Maintain the M2-07 fail-closed Windows hosted-runner lock for exact image `20260
 
 ## Changes Since Previous Handoff
 
+- Evidence-only head `150fac76dd0fe1c462445a73dd41043a00b7624b` passed Build `31757448127` and Governance `31757448107` on Ubuntu/Windows after the independent `P0=0/P1=0/P2=0` review. Automatic KVM `31757448073` was cancelled as explicitly out of scope. PR #51 was transitioned to ready and merged with expected-head protection as `09345a99d44b3faac2e3a24b71012e03546a451f`; Issue #50 closed and local `main` was fast-forwarded.
 - GitHub final-main Build `31754337214` failed only in Windows job `94626822969` because the hosted pool assigned new exact image `20260810.198.2`; the gate failed before compiler invocation. Official `actions/runner-images` ref/commit/blob and installed LLVM/VS/x64-tools/SDK inventory were independently checked. Issue #50 and the bounded maintenance branch were created; no Android/KVM/device test is repeated.
 - M3-01 implementation freeze `c281a3a011229632cfe7a361d998eb8255b22b75` closes the API 29 observer-startup race without weakening exact event equality. Build/Governance and API 29/36 KVM are all green with immutable report/artifact hashes. The only open acceptance gate is a foreground-confirmed API 29 arm64-v8a run; the latest bounded attempt stopped at the first OEM installation rejection and cleaned all owned state.
 - The foreground-confirmed API 29 arm64-v8a full-flow subsequently passed all nine fixtures in 6m29s. Report SHA-256 `37fafda7ebe08513dcd381c3658cfce2b50bef272ee1412d88ec480001683160` proves `jni-arm-only`, exact events, three signer negatives and cleanup; no local emulator was started.
@@ -393,6 +394,18 @@ Maintain the M2-07 fail-closed Windows hosted-runner lock for exact image `20260
 - artifact: `docs/evidence/M2-07/windows-runner-20260810-read-only-review.md`; reviewer `/root/m2_07_runner_lock_review`; draft PR #51; lock SHA-256 `ee83042ed3e6d175b27bf2b5e31a2a9b80f1775dd1fd5d9c96f54774d4a31288`; validator SHA-256 `ed5028bfcbf5da1237fb01cc2e8f0478d1325b3dc4b6ae2af85c181ac8b2b5cc`
 - sha256: not_applicable
 - result: PASS; P0=0, P1=0, P2=0; Findings None; evidence-only successor may inherit this conclusion only while all reviewed implementation and governance inputs remain byte-identical
+
+### M2-07 Windows runner lock merger-ready and merge
+
+- task_id: M2-07
+- git_commit: 09345a99d44b3faac2e3a24b71012e03546a451f
+- command: exact-head PR #51 verification; `gh pr ready 51`; `gh pr merge 51 --merge --match-head-commit 150fac76dd0fe1c462445a73dd41043a00b7624b`; Issue #50 closure verification; `git switch main`; `git pull --ff-only origin main`
+- exit_code: 0
+- environment: Windows 10 x64 coordinator; GitHub ubuntu-24.04 and windows-2025 Build/Governance; no emulator, KVM or physical device
+- timestamp: 2026-08-14T08:35:24+08:00
+- artifact: PR `https://github.com/xiaokh31/androidAppHardening/pull/51`; Issue `https://github.com/xiaokh31/androidAppHardening/issues/50`; Build `31757448127`; Governance `31757448107`; merge commit `09345a99d44b3faac2e3a24b71012e03546a451f`
+- sha256: not_applicable
+- result: PASS; evidence-only exact head passed all four required jobs, PR merged with expected-head protection, Issue closed and local main synchronized; KVM remained explicitly excluded
 
 ### M3-01 active publication and ARM gate
 
@@ -1432,9 +1445,9 @@ None
 
 ## Ordered Next Actions
 
-1. Commit and push only the independent-review evidence and root HandOff update as an evidence-only successor.
-2. Cancel its automatically triggered KVM run, require exact-head Ubuntu/Windows Build and Governance success, and keep draft PR #51 open.
-3. Obtain separate explicit authorization before the ready/merge transition; do not run emulator, physical-device or M3-02 through M3-05 work.
+1. Commit and push this README/HandOff post-merge reconciliation on `main`.
+2. Cancel any automatically triggered KVM run and require final `main` Ubuntu/Windows Build and Governance success.
+3. Leave M3-02 through M3-05 unstarted until separately authorized.
 
 ## Relevant Files and Artifacts
 
@@ -1549,7 +1562,9 @@ None
 - [x] Pass local lock self-test, Governance, pending-clean strict HandOff and diff/sensitive scans.
 - [x] Push implementation head `43e523e`, create unique Issue #50 draft PR #51 and pass exact-head Ubuntu/Windows Build/Governance.
 - [x] Independent read-only review of frozen `67049c6` returned PASS with P0/P1/P2 all zero and no findings.
-- [ ] Push the evidence-only successor, cancel automatic KVM, and confirm exact-head Ubuntu/Windows Build/Governance before requesting separate ready/merge authorization.
+- [x] Evidence-only `150fac7` passed exact-head Ubuntu/Windows Build/Governance; automatic KVM was cancelled.
+- [x] PR #51 merged with expected-head protection as `09345a9`; Issue #50 closed and local `main` synchronized.
+- [ ] Commit/push this post-merge README/HandOff reconciliation and verify final `main` Build/Governance.
 - [x] Keep KVM, emulator and physical-device work out of scope.
 
 - [x] M3-01 Host matrix, deterministic fixture contract, Build/Governance and API 29/36 x86_64 KVM passed on implementation freeze `c281a3a`.
@@ -1675,7 +1690,9 @@ None
 
 ## Handoff Sign-off
 
-- `/root` accepted the independent M2-07 Windows runner lock review at frozen `67049c62986e1def03a48665bd3413ec4b5667d9`: the full six-file diff, immutable official ref, complete machine lock, mutation negatives, fail-closed behavior and exact-head Build/Governance passed with `P0=0/P1=0/P2=0` and no findings. The next commit is evidence-only; PR #51 remains draft and KVM/device work remains excluded.
+- `/root` verified evidence-only M2-07 head `150fac76dd0fe1c462445a73dd41043a00b7624b`, Build `31757448127`, Governance `31757448107`, independent `P0=0/P1=0/P2=0` review and user ready/merge authorization. PR #51 merged with expected-head protection as `09345a99d44b3faac2e3a24b71012e03546a451f`, Issue #50 closed, and local `main` is synchronized. Only the final post-merge README/HandOff commit and its main Build/Governance gates remain; KVM/device work stays excluded.
+
+- `/root` accepted the independent M2-07 Windows runner lock review at frozen `67049c62986e1def03a48665bd3413ec4b5667d9`: the full six-file diff, immutable official ref, complete machine lock, mutation negatives, fail-closed behavior and exact-head Build/Governance passed with `P0=0/P1=0/P2=0` and no findings. That conclusion was inherited only by the documentation-only successor; KVM/device work remained excluded.
 
 - `/root` verified M3-01 implementation freeze `c281a3a011229632cfe7a361d998eb8255b22b75`, merger-ready evidence head `e702e8d1c60fc2e675a63fdcaed84f95efcc0aed`, nine-fixture Host full-flow, Ubuntu/Windows Build/Governance, API 29/36 x86_64 KVM, API 29 arm64-v8a physical full-flow, immutable report hashes and complete package/signing cleanup. PR #49 merged with expected-head protection as `9150f6a64ef7022116d2b7575d6eda273b83301e`, Issue #18 closed, and M3-02 through M3-05 remain unstarted.
 

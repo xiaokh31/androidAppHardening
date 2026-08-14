@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-M0 基础建设与可行性验证以及 M1 Host 处理链已经完成。M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换器、M1-07 AHDC v2 分块认证容器合同、M1-04 AHDC v2 Host 实现、M1-05 APK 重打包与对齐、M1-06 CLI 与 JSON 报告均已合并并通过双平台门禁。M2 已完成并合并独立前置任务 M2-07、Native AHDC v2 解密与内存 DEX loader M2-02、Runtime signer/authenticated metadata/启动事务所有权门禁 M2-03、生产 Shell `AppComponentFactory` 启动链 M2-01、四 ABI Runtime 构建与装配 M2-04、版本化环境风险信号与评分引擎 M2-05，以及内存 dump 成本控制 M2-06。M3-01 的九个公开 Android fixture、Host full-flow、Ubuntu/Windows、API 29/36 x86_64 KVM 与 API 29 arm64 真机矩阵均已通过并由 PR #49 合并。这些控制只提高攻击成本，不承诺阻止 root、注入或进程控制攻击者。生产 RuntimeBundle 与可发布端到端发行包仍属于后续任务。
+M0 基础建设与可行性验证以及 M1 Host 处理链已经完成。M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换器、M1-07 AHDC v2 分块认证容器合同、M1-04 AHDC v2 Host 实现、M1-05 APK 重打包与对齐、M1-06 CLI 与 JSON 报告均已合并并通过双平台门禁。M2 已完成并合并独立前置任务 M2-07、Native AHDC v2 解密与内存 DEX loader M2-02、Runtime signer/authenticated metadata/启动事务所有权门禁 M2-03、生产 Shell `AppComponentFactory` 启动链 M2-01、四 ABI Runtime 构建与装配 M2-04、版本化环境风险信号与评分引擎 M2-05，以及内存 dump 成本控制 M2-06。M3-01 的九个公开 Android fixture、Host full-flow、Ubuntu/Windows、API 29/36 x86_64 KVM 与 API 29 arm64 真机矩阵均已通过并由 PR #49 合并。随后 M2-07 的 Windows hosted-runner 精确锁已通过 PR #51 更新至已复核镜像 `20260810.198.2`，保持未知镜像失败关闭，且未重复 KVM 或真机矩阵。这些控制只提高攻击成本，不承诺阻止 root、注入或进程控制攻击者。生产 RuntimeBundle 与可发布端到端发行包仍属于后续任务。
 
 开发者和 Agent 从 [`docs/README_FIRST.md`](docs/README_FIRST.md) 开始。项目统筹状态以 [`HandOff.md`](HandOff.md) 为准。
 
@@ -22,7 +22,7 @@ M0 基础建设与可行性验证以及 M1 Host 处理链已经完成。M1-01 �
 | [M1-04](docs/tasks/M1-04-encrypted-dex-container.md) | 已完成 | AHDC v2 Host 容器实现；PR #38、Issue #9、独立安全复核、merger-ready 与 post-merge `main` 门禁均已关闭 |
 | [M1-05](docs/tasks/M1-05-apk-repacker-and-alignment.md) | 已完成 | PR #39、Issue #10、四轮独立安全复核、merger-ready 与 post-merge `main` 双平台 CI、README 和 strict HandOff 均已关闭 |
 | [M1-06](docs/tasks/M1-06-cli-and-json-report.md) | 已完成 | PR #40、Issue #11、冻结只读复核、Ubuntu/Windows full-flow/字节一致性 CI、expected-head 普通合并与 post-merge strict HandOff 均已关闭 |
-| [M2-07](docs/tasks/M2-07-native-crypto-backend.md) | 已完成 | PR #42、Issue #41、Mbed TLS 4.1.1/TF-PSA-Crypto 1.1.1 不可变供应链、许可证与漏洞复核、NIST/RFC 向量、四 ABI、API 29/36 KVM 和最终独立安全复核均已关闭 |
+| [M2-07](docs/tasks/M2-07-native-crypto-backend.md) | 已完成 | PR #42、Issue #41 完成 Native 密码后端；PR #51、Issue #50 完成 Windows runner `20260810.198.2` 精确锁维护与独立全零复核；双平台 Build/Governance 均已关闭 |
 | [M2-02](docs/tasks/M2-02-native-decrypt-and-inmemory-loader.md) | 已完成 | PR #43、Issue #13、第三轮独立安全复核、Ubuntu/Windows Build/Governance、API 29/36 KVM、API 29 arm64 非 root 真机与 strict HandOff 均已关闭 |
 | [M2-03](docs/tasks/M2-03-runtime-signer-and-integrity.md) | 已完成 | PR #44、Issue #14、P0/P1/P2 全零复核、Ubuntu/Windows、API 29/36 KVM、API 29 arm64 非 root 真机与 strict HandOff 均已关闭 |
 | [M2-01](docs/tasks/M2-01-shell-app-component-factory.md) | 已完成 | PR #45、Issue #12、P0/P1/P2 全零复核、Ubuntu/Windows Build/Governance、API 29/36 KVM 与 strict HandOff 均已关闭 |

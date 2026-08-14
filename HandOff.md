@@ -1,15 +1,15 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260815-053247
-updated_at: 2026-08-15T05:32:47+08:00
+handoff_id: HO-20260815-065651
+updated_at: 2026-08-15T06:56:51+08:00
 updated_by: /root
-state: active
-source_branch: chore/m3-03-windows-ubuntu-equivalence
-base_commit: 68c4fd25c86cae61dc00039af118b4e35b566741
+state: ready
+source_branch: main
+base_commit: af0fe5c5d0e9098d8cca86b3d5de3e09ed8412fb
 working_tree: clean
 current_milestone: M3
-active_task: M3-03
+active_task: NONE
 next_owner: /root
 ---
 
@@ -17,12 +17,12 @@ next_owner: /root
 
 ## Objective
 
-Execute M3-03 as the first task in the user-ordered M3-03 -> M3-04 -> M3-05 sequence, proving Windows/Ubuntu semantic equivalence without fixing cryptographic randomness.
+Close M3-03 on `main`, then start M3-04 as the next task in the user-ordered M3-03 -> M3-04 -> M3-05 sequence.
 
 ## Current State
 
-- The user explicitly ordered M3-03, M3-04 and M3-05 sequentially. M3-03 is active on its canonical branch from synchronized `main@68c4fd25`; Issue #20 is open, and no remote branch or existing PR uses this head. M3-04 and M3-05 have not started.
-- M3-03 implementation is frozen at `c4f68b1`: it has a fixed nine-fixture signed-input seed, two randomized Host runs per platform, an independent ZIP/AHDC/GCM/zlib/DEX semantic comparator, stable negative equivalence, deep UTF-8 path and immutable-input checks, and a symmetric Windows/Ubuntu workflow. One Windows development full flow passed all 18 outputs; exact frozen Kotlin compilation, comparator self-test, Governance and strict HandOff pass. Exact-head dual-platform CI remains the completion gate.
+- The user explicitly ordered M3-03, M3-04 and M3-05 sequentially. M3-03 is merged and complete; M3-04 and M3-05 have not started. M3-04 may start only after this post-merge README/evidence/HandOff coordination commit passes Governance, strict HandOff and the normal main Build gate.
+- M3-03 final implementation `f53989e83b8a030139ec3e564ebfb41bdb81129a` passed Cross-platform equivalence `31847937221`, Build `31847937347` and Governance `31847937260` on the exact head. Windows and Ubuntu each produced 18 authenticated outputs; the final summary compared 36 outputs and proved stable semantics, random non-reuse, independent authentication/decryption, immutable inputs, unsigned outputs, equivalent negative errors and zero absolute-path findings. PR [#55](https://github.com/xiaokh31/androidAppHardening/pull/55) merged with expected-head protection as `af0fe5c5d0e9098d8cca86b3d5de3e09ed8412fb`, and Issue #20 closed. M3-03 is Host-only; out-of-scope KVM and M3-02 fuzz runs were cancelled.
 - M2-08 is complete. Final head `626a14c63c1b77f2552236659eb98d47bb027a12` passed Build `31820302813` on Ubuntu/Windows, including Ubuntu ASan/UBSan, and Governance `31820302849`; independent review was `P0=0/P1=0/P2=0`. PR #54 merged with expected-head protection as `ed0d0fb97c255a98c04628dc1746801985591c3c`, Issue #53 closed, and unrelated KVM run `31820302818` was cancelled by scope. M3-02 PR #52 may resume.
 - M3-02 is complete on `main`. Final local implementation freeze `90ef2ecf662371c82fed5f3d0fa92dbf9324e9e2` adds the generated 69-case catalog, real unsigned APK/Binary AXML corpus and binary regressions, Jazzer `0.29.1` APK/AXML targets, Clang `18.1.3` libFuzzer + ASan/UBSan, exact resource/runner locks, five-target fail-closed aggregation, and API 29/36 named Runtime mutation evidence. Final bounded Host validation passed in 1m24s without a device, and the final independent review is `P0=0/P1=0/P2=0`. Fuzz `31830770675` passed all five targets at `d961d4a`; final CI-lock `699ea23` passed Build `31832372574`, Governance `31832372727`, and API 29/36 KVM `31832372549`; evidence-only `592e88a` passed Build `31834088916` and Governance `31834089182`. PR #52 merged from the verified expected head as `1913d37d4561fb9b965ee1b4f23863f8a901b37e`, and Issue #19 closed. Repeated documentation-only KVM/fuzz runs were cancelled because no executable or acceptance input changed.
 - The first resumed PR #52 fuzz run `31828524638` exposed only a CI resource-configuration defect: Ubuntu Jazzer instrumented the full third-party classpath and hit the unchanged 2 GiB libFuzzer RSS ceiling in APK/AXML jobs. Coverage/hooks are now limited to repository-owned parser/fuzz packages and use Gradle's platform list separator. Run `31829589792` correctly entered fuzz but measured a 2159 MiB Linux startup RSS; the final correction keeps the 2 GiB cap and halves JVM sub-pools, adding about 330 MiB headroom for native instrumentation. KVM `31829963762` separately failed before emulator startup because M3-02-only authenticated-container mutations were applied to the legacy M0-05 PoC; the shared generator now gates those seven cases on canonical AHDC v2 while preserving the modern M2-03 matrix. At `d961d4a`, Fuzz `31830770675` and Governance `31830770652` passed; Build `31830770680` found only the old M1-03 error-report hash, and both API jobs in KVM `31830770663` completed the M202/M2-06 device evidence before failing on the same nonexistent M2-02 report path during final M3-02 aggregation. The bounded correction locks the actual deterministic Build hash and feeds the already executed M2-06 report into the exact unchanged 69-case summary. Durations, device commands, inputs and fail-closed thresholds remain unchanged; no local device run is authorized.
@@ -1479,9 +1479,9 @@ None
 
 ## Ordered Next Actions
 
-1. Implement the M3-03 full-flow corpus, fail-closed semantic comparator and symmetric Windows/Ubuntu workflow without starting Android devices.
-2. Run the bounded Windows host validation, governance and strict HandOff checks; freeze and publish the unique Issue #20 branch/PR only after local gates pass.
-3. Accept one exact-head Windows/Ubuntu equivalence CI result, update evidence and README, then close M3-03 before starting M3-04. M3-05 remains pending behind M3-04.
+1. Commit and push the M3-03 post-merge README, remote evidence and HandOff synchronization on `main`; run Governance, strict HandOff and the normal main Build gate without repeating Host equivalence, KVM or fuzz.
+2. After those gates pass, start M3-04 from synchronized clean `main` on its canonical Issue #21 branch and keep M3-05 untouched.
+3. Complete and merge M3-04 before starting M3-05.
 
 ## Relevant Files and Artifacts
 
@@ -1490,6 +1490,9 @@ None
 - `integration-tests/src/main/kotlin/ah/integration/equivalence/`
 - `tools/compare-platform-results/`
 - `.github/workflows/cross-platform-equivalence.yml`
+- `README.md`
+- `docs/evidence/M3-03/local-validation.md`
+- `docs/evidence/M3-03/remote-validation.md`
 - `docs/tasks/M3-02-tamper-and-fuzz-tests.md`
 - `docs/evidence/M3-02/implementation-plan.md`
 - `docs/evidence/M3-02/local-validation.md`

@@ -41,3 +41,14 @@ Local validation timestamp: `2026-08-14T07:46:43+08:00`, Windows 10 x64, Node.js
 - Validator SHA-256: `ed5028bfcbf5da1237fb01cc2e8f0478d1325b3dc4b6ae2af85c181ac8b2b5cc`
 
 No KVM or device run is required because no Android, Native, workflow KVM or fixture file changes.
+
+## Exact-head pull-request validation
+
+Implementation head `43e523e0ff7bb1dbf70135affc546d18414b73e8` is published as draft PR [#51](https://github.com/xiaokh31/androidAppHardening/pull/51), targeting `main` and closing Issue #50.
+
+- Build run [`31755188947`](https://github.com/xiaokh31/androidAppHardening/actions/runs/31755188947): Ubuntu job `94629334867` PASS; Windows job `94629334875` PASS.
+- Governance run [`31755188999`](https://github.com/xiaokh31/androidAppHardening/actions/runs/31755188999): Ubuntu job `94629334988` PASS; Windows job `94629335066` PASS.
+- The Windows job accepted only exact runtime `20260810.198.2`, passed the M2-07 Host crypto vectors and pinned entry-point checks, then completed the full Windows regression and four-ABI verification.
+- Automatically triggered KVM run `31755188964` was cancelled immediately by `/root` because this maintenance changes no Android/KVM surface and the user explicitly excluded repeated KVM/device execution. Its cancelled jobs are not presented as acceptance evidence.
+
+PR #51 remains draft and mergeable. Independent read-only review and explicit ready/merge direction remain separate future gates.

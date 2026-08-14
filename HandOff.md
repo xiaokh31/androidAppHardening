@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260815-003105
-updated_at: 2026-08-15T00:31:05+08:00
+handoff_id: HO-20260815-003611
+updated_at: 2026-08-15T00:36:11+08:00
 updated_by: /root
 state: active
 source_branch: fix/m2-08-native-parser-bounds
@@ -17,10 +17,11 @@ next_owner: /root
 
 ## Objective
 
-Record the completed M2-07 Windows hosted-runner lock maintenance, synchronize public status and close the final `main` gates without repeating Android/KVM/device work.
+Complete the independent M2-08 Native parser topology-bounds fix, merge it after exact-head sanitizer and review gates, then resume PR #52 CI without Android/KVM/device work.
 
 ## Current State
 
+- M2-08 is frozen at implementation `4492e5e471682377d52074cebeff70e05004ff51` with evidence child `656b6134b46bfbc878ac11767757abfa12ef1fff`; draft PR #54 tracks Issue #53. The exact 399-byte synthetic regression and adjacent bounds cases pass locally. Exact-head Ubuntu/Windows Build/Governance and independent review are required before merge; M3-02 PR #52 remains paused.
 - M2-07 Windows runner lock maintenance is merged and complete. Frozen `67049c62986e1def03a48665bd3413ec4b5667d9` passed an independent read-only review with `P0=0/P1=0/P2=0`; evidence-only head `150fac76dd0fe1c462445a73dd41043a00b7624b` passed Build `31757448127` and Governance `31757448107` on Ubuntu/Windows. PR [#51](https://github.com/xiaokh31/androidAppHardening/pull/51) was made ready and merged with expected-head protection as `09345a99d44b3faac2e3a24b71012e03546a451f`; Issue #50 closed. Official ref `win25-vs2026/20260810.198` remains fixed to commit `9669462631cac120f4f558e7dadd31a14d1f1a41` and manifest blob `e5e0527a4cc19153e7e8daf98780ff18e7062ac1`. Automatically triggered KVM runs were cancelled by scope and are not acceptance evidence. No crypto implementation, Runtime, fixture, KVM or device file changed.
 - M3-01 is complete. Exact implementation freeze `c281a3a011229632cfe7a361d998eb8255b22b75` and merger-ready evidence head `e702e8d1c60fc2e675a63fdcaed84f95efcc0aed` passed the nine-fixture Host matrix, Ubuntu/Windows Build/Governance, API 29/36 x86_64 KVM, and a bounded API 29 arm64-v8a physical-device full-flow run. All exact event contracts, ARM-only JNI, signer negatives, input immutability, unsigned product output, ephemeral signing cleanup and package cleanup passed. PR [#49](https://github.com/xiaokh31/androidAppHardening/pull/49) merged with expected-head protection as `9150f6a64ef7022116d2b7575d6eda273b83301e`; Issue #18 closed. README/task/evidence are synchronized and no later M3/M4 task has started.
 - M2-06 is complete. Production implementation `ac374ad03bce87ac7068cf124f4721441f79f59f` and independent review remain `P0=0/P1=0/P2=0`; merger-ready head `9cbc6b6681b8fe1c4bb45c4cd86eaba6fe0086e7` passed Build `31677309988`, Governance `31677309943`, and API 29/36 KVM `31677309937`. PR [#48](https://github.com/xiaokh31/androidAppHardening/pull/48) merged with expected-head protection as `aa934080d37dd7590034829fbd436c21e69074a3`, and Issue #17 closed. The bounded JDWP acceptance fix changed test orchestration only; production Runtime/Native behavior and the 50 ms fail-safe are unchanged. No local emulator or physical device was started.
@@ -1453,15 +1454,11 @@ Record the completed M2-07 Windows hosted-runner lock maintenance, synchronize p
 
 ## Relevant Files and Artifacts
 
-- `tools/validation/m2-07-native-crypto.json`
 - `docs/tasks/M2-08-native-parser-topology-bounds.md`
 - `docs/evidence/M2-08/implementation-plan.md`
+- `docs/evidence/M2-08/local-validation.md`
 - `runtime/native/src/main/cpp/testdata/m2_08_topology_oob.regression.hex`
-- `tools/validation/verify-m2-07-native-crypto.mjs`
-- `docs/adr/0009-native-cryptography-backend.md`
 - `docs/TOOLCHAIN_AND_PROVENANCE.md`
-- `docs/evidence/M2-07/windows-runner-20260810-maintenance.md`
-- `docs/evidence/M2-07/windows-runner-20260810-read-only-review.md`
 - `docs/tasks/M3-01-android-fixtures.md`
 - `fixtures/catalog.yaml`
 - `integration-tests/src/main/kotlin/ah/integration/fixtures/FixtureDriver.kt`

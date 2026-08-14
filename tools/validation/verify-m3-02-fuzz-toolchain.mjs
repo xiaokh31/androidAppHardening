@@ -54,9 +54,13 @@ const tamperRunner = readFileSync(
   "tools/validation/src/main/java/ah/tools/validation/tamper/TamperCatalogRunner.java", "utf8");
 check(versions.includes('jazzer = "0.29.1"'), "version catalog lock");
 for (const hash of Object.values(lock.jazzer.artifacts)) check(verification.includes(hash), `verification hash ${hash}`);
-check(gradleTask.includes('maxHeapSize = "768m"') && gradleTask.includes("-rss_limit_mb=2048") &&
+check(gradleTask.includes('maxHeapSize = "256m"') &&
+  gradleTask.includes('"-XX:MaxMetaspaceSize=384m"') &&
+  gradleTask.includes('"-XX:ReservedCodeCacheSize=128m"') &&
+  gradleTask.includes('"-XX:MaxDirectMemorySize=128m"') &&
+  gradleTask.includes('"-Xss512k"') && gradleTask.includes("-rss_limit_mb=2048") &&
   gradleTask.includes("-timeout=5") && gradleTask.includes("-max_len=4194304"),
-"Jazzer heap and total RSS limits wiring");
+"Jazzer JVM pools and total RSS limits wiring");
 check(gradleTask.includes('from(m302RegressionRoot.dir(corpusName))') &&
   gradleTask.includes('dependsOn(tasks.named("classes"), prepareCorpus, "regressionFuzz")'),
 "JVM regression preflight wiring");

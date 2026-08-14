@@ -557,9 +557,10 @@ jobs:
         shell: bash
         env:
           API: ${{ matrix.api }}
+          REVISION: ${{ matrix.revision }}
         run: |
           set -euo pipefail
-          avd_name="m0_05_api${API}_r${{ matrix.revision }}_x86_64"
+          avd_name="m0_05_api${API}_r${REVISION}_x86_64"
           serial="emulator-5554"
           emulator_pid=""
 

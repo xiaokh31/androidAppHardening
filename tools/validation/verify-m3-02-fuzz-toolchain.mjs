@@ -45,6 +45,7 @@ const gradleTask = readFileSync("tools/validation/build.gradle.kts", "utf8");
 const cmake = readFileSync("runtime/native/src/main/cpp/CMakeLists.txt", "utf8");
 const nativeRunner = readFileSync("tools/validation/run-m3-02-native-fuzz.mjs", "utf8");
 const workflow = readFileSync(".github/workflows/m3-02-fuzz.yml", "utf8");
+const kvmWorkflow = readFileSync(".github/workflows/m0-05-linux-kvm.yml", "utf8");
 const deviceRunner = readFileSync("tools/validation/run-m2-02-device-acceptance.mjs", "utf8");
 const deviceSummary = readFileSync("tools/validation/summarize-m3-02-device-tamper.mjs", "utf8");
 const signerMatrix = readFileSync("tools/validation/run-m2-03-signer-matrix.mjs", "utf8");
@@ -69,6 +70,10 @@ check(workflow.includes("M302_SECONDS: ${{ github.event_name == 'schedule' && '3
   workflow.includes("build/m3-02/targets") &&
   (workflow.match(/sanitize-m3-02-fuzz-log\.mjs/gu) ?? []).length === 2,
   "workflow duration, sanitized logs and target evidence");
+check(kvmWorkflow.includes("REVISION: ${{ matrix.revision }}") &&
+  kvmWorkflow.includes('avd_name="m0_05_api${API}_r${REVISION}_x86_64"') &&
+  !kvmWorkflow.includes('avd_name="m0_05_api${API}_r${{ matrix.revision }}_x86_64"'),
+"bounded KVM run block avoids GitHub expression length limit");
 check((workflow.match(/actions\/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093/gu) ?? []).length === 5,
   "five exact target artifact downloads");
 check(deviceRunner.includes("parseM302Cases") && deviceRunner.includes("m302_cases: m302Cases") &&

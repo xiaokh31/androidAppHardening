@@ -1,15 +1,15 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260815-003758
-updated_at: 2026-08-15T00:37:58+08:00
+handoff_id: HO-20260815-022043
+updated_at: 2026-08-15T02:20:43+08:00
 updated_by: /root
 state: active
-source_branch: fix/m2-08-native-parser-bounds
-base_commit: ea30f51373003981cdcdae60dda795ba1fefd587
+source_branch: main
+base_commit: ed0d0fb97c255a98c04628dc1746801985591c3c
 working_tree: clean
-current_milestone: M2
-active_task: M2-08
+current_milestone: M3
+active_task: M3-02
 next_owner: /root
 ---
 
@@ -17,11 +17,11 @@ next_owner: /root
 
 ## Objective
 
-Complete the independent M2-08 Native parser topology-bounds fix, merge it after exact-head sanitizer and review gates, then resume PR #52 CI without Android/KVM/device work.
+Resume M3-02 and PR #52 from the merged M2-08 parser-bounds fix, using the existing bounded CI matrix without repeating device or KVM acceptance beyond the M3-02 contract.
 
 ## Current State
 
-- M2-08 is frozen at implementation `4492e5e471682377d52074cebeff70e05004ff51`; draft PR #54 tracks Issue #53. The exact 399-byte synthetic regression and adjacent bounds cases pass locally. Independent full plus bounded incremental read-only review is PASS with `P0=0/P1=0/P2=0`. Exact-head Ubuntu/Windows Build/Governance remain required before merge; M3-02 PR #52 remains paused.
+- M2-08 is complete. Final head `626a14c63c1b77f2552236659eb98d47bb027a12` passed Build `31820302813` on Ubuntu/Windows, including Ubuntu ASan/UBSan, and Governance `31820302849`; independent review was `P0=0/P1=0/P2=0`. PR #54 merged with expected-head protection as `ed0d0fb97c255a98c04628dc1746801985591c3c`, Issue #53 closed, and unrelated KVM run `31820302818` was cancelled by scope. M3-02 PR #52 may resume.
 - M2-07 Windows runner lock maintenance is merged and complete. Frozen `67049c62986e1def03a48665bd3413ec4b5667d9` passed an independent read-only review with `P0=0/P1=0/P2=0`; evidence-only head `150fac76dd0fe1c462445a73dd41043a00b7624b` passed Build `31757448127` and Governance `31757448107` on Ubuntu/Windows. PR [#51](https://github.com/xiaokh31/androidAppHardening/pull/51) was made ready and merged with expected-head protection as `09345a99d44b3faac2e3a24b71012e03546a451f`; Issue #50 closed. Official ref `win25-vs2026/20260810.198` remains fixed to commit `9669462631cac120f4f558e7dadd31a14d1f1a41` and manifest blob `e5e0527a4cc19153e7e8daf98780ff18e7062ac1`. Automatically triggered KVM runs were cancelled by scope and are not acceptance evidence. No crypto implementation, Runtime, fixture, KVM or device file changed.
 - M3-01 is complete. Exact implementation freeze `c281a3a011229632cfe7a361d998eb8255b22b75` and merger-ready evidence head `e702e8d1c60fc2e675a63fdcaed84f95efcc0aed` passed the nine-fixture Host matrix, Ubuntu/Windows Build/Governance, API 29/36 x86_64 KVM, and a bounded API 29 arm64-v8a physical-device full-flow run. All exact event contracts, ARM-only JNI, signer negatives, input immutability, unsigned product output, ephemeral signing cleanup and package cleanup passed. PR [#49](https://github.com/xiaokh31/androidAppHardening/pull/49) merged with expected-head protection as `9150f6a64ef7022116d2b7575d6eda273b83301e`; Issue #18 closed. README/task/evidence are synchronized and no later M3/M4 task has started.
 - M2-06 is complete. Production implementation `ac374ad03bce87ac7068cf124f4721441f79f59f` and independent review remain `P0=0/P1=0/P2=0`; merger-ready head `9cbc6b6681b8fe1c4bb45c4cd86eaba6fe0086e7` passed Build `31677309988`, Governance `31677309943`, and API 29/36 KVM `31677309937`. PR [#48](https://github.com/xiaokh31/androidAppHardening/pull/48) merged with expected-head protection as `aa934080d37dd7590034829fbd436c21e69074a3`, and Issue #17 closed. The bounded JDWP acceptance fix changed test orchestration only; production Runtime/Native behavior and the 50 ms fail-safe are unchanged. No local emulator or physical device was started.
@@ -179,7 +179,8 @@ Complete the independent M2-08 Native parser topology-bounds fix, merge it after
 
 | Task | Owner | Branch | Status | Dependencies | Next checkpoint |
 |---|---|---|---|---|---|
-| M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | review | M2-02 | independent review PASS; exact-head Build/Governance and expected-head merge remain, then resume PR #52 CI |
+| M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | done | M2-02 | PR #54 merged; exact regression, ASan/UBSan, dual-platform Build/Governance and independent review passed |
+| M3-02 | `/root` | `chore/m3-02-tamper-fuzz` | in_progress | M1-03, M1-04, M1-06, M2-02, M2-03, M2-06, M2-08, M3-01 | merge main M2-08 fix, push PR #52, resume bounded CI |
 | M0-04 | `runtime-security-agent` | `spike/m0-04-classloader-poc` | done | M0-03 | PR #29、正式设备矩阵和独立复核已通过 |
 | M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | done | M0-04 | PR #31、合并后 strict HandOff 和双平台 CI 已通过 |
 | M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | done | M0-04, M0-06 | PR #32、三环境矩阵、独立安全复核和最终 PR CI 已通过 |
@@ -372,6 +373,18 @@ Complete the independent M2-08 Native parser topology-bounds fix, merge it after
 - M2-02 第三实现层已完成本地检查点：同一 `sourceDir` 只读文件映射、OS 只读 DEX commit、generation+slot 类型化 JNI handle、同 handle `AHMD` 认证 metadata、精确五 JNI 方法、Java primitive/finally 交接窗口、幂等 `LoadedPayload` owner，以及 M0-05 等价 Native 搜索路径和三参数 API 29 `InMemoryDexClassLoader` 已接通。Java 17 编译/lint、NDK 四 ABI warnings-as-errors 与离线根 `assembleRelease check` 284-task 均 PASS，四个 ELF 都含唯一 104-byte alloc/read-only `.ah_share_v1`，未启动设备或模拟器。证据更新于 `docs/evidence/M2-02/local-validation.md`；任务仍未完成或发布，下一步仅补 failure injection、Host sanitizer/fuzz/OOM 与已授权 KVM/arm64 验收，不启动 M2-03。
 
 ## Verification Evidence
+
+### M2-08 final acceptance and merge
+
+- task_id: M2-08
+- git_commit: ed0d0fb97c255a98c04628dc1746801985591c3c
+- command: exact 399-byte topology regression; Windows MSVC parser self-test; Ubuntu ASan/UBSan; exact-head Build `31820302813`; Governance `31820302849`; independent full plus bounded incremental read-only review; ready and expected-head merge of PR #54
+- exit_code: 0
+- environment: Windows 10 x64 local Host; GitHub ubuntu-24.04 and windows-2025; no emulator, KVM acceptance or physical device
+- timestamp: 2026-08-15T02:20:43+08:00
+- artifact: `docs/evidence/M2-08/local-validation.md`; `docs/evidence/M2-08/security-review.md`; `docs/evidence/M2-08/remote-validation.md`; PR #54; Issue #53
+- sha256: 61b51e45d160f1c2ab5fa5fe7e52bb971e3f4a987b98a659087f3ce287867dd9
+- result: PASS; bounds are proven before chunk pointer derivation, the exact regression and adjacent negatives pass, ASan/UBSan and dual-platform Build/Governance are green, review is P0=0/P1=0/P2=0, and PR #54 merged as `ed0d0fb97c255a98c04628dc1746801985591c3c`
 
 ### M2-07 Windows runner lock maintenance
 
@@ -1443,13 +1456,13 @@ Complete the independent M2-08 Native parser topology-bounds fix, merge it after
 
 ## Blockers and Required Approvals
 
-- M3-02 and PR #52 are blocked by the independently tracked Native parser heap-buffer-overflow until M2-08 passes sanitizers, review, and merge.
+None. M2-08 is merged and PR #52 is authorized to resume.
 
 ## Ordered Next Actions
 
-1. Complete and record the independent read-only M2-08 review.
-2. Require exact-head Ubuntu/Windows Build and Governance, including Ubuntu ASan/UBSan.
-3. Merge PR #54 with expected-head protection, reconcile README/HandOff on `main`, then resume PR #52 CI.
+1. Merge `origin/main` into `chore/m3-02-tamper-fuzz` without rewriting its existing history.
+2. Push the branch to resume PR #52 Build/Governance, one Ubuntu/Windows fuzz pass and API 29/36 KVM required by M3-02.
+3. Fix only genuine PR #52 CI regressions; do not repeat completed M2-08 work.
 
 ## Relevant Files and Artifacts
 
@@ -1457,6 +1470,7 @@ Complete the independent M2-08 Native parser topology-bounds fix, merge it after
 - `docs/evidence/M2-08/implementation-plan.md`
 - `docs/evidence/M2-08/local-validation.md`
 - `docs/evidence/M2-08/security-review.md`
+- `docs/evidence/M2-08/remote-validation.md`
 - `runtime/native/src/main/cpp/testdata/m2_08_topology_oob.regression.hex`
 - `docs/TOOLCHAIN_AND_PROVENANCE.md`
 - `docs/tasks/M3-01-android-fixtures.md`

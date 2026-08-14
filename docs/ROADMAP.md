@@ -79,6 +79,7 @@
 | M2-07 | Native 密码后端与供应链固定 | M0-03, M1-04 |
 | M2-01 | Shell AppComponentFactory | M0-05, M1-03, M1-04, M2-03 |
 | M2-02 | Native 解密与 InMemoryDexClassLoader | M0-04, M1-04, M2-07 |
+| M2-08 | Native parser topology bounds hardening | M2-02 |
 | M2-03 | 运行时 signer 和完整性校验 | M1-02, M1-04, M2-02 |
 | M2-04 | 四 ABI 构建与一致接口 | M0-03, M1-01, M2-01, M2-02, M2-03 |
 | M2-05 | 环境风险引擎 | M2-01, M2-03, M2-04 |
@@ -104,7 +105,7 @@
 | ID | 交付 | 依赖（与任务卡一致） |
 | --- | --- | --- |
 | M3-01 | Android fixture 集 | M1-06, M2-04 |
-| M3-02 | 篡改、parser 模糊和残留扫描 | M1-03, M1-04, M1-06, M2-02, M2-03, M2-06, M3-01 |
+| M3-02 | 篡改、parser 模糊和残留扫描 | M1-03, M1-04, M1-06, M2-02, M2-03, M2-06, M2-08, M3-01 |
 | M3-03 | Windows/Ubuntu 等价性 | M0-03, M1-05, M1-06, M2-06, M3-01 |
 | M3-04 | API/ABI/组件启动矩阵 | M0-03, M2-04, M3-01, M3-02 |
 | M3-05 | 大小、冷启动、内存基准与预算 | M1-06, M2-04, M2-06, M3-01 |

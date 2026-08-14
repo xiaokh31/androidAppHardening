@@ -1,8 +1,13 @@
 #include "container_format.hpp"
 
 #include <array>
+#include <cctype>
 #include <cstdint>
 #include <cstring>
+#include <fstream>
+#include <iterator>
+#include <string>
+#include <vector>
 
 namespace {
 
@@ -31,6 +36,37 @@ void put64(std::array<std::uint8_t, N>* bytes, std::size_t offset, std::uint64_t
 template <std::size_t N>
 ah::container::ByteView view(const std::array<std::uint8_t, N>& bytes) {
     return {bytes.data(), bytes.size()};
+}
+
+ah::container::ByteView view(const std::vector<std::uint8_t>& bytes) {
+    return {bytes.data(), bytes.size()};
+}
+
+std::vector<std::uint8_t> readHexFixture(const char* path) {
+    std::ifstream input(path);
+    std::string encoded((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+    std::vector<std::uint8_t> decoded;
+    int high = -1;
+    for (const unsigned char character : encoded) {
+        if (std::isspace(character)) {
+            continue;
+        }
+        const int value = character >= '0' && character <= '9'
+                              ? character - '0'
+                              : character >= 'a' && character <= 'f'
+                                    ? character - 'a' + 10
+                                    : character >= 'A' && character <= 'F' ? character - 'A' + 10 : -1;
+        if (value < 0) {
+            return {};
+        }
+        if (high < 0) {
+            high = value;
+        } else {
+            decoded.push_back(static_cast<std::uint8_t>((high << 4) | value));
+            high = -1;
+        }
+    }
+    return high < 0 ? decoded : std::vector<std::uint8_t>{};
 }
 
 std::array<std::uint8_t, ah::container::kHeaderBytes> validHeader() {
@@ -178,6 +214,58 @@ int testRecordChunkAndTopology() {
     return 0;
 }
 
+int testTopologyOutOfBoundsRegression() {
+    using namespace ah::container;
+    const auto fuzzInput = readHexFixture("m2_08_topology_oob.regression.hex");
+    if (fuzzInput.size() != 399 || fuzzInput[0] % 6U != 0) {
+        return 1;
+    }
+    const std::uint8_t* input = fuzzInput.data() + 1;
+    const std::size_t inputSize = fuzzInput.size() - 1;
+    HeaderV2 header{};
+    if (parseHeaderV2({input, kHeaderBytes}, &header) != Status::kSuccess) {
+        return 2;
+    }
+    std::size_t cursor = kHeaderBytes + header.signer_policy_size;
+    if (cursor + header.record_table_size + header.chunk_table_size > inputSize) {
+        return 3;
+    }
+    std::vector<RecordV2> records(header.dex_count);
+    for (auto& record : records) {
+        if (parseRecordV2({input + cursor, kRecordBytes}, &record) != Status::kSuccess) {
+            return 4;
+        }
+        cursor += kRecordBytes;
+    }
+    if (validateTopology(
+            header, records.data(), records.size(), {input + cursor, header.chunk_table_size}) !=
+        Status::kFormat) {
+        return 5;
+    }
+
+    auto encodedRecord = validRecord();
+    RecordV2 record{};
+    if (parseRecordV2(view(encodedRecord), &record) != Status::kSuccess) {
+        return 6;
+    }
+    auto headerBytes = validHeader();
+    HeaderV2 valid{};
+    if (parseHeaderV2(view(headerBytes), &valid) != Status::kSuccess) {
+        return 7;
+    }
+    const auto encodedChunk = validChunk();
+    record.compressed_length = static_cast<std::uint64_t>(kChunkPlaintextMax) + 1;
+    record.chunk_count = 2;
+    if (validateTopology(valid, &record, 1, view(encodedChunk)) != Status::kFormat) {
+        return 8;
+    }
+    valid.chunk_count = 2;
+    if (validateTopology(valid, &record, 1, view(encodedChunk)) != Status::kFormat) {
+        return 9;
+    }
+    return 0;
+}
+
 int testConfig() {
     ah::container::ConfigV2 config{};
     auto bytes = validConfig();
@@ -217,10 +305,11 @@ int testConfig() {
 int runContainerFormatSelfTests() {
     const int header = testHeaderAndSigner();
     const int topology = testRecordChunkAndTopology();
+    const int topologyBounds = testTopologyOutOfBoundsRegression();
     const int config = testConfig();
-    return header == 0 && topology == 0 && config == 0
+    return header == 0 && topology == 0 && topologyBounds == 0 && config == 0
                ? 0
-               : 100 * header + 10 * topology + config;
+               : 1000 * header + 100 * topology + 10 * topologyBounds + config;
 }
 
 #if defined(AH_CONTAINER_FORMAT_STANDALONE_TEST)

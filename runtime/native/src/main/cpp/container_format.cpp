@@ -368,6 +368,10 @@ Status validateTopology(
         encoded_chunks.size != header.chunk_table_size) {
         return Status::kInvalidArgument;
     }
+    if (header.chunk_count == 0 || header.chunk_count > kMaxChunks ||
+        header.chunk_table_size != header.chunk_count * kChunkBytes) {
+        return Status::kFormat;
+    }
     std::uint64_t totalOriginal = 0;
     std::uint64_t payloadOffset = 0;
     std::uint32_t firstChunk = 0;
@@ -387,10 +391,23 @@ Status validateTopology(
             totalOriginal > kMaxTotalDexBytes) {
             return Status::kLimitExceeded;
         }
+        if (globalChunk > header.chunk_count ||
+            record.chunk_count > header.chunk_count - globalChunk) {
+            return Status::kFormat;
+        }
+        if (record.chunk_count > std::numeric_limits<std::uint32_t>::max() - firstChunk) {
+            return Status::kLimitExceeded;
+        }
         for (std::uint32_t ordinal = 0; ordinal < record.chunk_count; ++ordinal) {
+            std::uint64_t chunkOffset = 0;
+            if (!checkedMultiply(globalChunk, kChunkBytes, &chunkOffset) ||
+                chunkOffset > encoded_chunks.size ||
+                encoded_chunks.size - static_cast<std::size_t>(chunkOffset) < kChunkBytes) {
+                return Status::kFormat;
+            }
             ChunkV2 chunk{};
             const Status parsed = parseChunkV2(
-                {encoded_chunks.data + globalChunk * kChunkBytes, kChunkBytes}, &chunk);
+                {encoded_chunks.data + static_cast<std::size_t>(chunkOffset), kChunkBytes}, &chunk);
             const std::uint64_t compressedOffset =
                 static_cast<std::uint64_t>(ordinal) * kChunkPlaintextMax;
             const std::uint32_t expectedLength = static_cast<std::uint32_t>(std::min<std::uint64_t>(
@@ -407,9 +424,6 @@ Status validateTopology(
                 return Status::kFormat;
             }
             ++globalChunk;
-        }
-        if (record.chunk_count > std::numeric_limits<std::uint32_t>::max() - firstChunk) {
-            return Status::kLimitExceeded;
         }
         firstChunk += record.chunk_count;
         std::uint64_t tags = 0;

@@ -45,6 +45,7 @@ M0 门禁：API 29 公共加载链、原 Application/factory 代理、Provider�
 | M2-07 | [#41](https://github.com/xiaokh31/androidAppHardening/issues/41) | [Native cryptography backend and supply-chain pinning](M2-07-native-crypto-backend.md) | `runtime-security-agent` | M0-03, M1-04 |
 | M2-01 | [#12](https://github.com/xiaokh31/androidAppHardening/issues/12) | [Shell AppComponentFactory](M2-01-shell-app-component-factory.md) | `runtime-security-agent` | M0-05, M1-03, M1-04, M2-03 |
 | M2-02 | [#13](https://github.com/xiaokh31/androidAppHardening/issues/13) | [Native decrypt and in-memory loader](M2-02-native-decrypt-and-inmemory-loader.md) | `runtime-security-agent` | M0-04, M1-04, M2-07 |
+| M2-08 | [#53](https://github.com/xiaokh31/androidAppHardening/issues/53) | [Native parser topology bounds hardening](M2-08-native-parser-topology-bounds.md) | `runtime-security-agent` | M2-02 |
 | M2-03 | [#14](https://github.com/xiaokh31/androidAppHardening/issues/14) | [Runtime signer and integrity](M2-03-runtime-signer-and-integrity.md) | `runtime-security-agent` | M1-02, M1-04, M2-02 |
 | M2-04 | [#15](https://github.com/xiaokh31/androidAppHardening/issues/15) | [Four-ABI runtime](M2-04-four-abi-runtime.md) | `runtime-security-agent` | M0-03, M1-01, M2-01, M2-02, M2-03 |
 | M2-05 | [#16](https://github.com/xiaokh31/androidAppHardening/issues/16) | [Environment risk engine](M2-05-environment-risk-engine.md) | `runtime-security-agent` | M2-01, M2-03, M2-04 |
@@ -57,7 +58,7 @@ M1-07 的 AHDC v2 合同必须先经独立安全复核并合并；随后 M1 与 
 | Task | Issue | Task card | Owner role | Depends on |
 |---|---|---|---|---|
 | M3-01 | [#18](https://github.com/xiaokh31/androidAppHardening/issues/18) | [Android fixtures](M3-01-android-fixtures.md) | `qa-governance-agent` | M1-06, M2-04 |
-| M3-02 | [#19](https://github.com/xiaokh31/androidAppHardening/issues/19) | [Tamper and fuzz tests](M3-02-tamper-and-fuzz-tests.md) | `qa-governance-agent` | M1-03, M1-04, M1-06, M2-02, M2-03, M2-06, M3-01 |
+| M3-02 | [#19](https://github.com/xiaokh31/androidAppHardening/issues/19) | [Tamper and fuzz tests](M3-02-tamper-and-fuzz-tests.md) | `qa-governance-agent` | M1-03, M1-04, M1-06, M2-02, M2-03, M2-06, M2-08, M3-01 |
 | M3-03 | [#20](https://github.com/xiaokh31/androidAppHardening/issues/20) | [Windows and Ubuntu equivalence](M3-03-windows-ubuntu-equivalence.md) | `qa-governance-agent` | M0-03, M1-05, M1-06, M2-06, M3-01 |
 | M3-04 | [#21](https://github.com/xiaokh31/androidAppHardening/issues/21) | [API and ABI matrix](M3-04-api-and-abi-matrix.md) | `qa-governance-agent` | M0-03, M2-04, M3-01, M3-02 |
 | M3-05 | [#22](https://github.com/xiaokh31/androidAppHardening/issues/22) | [Size, startup, and memory benchmarks](M3-05-size-startup-memory-benchmarks.md) | `qa-governance-agent` | M1-06, M2-04, M2-06, M3-01 |
@@ -79,7 +80,8 @@ M1-01 → M1-03
 M1-04 → M2-07 → M2-02 → M2-03
 M1-03 + M1-04 + M2-03 → M2-01 → M2-04 → M2-05 → M2-06
 M2-04 + M1-06 → M3-01
-M2-06 + M3-01 → M3-02 → M3-04
+M2-02 → M2-08 → M3-02
+M2-06 + M3-01 + M2-08 → M3-02 → M3-04
 M2-06 + M3-01 → M3-03
 M2-06 + M3-01 → M3-05
 M3-02 + M3-03 + M3-04 + M3-05 → M4-01 → M4-02 → M4-03

@@ -158,6 +158,11 @@ else()
         target_compile_definitions(ah_crypto_self_test PRIVATE AH_M2_02_PAYLOAD_VECTOR_TEST=1)
     endif()
     target_compile_features(ah_crypto_self_test PRIVATE cxx_std_17)
+    configure_file(
+        testdata/m2_08_topology_oob.regression.hex
+        m2_08_topology_oob.regression.hex
+        COPYONLY
+    )
     target_link_libraries(ah_crypto_self_test PRIVATE TF-PSA-Crypto::tfpsacrypto Threads::Threads)
     if(UNIX)
         target_link_libraries(ah_crypto_self_test PRIVATE ZLIB::ZLIB)

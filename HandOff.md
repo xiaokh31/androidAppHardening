@@ -1,16 +1,16 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260814-083524
-updated_at: 2026-08-14T08:35:24+08:00
+handoff_id: HO-20260815-003105
+updated_at: 2026-08-15T00:31:05+08:00
 updated_by: /root
-state: ready
-source_branch: main
-base_commit: 09345a99d44b3faac2e3a24b71012e03546a451f
-working_tree: clean
-current_milestone: M3
-active_task: NONE
-next_owner: unassigned
+state: active
+source_branch: fix/m2-08-native-parser-bounds
+base_commit: ea30f51373003981cdcdae60dda795ba1fefd587
+working_tree: dirty
+current_milestone: M2
+active_task: M2-08
+next_owner: /root
 ---
 
 # Project HandOff
@@ -178,6 +178,7 @@ Record the completed M2-07 Windows hosted-runner lock maintenance, synchronize p
 
 | Task | Owner | Branch | Status | Dependencies | Next checkpoint |
 |---|---|---|---|---|---|
+| M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | review | M2-02 | frozen implementation, independent review, exact-head Build/Governance, expected-head merge; then resume PR #52 CI |
 | M0-04 | `runtime-security-agent` | `spike/m0-04-classloader-poc` | done | M0-03 | PR #29、正式设备矩阵和独立复核已通过 |
 | M0-06 | `runtime-security-agent` | `docs/m0-06-early-startup-config-contract` | done | M0-04 | PR #31、合并后 strict HandOff 和双平台 CI 已通过 |
 | M0-05 | `runtime-security-agent` | `spike/m0-05-application-factory-provider-jni-poc` | done | M0-04, M0-06 | PR #32、三环境矩阵、独立安全复核和最终 PR CI 已通过 |
@@ -1441,17 +1442,21 @@ Record the completed M2-07 Windows hosted-runner lock maintenance, synchronize p
 
 ## Blockers and Required Approvals
 
-None
+- M3-02 and PR #52 are blocked by the independently tracked Native parser heap-buffer-overflow until M2-08 passes sanitizers, review, and merge.
 
 ## Ordered Next Actions
 
-1. Commit and push this README/HandOff post-merge reconciliation on `main`.
-2. Cancel any automatically triggered KVM run and require final `main` Ubuntu/Windows Build and Governance success.
-3. Leave M3-02 through M3-05 unstarted until separately authorized.
+1. Run the minimized topology regression and adjacent bounds cases locally.
+2. Freeze M2-08, run independent read-only review, then push and open the single Issue #53 draft PR.
+3. Require exact-head Ubuntu/Windows Build and Governance, including Ubuntu ASan/UBSan.
+4. Merge with expected-head protection, reconcile README/HandOff on main, then resume PR #52 CI.
 
 ## Relevant Files and Artifacts
 
 - `tools/validation/m2-07-native-crypto.json`
+- `docs/tasks/M2-08-native-parser-topology-bounds.md`
+- `docs/evidence/M2-08/implementation-plan.md`
+- `runtime/native/src/main/cpp/testdata/m2_08_topology_oob.regression.hex`
 - `tools/validation/verify-m2-07-native-crypto.mjs`
 - `docs/adr/0009-native-cryptography-backend.md`
 - `docs/TOOLCHAIN_AND_PROVENANCE.md`

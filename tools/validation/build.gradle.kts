@@ -70,8 +70,8 @@ fun registerJazzerTarget(
             // Keep coverage and hook instrumentation on the repository-owned parser
             // surface. Instrumenting every third-party class on the CI classpath makes
             // Jazzer's native instrumentation exceed the fixed 2 GiB RSS contract.
-            "--instrumentation_includes=ah.host.**;ah.tools.validation.fuzz.**",
-            "--custom_hook_includes=ah.host.**;ah.tools.validation.fuzz.**",
+            "--instrumentation_includes=ah.host.**${File.pathSeparator}ah.tools.validation.fuzz.**",
+            "--custom_hook_includes=ah.host.**${File.pathSeparator}ah.tools.validation.fuzz.**",
             "-max_total_time=${durationSeconds.get()}",
             "-timeout=5",
             "-rss_limit_mb=2048",

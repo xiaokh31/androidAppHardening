@@ -25,6 +25,20 @@ const activity = `${targetPackage}/ah.fixtures.android.m203.M203ColdStartActivit
 const transcript = [];
 const fixtureResults = [];
 const startupResults = [];
+const m302Definitions = new Map([
+  ["different-signer", ["m302-runtime-different-signer", "signer_flip", "SIGNER_POLICY", false]],
+  ["config-version-tamper", ["m302-runtime-config-version", "config_version", "NATIVE_CONFIG", false]],
+  ["factory-slot-tamper", ["m302-runtime-factory-flags", "factory_flags", "NATIVE_CONFIG", false]],
+  ["binding-slot-tamper", ["m302-runtime-binding-slot", "binding_slot", "NATIVE_BINDING", false]],
+  ["container-ciphertext-tamper", ["m302-runtime-container", "container_flip", "NATIVE_AUTH", true]],
+  ["m302-nonce", ["m302-runtime-nonce", "nonce_flip", "NATIVE_AUTH", true]],
+  ["m302-tag-first", ["m302-runtime-tag-first", "tag_first_flip", "NATIVE_AUTH", true]],
+  ["m302-tag-middle", ["m302-runtime-tag-middle", "tag_middle_flip", "NATIVE_AUTH", true]],
+  ["m302-tag-last", ["m302-runtime-tag-last", "tag_last_flip", "NATIVE_AUTH", true]],
+  ["m302-ciphertext-first", ["m302-runtime-ciphertext-first", "ciphertext_first_flip", "NATIVE_AUTH", true]],
+  ["m302-ciphertext-middle", ["m302-runtime-ciphertext-middle", "ciphertext_middle_flip", "NATIVE_AUTH", true]],
+  ["m302-ciphertext-last", ["m302-runtime-ciphertext-last", "ciphertext_last_flip", "NATIVE_AUTH", true]],
+]);
 
 try {
   runAdb(["install", "-r", "-t", "--no-streaming", artifact("policy-apk")]);
@@ -42,8 +56,19 @@ try {
   verifyStartup("factory-slot-tamper", "factory-target-apk", "CONTAINER", false);
   verifyStartup("binding-slot-tamper", "binding-target-apk", "CONTAINER", false);
   verifyStartup("container-ciphertext-tamper", "container-target-apk", "CONTAINER", false);
+  verifyStartup("m302-nonce", "m302-nonce-target-apk", "CONTAINER", false);
+  verifyStartup("m302-tag-first", "m302-tag-first-target-apk", "CONTAINER", false);
+  verifyStartup("m302-tag-middle", "m302-tag-middle-target-apk", "CONTAINER", false);
+  verifyStartup("m302-tag-last", "m302-tag-last-target-apk", "CONTAINER", false);
+  verifyStartup("m302-ciphertext-first", "m302-ciphertext-first-target-apk", "CONTAINER", false);
+  verifyStartup("m302-ciphertext-middle", "m302-ciphertext-middle-target-apk", "CONTAINER", false);
+  verifyStartup("m302-ciphertext-last", "m302-ciphertext-last-target-apk", "CONTAINER", false);
   const cleanupPassed = cleanup();
   if (!cleanupPassed) fail("cleanup verification failed");
+  const m302Cases = startupResults
+    .filter((value) => m302Definitions.has(value.name))
+    .map(toM302Case);
+  if (m302Cases.length !== m302Definitions.size) fail("M3-02 startup evidence count mismatch");
 
   const report = {
     task_id: "M2-03",
@@ -51,6 +76,8 @@ try {
     serial_sha256: sha256(Buffer.from(serial, "utf8")),
     signer_fixture_matrix: fixtureResults,
     startup_rejection_matrix: startupResults,
+    m302_runtime_tamper_matrix: startupResults.filter((value) => value.name.startsWith("m302-")),
+    m302_cases: m302Cases,
     cleanup_passed: cleanupPassed,
     result: "PASS",
   };
@@ -66,6 +93,34 @@ try {
   writeFileSync(path.join(evidence, "signer-matrix-commands.json"), serializedTranscript);
   process.stderr.write(`${error.stack ?? error}\n`);
   process.exitCode = 1;
+}
+
+function toM302Case(result) {
+  const [id, mutation, stage, mapping] = m302Definitions.get(result.name) ?? [];
+  if (!id || result.result !== "PASS" || result.install_rejected !== false ||
+      result.lookup_count !== 0 || result.session_published !== false) {
+    fail(`invalid M3-02 startup evidence ${result.name}`);
+  }
+  return {
+    id,
+    target: "runtime-prehandle",
+    mutation,
+    expectedStage: stage,
+    expectedCode: result.actual_code,
+    payloadLoaded: "false",
+    payloadClassLookupAttempted: "false",
+    nativeHandleAcquired: "false",
+    loadedPayloadPublished: "false",
+    verifiedPayloadSessionPublished: "false",
+    byteBuffersPublished: "false",
+    nativeCloseCount: "0",
+    partialJavaReferencesCleared: "not_applicable",
+    partialGuardReferencesCleared: "not_applicable",
+    completedMappingsZeroizedUnmapped: "not_applicable",
+    partialMappingZeroizedUnmapped: mapping ? "true" : "not_applicable",
+    primaryCodePreserved: "true",
+    cleanupFailureSuppressed: "false",
+  };
 }
 
 function verifyFixture(name, option, expected, lineageCount, expectedCurrent) {

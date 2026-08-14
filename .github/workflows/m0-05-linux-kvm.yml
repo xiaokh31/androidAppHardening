@@ -497,7 +497,9 @@ jobs:
           node tools/validation/create-m0-05-test-apks.mjs \
             build/m2-03/m2-03-extracted.apk build/m2-03/tamper-unsigned \
             | tee build/m2-03/tamper-creation-report.json
-          for name in config-major config-factory-flags config-slot-tail payload-corrupt; do
+          for name in config-major config-factory-flags config-slot-tail payload-corrupt \
+            payload-nonce payload-tag-first payload-tag-middle payload-tag-last \
+            payload-ciphertext-first payload-ciphertext-middle payload-ciphertext-last; do
             "$ANDROID_HOME/build-tools/36.1.0/apksigner" sign \
               --v4-signing-enabled false \
               --ks "$M005_TEST_KEYSTORE" \
@@ -555,9 +557,10 @@ jobs:
         shell: bash
         env:
           API: ${{ matrix.api }}
+          REVISION: ${{ matrix.revision }}
         run: |
           set -euo pipefail
-          avd_name="m0_05_api${API}_r${{ matrix.revision }}_x86_64"
+          avd_name="m0_05_api${API}_r${REVISION}_x86_64"
           serial="emulator-5554"
           emulator_pid=""
 
@@ -826,6 +829,13 @@ jobs:
             --factory-target-apk build/m2-03/tamper-signed/m2-03-config-factory-flags.apk \
             --binding-target-apk build/m2-03/tamper-signed/m2-03-config-slot-tail.apk \
             --container-target-apk build/m2-03/tamper-signed/m2-03-payload-corrupt.apk \
+            --m302-nonce-target-apk build/m2-03/tamper-signed/m2-03-payload-nonce.apk \
+            --m302-tag-first-target-apk build/m2-03/tamper-signed/m2-03-payload-tag-first.apk \
+            --m302-tag-middle-target-apk build/m2-03/tamper-signed/m2-03-payload-tag-middle.apk \
+            --m302-tag-last-target-apk build/m2-03/tamper-signed/m2-03-payload-tag-last.apk \
+            --m302-ciphertext-first-target-apk build/m2-03/tamper-signed/m2-03-payload-ciphertext-first.apk \
+            --m302-ciphertext-middle-target-apk build/m2-03/tamper-signed/m2-03-payload-ciphertext-middle.apk \
+            --m302-ciphertext-last-target-apk build/m2-03/tamper-signed/m2-03-payload-ciphertext-last.apk \
             --evidence "build/m2-03/device-api${API}-x86_64/signer-matrix" \
             --command-timeout-ms 60000
 
@@ -954,6 +964,13 @@ jobs:
             --direct-vector-report build/m2-03/vector-direct/vector-report.json \
             --evidence "build/m2-03/device-api${API}-x86_64"
           cat "build/m2-03/device-api${API}-x86_64/report.json"
+          node tools/validation/summarize-m3-02-device-tamper.mjs \
+            tools/validation/src/tamper/resources/catalog.yaml \
+            "build/m2-03/device-api${API}-x86_64/signer-matrix/signer-matrix-report.json" \
+            "build/m2-06/device-api${API}-x86_64/report.json" \
+            "build/m2-03/device-api${API}-x86_64/report.json" \
+            "api${API}-x86_64-linux-kvm" \
+            "build/m3-02/device-api${API}-x86_64/fuzz-summary.json"
 
       - name: Print cleanup diagnostics
         if: always()
@@ -968,6 +985,7 @@ jobs:
           find build/m2-04 -maxdepth 4 -type f -print -exec sha256sum {} \; || true
           find build/m2-05 -maxdepth 5 -type f -print -exec sha256sum {} \; || true
           find build/m2-06 -maxdepth 3 -type f -print -exec sha256sum {} \; || true
+          find build/m3-02 -maxdepth 3 -type f -print -exec sha256sum {} \; || true
           find integration-tests/build/reports -maxdepth 1 -type f -print -exec sha256sum {} \; || true
 
       - name: Upload bounded validation evidence
@@ -990,6 +1008,7 @@ jobs:
             build/m2-04/device-api${{ matrix.api }}-x86_64/**/*
             build/m2-05/device-api${{ matrix.api }}-x86_64/**/*
             build/m2-06/device-api${{ matrix.api }}-x86_64/**/*
+            build/m3-02/device-api${{ matrix.api }}-x86_64/**/*
             build/m2-01/**/*.json
             build/m2-01/**/*.txt
             build/m2-02/**/*.json

@@ -17,6 +17,7 @@ local.properties
 
 # APK and Android binary artifacts
 *.apk
+!tools/validation/src/fuzz/resources/corpus/apk/valid-m301.apk
 *.apks
 *.aab
 *.idsig

@@ -24,3 +24,5 @@ gradlew text eol=lf
 *.gif binary
 *.zip binary
 *.jar binary
+tools/validation/src/fuzz/resources/corpus/** binary
+tools/validation/src/fuzz/resources/regressions/** binary

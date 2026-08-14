@@ -59,6 +59,8 @@
 
 崩溃样本必须最小化并进入回归语料库。
 
+M3-02 将上述要求固定为 `:tools:validation:regressionFuzz`、`:tools:validation:tamperTest`、`:tools:validation:prFuzz` 与 `:tools:validation:nightlyFuzz` 四个公开入口。APK inspector 和 Binary AXML 使用锁定 Jazzer，AHDC Native parser 使用锁定 Clang libFuzzer + ASan/UBSan；PR/nightly 时长分别为每 target 10/60 分钟。每个执行先在忽略工作区连续运行固定 corpus/regression 两次，再执行有界 fuzz，并保存执行次数、时长、corpus SHA-256、资源上限和 crash/sanitizer/timeout/OOM 计数。API 29/36 KVM 复用生产 Runtime 的 tokenized startup 与 Guard failure-injection 验收，但必须由 M3-02 catalog 映射每项发布和清理断言，不能以旧任务成功标记代替本任务结果。
+
 ### 2.4 Host 集成测试
 
 以合成 APK fixture 驱动完整流水线，验证：

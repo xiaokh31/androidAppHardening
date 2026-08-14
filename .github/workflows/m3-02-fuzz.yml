@@ -1,0 +1,367 @@
+name: M3-02 Fuzz
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m3-02-fuzz-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  M302_SECONDS: ${{ github.event_name == 'schedule' && '3600' || '600' }}
+  M302_MODE: ${{ github.event_name == 'schedule' && 'nightly' || 'pr' }}
+
+jobs:
+  jvm:
+    name: JVM ${{ matrix.target }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            target: apk
+            task: jazzerApkPr
+            result_target: ApkInspectorFuzzTarget
+          - os: ubuntu-24.04
+            target: axml
+            task: jazzerAxmlPr
+            result_target: BinaryAxmlFuzzTarget
+          - os: windows-2025
+            target: apk
+            task: jazzerApkPr
+            result_target: ApkInspectorFuzzTarget
+          - os: windows-2025
+            target: axml
+            task: jazzerAxmlPr
+            result_target: BinaryAxmlFuzzTarget
+
+    steps:
+      - name: Check out repository
+        # actions/checkout v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Verify reviewed Ubuntu image
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${ImageOS:-}" = "$(jq -r '.runners.ubuntu.image_os' tools/validation/m3-02-fuzz-toolchain.json)"
+          jq -e --arg value "${ImageVersion:-}" \
+            '.runners.ubuntu.reviewed_images | any(.image_version == $value)' \
+            tools/validation/m3-02-fuzz-toolchain.json >/dev/null
+
+      - name: Verify reviewed Windows image
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $lock = Get-Content -Raw tools/validation/m3-02-fuzz-toolchain.json | ConvertFrom-Json
+          if ($env:ImageOS -cne $lock.runners.windows.image_os) { throw "unexpected Windows ImageOS" }
+          $versions = @($lock.runners.windows.reviewed_images | ForEach-Object { $_.image_version })
+          if ($env:ImageVersion -cnotin $versions) { throw "unexpected Windows ImageVersion=$env:ImageVersion" }
+
+      - name: Set up Temurin JDK
+        # actions/setup-java v5
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95
+        with:
+          distribution: temurin
+          java-version: "17.0.19+10"
+
+      - name: Set up Node.js
+        # actions/setup-node v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24.12.0
+          check-latest: false
+
+      - name: Cache verified Gradle inputs
+        # actions/cache v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: m302-${{ runner.os }}-${{ hashFiles('**/*gradle.lockfile', 'gradle/verification-metadata.xml', 'gradle/wrapper/**', 'gradle/libs.versions.toml') }}
+
+      - name: Verify immutable fuzz toolchain lock
+        shell: bash
+        run: node tools/validation/verify-m3-02-fuzz-toolchain.mjs
+
+      - name: Run bounded Jazzer target
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "build/m3-02/jvm-${{ matrix.target }}-${{ runner.os }}"
+          ./gradlew ":tools:validation:${{ matrix.task }}" \
+            "-Pm302FuzzSeconds=${M302_SECONDS}" --no-daemon --console=plain \
+            2>&1 | tee "build/m3-02/jvm-${{ matrix.target }}-${{ runner.os }}/jazzer.txt"
+
+      - name: Sanitize bounded JVM log
+        if: always()
+        shell: bash
+        run: node tools/validation/sanitize-m3-02-fuzz-log.mjs "build/m3-02/jvm-${{ matrix.target }}-${{ runner.os }}/jazzer.txt"
+
+      - name: Collect JVM crash inputs
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          destination="build/m3-02/jvm-${{ matrix.target }}-${{ runner.os }}/crashes"
+          mkdir -p "$destination"
+          if [ -d tools/validation/build/fuzz-work ]; then
+            find tools/validation/build/fuzz-work -path '*/crashes/*' -type f \
+              -exec cp '{}' "$destination/" \;
+          fi
+
+      - name: Verify bounded JVM result
+        shell: bash
+        run: |
+          set -euo pipefail
+          if find "build/m3-02/jvm-${{ matrix.target }}-${{ runner.os }}/crashes" \
+              -type f -print -quit | grep -q .; then
+            echo "Jazzer crash artifact exists" >&2
+            exit 1
+          fi
+          node tools/validation/write-m3-02-target-result.mjs \
+            jazzer "${{ matrix.result_target }}" "${{ matrix.os }}" "$M302_SECONDS" \
+            "build/m3-02/jvm-${{ matrix.target }}-${{ runner.os }}/jazzer.txt" \
+            "tools/validation/build/fuzz-work/${{ matrix.task }}/corpus" \
+            "build/m3-02/jvm-${{ matrix.target }}-${{ runner.os }}/target-result.json"
+
+      - name: Upload bounded JVM evidence
+        if: always()
+        # actions/upload-artifact v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: m3-02-jvm-${{ matrix.target }}-${{ runner.os }}
+          if-no-files-found: error
+          retention-days: 7
+          path: build/m3-02/jvm-${{ matrix.target }}-${{ runner.os }}/
+
+  native:
+    name: Native libFuzzer ASan UBSan (ubuntu-24.04)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - name: Check out repository
+        # actions/checkout v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Verify reviewed Ubuntu image and Clang
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${ImageOS:-}" = "$(jq -r '.runners.ubuntu.image_os' tools/validation/m3-02-fuzz-toolchain.json)"
+          jq -e --arg value "${ImageVersion:-}" \
+            '.runners.ubuntu.reviewed_images | any(.image_version == $value)' \
+            tools/validation/m3-02-fuzz-toolchain.json >/dev/null
+          test "$(clang++-18 --version | sed -n 's/^Ubuntu clang version \([^ ]*\).*/\1/p' | head -n1)" = "18.1.3"
+
+      - name: Set up Node.js
+        # actions/setup-node v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24.12.0
+          check-latest: false
+
+      - name: Set up Temurin JDK for the public Gradle entry point
+        # actions/setup-java v5
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95
+        with:
+          distribution: temurin
+          java-version: "17.0.19+10"
+
+      - name: Cache verified Gradle inputs
+        # actions/cache v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: m302-native-${{ runner.os }}-${{ hashFiles('**/*gradle.lockfile', 'gradle/verification-metadata.xml', 'gradle/wrapper/**', 'gradle/libs.versions.toml') }}
+
+      - name: Verify immutable fuzz toolchain lock
+        shell: bash
+        run: node tools/validation/verify-m3-02-fuzz-toolchain.mjs
+
+      - name: Initialize Native evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/m3-02
+          : > build/m3-02/native-libfuzzer.txt
+
+      - name: Prepare verified Native crypto source
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive=".toolchains/native-crypto/downloads/mbedtls-4.1.1.tar.bz2"
+          source_parent=".toolchains/native-crypto/src"
+          source_root="$source_parent/mbedtls-4.1.1"
+          extract_root="$source_parent/.mbedtls-4.1.1.extract"
+          mkdir -p "$(dirname "$archive")" "$source_parent"
+          curl --fail --location --retry 3 --output "$archive" \
+            "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-4.1.1/mbedtls-4.1.1.tar.bz2"
+          node tools/validation/verify-m2-07-native-crypto.mjs --archive-only
+          while IFS= read -r member; do
+            case "$member" in mbedtls-4.1.1/*) ;; *) exit 1 ;; esac
+            case "/$member/" in */../*) exit 1 ;; esac
+          done < <(tar -tjf "$archive")
+          rm -rf -- "$extract_root" "$source_root"
+          mkdir "$extract_root"
+          tar -xjf "$archive" -C "$extract_root"
+          node tools/validation/verify-m2-07-native-crypto.mjs --self-test --pre-promote \
+            --source-root="$extract_root/mbedtls-4.1.1"
+          printf '%s\n' \
+            'archive_sha256=3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c' \
+            'source_tree_sha256=7c4ba6554fed6eb67c201054bc75b124fcdc0649e2f56cd762746e01a25d2140' \
+            > "$extract_root/mbedtls-4.1.1/.aah-m2-07-verified"
+          mv "$extract_root/mbedtls-4.1.1" "$source_root"
+          rmdir "$extract_root"
+          node tools/validation/verify-m2-07-native-crypto.mjs --self-test
+
+      - name: Build and run bounded Native libFuzzer
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "cmake;4.1.2"
+          cmake_bin="$ANDROID_HOME/cmake/4.1.2/bin/cmake"
+          native_root="runtime/native/build/m3-02-fuzzer"
+          "$cmake_bin" -S runtime/native/src/main/cpp -B "$native_root" -G Ninja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_C_COMPILER=clang-18 -DCMAKE_CXX_COMPILER=clang++-18 \
+            -DAH_M3_02_LIBFUZZER=ON \
+            -DAH_MBEDTLS_ROOT="$PWD/.toolchains/native-crypto/src/mbedtls-4.1.1"
+          "$cmake_bin" --build "$native_root" --target m3_02_container_fuzz
+          fuzzer="$native_root/m3_02_container_fuzz"
+          ./gradlew :tools:validation:nativePrFuzz \
+            "-Pm302NativeFuzzer=$PWD/$fuzzer" "-Pm302FuzzSeconds=$M302_SECONDS" \
+            --no-daemon --console=plain \
+            2>&1 | tee build/m3-02/native-libfuzzer.txt
+
+      - name: Sanitize bounded Native log
+        if: always()
+        shell: bash
+        run: node tools/validation/sanitize-m3-02-fuzz-log.mjs build/m3-02/native-libfuzzer.txt
+
+      - name: Collect Native crash inputs
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          destination="build/m3-02/native-crashes"
+          mkdir -p "$destination"
+          if [ -d tools/validation/build/fuzz-work ]; then
+            find tools/validation/build/fuzz-work -path '*/crashes/*' -type f \
+              -exec cp '{}' "$destination/" \;
+          fi
+
+      - name: Verify bounded Native result
+        shell: bash
+        run: |
+          set -euo pipefail
+          if find build/m3-02/native-crashes -type f -print -quit | grep -q .; then
+            echo "Native crash artifact exists" >&2
+            exit 1
+          fi
+          node tools/validation/write-m3-02-target-result.mjs \
+            libfuzzer AHDCNativeFuzzTarget ubuntu-24.04 "$M302_SECONDS" \
+            build/m3-02/native-libfuzzer.txt \
+            tools/validation/build/fuzz-work/nativePrFuzz/corpus \
+            build/m3-02/native-target-result.json
+
+      - name: Upload bounded Native evidence
+        if: always()
+        # actions/upload-artifact v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: m3-02-native-${{ runner.os }}
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            build/m3-02/native-libfuzzer.txt
+            build/m3-02/native-target-result.json
+            build/m3-02/native-crashes/
+
+  summary:
+    name: Unified fuzz summary
+    needs: [jvm, native]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        # actions/checkout v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        # actions/setup-node v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24.12.0
+          check-latest: false
+
+      - name: Download Ubuntu APK result
+        # actions/download-artifact v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: m3-02-jvm-apk-Linux
+          path: build/m3-02/targets/apk-ubuntu
+
+      - name: Download Ubuntu AXML result
+        # actions/download-artifact v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: m3-02-jvm-axml-Linux
+          path: build/m3-02/targets/axml-ubuntu
+
+      - name: Download Windows APK result
+        # actions/download-artifact v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: m3-02-jvm-apk-Windows
+          path: build/m3-02/targets/apk-windows
+
+      - name: Download Windows AXML result
+        # actions/download-artifact v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: m3-02-jvm-axml-Windows
+          path: build/m3-02/targets/axml-windows
+
+      - name: Download Native result
+        # actions/download-artifact v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: m3-02-native-Linux
+          path: build/m3-02/targets/native-ubuntu
+
+      - name: Write unified result
+        shell: bash
+        run: node tools/validation/write-m3-02-ci-summary.mjs "$M302_MODE" "$M302_SECONDS" build/m3-02/targets build/reports/security/fuzz-summary.json
+
+      - name: Upload unified result
+        # actions/upload-artifact v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: m3-02-fuzz-summary
+          if-no-files-found: error
+          retention-days: 7
+          path: build/reports/security/fuzz-summary.json

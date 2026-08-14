@@ -256,7 +256,7 @@ jobs:
           fuzz="host/axml/build/reports/m1-03/fuzz-summary.json"
           aapt2="host/axml/build/reports/m1-03/aapt2-cross-check.json"
           test "$(sha256sum "$transforms" | awk '{print $1}')" = "35bd420aa0fe05e1a5efee197bdea8d3699f5de743bf54974f13833e24ef5635"
-          test "$(sha256sum "$errors" | awk '{print $1}')" = "9a60c0c9fe710798d7f458822c1f2d6ffb9a22527a43c176c6c3869fb6dcf49c"
+          test "$(sha256sum "$errors" | awk '{print $1}')" = "b287183d1c2af46cfb9ce4b027e7993ec9721e039f91c3125176a962a2ddd641"
           test "$(sha256sum "$fuzz" | awk '{print $1}')" = "d1dbf919a489a067506ab40b629916ea66a5b8a3e3ced42e710ae8dc57f8dced"
           test "$(sha256sum "$aapt2" | awk '{print $1}')" = "916e2d79af152c6090fc7ba0c4b9b24f054f0eb094ff2968192b922d0d593672"
           sha256sum "$transforms" "$errors" "$fuzz" "$aapt2"
@@ -640,7 +640,7 @@ jobs:
         run: |
           $expected = @{
             "host/axml/build/reports/m1-03/transform-matrix.json" = "35bd420aa0fe05e1a5efee197bdea8d3699f5de743bf54974f13833e24ef5635"
-            "host/axml/build/reports/m1-03/error-matrix.json" = "9a60c0c9fe710798d7f458822c1f2d6ffb9a22527a43c176c6c3869fb6dcf49c"
+            "host/axml/build/reports/m1-03/error-matrix.json" = "b287183d1c2af46cfb9ce4b027e7993ec9721e039f91c3125176a962a2ddd641"
             "host/axml/build/reports/m1-03/fuzz-summary.json" = "d1dbf919a489a067506ab40b629916ea66a5b8a3e3ced42e710ae8dc57f8dced"
             "host/axml/build/reports/m1-03/aapt2-cross-check.json" = "916e2d79af152c6090fc7ba0c4b9b24f054f0eb094ff2968192b922d0d593672"
           }

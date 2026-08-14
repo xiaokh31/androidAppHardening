@@ -27,6 +27,15 @@ const CONFIG_BYTE_MUTATIONS = new Set([
   "config-nul",
   "config-slot-tail",
 ]);
+const PAYLOAD_V2_ONLY_MUTATIONS = new Set([
+  "payload-nonce",
+  "payload-tag-first",
+  "payload-tag-middle",
+  "payload-tag-last",
+  "payload-ciphertext-first",
+  "payload-ciphertext-middle",
+  "payload-ciphertext-last",
+]);
 
 function fail(message) {
   throw new Error(`M0-05 test APK creation failed: ${message}`);
@@ -73,6 +82,44 @@ function mutateConfig(source, mutation) {
   return bytes;
 }
 
+function mutatePayload(source, mutation) {
+  const bytes = Buffer.from(source);
+  if (bytes.length < 160 || bytes.subarray(0, 4).toString("ascii") !== "AHDC") {
+    fail("input payload is not an AHDC container");
+  }
+  const signerSize = bytes.readUInt32LE(16);
+  const recordTableSize = bytes.readUInt32LE(20);
+  const chunkCount = bytes.readUInt32LE(24);
+  const chunkTableSize = bytes.readUInt32LE(28);
+  const recordOffset = 160 + signerSize;
+  const chunkOffset = recordOffset + recordTableSize;
+  const payloadOffset = chunkOffset + chunkTableSize;
+  if (chunkCount === 0 || chunkTableSize !== chunkCount * 32 || payloadOffset >= bytes.length) {
+    fail("input payload topology is invalid");
+  }
+  if (mutation === "payload-nonce") {
+    bytes[recordOffset + 40] ^= 1;
+    return bytes;
+  }
+  const position = mutation.includes("-first")
+    ? 0
+    : mutation.includes("-middle")
+      ? Math.floor(chunkCount / 2)
+      : chunkCount - 1;
+  const entry = chunkOffset + position * 32;
+  const encryptedOffset = Number(bytes.readBigUInt64LE(entry + 16));
+  const plaintextLength = bytes.readUInt32LE(entry + 24);
+  const target = payloadOffset + encryptedOffset + (mutation.startsWith("payload-tag-") ? plaintextLength : 0);
+  if (target < payloadOffset || target >= bytes.length) fail(`payload mutation offset is invalid: ${mutation}`);
+  bytes[target] ^= 1;
+  return bytes;
+}
+
+function isCanonicalPayloadV2(source) {
+  return source.length >= 160 && source.subarray(0, 4).toString("ascii") === "AHDC" &&
+    source.readUInt16LE(4) === 2 && source.readUInt16LE(8) === 160;
+}
+
 function buildApk(sourceEntries, mutation) {
   const localRecords = [];
   const centralRecords = [];
@@ -97,6 +144,9 @@ function buildApk(sourceEntries, mutation) {
       if (mutation === "payload-corrupt") {
         replacement = Buffer.from(sourceEntry.compressedData);
         replacement[Math.floor(replacement.length / 2)] ^= 0xff;
+      } else if (mutation.startsWith("payload-nonce") ||
+          mutation.startsWith("payload-tag-") || mutation.startsWith("payload-ciphertext-")) {
+        replacement = mutatePayload(sourceEntry.compressedData, mutation);
       }
     }
     const entry = structuralMutation(normalizedEntry(sourceEntry, replacement), mutation);
@@ -192,6 +242,11 @@ async function main() {
 
   const apk = await readFile(inputArgument);
   const entries = readEntries(apk);
+  const payloadEntries = entries.filter((entry) => entry.name === PAYLOAD_ENTRY);
+  if (payloadEntries.length !== 1) {
+    fail(`expected one payload entry, found ${payloadEntries.length}`);
+  }
+  const supportsPayloadV2Mutations = isCanonicalPayloadV2(payloadEntries[0].compressedData);
   await mkdir(outputDirectory, { recursive: true });
   const outputs = [];
   const mutations = [
@@ -209,10 +264,18 @@ async function main() {
     "config-crc",
     "config-length",
     "payload-corrupt",
+    "payload-nonce",
+    "payload-tag-first",
+    "payload-tag-middle",
+    "payload-tag-last",
+    "payload-ciphertext-first",
+    "payload-ciphertext-middle",
+    "payload-ciphertext-last",
     "native-duplicate",
     "truncated-zip",
   ];
-  for (const mutation of mutations) {
+  for (const mutation of mutations.filter((name) =>
+    supportsPayloadV2Mutations || !PAYLOAD_V2_ONLY_MUTATIONS.has(name))) {
     const bytes = buildApk(entries, mutation);
     const output = path.join(outputDirectory, `m0-05-${mutation}-unsigned.apk`);
     await writeFile(output, bytes);

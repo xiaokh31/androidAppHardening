@@ -1,5 +1,6 @@
 package ah.integration.equivalence
 
+import ah.host.cli.CliMain
 import ah.integration.fixtures.FixtureCatalog
 import ah.integration.fixtures.FixtureDriver
 import java.io.ByteArrayOutputStream
@@ -160,22 +161,24 @@ object CrossPlatformCorpus {
         Files.createDirectories(destination)
         listOf("unsigned", "invalid").forEach { name ->
             val input = negativeInputs.resolve("$name.apk")
+            val product = destination.resolve("$name-output.apk")
+            val report = destination.resolve("$name-report.json")
             val result = command(
-                listOf(
-                    javaTool().toString(), "ah.host.cli.CliMain", "protect",
-                    "--input", input.toString(), "--output", destination.resolve("$name-output.apk").toString(),
-                    "--report", destination.resolve("$name-report.json").toString(),
-                ),
+                listOf(javaTool().toString(), "ah.integration.equivalence.CrossPlatformCliAdapter"),
                 Duration.ofMinutes(2),
                 allowFailure = true,
-                environment = mapOf("CLASSPATH" to System.getProperty("java.class.path")),
+                environment = mapOf(
+                    "CLASSPATH" to System.getProperty("java.class.path"),
+                    "M303_NEGATIVE_INPUT" to input.toString(),
+                    "M303_NEGATIVE_OUTPUT" to product.toString(),
+                    "M303_NEGATIVE_REPORT" to report.toString(),
+                ),
             )
             val lines = result.output.lineSequence().map(String::trim).filter(String::isNotEmpty).toList()
             check(lines.size == 1) { "$name did not emit the canonical one-line CLI result" }
             val match = Regex("^(rejected|failed)/([A-Z0-9_]+)/([^/]+)$").matchEntire(lines.single())
                 ?: error("$name emitted a non-canonical CLI result")
-            val report = destination.resolve("$name-report.json")
-            check(result.exit != 0 && !Files.exists(destination.resolve("$name-output.apk")))
+            check(result.exit != 0 && !Files.exists(product))
             Files.writeString(destination.resolve("$name-exit.txt"), "${result.exit}\n", StandardCharsets.US_ASCII)
             Files.writeString(
                 destination.resolve("$name-result.json"),
@@ -260,4 +263,19 @@ object CrossPlatformCorpus {
     }
 
     private fun isWindows(): Boolean = System.getProperty("os.name").lowercase().contains("windows")
+}
+
+object CrossPlatformCliAdapter {
+    @JvmStatic
+    fun main(args: Array<String>) {
+        check(args.isEmpty())
+        CliMain.main(
+            arrayOf(
+                "protect",
+                "--input", requireNotNull(System.getenv("M303_NEGATIVE_INPUT")),
+                "--output", requireNotNull(System.getenv("M303_NEGATIVE_OUTPUT")),
+                "--report", requireNotNull(System.getenv("M303_NEGATIVE_REPORT")),
+            ),
+        )
+    }
 }

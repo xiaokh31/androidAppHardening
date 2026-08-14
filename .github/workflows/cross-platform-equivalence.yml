@@ -176,6 +176,7 @@ jobs:
             -Pm303RuntimeBundle=integration-tests/build/generated/m3-01/runtime-bundle
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Upload platform result
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: m3-03-${{ matrix.platform }}

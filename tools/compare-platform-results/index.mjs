@@ -321,7 +321,8 @@ function verifyNegatives(root, schema) {
     const result = JSON.parse(readFileSync(join(root, "negative", `${name}-result.json`), "utf8"));
     const exit = Number(readFileSync(join(root, "negative", `${name}-exit.txt`), "ascii").trim());
     invariant(exit !== 0 && result.status !== "success" && result.partial_output === false, `${name}: negative accepted`);
-    invariant(result.status === expected[name].status && result.error_code === expected[name].error_code, `${name}: unstable failure`);
+    invariant(result.status === expected[name].status && result.error_code === expected[name].error_code,
+      `${name}: unstable failure ${result.status}/${result.error_code}/${result.report_present ? "report" : "no-report"}`);
     let stage = null;
     if (result.report_present) {
       const report = JSON.parse(readFileSync(join(root, "negative", `${name}-report.json`), "utf8"));

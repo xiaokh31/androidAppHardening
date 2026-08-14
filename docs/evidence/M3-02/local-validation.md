@@ -40,3 +40,11 @@ The repository-local pinned JDK, Gradle distribution, and ignored dependency cac
 
 - Publication authorization, branch push, the unique Issue #19 draft PR, exact-head Ubuntu/Windows 600-second JVM/Native targets, API 29/36 x86_64 KVM, Build and Governance remain pending.
 - README/task status and merge completion will be updated only after all exact-head gates pass and the PR is merged.
+
+## PR #52 bounded RSS correction
+
+- Timestamp: `2026-08-15T02:31:58+08:00`
+- Failed run: M3-02 Fuzz `31828524638`, Ubuntu jobs `94858425220` and `94858425349`.
+- Root cause: Jazzer instrumented the full third-party runtime classpath and exceeded its unchanged fail-closed `2048 MiB` RSS limit (`2058 MiB` for APK and `2356 MiB` for AXML). Both failures were libFuzzer OOM exits, not parser crashes.
+- Correction: coverage and custom-hook instrumentation are restricted to repository-owned `ah.host.**` and `ah.tools.validation.fuzz.**`; the 2 GiB RSS limit, 5-second input timeout, 4 MiB maximum input and 600-second PR duration are unchanged.
+- Local verification: immutable toolchain verification exited `0`; repository-local JDK 17/Gradle 9.5.0 offline five-second APK+AXML smoke exited `0`, executed `470476` AXML cases, and reported approximately `550 MiB` AXML RSS. No program was downloaded and no device was started.

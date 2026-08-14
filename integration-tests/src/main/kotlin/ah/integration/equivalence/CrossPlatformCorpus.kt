@@ -162,12 +162,13 @@ object CrossPlatformCorpus {
             val input = negativeInputs.resolve("$name.apk")
             val result = command(
                 listOf(
-                    javaTool().toString(), "-cp", System.getProperty("java.class.path"), "ah.host.cli.CliMain", "protect",
+                    javaTool().toString(), "ah.host.cli.CliMain", "protect",
                     "--input", input.toString(), "--output", destination.resolve("$name-output.apk").toString(),
                     "--report", destination.resolve("$name-report.json").toString(),
                 ),
                 Duration.ofMinutes(2),
                 allowFailure = true,
+                environment = mapOf("CLASSPATH" to System.getProperty("java.class.path")),
             )
             val lines = result.output.lineSequence().map(String::trim).filter(String::isNotEmpty).toList()
             check(lines.size == 1) { "$name did not emit the canonical one-line CLI result" }
@@ -223,11 +224,18 @@ object CrossPlatformCorpus {
     private fun javaTool(name: String = "java"): Path = Path.of(System.getProperty("java.home"))
         .resolve("bin").resolve(name + if (isWindows()) ".exe" else "")
 
-    private fun command(command: List<String>, timeout: Duration, allowFailure: Boolean = false): Result {
+    private fun command(
+        command: List<String>,
+        timeout: Duration,
+        allowFailure: Boolean = false,
+        environment: Map<String, String> = emptyMap(),
+    ): Result {
         val actual = if (isWindows() && command.first().endsWith(".bat", ignoreCase = true)) {
             listOf("cmd.exe", "/d", "/c") + command
         } else command
-        val process = ProcessBuilder(actual).redirectErrorStream(true).start()
+        val processBuilder = ProcessBuilder(actual).redirectErrorStream(true)
+        processBuilder.environment().putAll(environment)
+        val process = processBuilder.start()
         val captured = ByteArrayOutputStream()
         val reader = Thread { process.inputStream.use { it.copyTo(captured) } }.also { it.isDaemon = true; it.start() }
         if (!process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS)) {

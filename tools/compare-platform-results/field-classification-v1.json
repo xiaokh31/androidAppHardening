@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "report_randomized": [
+    "output.sha256",
+    "output.container_sha256",
+    "output.config_sha256"
+  ],
+  "report_run_metadata": [
+    "result.started_at",
+    "result.finished_at",
+    "input.path_token",
+    "output.path_token",
+    "output.report_path_token",
+    "stages[].duration_ms"
+  ],
+  "artifact_randomized": [
+    "cek",
+    "build_id",
+    "key_slot_id",
+    "nonce_prefix",
+    "manifest_mac",
+    "gcm_tag",
+    "ciphertext",
+    "container_sha256",
+    "output_sha256"
+  ],
+  "default_known_report_fields": "deterministic",
+  "unknown_report_fields": "reject"
+}

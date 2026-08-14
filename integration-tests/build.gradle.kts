@@ -112,6 +112,70 @@ tasks.register<JavaExec>("runFixtureHostMatrix") {
     providers.gradleProperty("m301Case").orNull?.let { systemProperty("m301.case", it) }
 }
 
+val m303Seed = rootProject.layout.buildDirectory.dir("equivalence/input-corpus")
+val m303Inputs = providers.gradleProperty("m303InputCorpus")
+    .map { rootProject.layout.projectDirectory.dir(it) }
+    .orElse(m303Seed)
+val m303Runtime = providers.gradleProperty("m303RuntimeBundle")
+    .map { rootProject.layout.projectDirectory.dir(it) }
+    .orElse(generatedRuntimeBundle)
+val m303Platform = providers.gradleProperty("m303Platform").orElse(
+    providers.systemProperty("os.name").map { if (it.lowercase().contains("windows")) "windows" else "ubuntu" },
+)
+val m303Output = m303Platform.map { rootProject.layout.buildDirectory.dir("equivalence/$it").get() }
+
+tasks.register<JavaExec>("prepareCrossPlatformInputs") {
+    group = "verification"
+    description = "Builds the fixed synthetic signed-input corpus for M3-03."
+    dependsOn(tasks.named("classes"), ":fixtures:android:assembleFixtures")
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("ah.integration.equivalence.CrossPlatformCorpus")
+    systemProperty("m303.mode", "seed")
+    systemProperty("m303.root", rootProject.layout.projectDirectory.asFile.absolutePath)
+    systemProperty("m303.output", m303Seed.get().asFile.absolutePath)
+    outputs.dir(m303Seed)
+}
+
+val generateCrossPlatformCorpus by tasks.registering(JavaExec::class) {
+    group = "verification"
+    description = "Runs two randomized full-flow M3-03 corpus passes on the current host."
+    dependsOn(tasks.named("classes"))
+    if (!providers.gradleProperty("m303InputCorpus").isPresent) dependsOn(tasks.named("prepareCrossPlatformInputs"))
+    if (!providers.gradleProperty("m303RuntimeBundle").isPresent) dependsOn(generateM301RuntimeBundle)
+    classpath = sourceSets["main"].runtimeClasspath + files(m303Runtime)
+    mainClass.set("ah.integration.equivalence.CrossPlatformCorpus")
+    systemProperty("m303.mode", "run")
+    systemProperty("m303.root", rootProject.layout.projectDirectory.asFile.absolutePath)
+    systemProperty("user.timezone", "UTC")
+    systemProperty("user.language", "en")
+    systemProperty("user.country", "US")
+    systemProperty("file.encoding", "UTF-8")
+    systemProperty("m303.gradleVersion", gradle.gradleVersion)
+    systemProperty("m303.buildToolsVersion", "36.1.0")
+    systemProperty("m303.inputs", m303Inputs.get().asFile.absolutePath)
+    systemProperty("m303.output", m303Output.get().asFile.absolutePath)
+    inputs.dir(m303Inputs)
+    inputs.dir(m303Runtime)
+    outputs.dir(m303Output)
+}
+
+val snapshotCrossPlatformCorpus by tasks.registering(Exec::class) {
+    group = "verification"
+    dependsOn(generateCrossPlatformCorpus)
+    commandLine(
+        "node",
+        rootProject.layout.projectDirectory.file("tools/compare-platform-results/index.mjs").asFile.absolutePath,
+        "snapshot",
+        m303Output.get().asFile.absolutePath,
+    )
+}
+
+tasks.register("crossPlatformCorpus") {
+    group = "verification"
+    description = "Produces and independently validates the current-host M3-03 equivalence snapshot."
+    dependsOn(snapshotCrossPlatformCorpus)
+}
+
 tasks.named("check") {
     dependsOn(tasks.named("test"))
 }

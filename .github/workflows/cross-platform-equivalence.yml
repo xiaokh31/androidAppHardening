@@ -1,0 +1,225 @@
+name: Cross-platform equivalence
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m3-03-equivalence-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TZ: UTC
+  LANG: C
+  LC_ALL: C
+
+jobs:
+  seed:
+    name: Prepare fixed corpus
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Verify reviewed Ubuntu image
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${ImageOS:-}" = ubuntu24
+          case "${ImageVersion:-}" in
+            20260720.247.2|20260804.265.1|20260810.271.1) ;;
+            *) echo "unexpected mutable Ubuntu image" >&2; exit 1 ;;
+          esac
+          test "$(gcc -dumpfullversion -dumpversion)" = 13.3.0
+      - name: Set up Temurin JDK
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95
+        with:
+          distribution: temurin
+          java-version: "17.0.19+10"
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24.12.0
+          check-latest: false
+      - name: Install pinned Android packages
+        shell: bash
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platforms;android-36" "build-tools;36.1.0" "ndk;29.0.14206865" "cmake;4.1.2"
+      - name: Prepare verified Native crypto source
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive=.toolchains/native-crypto/downloads/mbedtls-4.1.1.tar.bz2
+          source_root=.toolchains/native-crypto/src/mbedtls-4.1.1
+          extract_root=.toolchains/native-crypto/src/.mbedtls-4.1.1.extract
+          cleanup() { rm -rf -- "$extract_root" "$source_root"; rm -f -- "$archive"; }
+          trap cleanup ERR
+          mkdir -p "$(dirname "$archive")" "$(dirname "$source_root")"
+          curl --fail --location --retry 3 --output "$archive" \
+            https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-4.1.1/mbedtls-4.1.1.tar.bz2
+          node tools/validation/verify-m2-07-native-crypto.mjs --archive-only
+          mkdir "$extract_root"
+          tar -xjf "$archive" -C "$extract_root"
+          node tools/validation/verify-m2-07-native-crypto.mjs --self-test --pre-promote \
+            --source-root="$extract_root/mbedtls-4.1.1"
+          printf '%s\n' \
+            archive_sha256=3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c \
+            source_tree_sha256=7c4ba6554fed6eb67c201054bc75b124fcdc0649e2f56cd762746e01a25d2140 \
+            > "$extract_root/mbedtls-4.1.1/.aah-m2-07-verified"
+          mv "$extract_root/mbedtls-4.1.1" "$source_root"
+          rmdir "$extract_root"
+          node tools/validation/verify-m2-07-native-crypto.mjs --self-test
+      - name: Build fixed inputs and Release Candidate Runtime bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew --no-daemon \
+            :integration-tests:prepareCrossPlatformInputs \
+            :integration-tests:generateM301RuntimeBundle
+          test ! -e integration-tests/build/test-signing/m3-03-seed
+      - name: Upload fixed corpus
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: m3-03-fixed-inputs
+          if-no-files-found: error
+          retention-days: 7
+          path: build/equivalence/input-corpus
+      - name: Upload Runtime bundle
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: m3-03-runtime-bundle
+          if-no-files-found: error
+          retention-days: 7
+          path: integration-tests/build/generated/m3-01/runtime-bundle
+
+  platform:
+    name: Equivalence (${{ matrix.platform }})
+    needs: seed
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu
+            os: ubuntu-24.04
+          - platform: windows
+            os: windows-2025
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Verify reviewed runner
+        shell: pwsh
+        run: |
+          if ($env:RUNNER_OS -eq 'Linux') {
+            if ($env:ImageOS -cne 'ubuntu24' -or $env:ImageVersion -cnotin @('20260720.247.2','20260804.265.1','20260810.271.1')) { throw 'unexpected Ubuntu image' }
+          } else {
+            $lock = (Get-Content -Raw -LiteralPath tools/validation/m2-07-native-crypto.json | ConvertFrom-Json).ci_toolchains.windows
+            $reviewed = @($lock.reviewed_images | ForEach-Object { $_.image_version })
+            if ($env:ImageOS -cne 'win25-vs2026' -or $env:ImageVersion -cnotin $reviewed) { throw 'unexpected Windows image' }
+          }
+      - name: Set up Temurin JDK
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95
+        with:
+          distribution: temurin
+          java-version: "17.0.19+10"
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24.12.0
+          check-latest: false
+      - name: Install pinned Host Android tools
+        shell: pwsh
+        run: |
+          $sdkmanager = if ($env:RUNNER_OS -eq 'Windows') {
+            "$env:ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager.bat"
+          } else {
+            "$env:ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          }
+          & $sdkmanager "platforms;android-36" "build-tools;36.1.0" "platform-tools"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Download fixed inputs
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: m3-03-fixed-inputs
+          path: build/equivalence/input-corpus
+      - name: Download Runtime bundle
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: m3-03-runtime-bundle
+          path: integration-tests/build/generated/m3-01/runtime-bundle
+      - name: Run Ubuntu corpus
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew --no-daemon :integration-tests:crossPlatformCorpus \
+            -Pm303Platform=ubuntu \
+            -Pm303InputCorpus=build/equivalence/input-corpus \
+            -Pm303RuntimeBundle=integration-tests/build/generated/m3-01/runtime-bundle
+      - name: Run Windows corpus
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          .\gradlew.bat --no-daemon :integration-tests:crossPlatformCorpus `
+            -Pm303Platform=windows `
+            -Pm303InputCorpus=build/equivalence/input-corpus `
+            -Pm303RuntimeBundle=integration-tests/build/generated/m3-01/runtime-bundle
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload platform result
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: m3-03-${{ matrix.platform }}
+          if-no-files-found: error
+          retention-days: 7
+          path: build/equivalence/${{ matrix.platform }}
+
+  compare:
+    name: Compare Windows and Ubuntu
+    needs: platform
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24.12.0
+          check-latest: false
+      - name: Download Windows result
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: m3-03-windows
+          path: build/equivalence/windows
+      - name: Download Ubuntu result
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: m3-03-ubuntu
+          path: build/equivalence/ubuntu
+      - name: Compare stable semantics and randomized fields
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/compare-platform-results/index.mjs self-test
+          node tools/compare-platform-results/index.mjs compare \
+            build/equivalence/windows build/equivalence/ubuntu build/reports/equivalence-summary.json
+          sha256sum build/reports/equivalence-summary.json
+      - name: Upload equivalence summary
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: m3-03-equivalence-summary
+          if-no-files-found: error
+          retention-days: 7
+          path: build/reports/equivalence-summary.json

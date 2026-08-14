@@ -45,6 +45,7 @@ const gradleTask = readFileSync("tools/validation/build.gradle.kts", "utf8");
 const cmake = readFileSync("runtime/native/src/main/cpp/CMakeLists.txt", "utf8");
 const nativeRunner = readFileSync("tools/validation/run-m3-02-native-fuzz.mjs", "utf8");
 const workflow = readFileSync(".github/workflows/m3-02-fuzz.yml", "utf8");
+const buildWorkflow = readFileSync(".github/workflows/build.yml", "utf8");
 const kvmWorkflow = readFileSync(".github/workflows/m0-05-linux-kvm.yml", "utf8");
 const deviceRunner = readFileSync("tools/validation/run-m2-02-device-acceptance.mjs", "utf8");
 const deviceSummary = readFileSync("tools/validation/summarize-m3-02-device-tamper.mjs", "utf8");
@@ -98,6 +99,11 @@ check(jvmCorpus.includes("hasApkSigningBlock") &&
 check(testApkCreator.includes("PAYLOAD_V2_ONLY_MUTATIONS") &&
   testApkCreator.includes("supportsPayloadV2Mutations || !PAYLOAD_V2_ONLY_MUTATIONS.has(name)"),
   "legacy M0-05 payload excludes M3-02-only authenticated-container mutations");
+check((buildWorkflow.match(/b287183d1c2af46cfb9ce4b027e7993ec9721e039f91c3125176a962a2ddd641/gu) ?? []).length === 2,
+  "dual-platform Build locks the extended M1-03 error matrix");
+check(kvmWorkflow.includes('"build/m2-06/device-api${API}-x86_64/report.json"') &&
+  deviceSummary.includes('["M2-02", "M2-06"].includes(loader.task_id)'),
+  "M3-02 consumes the executed M202/M2-06 loader report");
 check(tamperRunner.includes('stage = "INSPECT"') && tamperRunner.includes('stage = "MANIFEST"') &&
   tamperRunner.includes("stage mismatch"), "fixed Host stage evidence");
 const catalogCheck = spawnSync(process.execPath,

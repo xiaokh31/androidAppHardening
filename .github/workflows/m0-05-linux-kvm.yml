@@ -967,7 +967,7 @@ jobs:
           node tools/validation/summarize-m3-02-device-tamper.mjs \
             tools/validation/src/tamper/resources/catalog.yaml \
             "build/m2-03/device-api${API}-x86_64/signer-matrix/signer-matrix-report.json" \
-            "build/m2-02/device-api${API}-x86_64/report.json" \
+            "build/m2-06/device-api${API}-x86_64/report.json" \
             "build/m2-03/device-api${API}-x86_64/report.json" \
             "api${API}-x86_64-linux-kvm" \
             "build/m3-02/device-api${API}-x86_64/fuzz-summary.json"

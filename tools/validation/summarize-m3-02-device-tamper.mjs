@@ -81,7 +81,8 @@ const guard = readJson(guardPath, "Guard report");
 if (signer.result !== "PASS" || signer.cleanup_passed !== true || !Array.isArray(signer.m302_cases)) {
   fail("startup matrix did not pass");
 }
-if (loader.task_id !== "M2-02" || loader.result !== "PASS" || loader.cleanup_passed !== true) fail("loader report");
+if (!["M2-02", "M2-06"].includes(loader.task_id) ||
+    loader.result !== "PASS" || loader.cleanup_passed !== true) fail("loader report");
 if (guard.task_id !== "M2-03" || guard.result !== "PASS" || guard.cleanup_passed !== true) fail("Guard report");
 
 const observed = new Map();

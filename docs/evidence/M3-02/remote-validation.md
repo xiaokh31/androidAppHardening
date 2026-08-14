@@ -33,6 +33,7 @@ Each PR target retained the fixed 600-second duration, 2 GiB RSS ceiling, five-s
   - Ubuntu 24.04 job `94870826954`: PASS.
   - Windows 2025 job `94870826893`: PASS.
 - Governance [`31832372727`](https://github.com/xiaokh31/androidAppHardening/actions/runs/31832372727), exact head `699ea233201d6630a8b621d550b2f20b54c816df`: PASS.
+- Documentation-only head `592e88ac54190e282df92ee9ca9269acfa6ed0d6` passed Build [`31834088916`](https://github.com/xiaokh31/androidAppHardening/actions/runs/31834088916) on Ubuntu/Windows and Governance [`31834089182`](https://github.com/xiaokh31/androidAppHardening/actions/runs/31834089182). Its automatically triggered KVM/fuzz runs were cancelled because no executable, corpus, workflow or acceptance input changed.
 
 ## API 29/36 KVM
 
@@ -48,3 +49,5 @@ Both jobs executed the existing bounded Release/R8 device acceptance and the exa
 ## Result
 
 All required bounded local, fuzz, sanitizer, dual-platform Build/Governance and API 29/36 KVM gates passed. No crash, sanitizer finding, timeout, OOM, unexpected publication or cleanup failure remains in the accepted evidence. This result describes only the executed scope and does not claim absolute tamper resistance.
+
+PR [#52](https://github.com/xiaokh31/androidAppHardening/pull/52) was made ready and merged from expected head `592e88ac54190e282df92ee9ca9269acfa6ed0d6` as `1913d37d4561fb9b965ee1b4f23863f8a901b37e`; Issue [#19](https://github.com/xiaokh31/androidAppHardening/issues/19) closed automatically.

@@ -85,9 +85,10 @@ object CrossPlatformCorpus {
         check(Files.isDirectory(suppliedInputs))
         val expected = parseHashes(suppliedInputs.resolve("inputs.sha256"))
         check(expected.size == 11) { "M3-03 fixed corpus must contain nine fixtures and two negatives" }
-        val perturbation = root.resolve("integration-tests/build/equivalence-work/路径-utf8/")
-            .resolve("deep-" + "m303".repeat(24)).resolve("inputs").normalize()
-        perturbation.parent.toFile().deleteRecursively()
+        val workRoot = root.resolve("integration-tests/build/equivalence-work/路径-utf8").normalize()
+        val perturbation = workRoot.resolve("deep-" + "m303".repeat(24)).resolve("inputs").normalize()
+        val negativePerturbation = workRoot.resolve("negative").normalize()
+        workRoot.toFile().deleteRecursively()
         Files.createDirectories(perturbation)
         expected.keys.forEach { relative ->
             val source = suppliedInputs.resolve(relative).normalize()
@@ -96,6 +97,11 @@ object CrossPlatformCorpus {
             Files.createDirectories(target.parent)
             Files.copy(source, target)
             check(sha256(target) == expected.getValue(relative))
+        }
+        Files.createDirectories(negativePerturbation)
+        listOf("unsigned.apk", "invalid.apk").forEach { name ->
+            Files.copy(suppliedInputs.resolve("negative/$name"), negativePerturbation.resolve(name))
+            check(sha256(negativePerturbation.resolve(name)) == expected.getValue("negative/$name"))
         }
 
         try {
@@ -124,10 +130,15 @@ object CrossPlatformCorpus {
                 }
                 Files.copy(report, output.resolve("$run-fixture-report.json"))
             }
-            runNegatives(output, perturbation.resolve("negative"))
+            runNegatives(output, negativePerturbation)
             expected.forEach { (relative, digest) ->
                 check(sha256(suppliedInputs.resolve(relative)) == digest) { "fixed input source changed: $relative" }
                 check(sha256(perturbation.resolve(relative)) == digest) { "deep-path input copy changed: $relative" }
+            }
+            listOf("unsigned.apk", "invalid.apk").forEach { name ->
+                check(sha256(negativePerturbation.resolve(name)) == expected.getValue("negative/$name")) {
+                    "UTF-8 negative input copy changed: $name"
+                }
             }
             Files.writeString(
                 output.resolve("environment.json"),
@@ -140,7 +151,7 @@ object CrossPlatformCorpus {
                 StandardCharsets.UTF_8,
             )
         } finally {
-            perturbation.parent.toFile().deleteRecursively()
+            workRoot.toFile().deleteRecursively()
         }
     }
 

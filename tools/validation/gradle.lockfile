@@ -4,6 +4,6 @@
 com.android.tools.build:apksig:9.3.0=runtimeClasspath
 com.code-intelligence:jazzer-api:0.29.1=runtimeClasspath
 com.code-intelligence:jazzer:0.29.1=runtimeClasspath
-org.jetbrains.kotlin:kotlin-stdlib:2.4.10=compileClasspath,runtimeClasspath
-org.jetbrains:annotations:13.0=compileClasspath,runtimeClasspath
-empty=annotationProcessor,testAnnotationProcessor,testCompileClasspath,testRuntimeClasspath
+org.jetbrains.kotlin:kotlin-stdlib:2.4.10=compileClasspath,runtimeClasspath,testCompileClasspath
+org.jetbrains:annotations:13.0=compileClasspath,runtimeClasspath,testCompileClasspath
+empty=annotationProcessor,testAnnotationProcessor,testRuntimeClasspath

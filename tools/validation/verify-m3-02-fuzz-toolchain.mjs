@@ -54,13 +54,15 @@ const tamperRunner = readFileSync(
   "tools/validation/src/main/java/ah/tools/validation/tamper/TamperCatalogRunner.java", "utf8");
 check(versions.includes('jazzer = "0.29.1"'), "version catalog lock");
 for (const hash of Object.values(lock.jazzer.artifacts)) check(verification.includes(hash), `verification hash ${hash}`);
-check(gradleTask.includes("-rss_limit_mb=2048") && gradleTask.includes("-timeout=5") &&
-  gradleTask.includes("-max_len=4194304"), "Jazzer limits wiring");
+check(gradleTask.includes('maxHeapSize = "768m"') && gradleTask.includes("-rss_limit_mb=2048") &&
+  gradleTask.includes("-timeout=5") && gradleTask.includes("-max_len=4194304"),
+"Jazzer heap and total RSS limits wiring");
 check(gradleTask.includes('from(m302RegressionRoot.dir(corpusName))') &&
   gradleTask.includes('dependsOn(tasks.named("classes"), prepareCorpus, "regressionFuzz")'),
 "JVM regression preflight wiring");
 check(nativeRunner.includes('"-rss_limit_mb=2048"') && nativeRunner.includes('"-timeout=5"') &&
-  nativeRunner.includes('"-max_len=4194304"'), "libFuzzer limits wiring");
+  nativeRunner.includes('"-max_len=4194304"') &&
+  nativeRunner.includes('path.resolve("tools/validation/build")'), "libFuzzer limits and ignored work root wiring");
 check(cmake.includes("AH_M3_02_LIBFUZZER") && cmake.includes("-fsanitize=fuzzer,address,undefined"), "libFuzzer wiring");
 check(workflow.includes("runs-on: ubuntu-24.04") && workflow.includes("os: windows-2025") &&
   !workflow.includes("ubuntu-latest") && !workflow.includes("windows-latest"), "workflow runner lock");

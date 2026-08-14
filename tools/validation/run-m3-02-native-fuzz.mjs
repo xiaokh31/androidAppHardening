@@ -46,7 +46,10 @@ const seconds = Number(secondsValue);
 const work = path.resolve(workValue ?? "");
 if (!existsSync(executable) || !statSync(executable).isFile()) fail("missing libFuzzer executable");
 if (!Number.isInteger(seconds) || seconds < 1 || seconds > 3600) fail("invalid fuzz duration");
-if (!work.startsWith(`${path.resolve("build")}${path.sep}`)) fail("work must be under ignored build/");
+const allowedWorkRoots = [path.resolve("build"), path.resolve("tools/validation/build")];
+if (!allowedWorkRoots.some((root) => work.startsWith(`${root}${path.sep}`))) {
+  fail("work must be under an approved ignored build directory");
+}
 const corpusSource = path.resolve("tools/validation/src/fuzz/resources/corpus/native");
 const regressionSource = path.resolve("tools/validation/src/fuzz/resources/regressions/native");
 const sourceHashes = [digest(corpusSource), digest(regressionSource)];

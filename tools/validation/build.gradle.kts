@@ -55,7 +55,9 @@ fun registerJazzerTarget(
         dependsOn(tasks.named("classes"), prepareCorpus, "regressionFuzz")
         classpath = sourceSets["main"].runtimeClasspath
         mainClass.set("com.code_intelligence.jazzer.Jazzer")
-        maxHeapSize = "2g"
+        // Keep the JVM heap below the fail-closed 2 GiB total-process RSS cap.
+        // A 2 GiB heap makes Jazzer exceed that cap before meaningful fuzzing.
+        maxHeapSize = "768m"
         workingDir(work)
         args(
             "--target_class=$targetClass",

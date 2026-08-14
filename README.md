@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-M0 基础建设与可行性验证以及 M1 Host 处理链已经完成。M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换器、M1-07 AHDC v2 分块认证容器合同、M1-04 AHDC v2 Host 实现、M1-05 APK 重打包与对齐、M1-06 CLI 与 JSON 报告均已合并并通过双平台门禁。M2 已完成并合并独立前置任务 M2-07、Native AHDC v2 解密与内存 DEX loader M2-02、Runtime signer/authenticated metadata/启动事务所有权门禁 M2-03、生产 Shell `AppComponentFactory` 启动链 M2-01、四 ABI Runtime 构建与装配 M2-04、版本化环境风险信号与评分引擎 M2-05，以及内存 dump 成本控制 M2-06。M3-01 的九个公开 Android fixture、Host full-flow、Ubuntu/Windows、API 29/36 x86_64 KVM 与 API 29 arm64 真机矩阵均已通过并由 PR #49 合并。随后 M2-07 的 Windows hosted-runner 精确锁已通过 PR #51 更新至已复核镜像 `20260810.198.2`，保持未知镜像失败关闭，且未重复 KVM 或真机矩阵。这些控制只提高攻击成本，不承诺阻止 root、注入或进程控制攻击者。生产 RuntimeBundle 与可发布端到端发行包仍属于后续任务。
+M0 基础建设与可行性验证以及 M1 Host 处理链已经完成。M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换器、M1-07 AHDC v2 分块认证容器合同、M1-04 AHDC v2 Host 实现、M1-05 APK 重打包与对齐、M1-06 CLI 与 JSON 报告均已合并并通过双平台门禁。M2 已完成并合并独立前置任务 M2-07、Native AHDC v2 解密与内存 DEX loader M2-02、Runtime signer/authenticated metadata/启动事务所有权门禁 M2-03、生产 Shell `AppComponentFactory` 启动链 M2-01、四 ABI Runtime 构建与装配 M2-04、版本化环境风险信号与评分引擎 M2-05，以及内存 dump 成本控制 M2-06。M3-01 的九个公开 Android fixture、Host full-flow、Ubuntu/Windows、API 29/36 x86_64 KVM 与 API 29 arm64 真机矩阵均已通过并由 PR #49 合并。M3-02 的 69 项篡改 catalog、Jazzer/Native sanitizer fuzz、Ubuntu/Windows 与 API 29/36 KVM 矩阵也已全部通过，等待 PR #52 合并收尾。随后 M2-07 的 Windows hosted-runner 精确锁已通过 PR #51 更新至已复核镜像 `20260810.198.2`，保持未知镜像失败关闭，且未重复 KVM 或真机矩阵。这些控制只提高攻击成本，不承诺阻止 root、注入或进程控制攻击者。生产 RuntimeBundle 与可发布端到端发行包仍属于后续任务。
 
 开发者和 Agent 从 [`docs/README_FIRST.md`](docs/README_FIRST.md) 开始。项目统筹状态以 [`HandOff.md`](HandOff.md) 为准。
 
@@ -31,7 +31,8 @@ M0 基础建设与可行性验证以及 M1 Host 处理链已经完成。M1-01 �
 | [M2-06](docs/tasks/M2-06-memory-dump-cost-controls.md) | 已完成 | PR #48、Issue #17、P0/P1/P2 全零独立复核、Ubuntu/Windows、API 29/36 KVM、Release/R8、清零/只读/`DONTDUMP`/锁页/抖动、expected-head 合并与 post-merge strict HandOff 均已关闭 |
 | [M2-08](docs/tasks/M2-08-native-parser-topology-bounds.md) | 已完成 | PR #54、Issue #53、精确 399-byte 回归、Ubuntu ASan/UBSan、Ubuntu/Windows Build/Governance、P0/P1/P2 全零独立复核及 expected-head 合并均已关闭；无需设备或 KVM |
 | [M3-01](docs/tasks/M3-01-android-fixtures.md) | 已完成 | 九个公开 fixture、Host full-flow、Ubuntu/Windows、API 29/36 x86_64 KVM、API 29 arm64 真机与清理均已通过；PR #49、Issue #18 已关闭 |
-| M3-02 ～ M4 | 未启动 | 后续验证矩阵与发布阶段不得提前实现 |
+| [M3-02](docs/tasks/M3-02-tamper-and-fuzz-tests.md) | 待合并 | 69 项篡改 catalog、Jazzer APK/AXML、Native libFuzzer + ASan/UBSan、Ubuntu/Windows、API 29/36 KVM 与独立全零复核均已通过；PR #52、Issue #19 |
+| M3-03 ～ M4 | 未启动 | 后续验证矩阵与发布阶段不得提前实现 |
 
 任务按 [`docs/tasks/INDEX.md`](docs/tasks/INDEX.md) 的依赖顺序执行。每个任务只有在 PR 合并、合并后门禁与证据完成后才在本表标记“已完成”；每个任务的收尾协调提交必须同步本 README，避免公开进度长期滞后。
 

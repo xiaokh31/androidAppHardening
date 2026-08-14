@@ -50,6 +50,7 @@ const deviceRunner = readFileSync("tools/validation/run-m2-02-device-acceptance.
 const deviceSummary = readFileSync("tools/validation/summarize-m3-02-device-tamper.mjs", "utf8");
 const signerMatrix = readFileSync("tools/validation/run-m2-03-signer-matrix.mjs", "utf8");
 const jvmCorpus = readFileSync("tools/validation/generate-m3-02-jvm-corpus.mjs", "utf8");
+const testApkCreator = readFileSync("tools/validation/create-m0-05-test-apks.mjs", "utf8");
 const tamperRunner = readFileSync(
   "tools/validation/src/main/java/ah/tools/validation/tamper/TamperCatalogRunner.java", "utf8");
 check(versions.includes('jazzer = "0.29.1"'), "version catalog lock");
@@ -93,7 +94,10 @@ check(deviceRunner.includes("parseM302Cases") && deviceRunner.includes("m302_cas
 "named per-case device evidence");
 check(jvmCorpus.includes("hasApkSigningBlock") &&
   jvmCorpus.includes('assertUnsigned(apk, parsed, "source APK")'),
-"v1 and v2/v3 unsigned corpus boundary");
+  "v1 and v2/v3 unsigned corpus boundary");
+check(testApkCreator.includes("PAYLOAD_V2_ONLY_MUTATIONS") &&
+  testApkCreator.includes("supportsPayloadV2Mutations || !PAYLOAD_V2_ONLY_MUTATIONS.has(name)"),
+  "legacy M0-05 payload excludes M3-02-only authenticated-container mutations");
 check(tamperRunner.includes('stage = "INSPECT"') && tamperRunner.includes('stage = "MANIFEST"') &&
   tamperRunner.includes("stage mismatch"), "fixed Host stage evidence");
 const catalogCheck = spawnSync(process.execPath,

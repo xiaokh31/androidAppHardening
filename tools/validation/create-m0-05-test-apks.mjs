@@ -27,6 +27,15 @@ const CONFIG_BYTE_MUTATIONS = new Set([
   "config-nul",
   "config-slot-tail",
 ]);
+const PAYLOAD_V2_ONLY_MUTATIONS = new Set([
+  "payload-nonce",
+  "payload-tag-first",
+  "payload-tag-middle",
+  "payload-tag-last",
+  "payload-ciphertext-first",
+  "payload-ciphertext-middle",
+  "payload-ciphertext-last",
+]);
 
 function fail(message) {
   throw new Error(`M0-05 test APK creation failed: ${message}`);
@@ -104,6 +113,11 @@ function mutatePayload(source, mutation) {
   if (target < payloadOffset || target >= bytes.length) fail(`payload mutation offset is invalid: ${mutation}`);
   bytes[target] ^= 1;
   return bytes;
+}
+
+function isCanonicalPayloadV2(source) {
+  return source.length >= 160 && source.subarray(0, 4).toString("ascii") === "AHDC" &&
+    source.readUInt16LE(4) === 2 && source.readUInt16LE(8) === 160;
 }
 
 function buildApk(sourceEntries, mutation) {
@@ -228,6 +242,11 @@ async function main() {
 
   const apk = await readFile(inputArgument);
   const entries = readEntries(apk);
+  const payloadEntries = entries.filter((entry) => entry.name === PAYLOAD_ENTRY);
+  if (payloadEntries.length !== 1) {
+    fail(`expected one payload entry, found ${payloadEntries.length}`);
+  }
+  const supportsPayloadV2Mutations = isCanonicalPayloadV2(payloadEntries[0].compressedData);
   await mkdir(outputDirectory, { recursive: true });
   const outputs = [];
   const mutations = [
@@ -255,7 +274,8 @@ async function main() {
     "native-duplicate",
     "truncated-zip",
   ];
-  for (const mutation of mutations) {
+  for (const mutation of mutations.filter((name) =>
+    supportsPayloadV2Mutations || !PAYLOAD_V2_ONLY_MUTATIONS.has(name))) {
     const bytes = buildApk(entries, mutation);
     const output = path.join(outputDirectory, `m0-05-${mutation}-unsigned.apk`);
     await writeFile(output, bytes);

@@ -7,7 +7,7 @@ updated_by: /root
 state: active
 source_branch: fix/m2-08-native-parser-bounds
 base_commit: ea30f51373003981cdcdae60dda795ba1fefd587
-working_tree: dirty
+working_tree: clean
 current_milestone: M2
 active_task: M2-08
 next_owner: /root

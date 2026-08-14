@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260815-003611
-updated_at: 2026-08-15T00:36:11+08:00
+handoff_id: HO-20260815-003713
+updated_at: 2026-08-15T00:37:13+08:00
 updated_by: /root
 state: active
 source_branch: fix/m2-08-native-parser-bounds
@@ -1447,10 +1447,9 @@ Complete the independent M2-08 Native parser topology-bounds fix, merge it after
 
 ## Ordered Next Actions
 
-1. Run the minimized topology regression and adjacent bounds cases locally.
-2. Freeze M2-08, run independent read-only review, then push and open the single Issue #53 draft PR.
-3. Require exact-head Ubuntu/Windows Build and Governance, including Ubuntu ASan/UBSan.
-4. Merge with expected-head protection, reconcile README/HandOff on main, then resume PR #52 CI.
+1. Complete and record the independent read-only M2-08 review.
+2. Require exact-head Ubuntu/Windows Build and Governance, including Ubuntu ASan/UBSan.
+3. Merge PR #54 with expected-head protection, reconcile README/HandOff on `main`, then resume PR #52 CI.
 
 ## Relevant Files and Artifacts
 

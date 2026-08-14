@@ -159,21 +159,21 @@ val generateCrossPlatformCorpus by tasks.registering(JavaExec::class) {
     outputs.dir(m303Output)
 }
 
-val snapshotCrossPlatformCorpus by tasks.registering(Exec::class) {
+val verifyCrossPlatformCorpus by tasks.registering(Exec::class) {
     group = "verification"
     dependsOn(generateCrossPlatformCorpus)
     commandLine(
         "node",
         rootProject.layout.projectDirectory.file("tools/compare-platform-results/index.mjs").asFile.absolutePath,
-        "snapshot",
+        "platform",
         m303Output.get().asFile.absolutePath,
     )
 }
 
 tasks.register("crossPlatformCorpus") {
     group = "verification"
-    description = "Produces and independently validates the current-host M3-03 equivalence snapshot."
-    dependsOn(snapshotCrossPlatformCorpus)
+    description = "Produces and independently validates the current-host M3-03 platform result."
+    dependsOn(verifyCrossPlatformCorpus)
 }
 
 tasks.named("check") {

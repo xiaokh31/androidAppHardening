@@ -8,12 +8,12 @@ import { fileURLToPath } from "node:url";
 const mode = process.argv[2];
 const classification = JSON.parse(readFileSync(repo("tools/compare-platform-results/field-classification-v1.json"), "utf8"));
 invariant(classification.schema_version === 1 && classification.unknown_report_fields === "reject", "field classification version");
-if (mode === "snapshot") snapshot(resolve(process.argv[3]));
+if (mode === "platform") verifyPlatform(resolve(process.argv[3]));
 else if (mode === "compare") compare(resolve(process.argv[3]), resolve(process.argv[4]), resolve(process.argv[5]));
 else if (mode === "self-test") selfTest();
-else fail("usage: index.mjs snapshot <platform-root> | compare <windows-root> <ubuntu-root> <summary> | self-test");
+else fail("usage: index.mjs platform <platform-root> | compare <windows-root> <ubuntu-root> <summary> | self-test");
 
-function snapshot(root) {
+function verifyPlatform(root) {
   const schema = JSON.parse(readFileSync(repo("docs/specs/report-v1.schema.json"), "utf8"));
   const environment = JSON.parse(readFileSync(join(root, "environment.json"), "utf8"));
   invariant(environment.java_version === "17.0.19" && environment.gradle_version === "9.5.0" && environment.build_tools_version === "36.1.0", "pinned toolchain environment");
@@ -57,7 +57,7 @@ function snapshot(root) {
   }));
   writeJson(join(root, "zip-metadata-diff.json"), { schema_version: 1, status: "pass", fixtures: zipDiff });
   scanForPaths(root, ["semantic-manifests.jsonl", "reports.jsonl", "random-fields.jsonl", "hashes.sha256", "zip-metadata-diff.json", "negative-results.json", "environment.json"]);
-  process.stdout.write(`M3-03 snapshot PASS: ${root}\n`);
+  process.stdout.write(`M3-03 platform verification PASS: ${root}\n`);
 }
 
 function compare(windowsRoot, ubuntuRoot, summaryPath) {

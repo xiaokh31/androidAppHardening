@@ -57,12 +57,13 @@ fun registerJazzerTarget(
         mainClass.set("com.code_intelligence.jazzer.Jazzer")
         // Jazzer's bytecode instrumentation uses substantial native memory, so bound
         // every major JVM pool below the fail-closed 2 GiB total-process RSS cap.
-        maxHeapSize = "256m"
+        maxHeapSize = "128m"
         jvmArgs(
-            "-XX:MaxMetaspaceSize=384m",
-            "-XX:ReservedCodeCacheSize=128m",
-            "-XX:MaxDirectMemorySize=128m",
-            "-Xss512k",
+            "-XX:MaxMetaspaceSize=192m",
+            "-XX:ReservedCodeCacheSize=64m",
+            "-XX:MaxDirectMemorySize=64m",
+            "-Xss256k",
+            "-XX:+UseSerialGC",
         )
         workingDir(work)
         args(

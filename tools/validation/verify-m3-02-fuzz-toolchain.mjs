@@ -54,11 +54,12 @@ const tamperRunner = readFileSync(
   "tools/validation/src/main/java/ah/tools/validation/tamper/TamperCatalogRunner.java", "utf8");
 check(versions.includes('jazzer = "0.29.1"'), "version catalog lock");
 for (const hash of Object.values(lock.jazzer.artifacts)) check(verification.includes(hash), `verification hash ${hash}`);
-check(gradleTask.includes('maxHeapSize = "256m"') &&
-  gradleTask.includes('"-XX:MaxMetaspaceSize=384m"') &&
-  gradleTask.includes('"-XX:ReservedCodeCacheSize=128m"') &&
-  gradleTask.includes('"-XX:MaxDirectMemorySize=128m"') &&
-  gradleTask.includes('"-Xss512k"') && gradleTask.includes("-rss_limit_mb=2048") &&
+check(gradleTask.includes('maxHeapSize = "128m"') &&
+  gradleTask.includes('"-XX:MaxMetaspaceSize=192m"') &&
+  gradleTask.includes('"-XX:ReservedCodeCacheSize=64m"') &&
+  gradleTask.includes('"-XX:MaxDirectMemorySize=64m"') &&
+  gradleTask.includes('"-Xss256k"') && gradleTask.includes('"-XX:+UseSerialGC"') &&
+  gradleTask.includes("-rss_limit_mb=2048") &&
   gradleTask.includes('"--instrumentation_includes=ah.host.**${File.pathSeparator}ah.tools.validation.fuzz.**"') &&
   gradleTask.includes('"--custom_hook_includes=ah.host.**${File.pathSeparator}ah.tools.validation.fuzz.**"') &&
   gradleTask.includes("-timeout=5") && gradleTask.includes("-max_len=4194304"),

@@ -2,7 +2,7 @@
 schema_version: 1
 project: androidAppHardening
 handoff_id: HO-20260814-095633
-updated_at: 2026-08-14T10:22:32+08:00
+updated_at: 2026-08-14T11:13:07+08:00
 updated_by: /root
 state: active
 source_branch: chore/m3-02-tamper-fuzz
@@ -21,7 +21,7 @@ Implement M3-02's bounded synthetic tamper catalog and continuous JVM/Native fuz
 
 ## Current State
 
-- M3-02 is active on `chore/m3-02-tamper-fuzz` from verified `main@ea30f51373003981cdcdae60dda795ba1fefd587`, linked only to Issue #19. Local implementation freeze `e5b329bde53c9cd42ed58c6f9f3eff3c54bd52fc` adds a generated 69-case versioned tamper catalog, isolated synthetic corpus/regressions, Jazzer `0.29.1` APK/AXML targets, Ubuntu Clang `18.1.3` libFuzzer + ASan/UBSan target, exact dependency/runner/resource locks, and API 29/36 KVM payload-mutation wiring. Deterministic Host closure and a one-second Jazzer smoke passed; no emulator/device was started and the required 10-minute target runs are deferred to one parallel exact-head PR CI run. The branch is locally frozen for an explicitly authorized independent read-only review; no branch or PR has been published.
+- M3-02 is active on `chore/m3-02-tamper-fuzz` from verified `main@ea30f51373003981cdcdae60dda795ba1fefd587`, linked only to Issue #19. Final local implementation freeze `90ef2ecf662371c82fed5f3d0fa92dbf9324e9e2` adds the generated 69-case catalog, real unsigned APK/Binary AXML corpus and binary regressions, Jazzer `0.29.1` APK/AXML targets, Clang `18.1.3` libFuzzer + ASan/UBSan, exact resource/runner locks, five-target fail-closed aggregation, and API 29/36 named Runtime mutation evidence. Final bounded Host validation passed in 1m24s without a device. The first full review's three P1 findings and one intermediate review's two P1 findings are closed; the final independent review is `P0=0/P1=0/P2=0`. No branch or PR has been published; exact-head 600-second targets, KVM and Build/Governance await publication authorization.
 - M2-07 Windows runner lock maintenance is merged and complete. Frozen `67049c62986e1def03a48665bd3413ec4b5667d9` passed an independent read-only review with `P0=0/P1=0/P2=0`; evidence-only head `150fac76dd0fe1c462445a73dd41043a00b7624b` passed Build `31757448127` and Governance `31757448107` on Ubuntu/Windows. PR [#51](https://github.com/xiaokh31/androidAppHardening/pull/51) was made ready and merged with expected-head protection as `09345a99d44b3faac2e3a24b71012e03546a451f`; Issue #50 closed. Official ref `win25-vs2026/20260810.198` remains fixed to commit `9669462631cac120f4f558e7dadd31a14d1f1a41` and manifest blob `e5e0527a4cc19153e7e8daf98780ff18e7062ac1`. Automatically triggered KVM runs were cancelled by scope and are not acceptance evidence. No crypto implementation, Runtime, fixture, KVM or device file changed.
 - M3-01 is complete. Exact implementation freeze `c281a3a011229632cfe7a361d998eb8255b22b75` and merger-ready evidence head `e702e8d1c60fc2e675a63fdcaed84f95efcc0aed` passed the nine-fixture Host matrix, Ubuntu/Windows Build/Governance, API 29/36 x86_64 KVM, and a bounded API 29 arm64-v8a physical-device full-flow run. All exact event contracts, ARM-only JNI, signer negatives, input immutability, unsigned product output, ephemeral signing cleanup and package cleanup passed. PR [#49](https://github.com/xiaokh31/androidAppHardening/pull/49) merged with expected-head protection as `9150f6a64ef7022116d2b7575d6eda273b83301e`; Issue #18 closed. README/task/evidence are synchronized and no later M3/M4 task has started.
 - M2-06 is complete. Production implementation `ac374ad03bce87ac7068cf124f4721441f79f59f` and independent review remain `P0=0/P1=0/P2=0`; merger-ready head `9cbc6b6681b8fe1c4bb45c4cd86eaba6fe0086e7` passed Build `31677309988`, Governance `31677309943`, and API 29/36 KVM `31677309937`. PR [#48](https://github.com/xiaokh31/androidAppHardening/pull/48) merged with expected-head protection as `aa934080d37dd7590034829fbd436c21e69074a3`, and Issue #17 closed. The bounded JDWP acceptance fix changed test orchestration only; production Runtime/Native behavior and the 50 ms fail-safe are unchanged. No local emulator or physical device was started.
@@ -198,7 +198,7 @@ Implement M3-02's bounded synthetic tamper catalog and continuous JVM/Native fuz
 | M2-05 | `/root` | `main` | done | M2-01, M2-03, M2-04 | PR #47、Issue #16、全零独立复核、Ubuntu/Windows、API 29/36 KVM、真实 JDWP、README 与 strict HandOff 已关闭 |
 | M2-06 | `/root` | `main` | done | M2-02, M2-04, M2-05 | PR #48 已 expected-head 合并，Issue #17 已关闭，全零独立复核、Ubuntu/Windows、API 29/36 KVM、README 与 post-merge strict HandOff 均关闭 |
 | M3-01 | `/root` | `main` | done | M1-06, M2-04 | PR #49、Issue #18、九 fixture Host、双平台 CI、API 29/36 KVM、API 29 arm64-v8a 真机、README 与 strict HandOff 全部关闭 |
-| M3-02 | `/root` | `chore/m3-02-tamper-fuzz` | in_progress | M1-03, M1-04, M1-06, M2-02, M2-03, M2-06, M3-01 | 本地实现已冻结；等待用户明确授权独立只读安全复核，复核全零前不发布 |
+| M3-02 | `/root` | `chore/m3-02-tamper-fuzz` | in_progress | M1-03, M1-04, M1-06, M2-02, M2-03, M2-06, M3-01 | 实现与独立复核全零已冻结；等待发布授权后创建唯一草稿 PR 并运行一次 exact-head 远端矩阵 |
 
 ## Decisions and Invariants
 
@@ -223,7 +223,7 @@ Implement M3-02's bounded synthetic tamper catalog and continuous JVM/Native fuz
 
 ## Changes Since Previous Handoff
 
-- Froze M3-02 implementation as `e5b329bde53c9cd42ed58c6f9f3eff3c54bd52fc` from `main@ea30f51373003981cdcdae60dda795ba1fefd587`. The implementation keeps all public fuzz tasks in `:tools:validation`, pins Jazzer/Clang and exact hosted-runner allowlists, keeps mutations in ignored workspaces, and extends the existing bounded KVM acceptance with seven tokenized nonce/tag/ciphertext startup rejections plus existing JNI/Guard transaction-cleanup proof. Local Host regression/tamper closure and short engine/syntax checks passed; required 600-second parallel targets, API 29/36 KVM, independent review and publication remain pending.
+- Superseded initial M3-02 freeze `e5b329bde53c9cd42ed58c6f9f3eff3c54bd52fc` after independent review found three P1 evidence gaps. Final implementation `90ef2ecf662371c82fed5f3d0fa92dbf9324e9e2` closes exact per-case evidence, real binary corpus/regressions, five-target aggregation, unsigned APK v1/v2/v3 rejection, fixed Host stages and duplicate/extra startup handling. Bounded local validation and final independent review passed with `P0=0/P1=0/P2=0`; required 600-second parallel targets, API 29/36 KVM and publication remain pending.
 - Evidence-only head `150fac76dd0fe1c462445a73dd41043a00b7624b` passed Build `31757448127` and Governance `31757448107` on Ubuntu/Windows after the independent `P0=0/P1=0/P2=0` review. Automatic KVM `31757448073` was cancelled as explicitly out of scope. PR #51 was transitioned to ready and merged with expected-head protection as `09345a99d44b3faac2e3a24b71012e03546a451f`; Issue #50 closed and local `main` was fast-forwarded.
 - GitHub final-main Build `31754337214` failed only in Windows job `94626822969` because the hosted pool assigned new exact image `20260810.198.2`; the gate failed before compiler invocation. Official `actions/runner-images` ref/commit/blob and installed LLVM/VS/x64-tools/SDK inventory were independently checked. Issue #50 and the bounded maintenance branch were created; no Android/KVM/device test is repeated.
 - M3-01 implementation freeze `c281a3a011229632cfe7a361d998eb8255b22b75` closes the API 29 observer-startup race without weakening exact event equality. Build/Governance and API 29/36 KVM are all green with immutable report/artifact hashes. The only open acceptance gate is a foreground-confirmed API 29 arm64-v8a run; the latest bounded attempt stopped at the first OEM installation rejection and cleaned all owned state.
@@ -374,17 +374,17 @@ Implement M3-02's bounded synthetic tamper catalog and continuous JVM/Native fuz
 
 ## Verification Evidence
 
-### M3-02 local candidate validation
+### M3-02 local candidate validation and independent review
 
 - task_id: M3-02
-- git_commit: e5b329bde53c9cd42ed58c6f9f3eff3c54bd52fc
-- command: repository-local offline Gradle `:tools:validation:regressionFuzz :tools:validation:tamperTest`; one-second `jazzerApkPr` smoke; `compileM202DirectDebugAndroidTestJavaWithJavac`; NDK 29 Clang C++17 syntax check; M3-02 toolchain lock negative verification; Node syntax and diff checks
+- git_commit: 90ef2ecf662371c82fed5f3d0fa92dbf9324e9e2
+- command: repository-local offline Gradle `:tools:validation:tamperTest`; both M202/M203 direct androidTest Java compiles; unsigned corpus positive/negative checks; M3-02 toolchain/aggregation negative verification; Node syntax/diff checks; independent full review plus bounded re-reviews
 - exit_code: 0
 - environment: Windows 10.0.19045 x64; Eclipse Temurin 17.0.19+10; Gradle 9.5.0; Node 24.12.0; Android NDK 29.0.14206865; no emulator/device
-- timestamp: 2026-08-14T09:56:33+08:00
-- artifact: `docs/evidence/M3-02/local-validation.md`; ignored `tools/validation/build/reports/security/m3-02/regression.json`, `tamper.json`, and `fuzz-summary.json`
-- sha256: 11a380fdf9d2ddff79ff364b6a8032790152766beab2ab922574521fa8dc2a94
-- result: PASS for local bounded gates; four JVM inputs executed twice and seven structured Native inputs remained hash-stable, all 69 catalog cases passed, APK Jazzer completed 298 smoke executions without a crash, and Native target syntax passed; exact-head 600-second targets, API 29/36 KVM and independent review remain pending
+- timestamp: 2026-08-14T11:13:07+08:00
+- artifact: `docs/evidence/M3-02/local-validation.md`; `security-review-1.md`; `security-review-2.md`; ignored `regression.json`, `tamper.json`, `fuzz-summary.json`
+- sha256: 2898faf7694095aaf74486f00cf4ad7ce7638d81cd0ac599a4189b81f59daf0d
+- result: PASS for local bounded gates and independent review; four JVM fixed inputs ran twice with six structure-aware mutations, seven Native inputs remain sanitizer-bound, 12 exact Host cases passed and 57 named Runtime cases remain explicitly pending; final review `P0=0/P1=0/P2=0`; exact-head 600-second targets, API 29/36 KVM and publication remain pending
 
 ### M2-07 Windows runner lock maintenance
 
@@ -1460,15 +1460,17 @@ None
 
 ## Ordered Next Actions
 
-1. Obtain explicit user authorization to start the independent read-only M3-02 security review of the frozen candidate; any code/security-contract finding requires a new freeze and bounded re-review.
-2. After an all-zero review and publication authorization, push the fixed branch, create the unique Issue #19 draft PR, and run the single parallel 600-second JVM/Native fuzz matrix plus API 29/36 KVM and Ubuntu/Windows Build/Governance.
-3. Only after exact-head gates pass, record evidence, merge with expected-head protection, synchronize README/task/HandOff, and run post-merge strict main gates. Do not start M3-03/M3-04/M3-05 early.
+1. Obtain explicit publication authorization, push `chore/m3-02-tamper-fuzz`, and create the unique draft PR linked to and closing Issue #19.
+2. Run one exact-head parallel 600-second JVM/Native fuzz matrix plus API 29/36 KVM and Ubuntu/Windows Build/Governance; do not repeat local device or long-fuzz work.
+3. Only after all exact-head gates pass, record remote evidence, merge with expected-head protection, synchronize README/task/HandOff, and run post-merge strict main gates. Do not start M3-03/M3-04/M3-05 early.
 
 ## Relevant Files and Artifacts
 
 - `docs/tasks/M3-02-tamper-and-fuzz-tests.md`
 - `docs/evidence/M3-02/implementation-plan.md`
 - `docs/evidence/M3-02/local-validation.md`
+- `docs/evidence/M3-02/security-review-1.md`
+- `docs/evidence/M3-02/security-review-2.md`
 - `tools/validation/src/tamper/resources/catalog.yaml`
 - `tools/validation/src/fuzz/resources/`
 - `tools/validation/m3-02-fuzz-toolchain.json`
@@ -1586,7 +1588,7 @@ None
 - [x] Implement the generated 69-case catalog, isolated corpus/regressions, pinned Jazzer/Clang targets, resource limits, parallel CI and API 29/36 KVM mutation wiring.
 - [x] Pass bounded local Host regression/tamper, script/toolchain locks, one-second Jazzer smoke and Native syntax checks without starting a device/emulator.
 - [x] Freeze the scoped implementation commit and evidence locally.
-- [ ] Obtain explicit authorization and complete an independent read-only P0/P1/P2 review.
+- [x] Complete the authorized independent full and bounded read-only reviews; final freeze is `P0=0/P1=0/P2=0`.
 - [ ] After explicit publication authorization, push the branch, create the unique Issue #19 draft PR, and pass exact-head parallel fuzz, Build/Governance and API 29/36 KVM.
 - [ ] Merge with expected-head protection, update README/task/evidence, and pass post-merge main strict HandOff before M3-03/M3-04/M3-05.
 

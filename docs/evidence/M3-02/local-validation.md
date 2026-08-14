@@ -1,9 +1,9 @@
 # M3-02 local validation
 
-- Timestamp: `2026-08-14T09:56:33+08:00`
+- Timestamp: `2026-08-14T11:13:07+08:00`
 - Branch: `chore/m3-02-tamper-fuzz`
 - Base: `ea30f51373003981cdcdae60dda795ba1fefd587`
-- Implementation freeze: `e5b329bde53c9cd42ed58c6f9f3eff3c54bd52fc`
+- Implementation freeze: `90ef2ecf662371c82fed5f3d0fa92dbf9324e9e2`
 - Host: Windows 10.0.19045 x64; Eclipse Temurin `17.0.19+10`; Gradle `9.5.0`; Node.js `24.12.0`
 - Device boundary: no local emulator or physical device was started.
 
@@ -11,26 +11,32 @@
 
 | Command | Exit | Result |
 |---|---:|---|
-| repository-local Gradle `:tools:validation:regressionFuzz :tools:validation:tamperTest --offline --no-daemon --console=plain` | 0 | Four JVM seed/regression inputs executed twice; seven structured Native inputs were hash-checked and explicitly deferred to the sanitizer target. All 69 catalog cases and existing production APK/AXML/container negative matrices passed in the final 1m25s run. |
-| repository-local Gradle `:tools:validation:tasks :tools:validation:jazzerApkPr -Pm302FuzzSeconds=1 --offline --no-daemon --console=plain` | 0 | Public tasks were discoverable; isolated APK Jazzer smoke completed 298 executions in two wall-clock seconds with no crash and without modifying tracked corpus. |
-| repository-local Gradle `:fixtures:android:compileM202DirectDebugAndroidTestJavaWithJavac --offline --no-daemon --console=plain` | 0 | The expanded 10-stage ordinary-exception/OOM instrumentation matrix compiled with the production Runtime/Policy classpath in 35 seconds. |
-| NDK 29 `clang++ --target=x86_64-linux-android29 ... -fsyntax-only runtime/native/src/main/cpp/m3_02_container_fuzz.cpp` | 0 | Native fuzz target compiled with C++17 warnings-as-errors syntax checks. |
-| `node --check` for all changed/new M3-02 scripts | 0 | Script syntax passed. |
-| `node tools/validation/verify-m3-02-fuzz-toolchain.mjs` | 0 | Jazzer/Clang/resource/runner lock and six negative mutations passed. |
-| `git diff --check` | 0 | No whitespace errors. |
+| repository-local offline Gradle `:tools:validation:tamperTest --no-daemon` | 0 | Final targeted run completed in 1m24s: APK inspection, Binary AXML, container, two-pass regression preflight, and 12 exact Host catalog cases passed; 57 Runtime cases remain explicitly pending API 29/36 evidence. |
+| repository-local Gradle `:fixtures:android:compileM202DirectDebugAndroidTestJavaWithJavac` and `:fixtures:android:compileM203DirectDebugAndroidTestJavaWithJavac` | 0 | The named per-case Release/R8 instrumentation sources compile against the production Runtime/Policy classpath. |
+| `node tools/validation/generate-m3-02-jvm-corpus.mjs --check` | 0 | The tracked 18,508-byte synthetic APK contains no v1 entries or v2/v3 Signing Block; Binary AXML and binary regressions match it. A signed Release APK was separately rejected before any write. |
+| `node tools/validation/verify-m3-02-fuzz-toolchain.mjs` | 0 | Jazzer/Clang/resource/runner locks, five-target aggregation negatives, unsigned-corpus boundary, fixed Host stages, and exact named device evidence wiring passed. |
+| `node --check` for changed M3-02 scripts; `git diff --check` | 0 | Script syntax and whitespace checks passed. |
 
-The first wrapper attempt used the user-level Gradle home and was unable to download in the sandbox; the verified runs above use the repository-local pinned JDK, Gradle distribution, and ignored dependency cache. No dependency or large tool was downloaded to the system drive.
+The repository-local pinned JDK, Gradle distribution, and ignored dependency cache were used. No dependency or large tool was downloaded to the system drive. The required 600-second fuzz runs are deliberately deferred to one exact-head PR CI matrix.
 
 ## Local artifacts
 
 | Artifact | Bytes | SHA-256 | Result |
 |---|---:|---|---|
-| ignored `tools/validation/build/reports/security/m3-02/regression.json` | 234 | `48e8e4039573ca19e87a938fe90292c8d9f2e7519965ab1e84f9694977d03526` | PASS; `runs=2`, `jvm_inputs_executed=4`, `native_inputs_deferred_to_sanitizer=7`, deterministic result hash `efa7bbab...1a27` |
-| ignored `tools/validation/build/reports/security/m3-02/tamper.json` | 521 | `fcc94afc52943db54b715508ee98e30bbbf139bbe987fc1a7b7702b9196e01b5` | PASS; 69 cases, catalog SHA-256 `c65eb452...b17a` |
-| ignored `tools/validation/build/reports/security/fuzz-summary.json` | 399 | `11a380fdf9d2ddff79ff364b6a8032790152766beab2ab922574521fa8dc2a94` | Host regression/tamper PASS; required PR fuzz, Native sanitizer and API 29/36 device fields remain explicitly pending |
+| tracked unsigned `tools/validation/src/fuzz/resources/corpus/apk/valid-m301.apk` | 18,508 | `83a58746f01e4db559926eefc2434f1cb385b0792296a2c3b67b3cbdb498dc5d` | PASS; manifest/classes present, no v1/v2/v3 signature material |
+| ignored `tools/validation/build/reports/security/m3-02/regression.json` | 272 | `fe0686b721d393506d8425460e69479a1c583ed996db402550fc0fa4888a19b7` | PASS; `runs=2`, `jvm_inputs_executed=4`, `structured_mutations_executed=6`, `native_inputs_deferred_to_sanitizer=7`, deterministic result `f43f1ef3...e3fd` |
+| ignored `tools/validation/build/reports/security/m3-02/tamper.json` | 3,032 | `1a6bfc0215233d28d2ba077242f348dde8edc0f3ff14dfa9c62a13628944d134` | PASS_PENDING_DEVICE; 12 exact Host cases passed, 57 Runtime cases pending, catalog SHA-256 `68d509aa...bf4` |
+| ignored `tools/validation/build/reports/security/fuzz-summary.json` | 414 | `2898faf7694095aaf74486f00cf4ad7ce7638d81cd0ac599a4189b81f59daf0d` | PASS_PENDING_REMOTE; five target reports, Native sanitizer and API 29/36 evidence remain remote gates |
+| ignored `host/container/build/reports/m1-04/container-self-test.json` | 5,192 | `bb00154215146189a382ebd370ee26e2e95ae67f20a19aa68a629a82ff5bd474` | PASS; 13 production container cases |
+| ignored `host/axml/build/reports/m1-03/error-matrix.json` | 2,415 | `b287183d1c2af46cfb9ce4b027e7993ec9721e039f91c3125176a962a2ddd641` | PASS; exact Binary AXML negative evidence |
+
+## Independent review
+
+- The full review rejected the original candidate with `P0=0/P1=3/P2=0`; those findings are archived in `security-review-1.md`.
+- A first bounded repair at `9ef5a1e174cc96a6b83b562da390d86aacd75efa` remained blocked by a signed seed and two fail-open evidence bindings.
+- The final bounded review of `90ef2ecf662371c82fed5f3d0fa92dbf9324e9e2` passed with `P0=0/P1=0/P2=0`; see `security-review-2.md`.
 
 ## Pending gates
 
-- The full 600-second JVM/Native target matrix is deliberately deferred to parallel exact-head PR CI; it was not repeated locally.
-- API 29/36 x86_64 Runtime tamper execution is pending the same frozen-head KVM workflow.
-- Independent read-only security review, publication authorization, unique draft PR, exact-head Build/Governance, merge, README completion update, and post-merge strict HandOff are pending.
+- Publication authorization, branch push, the unique Issue #19 draft PR, exact-head Ubuntu/Windows 600-second JVM/Native targets, API 29/36 x86_64 KVM, Build and Governance remain pending.
+- README/task status and merge completion will be updated only after all exact-head gates pass and the PR is merged.

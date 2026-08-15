@@ -6,7 +6,8 @@ if (process.argv.length < 4) {
   throw new Error("usage: verify-m3-05-test-bridge-artifacts.mjs required.zip forbidden.zip...");
 }
 
-const marker = Buffer.from("M305HighProfileBridge", "utf8");
+const markers = ["M305HighProfileBridge", "M305HighProfileWorker"]
+  .map(value => Buffer.from(value, "utf8"));
 
 function entries(file) {
   const bytes = readFileSync(file);
@@ -38,13 +39,18 @@ function entries(file) {
   return values;
 }
 
-function containsMarker(file) {
-  return entries(file).some(value => value.indexOf(marker) >= 0);
+function markerPresence(file) {
+  const values = entries(file);
+  return markers.map(marker => values.some(value => value.indexOf(marker) >= 0));
 }
 
 const required = process.argv[2];
-if (!containsMarker(required)) throw new Error(`${required}: test-only HIGH bridge missing`);
+if (markerPresence(required).some(present => !present)) {
+  throw new Error(`${required}: test-only HIGH bridge/worker missing`);
+}
 for (const forbidden of process.argv.slice(3)) {
-  if (containsMarker(forbidden)) throw new Error(`${forbidden}: test-only HIGH bridge escaped`);
+  if (markerPresence(forbidden).some(Boolean)) {
+    throw new Error(`${forbidden}: test-only HIGH bridge/worker escaped`);
+  }
 }
 console.log(`M3-05 test-only bridge artifact boundary PASS forbidden=${process.argv.length - 3}`);

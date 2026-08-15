@@ -1,15 +1,15 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260815-112650
-updated_at: 2026-08-15T11:26:50+08:00
+handoff_id: HO-20260815-115331
+updated_at: 2026-08-15T11:53:31+08:00
 updated_by: /root
 state: active
-source_branch: fix/m2-09-component-relaunch-lifecycle
-base_commit: a65433ae0bda651fc1088d187913b2dbfa7b02d1
+source_branch: main
+base_commit: 77b3aee7d88eaf4446ae780f20fe6988796609af
 working_tree: clean
-current_milestone: M2
-active_task: M2-09
+current_milestone: M3
+active_task: M3-04
 next_owner: /root
 ---
 
@@ -17,18 +17,15 @@ next_owner: /root
 
 ## Objective
 
-Fix the API 29 same-process Shell Factory configuration-relaunch lifecycle under the independent M2-09 contract, then resume paused M3-04 without starting M3-05.
+Resume M3-04 from its preserved draft after the independently reviewed M2-09 lifecycle dependency merged, without starting M3-05.
 
 ## Current State
 
-- M2-09 is the only active task. User authorization created Issue #59 and branch `fix/m2-09-component-relaunch-lifecycle` from `main@a65433ae0bda651fc1088d187913b2dbfa7b02d1`. ADR 0013 and the task contract limit the fix to attaching a later Shell wrapper to the existing process-wide `READY` result with exact final-loader identity; Guard reopening, fallback, Host/container/ABI changes, ARM installation and M3-05 are excluded.
-- M2-09 production implementation is frozen at `9ba6ec28c7d1450c3ca51175f78e3aa2d292331f`. First independent review found no production defect but rejected that freeze with `P0=0/P1=0/P2=1` because the JVM suite did not drive the second Shell boundary across READY/mismatch/NEW/INSTALLING/FAILED. Test-only remediation `dd78179f41c97aab7e3f38c0f571c4e6198f8939` adds the exact matrix; targeted self-test and architecture verifier pass. No device or emulator ran; incremental review and remote gates remain mandatory.
-- Independent incremental review of `dd78179f41c97aab7e3f38c0f571c4e6198f8939` passed with `P0=0/P1=0/P2=0`. It confirmed exact READY result identity, stable mismatch/NEW/INSTALLING/FAILED rejection, no Guard reopen, no Factory retry and no production/public-API/R8 drift. Publication and remote CI/KVM remain pending.
-- M3-04 remains paused on draft PR #58 at remote blocker head `a290a6f678f90783ed6f7488c0b7956e78e612f7`. Retained API 29 KVM runs `31858315765` and `31859364008` completed the first custom-Factory sequence, then failed the Framework configuration relaunch with `AAH-RUNTIME-BOOT-COMPONENT`. API 36 passed historically; ARM install approval remains a later M3-04 gate. No third retry or local emulator is allowed before M2-09 merges.
-- The user authorized an independent ADR/task-contract revision after M3-04 proved impossible under its original 32-real-device-cell gate. Issue #56 and unique draft PR #57 contain the governance-only M3-06 change; no production/fixture code, device, KVM, fuzz, benchmark, or tool download is in scope.
-- M3-04 is safely paused on local branch `chore/m3-04-api-abi-matrix` at blocker commit `72a5fce85bbee5b0f1888028049f096487febb7e`. That snapshot records the available API 29 ARM32/ARM64 physical environment and pinned API 29/36 x86_64 images, plus the unavailable API 30-35/full-ABI combinations. It must not be pushed or resumed until M3-06 merges.
-- ADR 0012 and the revised M3-04 contract enumerate the full API 29-36 by four-ABI grid while reserving `VERIFIED` for real Android-reported process evidence, `FAILED` for executed regressions, and `UNVERIFIED` for unavailable combinations that carry no positive compatibility claim. The mandatory current M3-04 baseline is API 29 ARM32/ARM64 plus API 29/36 x86_64.
-- M3-06 published head `6fea281b761c4da3b65343ef028a05b20546171c` passed Build `31855670237` and Governance `31855670231` on Ubuntu/Windows. Out-of-scope Fuzz `31855670205` and Cross-platform equivalence `31855670204` were cancelled; no KVM or physical device ran. The documentation-only merger-ready successor must pass the same exact-head Build/Governance before expected-head merge.
+- M2-09 is merged and complete. Production implementation `9ba6ec28c7d1450c3ca51175f78e3aa2d292331f`, test remediation `dd78179f41c97aab7e3f38c0f571c4e6198f8939` and exact PR head `186dfd79ee4f32c749c4ccfdebf5bc82a3476637` passed independent `P0=0/P1=0/P2=0` review, Build `31862011459`, Governance `31862011393`, and API 29/36 KVM `31862011460`. PR #60 merged with expected-head protection as `77b3aee7d88eaf4446ae780f20fe6988796609af`; Issue #59 closed.
+- API 29/36 x86_64 each passed extracted, direct and no-original-Factory M201 Release/R8 paths with `configuration_relaunch=true`, six platform callbacks, exact Factory/install counts, custom Application, early Provider, multidex, JNI, zero plaintext DEX files and cleanup. KVM artifacts `9241075688` and `9241080524` were independently downloaded and semantically checked in ignored project storage.
+- The first merge-commit Governance run `31862945190` failed only because HandOff still declared the source branch after GitHub checked out `main`; project-package validation passed and no production/test gate failed. This coordination commit corrects the branch, records evidence and updates README; its Build/Governance are the only remaining M2-09 post-merge gates.
+- M3-04 draft PR #58 remains preserved at `a290a6f678f90783ed6f7488c0b7956e78e612f7`. After this main coordination commit passes Build/Governance, merge current `main` into that branch and resume only the mandatory API 29 ARM32/ARM64 plus API 29/36 x86_64 baseline. M3-05 remains unstarted.
+- M3-06 is merged and complete as `main@a65433ae0bda651fc1088d187913b2dbfa7b02d1`; ADR 0012 reserves `VERIFIED` for real Android process evidence and marks unavailable matrix cells `UNVERIFIED` without a positive compatibility claim.
 - The user explicitly ordered M3-03, M3-04 and M3-05 sequentially. M3-03 is merged and complete. M3-04 reached the inventory blocker and is paused for this independently authorized M3-06 contract dependency; M3-05 remains unstarted and cannot begin until M3-04 completes.
 - M3-03 final implementation `f53989e83b8a030139ec3e564ebfb41bdb81129a` passed Cross-platform equivalence `31847937221`, Build `31847937347` and Governance `31847937260` on the exact head. Windows and Ubuntu each produced 18 authenticated outputs; the final summary compared 36 outputs and proved stable semantics, random non-reuse, independent authentication/decryption, immutable inputs, unsigned outputs, equivalent negative errors and zero absolute-path findings. PR [#55](https://github.com/xiaokh31/androidAppHardening/pull/55) merged with expected-head protection as `af0fe5c5d0e9098d8cca86b3d5de3e09ed8412fb`, and Issue #20 closed. M3-03 is Host-only; out-of-scope KVM and M3-02 fuzz runs were cancelled.
 - M2-08 is complete. Final head `626a14c63c1b77f2552236659eb98d47bb027a12` passed Build `31820302813` on Ubuntu/Windows, including Ubuntu ASan/UBSan, and Governance `31820302849`; independent review was `P0=0/P1=0/P2=0`. PR #54 merged with expected-head protection as `ed0d0fb97c255a98c04628dc1746801985591c3c`, Issue #53 closed, and unrelated KVM run `31820302818` was cancelled by scope. M3-02 PR #52 may resume.
@@ -191,9 +188,9 @@ Fix the API 29 same-process Shell Factory configuration-relaunch lifecycle under
 
 | Task | Owner | Branch | Status | Dependencies | Next checkpoint |
 |---|---|---|---|---|---|
-| M2-09 | `/root` | `fix/m2-09-component-relaunch-lifecycle` | in_progress | M2-01 | Freeze ADR/task contract, implement exact second-wrapper READY attachment and targeted regressions |
-| M3-06 | `/root` | `main` | done | M0-03, M2-04, M3-01, M3-02 | PR #57 exact-head merge and post-merge main Build/Governance are the only remaining coordination actions |
-| M3-04 | `/root` | `chore/m3-04-api-abi-matrix` | blocked | M0-03, M2-04, M2-09, M3-01, M3-02, M3-06 | Keep PR #58 draft; resume from `a290a6f` only after M2-09 merges and post-merge gates pass |
+| M2-09 | `/root` | `main` | done | M2-01 | PR #60 merged; exact-head review, dual-platform CI and API 29/36 KVM passed; README/evidence synchronized |
+| M3-06 | `/root` | `main` | done | M0-03, M2-04, M3-01, M3-02 | PR #57 merged as `a65433a`; claim-boundary contract is active |
+| M3-04 | `/root` | `chore/m3-04-api-abi-matrix` | in_progress | M0-03, M2-04, M2-09, M3-01, M3-02, M3-06 | After this main coordination gate, merge `main` into preserved PR #58 head and resume the mandatory four-cell baseline |
 | M3-03 | `/root` | `main` | done | M0-03, M1-05, M1-06, M2-06, M3-01 | PR #55 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | done | M2-02 | PR #54 merged; exact regression, ASan/UBSan, dual-platform Build/Governance and independent review passed |
 | M3-02 | `/root` | `main` | done | M1-03, M1-04, M1-06, M2-02, M2-03, M2-06, M2-08, M3-01 | PR #52 merged; README/evidence synchronized; wait for next task selection |
@@ -247,6 +244,8 @@ Fix the API 29 same-process Shell Factory configuration-relaunch lifecycle under
 - Frozen the minimal Runtime implementation as `9ba6ec28c7d1450c3ca51175f78e3aa2d292331f`: one synchronized READY-only lookup, final-loader identity attachment in later Shell wrappers, JVM/connected regressions and one bounded production M201 configuration relaunch. Repository-local targeted gates passed in under two minutes of executed Gradle work.
 - Archived first independent review as FAIL with only one test P2. Remediation `dd78179f41c97aab7e3f38c0f571c4e6198f8939` uses the existing JVM test-only allocation/reflection harness to exercise second-Shell READY identity, loader mismatch, NEW, reentrant INSTALLING and cached FAILED; it proves Guard open and Factory construct/hook counts do not increase. Production files are unchanged.
 - Accepted the bounded second independent review as PASS with `P0=0/P1=0/P2=0`; the test-only remediation closes the sole prior finding without changing the production freeze.
+- Published PR #60 at exact head `186dfd79ee4f32c749c4ccfdebf5bc82a3476637`; Build `31862011459`, Governance `31862011393` and API 29/36 KVM `31862011460` passed. Out-of-scope equivalence/fuzz were cancelled. PR #60 merged with expected-head protection as `77b3aee7d88eaf4446ae780f20fe6988796609af`, and Issue #59 closed.
+- Downloaded KVM artifacts `9241075688`/`9241080524` into ignored project storage and verified all six M201 instrumentations, report/command hashes, configuration relaunch markers, lifecycle counts and cleanup. The initial post-merge Governance failure was isolated to stale HandOff `source_branch` and is corrected by this coordination snapshot.
 - Created Issue #56 and branch `docs/m3-06-api-abi-validation-contract` from `main@1a2c2d8` after preserving the original M3-04 blocker on commit `72a5fce`. Added ADR 0012, the M3-06 task/evidence plan, and synchronized the M3-04 task, task index, compatibility matrix, test strategy, project plan, roadmap, ABI/ClassLoader ADR references, and M4 review contract. No executable file changed.
 - Frozen the governance implementation as `ef8785951a6bfe26cd54d48b687faf890ee8b039`; all bounded local checks passed and contract hashes were recorded. No device, KVM, fuzz, benchmark, Gradle, or download was executed.
 - Published the unique Issue #56 draft PR #57. Exact published head `6fea281b761c4da3b65343ef028a05b20546171c` passed Ubuntu/Windows Build `31855670237` and Governance `31855670231`; out-of-scope fuzz/equivalence were cancelled and no KVM/device workflow ran. Remote evidence is recorded for the merger-ready documentation successor.
@@ -424,6 +423,18 @@ Fix the API 29 same-process Shell Factory configuration-relaunch lifecycle under
 - artifact: `docs/evidence/M2-09/security-review-1.md`; `docs/evidence/M2-09/security-review-2.md`
 - sha256: not_applicable
 - result: PASS; first review found no production issue and one P2 test-evidence gap; test-only remediation closed it and bounded re-review returned P0=0/P1=0/P2=0
+
+### M2-09 exact-head acceptance and merge
+
+- task_id: M2-09
+- git_commit: 186dfd79ee4f32c749c4ccfdebf5bc82a3476637
+- command: exact-head Build `31862011459`; Governance `31862011393`; API 29/36 KVM `31862011460`; downloaded artifact semantic/hash verification; ready and expected-head merge of PR #60
+- exit_code: 0
+- environment: GitHub ubuntu-24.04 and windows-2025; API 29 r8 and API 36 r2 x86_64 Linux/KVM; local Windows read-only artifact inspection; no local emulator or physical device
+- timestamp: 2026-08-15T11:52:13+08:00
+- artifact: `docs/evidence/M2-09/remote-validation.md`; PR #60; merge `77b3aee7d88eaf4446ae780f20fe6988796609af`; ignored `build/m2-09/remote/186dfd7/`; KVM artifacts `9241075688` and `9241080524`
+- sha256: b346b53da81e19e1d79935bbb3e6f7a0a3794d5958033f2b11ab05576466a45f
+- result: PASS; independent review, dual-platform Build/Governance, API 29/36 three-variant configuration relaunch, exact lifecycle counts, no plaintext DEX and cleanup passed; PR merged and Issue #59 closed
 
 ### M2-08 final acceptance and merge
 
@@ -1543,15 +1554,14 @@ Fix the API 29 same-process Shell Factory configuration-relaunch lifecycle under
 
 ## Blockers and Required Approvals
 
-- M3-04 PR #58 is blocked until M2-09 merges and its post-merge Build/Governance pass. M3-05 must not start.
-- M2-09 cannot merge until its frozen implementation receives an independent read-only review with P0/P1/P2 all zero and exact-head Ubuntu/Windows plus bounded API 29/36 KVM evidence pass.
+- M3-04 PR #58 resumes only after this `main` coordination commit passes post-merge Build/Governance. No additional approval is required; M3-05 must not start.
 
 ## Ordered Next Actions
 
-1. Push the frozen M2-09 branch, create the unique Issue #59 draft PR and run exact-head Ubuntu/Windows Build/Governance plus one bounded API 29/36 KVM acceptance.
-2. If all remote gates pass, record exact-head run and artifact hashes and prepare expected-head merge evidence.
-3. Merge M2-09 with expected-head protection and pass post-merge gates.
-4. Resume M3-04 PR #58 from its preserved blocker head; do not start M3-05 first.
+1. Commit and push this M2-09 post-merge README/evidence/HandOff coordination snapshot on `main`; require Ubuntu/Windows Build/Governance PASS.
+2. Switch to `chore/m3-04-api-abi-matrix`, merge current `origin/main` without rewriting preserved evidence, and push PR #58.
+3. Resume only the mandatory M3-04 API 29 ARM32/ARM64 and API 29/36 x86_64 acceptance defined by ADR 0012; preserve unavailable cells as `UNVERIFIED`.
+4. Complete M3-04 review/evidence/expected-head merge before starting M3-05.
 
 ## Relevant Files and Artifacts
 
@@ -1560,6 +1570,8 @@ Fix the API 29 same-process Shell Factory configuration-relaunch lifecycle under
 - `docs/evidence/M2-09/local-validation.md`
 - `docs/evidence/M2-09/security-review-1.md`
 - `docs/evidence/M2-09/security-review-2.md`
+- `docs/evidence/M2-09/remote-validation.md`
+- `README.md`
 - `runtime/bootstrap/src/main/java/ah/runtime/bootstrap/HardeningBootstrap.java`
 - `runtime/bootstrap/src/main/java/ah/runtime/bootstrap/ShellAppComponentFactory.java`
 - `runtime/bootstrap/src/test/java/ah/runtime/bootstrap/BootstrapSelfTest.java`
@@ -1844,6 +1856,8 @@ Fix the API 29 same-process Shell Factory configuration-relaunch lifecycle under
 - [x] 对当前 clean 冻结提交完成新的独立 parser/security 复核；P0/P1/P2 全零。
 
 ## Handoff Sign-off
+
+- `/root` verified M2-09 production `9ba6ec28c7d1450c3ca51175f78e3aa2d292331f`, test remediation `dd78179f41c97aab7e3f38c0f571c4e6198f8939`, exact PR head `186dfd79ee4f32c749c4ccfdebf5bc82a3476637`, independent `P0=0/P1=0/P2=0` review, Build `31862011459`, Governance `31862011393`, API 29/36 KVM `31862011460` and artifact hashes. PR #60 merged with expected-head protection as `77b3aee7d88eaf4446ae780f20fe6988796609af`, Issue #59 closed, and M3-04 may resume after this main coordination commit passes Build/Governance.
 
 - `/root` verified evidence-only M2-07 head `150fac76dd0fe1c462445a73dd41043a00b7624b`, Build `31757448127`, Governance `31757448107`, independent `P0=0/P1=0/P2=0` review and user ready/merge authorization. PR #51 merged with expected-head protection as `09345a99d44b3faac2e3a24b71012e03546a451f`, Issue #50 closed, and local `main` is synchronized. Only the final post-merge README/HandOff commit and its main Build/Governance gates remain; KVM/device work stays excluded.
 

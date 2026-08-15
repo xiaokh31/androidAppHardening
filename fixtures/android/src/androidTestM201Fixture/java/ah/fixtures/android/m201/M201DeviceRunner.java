@@ -76,11 +76,17 @@ public final class M201DeviceRunner extends Instrumentation {
         waitForJniMarker();
 
         Activity activity = launchActivity(target);
+        Activity relaunched = null;
         try {
             require(activity.getClass().getClassLoader() == payloadLoader,
                     "Activity loader differs from final loader");
             equal(expectedFactoryCallbacks, ProbeSignal.factoryCount("activity"), "activity count");
             equal("M0-05-CLASSES2:activity", ProbeSignal.activityMarker(), "activity cross-DEX");
+            relaunched = relaunchActivity(activity);
+            require(relaunched.getClass().getClassLoader() == payloadLoader,
+                    "relaunched Activity loader differs from final loader");
+            equal(originalFactoryExpected ? 2 : 0,
+                    ProbeSignal.factoryCount("activity"), "relaunch activity count");
             Intent service = new Intent().setClassName(target, SERVICE);
             require(target.startService(service) != null, "service did not start");
             waitForServiceMarker();
@@ -93,20 +99,32 @@ public final class M201DeviceRunner extends Instrumentation {
             equal(0, countPlaintextDex(target.getApplicationInfo().dataDir),
                     "plaintext DEX files");
         } finally {
-            activity.finish();
+            (relaunched == null ? activity : relaunched).finish();
             target.stopService(new Intent().setClassName(target, SERVICE));
         }
         return "m2_01_device=true platform_callbacks=6 main_install=1 secondary_install=1 "
                 + "original_factory=" + originalFactoryExpected
                 + " factory_callbacks=" + expectedFactoryCallbacks + " "
                 + "custom_application=true early_provider=true multidex=true jni=true "
-                + "metadata_null=true plaintext_dex_files=0";
+                + "configuration_relaunch=true metadata_null=true plaintext_dex_files=0";
     }
 
     private Activity launchActivity(Context target) {
         Intent intent = new Intent().setClassName(target, ACTIVITY);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         return startActivitySync(intent);
+    }
+
+    private Activity relaunchActivity(Activity activity) {
+        ActivityMonitor monitor = addMonitor(ACTIVITY, null, false);
+        try {
+            runOnMainSync(activity::recreate);
+            Activity relaunched = monitor.waitForActivityWithTimeout(5_000L);
+            require(relaunched != null, "configuration relaunch timed out");
+            return relaunched;
+        } finally {
+            removeMonitor(monitor);
+        }
     }
 
     private void verifySecondaryProcess(Context target) throws Exception {

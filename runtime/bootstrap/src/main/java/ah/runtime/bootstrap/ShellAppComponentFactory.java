@@ -117,12 +117,15 @@ public final class ShellAppComponentFactory extends AppComponentFactory {
 
     private BootstrapResult requireReady(ClassLoader loader) {
         BootstrapResult result = installed;
+        if (result == null) {
+            result = coordinator.readyResult();
+        }
         if (result == null
-                || result.status() != BootstrapResult.Status.READY
                 || loader == null
                 || loader != result.finalClassLoader()) {
             throw BootstrapFailure.create(BootstrapFailure.COMPONENT);
         }
+        installed = result;
         return result;
     }
 

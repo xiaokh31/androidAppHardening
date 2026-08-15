@@ -150,6 +150,15 @@ final class HardeningBootstrap {
             return state;
         }
 
+        synchronized BootstrapResult readyResult() {
+            if (state != State.READY
+                    || terminalResult == null
+                    || terminalResult.status() != BootstrapResult.Status.READY) {
+                return null;
+            }
+            return terminalResult;
+        }
+
         synchronized int failedCloseAttempts() {
             return failedCloseAttempts;
         }

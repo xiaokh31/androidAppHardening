@@ -63,6 +63,7 @@ function runVariant(variant) {
     "multidex=true", "jni=true", "metadata_null=true", "plaintext_dex_files=0",
     `original_factory=${variant.originalFactoryExpected}`,
     `factory_callbacks=${variant.originalFactoryExpected ? 1 : 0}`,
+    "configuration_relaunch=true",
     "OK (1 test)", "INSTRUMENTATION_CODE: -1",
   ];
   if (requiredMarkers.some((marker) => !output.stdout.includes(marker))

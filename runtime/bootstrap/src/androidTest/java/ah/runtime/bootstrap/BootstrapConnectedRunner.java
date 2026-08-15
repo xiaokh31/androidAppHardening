@@ -38,7 +38,7 @@ public final class BootstrapConnectedRunner extends Instrumentation {
             ProbeSummary main = runMainProcessProbe();
             require(main.installCount == 1, "main process installed more than once");
             require(main.classLoaderHookCount == 1, "original factory hook count changed");
-            require(main.componentCount == 5, "five component delegation count changed");
+            require(main.componentCount == 6, "relaunch component delegation count changed");
             require(main.closeCount == 0, "READY session was closed");
             verifyFailureOwnership(getTargetContext().getApplicationInfo());
             verifySecondaryProcess();
@@ -48,6 +48,7 @@ public final class BootstrapConnectedRunner extends Instrumentation {
                     + "six_entries=true\n"
                     + "factory_hook_once=true\n"
                     + "five_components=true\n"
+                    + "second_shell_ready_attach=true\n"
                     + "main_process_install_once=true\n"
                     + "secondary_process_install_once=true\n"
                     + "failure_close_once=true\n"
@@ -110,6 +111,18 @@ public final class BootstrapConnectedRunner extends Instrumentation {
                 instanceof PayloadReceiver, "receiver delegation");
         require(shell.instantiateProvider(finalLoader, PayloadProvider.class.getName())
                 instanceof PayloadProvider, "provider delegation");
+        ShellAppComponentFactory relaunchedShell = new ShellAppComponentFactory(coordinator);
+        require(relaunchedShell.instantiateActivity(
+                finalLoader, PayloadActivity.class.getName(), new Intent())
+                instanceof PayloadActivity, "second Shell READY attachment");
+        try {
+            new ShellAppComponentFactory(coordinator).instantiateActivity(
+                    new ClassLoader(finalLoader) {}, PayloadActivity.class.getName(), new Intent());
+            throw new AssertionError("second Shell accepted a mismatched loader");
+        } catch (BootstrapFailure expected) {
+            require(BootstrapFailure.message(BootstrapFailure.COMPONENT)
+                    .equals(expected.getMessage()), "second Shell mismatch code");
+        }
         return new ProbeSummary(installs.get(), factory.classLoaderHooks.get(),
                 factory.components.get(), session.closeCount.get());
     }
@@ -164,7 +177,7 @@ public final class BootstrapConnectedRunner extends Instrumentation {
         require(summary[0] != null && summary[0].installCount == 1,
                 "secondary install count");
         require(summary[0].classLoaderHookCount == 1, "secondary hook count");
-        require(summary[0].componentCount == 5, "secondary component count");
+        require(summary[0].componentCount == 6, "secondary relaunch component count");
     }
 
     static final class ProbeSummary {

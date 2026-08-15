@@ -53,7 +53,7 @@ function isProductionSurface(relative) {
   const file = normalize(relative);
   if (/^(runtime|host)\//.test(file)) {
     if (/\/src\/(?:test|androidTest)[^/]*\//.test(file)) return false;
-    return /\/src\/main\//.test(file)
+    return /\/src\/(?:main|release)\//.test(file)
       || /\/(?:build\.gradle\.kts|AndroidManifest\.xml|[^/]*proguard[^/]*|[^/]*consumer[^/]*)$/.test(file);
   }
   if (file.startsWith("fixtures/android/")) {
@@ -63,7 +63,7 @@ function isProductionSurface(relative) {
   }
   if (file.startsWith("benchmarks/android/")) {
     if (/\/src\/androidTest[^/]*\//.test(file)) return false;
-    return /\/src\/main\//.test(file) || file.endsWith("/build.gradle.kts");
+    return /\/src\/(?:main|release)\//.test(file) || file.endsWith("/build.gradle.kts");
   }
   return file.startsWith("distribution/");
 }
@@ -279,6 +279,7 @@ function runSelfTest() {
   try {
     const surfaceMutations = [
       ["runtime/policy/src/main/java/x/Override.java", 'System.getenv("AAH_FORCE_HIGH")'],
+      ["runtime/policy/src/release/java/x/Override.java", 'System.getenv("AAH_RELEASE_FORCE_HIGH")'],
       ["runtime/native/src/main/AndroidManifest.xml", '<meta-data android:name="force_high"/>'],
       ["host/cli/src/main/java/x/Override.java", 'System.getProperty("m305.riskProfile")'],
       ["fixtures/android/src/m301Common/java/x/Override.java", "BuildConfig.FORCE_HIGH"],

@@ -178,13 +178,16 @@ try {
       installed.add(packageName);
       const instrumentation = run([
         "shell", "am", "instrument", "-w",
+        "-e", "androidx.benchmark.suppressErrors", "EMULATOR,NOT-PROFILEABLE",
         "-e", "class", "ah.benchmarks.android.M305StartupBenchmark#startupAndMemory",
         "-e", "fixtureId", fixtureId,
         "-e", "targetPackage", packageName,
         "-e", "mode", mode,
         "ah.benchmarks.android.test/androidx.test.runner.AndroidJUnitRunner",
       ], { timeout: 360_000, recordOutput: false });
-      if (!instrumentation.stdout.includes("INSTRUMENTATION_CODE: -1")) throw new Error(`${fixtureId}/${mode} instrumentation failed`);
+      if (!instrumentation.stdout.includes("INSTRUMENTATION_CODE: -1")) {
+        throw new Error(`${fixtureId}/${mode} instrumentation failed: ${sanitize(instrumentation.stdout)} ${sanitize(instrumentation.stderr)}`);
+      }
       const pulled = run(["exec-out", "run-as", "ah.benchmarks.android", "cat", "files/m3-05-result.json"]);
       const value = JSON.parse(pulled.stdout);
       if (value.fixtureId !== fixtureId || value.mode !== mode || value.sampleCount !== 30) throw new Error("benchmark result identity mismatch");
@@ -242,7 +245,10 @@ try {
     results,
     allBudgetsPass: results.every(row => row.pass),
     cleanupPassed: false,
-    limitations: ["isolated_high_upgrade_is_incremental_only_and_is_not_a_HIGH_cold_start_claim"],
+    limitations: [
+      "isolated_high_upgrade_is_incremental_only_and_is_not_a_HIGH_cold_start_claim",
+      "macrobenchmark_explicitly_suppresses_only_EMULATOR_and_NOT_PROFILEABLE_for_release_reference_fixtures",
+    ],
   };
 } finally {
   for (const [_, packageName] of fixtures) uninstall(packageName);

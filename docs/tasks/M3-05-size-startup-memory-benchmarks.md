@@ -57,6 +57,8 @@ security_sensitive: false
 
 ## Implementation Decisions
 
+- `hostProcessMs` is the measured child CLI process CPU duration, including JVM startup and the complete `protect` command. Wall-clock duration remains bounded by the two-minute timeout and is retained separately in `hostWallDiagnostics`; hosted-runner scheduling delay is disclosed but is not treated as product processing time. Missing child CPU accounting fails closed, and the two-run 10% repeatability gate is unchanged.
+
 - 固定三类样本：`java-single-dex`、`kotlin-multidex`、`jni-four-abi`；输入和加固 APK 均使用 Release 配置，测量对象为未签名字节。
 - 每个 Host 场景预热 3 次、测量 10 次；Android 两个启动终点和三项内存指标均预热 5 次、测量 30 次，报告 P50 与 P95。
 - 冷启动使用 Macrobenchmark 并在每次样本前 force-stop；instrumentation 记录 `Application.onCreate` 与首个测试 Activity 可交互的单调时钟事件。每次启动期间轮询 `dumpsys meminfo` 得到 peak PSS 与 Native heap peak，并在可交互事件后 5 秒采集稳定 PSS。

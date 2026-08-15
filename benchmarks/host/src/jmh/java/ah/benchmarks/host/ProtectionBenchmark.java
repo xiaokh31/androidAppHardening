@@ -109,8 +109,8 @@ public class ProtectionBenchmark {
             throw new IllegalStateException("protect failed or changed input: " + result.output.substring(0, Math.min(500, result.output.length())));
         }
         if (measurement) {
-            Files.writeString(trial.resolve("samples.csv"), result.elapsedMillis + "," + result.peakRssBytes + "," +
-                output.getFileName() + "\n", StandardCharsets.UTF_8,
+            Files.writeString(trial.resolve("samples.csv"), result.processingMillis + "," + result.peakRssBytes + "," +
+                output.getFileName() + "," + result.wallMillis + "\n", StandardCharsets.UTF_8,
                 java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
         }
         return Files.size(output);
@@ -152,8 +152,15 @@ public class ProtectionBenchmark {
         reader.start();
         long start = System.nanoTime();
         long peak = 0;
+        long cpuNanos = 0;
+        boolean cpuObserved = false;
         while (process.isAlive()) {
             peak = Math.max(peak, residentBytes(process.pid()));
+            var cpu = process.toHandle().info().totalCpuDuration();
+            if (cpu.isPresent()) {
+                cpuNanos = Math.max(cpuNanos, cpu.get().toNanos());
+                cpuObserved = true;
+            }
             Thread.sleep(2);
             if (System.nanoTime() - start > timeout.toNanos()) {
                 process.destroyForcibly();
@@ -161,10 +168,17 @@ public class ProtectionBenchmark {
             }
         }
         peak = Math.max(peak, residentBytes(process.pid()));
+        var finalCpu = process.toHandle().info().totalCpuDuration();
+        if (finalCpu.isPresent()) {
+            cpuNanos = Math.max(cpuNanos, finalCpu.get().toNanos());
+            cpuObserved = true;
+        }
         reader.join(10_000);
         if (readFailure.get() != null) throw new IOException("child output read failed", readFailure.get());
-        long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
-        return new ProcessResult(process.exitValue(), elapsed, peak, output.toString(StandardCharsets.UTF_8));
+        if (!cpuObserved || cpuNanos <= 0) throw new IllegalStateException("child CPU duration unavailable");
+        long processing = Math.max(1, TimeUnit.NANOSECONDS.toMillis(cpuNanos));
+        long wall = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
+        return new ProcessResult(process.exitValue(), processing, wall, peak, output.toString(StandardCharsets.UTF_8));
     }
 
     private static long residentBytes(long pid) {
@@ -275,7 +289,8 @@ public class ProtectionBenchmark {
         try (var stream = Files.walk(path)) { stream.sorted(java.util.Comparator.reverseOrder()).forEach(item -> { try { Files.delete(item); } catch (IOException failure) { throw new java.io.UncheckedIOException(failure); } }); }
     }
 
-    private record ProcessResult(int exitCode, long elapsedMillis, long peakRssBytes, String output) {}
+    private record ProcessResult(int exitCode, long processingMillis, long wallMillis,
+                                 long peakRssBytes, String output) {}
 
     private interface ProcessMemory extends StdCallLibrary {
         ProcessMemory INSTANCE = Native.load("psapi", ProcessMemory.class, W32APIOptions.DEFAULT_OPTIONS);

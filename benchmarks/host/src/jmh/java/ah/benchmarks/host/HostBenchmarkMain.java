@@ -46,23 +46,30 @@ public final class HostBenchmarkMain {
         String environment = required("m305.environment");
         ArrayList<Map<String, Object>> results = new ArrayList<>();
         ArrayList<Object> artifactSizes = new ArrayList<>();
+        ArrayList<Object> wallDiagnostics = new ArrayList<>();
         Map<String, Object> stress = null;
         for (String id : List.of("java-single-dex", "kotlin-multidex", "jni-four-abi", "synthetic-100mib")) {
             Path trial = work.resolve("trials").resolve(id);
             List<String> rows = Files.readAllLines(trial.resolve("samples.csv"), StandardCharsets.UTF_8);
             ArrayList<Long> times = new ArrayList<>();
             ArrayList<Long> rss = new ArrayList<>();
+            ArrayList<Long> wall = new ArrayList<>();
             for (String row : rows) {
                 String[] fields = row.split(",");
+                if (fields.length != 4) throw new IllegalStateException("invalid Host benchmark sample row");
                 times.add(Long.parseLong(fields[0]));
                 rss.add(Long.parseLong(fields[1]));
+                wall.add(Long.parseLong(fields[3]));
             }
             var time = BenchmarkStatistics.summarize(times, measurements);
             var memory = BenchmarkStatistics.summarize(rss, measurements);
+            var wallTime = BenchmarkStatistics.summarize(wall, measurements);
             long timeBudget = 60_000L;
             long rssBudget = 1024L * MIB;
             results.add(result(id, environment, "hostProcessMs", time, timeBudget));
             results.add(result(id, environment, "hostPeakRssBytes", memory, rssBudget));
+            wallDiagnostics.add(linked("fixtureId", id, "samples", wallTime.samples(),
+                "p50", wallTime.p50(), "p95", wallTime.p95(), "timeoutMs", 120_000L));
             Map<String, Object> sizes = cast(parseSimpleJson(Files.readString(trial.resolve("artifact-sizes.json"), StandardCharsets.UTF_8)));
             if (id.equals("synthetic-100mib")) {
                 stress = linked("inputSha256Before", Files.readString(trial.resolve("input.sha256")).trim(),
@@ -78,6 +85,8 @@ public final class HostBenchmarkMain {
             && Boolean.TRUE.equals(stress.get("pass"));
         Map<String, Object> report = linked("schemaVersion", 1, "environmentId", environment,
             "results", results, "artifactSizes", artifactSizes, "stress100MiB", stress,
+            "hostTimingBasis", "child_process_cpu_duration_including_jvm_and_cli",
+            "hostWallDiagnostics", wallDiagnostics,
             "allBudgetsPass", allPass, "sizeClaim", "overhead-controlled-output-not-guaranteed-smaller");
         Path reportPath = work.resolve("benchmark-results.json");
         Files.writeString(reportPath, json(report) + "\n", StandardCharsets.UTF_8);
@@ -135,6 +144,7 @@ public final class HostBenchmarkMain {
     private static String markdown(Map<String, Object> report, List<Map<String, Object>> results) {
         StringBuilder text = new StringBuilder("# M3-05 benchmark summary\n\n")
             .append("Environment: `").append(report.get("environmentId")).append("`\n\n")
+            .append("`hostProcessMs` is child-process CPU duration including JVM startup and CLI execution; wall-clock samples remain in `hostWallDiagnostics` for timeout and runner-noise disclosure.\n\n")
             .append("APK size budgets control added overhead; protected output is not guaranteed to be smaller than input.\n\n")
             .append("| Fixture | Metric | P50 | P95 | Budget | Pass |\n|---|---:|---:|---:|---:|---|\n");
         for (Map<String, Object> row : results) text.append("| ").append(row.get("fixtureId")).append(" | ")

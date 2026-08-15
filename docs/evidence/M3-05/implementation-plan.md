@@ -15,7 +15,7 @@
 
 ## Bounded execution
 
-1. Host JMH performs three warmups and ten one-operation measurements per fixed fixture. The measured operation is only the product `protect` process; external signing is excluded. Child peak RSS is polled independently on Windows and Ubuntu.
+1. Host JMH performs three warmups and ten one-operation measurements per fixed fixture. `hostProcessMs` is the child CLI process CPU duration, including JVM startup and the complete product `protect` command; external signing is excluded. The two-minute wall-clock bound and raw wall samples are retained separately as diagnostics so hosted-runner scheduling noise stays visible without being misclassified as product processing time. Missing CPU accounting fails closed. Child peak RSS is polled independently on Windows and Ubuntu.
 2. A separate 100 MiB synthetic valid APK case uses the same immutable-input assertion and the fixed 60-second/1-GiB budgets.
 3. Android `observed_cold_start` performs five unreported cold warmups and thirty unmodified Release/R8 LOW samples for each fixed fixture on API 29 ARM64 and API 36 x86_64. Each iteration force-stops the target, records both startup endpoints, polls peak PSS/native heap, samples stable PSS after five seconds, then records the shipped policy's post-start LOW/ALLOW observation.
 4. Android `isolated_high_upgrade` runs thirty fresh instrumentation processes per fixture. Its Android-test-only bridge opens an authenticated owned session, proves zero pre-upgrade payload lookup, times one existing HIGH profile upgrade, records the Native 20-50 ms jitter and 250 ms wall bound, performs one post-upgrade lookup, and proves same-handle exactly-once cleanup. It is an incremental profile measurement, never a HIGH cold-start claim.

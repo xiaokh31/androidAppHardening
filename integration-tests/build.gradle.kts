@@ -96,6 +96,7 @@ tasks.register<JavaExec>("runFixtureMatrix") {
     systemProperty("m301.signing", layout.buildDirectory.dir("test-signing").get().asFile.absolutePath)
     systemProperty("m301.work", layout.buildDirectory.dir("fixture-matrix").get().asFile.absolutePath)
     providers.gradleProperty("m301Case").orNull?.let { systemProperty("m301.case", it) }
+    providers.gradleProperty("m304ExpectedAbi").orNull?.let { systemProperty("m304.expectedAbi", it) }
 }
 
 tasks.register<JavaExec>("runFixtureHostMatrix") {
@@ -176,6 +177,47 @@ tasks.register("crossPlatformCorpus") {
     dependsOn(verifyCrossPlatformCorpus)
 }
 
+val m304EvidenceDirectory = providers.gradleProperty("m304EvidenceDir")
+    .map { rootProject.layout.projectDirectory.dir(it) }
+    .orElse(rootProject.layout.projectDirectory.dir("docs/evidence/M3-04/cells"))
+val m304Json = rootProject.layout.projectDirectory.file("docs/evidence/M3-04/compatibility-matrix.json")
+val m304Markdown = rootProject.layout.projectDirectory.file("docs/generated/COMPATIBILITY_RESULTS.md")
+val m304Probe = rootProject.layout.projectDirectory.file("tools/device-capability-probe/index.mjs")
+
+val testApiAbiMatrix by tasks.registering(Exec::class) {
+    group = "verification"
+    description = "Runs deterministic M3-04 inventory and status mutation tests."
+    commandLine("node", m304Probe.asFile.absolutePath, "self-test")
+    inputs.files(m304Probe, rootProject.layout.projectDirectory.file("integration-tests/schemas/compatibility-matrix.schema.json"))
+}
+
+val generateApiAbiMatrix by tasks.registering(Exec::class) {
+    group = "verification"
+    description = "Generates the exact 32-cell M3-04 JSON and Markdown from verified cell evidence."
+    dependsOn(testApiAbiMatrix)
+    commandLine(
+        "node", m304Probe.asFile.absolutePath, "generate",
+        "--evidence-dir", m304EvidenceDirectory.get().asFile.absolutePath,
+        "--json-output", m304Json.asFile.absolutePath,
+        "--markdown-output", m304Markdown.asFile.absolutePath,
+    )
+    inputs.dir(m304EvidenceDirectory)
+    inputs.file(m304Probe)
+    outputs.files(m304Json, m304Markdown)
+}
+
+tasks.register<Exec>("runApiAbiMatrix") {
+    group = "verification"
+    description = "Generates and independently validates the complete M3-04 API/ABI matrix."
+    dependsOn(generateApiAbiMatrix)
+    commandLine(
+        "node", m304Probe.asFile.absolutePath, "validate",
+        "--json", m304Json.asFile.absolutePath,
+        "--markdown", m304Markdown.asFile.absolutePath,
+    )
+    inputs.files(m304Json, m304Markdown, m304Probe)
+}
+
 tasks.named("check") {
-    dependsOn(tasks.named("test"))
+    dependsOn(tasks.named("test"), testApiAbiMatrix)
 }

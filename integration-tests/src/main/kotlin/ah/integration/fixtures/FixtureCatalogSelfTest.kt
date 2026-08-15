@@ -41,7 +41,33 @@ object FixtureCatalogSelfTest {
             check("\"$it\"" in schema) { "catalog schema lacks $it" }
         }
         check(hashes.values.distinct().size == 9) { "fixture artifacts unexpectedly alias" }
+        verifyConfigurationRelaunchContract()
         println("M3-01 fixture catalog PASS: ${hashes.keys.joinToString()}")
+    }
+
+    private fun verifyConfigurationRelaunchContract() {
+        val provider = listOf("provider.ready", "startup_provider.create", "activity.create")
+        check(FixtureDriver.matchDeviceEvents(29, "startup-provider", provider, provider)?.configurationRelaunch == false)
+        check(
+            FixtureDriver.matchDeviceEvents(
+                29, "startup-provider", provider, provider + "activity.create",
+            )?.configurationRelaunch == true,
+        )
+        check(FixtureDriver.matchDeviceEvents(36, "startup-provider", provider, provider + "activity.create") == null)
+        check(FixtureDriver.matchDeviceEvents(29, "startup-provider", provider, provider + listOf("activity.create", "activity.create")) == null)
+
+        val kotlin = listOf("provider.ready", "activity.create", "kotlin.marker", "multidex.class")
+        val kotlinRelaunch = kotlin + listOf("activity.create", "kotlin.marker", "multidex.class")
+        check(FixtureDriver.matchDeviceEvents(29, "kotlin-multidex", kotlin, kotlinRelaunch)?.configurationRelaunch == true)
+        check(FixtureDriver.matchDeviceEvents(29, "kotlin-multidex", kotlin, kotlinRelaunch + "activity.create") == null)
+
+        val multiProcess = listOf("provider.ready", "activity.create", "worker.create")
+        check(
+            FixtureDriver.matchDeviceEvents(
+                29, "multi-process", multiProcess, multiProcess + "activity.create",
+            )?.configurationRelaunch == true,
+        )
+        check(FixtureDriver.matchDeviceEvents(29, "multi-process", multiProcess, multiProcess + listOf("activity.create", "worker.create")) == null)
     }
 
     private fun signatureEntry(name: String): Boolean {

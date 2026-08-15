@@ -63,6 +63,7 @@ security_sensitive: false
 - 从 `gradle/libs.versions.toml` 读取 `minSdk=29` 与 `compileSdk`，生成闭区间与四 ABI 的全笛卡尔清单；每格只能出现一次。
 - 状态仅允许 `VERIFIED`、`FAILED`、`UNVERIFIED`。缺格、重复、未知状态或状态与证据矛盾均失败。
 - `VERIFIED` 必须由 `Build.VERSION.SDK_INT`、实际进程 ABI 与 `Build.SUPPORTED_ABIS` 回报并验证设备事实，不接受 workflow matrix 标签代替。
+- 正向组件事件默认与 M3-01 catalog 精确一致；API 29 发生配置 relaunch 时，只允许 catalog 序列后追加一次该 fixture 固定的 Activity 重建后缀。报告必须同时记录 `catalog_expected_events`、精确 `expected_events/observed_events` 与 `configuration_relaunch=true`；任何额外、乱序或非 API 29 重复均失败。
 - `UNVERIFIED` 必须有稳定 `reasonCode`、设备事实为 `null`、无正向 fixture 结果，并在 Markdown 中显示“未验证/不作兼容承诺”。
 - `FAILED` 必须保留首轮失败证据；最多重试一次。重试通过仍记录 flaky，连续两次结果不一致或最终失败都会阻止任务完成。
 - 当前强制 campaign 为 API 29 `armeabi-v7a`/`arm64-v8a` 与 API 29/36 `x86_64`。其他格子默认 `UNVERIFIED`，只有取得固定来源的真实环境并运行同一合同后才能提升为 `VERIFIED`。
@@ -110,6 +111,7 @@ security_sensitive: false
 - 矩阵生成器的范围、去重、缺失格子、最高 API 读取和 32 格当前锁定范围测试。
 - 三状态 schema/语义测试：缺 reason、伪造 deviceFacts、把 `UNVERIFIED` 渲染为支持、未知/重复状态均拒绝。
 - 每个 `VERIFIED` 格子的安装、启动、组件事件、签名负向和容器篡改测试。
+- API 29 单次精确 Activity-relaunch 后缀正向测试，以及双重 relaunch、错误后缀、乱序和 API 36 重复事件拒绝测试。
 - 设备 API/进程 ABI 事实校验与 flaky 重试行为测试。
 - ARM-only 限制和 x86/x86_64 零风险贡献测试。
 - JSON/Markdown 一致性、敏感扫描、临时材料与设备清理负例。

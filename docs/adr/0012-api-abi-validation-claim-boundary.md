@@ -27,6 +27,8 @@ The minimum M3-04 campaign uses the environments already fixed by project eviden
 
 All other cells remain `UNVERIFIED` unless M3-04 receives a real environment with fixed provenance and executes the same acceptance contract. The matrix may promote a cell only through evidence; it may never infer promotion from the four-ABI build, `minSdk`, `compileSdk`, another API, another ABI, or an emulator's advertised secondary ABI.
 
+Android 29 may perform one configuration relaunch after the canonical fixture startup. A `VERIFIED` cell may record that behavior only when the observed sequence is exactly the catalog sequence followed by the fixture's one predefined Activity-recreation suffix. The report must preserve both the catalog sequence and the normalized expected/observed sequence and set `configurationRelaunch=true`. The allowance is limited to API 29; a second relaunch, a reordered event, a repeated Provider/Application/worker event, or the same suffix on another API remains a failure.
+
 The four-ABI Runtime statement remains a packaging and binary-interface capability. Public release compatibility is the intersection of that capability, the input APK's native ABI constraints, and the exact `VERIFIED` cells in the generated M3-04 matrix.
 
 ## Consequences
@@ -57,4 +59,5 @@ No APK, Runtime, wire-format, CLI, SDK, or ABI implementation changes. The decis
 - Governance tests require a complete, unique API-by-ABI grid and reject missing, duplicate, unknown, or contradictory cells.
 - Schema and summary tests require device facts and fixture evidence for `VERIFIED`, stable failure evidence for `FAILED`, and a stable reason with no positive claim for `UNVERIFIED`.
 - M3-04 executes the bounded mandatory baseline once and records Android-reported API/process ABI, artifact hashes, cleanup, and payload-before-load negatives.
+- Fixture evidence rejects arbitrary duplicate lifecycle events; the API 29 configuration-relaunch case is accepted only through the exact per-fixture Activity suffix and is represented explicitly in the generated cell.
 - The generated Markdown is compared semantically with the machine-readable matrix so no `UNVERIFIED` cell can be rendered as supported.

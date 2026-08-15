@@ -665,6 +665,14 @@ jobs:
             exit 0
           fi
 
+          if [[ "${GITHUB_HEAD_REF:-${GITHUB_REF_NAME:-}}" = "chore/m3-04-api-abi-matrix" ]]; then
+            ANDROID_SERIAL="$serial" timeout 1200s ./gradlew --no-daemon --console=plain \
+              -Pm304ExpectedAbi=x86_64 :integration-tests:runFixtureMatrix
+            mkdir -p "build/m3-04/device-api${API}-x86_64"
+            cp integration-tests/build/reports/fixture-results.json \
+              "build/m3-04/device-api${API}-x86_64/fixture-results.json"
+          fi
+
           ANDROID_SERIAL="$serial" timeout 300s ./gradlew --no-daemon --console=plain \
             :runtime:native:connectedCheck \
             :runtime:bootstrap:connectedCheck \
@@ -972,6 +980,23 @@ jobs:
             "api${API}-x86_64-linux-kvm" \
             "build/m3-02/device-api${API}-x86_64/fuzz-summary.json"
 
+          if [[ "${GITHUB_HEAD_REF:-${GITHUB_REF_NAME:-}}" = "chore/m3-04-api-abi-matrix" ]]; then
+            source_commit="$GITHUB_SHA"
+            if [[ "$GITHUB_EVENT_NAME" = "pull_request" ]]; then
+              source_commit="$(jq -r '.pull_request.head.sha // empty' "$GITHUB_EVENT_PATH")"
+            fi
+            [[ "$source_commit" =~ ^[0-9a-f]{40}$ ]]
+            node tools/device-capability-probe/index.mjs cell \
+              --api "$API" \
+              --abi x86_64 \
+              --platform "api${API}-x86_64-linux-kvm" \
+              --source-commit "$source_commit" \
+              --fixture-report "build/m3-04/device-api${API}-x86_64/fixture-results.json" \
+              --runtime-report "build/m2-04/device-api${API}-x86_64/x86_64/evidence/report.json" \
+              --signer-report "build/m2-03/device-api${API}-x86_64/signer-matrix/signer-matrix-report.json" \
+              --output "build/m3-04/device-api${API}-x86_64/cell-api${API}-x86_64.json"
+          fi
+
       - name: Print cleanup diagnostics
         if: always()
         shell: bash
@@ -986,6 +1011,7 @@ jobs:
           find build/m2-05 -maxdepth 5 -type f -print -exec sha256sum {} \; || true
           find build/m2-06 -maxdepth 3 -type f -print -exec sha256sum {} \; || true
           find build/m3-02 -maxdepth 3 -type f -print -exec sha256sum {} \; || true
+          find build/m3-04 -maxdepth 3 -type f -print -exec sha256sum {} \; || true
           find integration-tests/build/reports -maxdepth 1 -type f -print -exec sha256sum {} \; || true
 
       - name: Upload bounded validation evidence
@@ -1009,6 +1035,7 @@ jobs:
             build/m2-05/device-api${{ matrix.api }}-x86_64/**/*
             build/m2-06/device-api${{ matrix.api }}-x86_64/**/*
             build/m3-02/device-api${{ matrix.api }}-x86_64/**/*
+            build/m3-04/device-api${{ matrix.api }}-x86_64/**/*
             build/m2-01/**/*.json
             build/m2-01/**/*.txt
             build/m2-02/**/*.json

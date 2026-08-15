@@ -32,6 +32,7 @@ object FixtureDriver {
         val work = Path.of(requireNotNull(System.getProperty("m301.work"))).toAbsolutePath().normalize()
         val ownedBuild = root.resolve("integration-tests/build").toAbsolutePath().normalize()
         val hostOnly = System.getProperty("m301.hostOnly") == "true"
+        val expectedAbi = System.getProperty("m304.expectedAbi")?.takeIf(String::isNotBlank)
         val signedInputCorpus = System.getProperty("m303.signedInputCorpus")?.let { Path.of(it) }?.toAbsolutePath()?.normalize()
         val skipNegatives = System.getProperty("m303.skipNegatives") == "true"
         require(signing.startsWith(ownedBuild) && work.startsWith(ownedBuild))
@@ -41,12 +42,14 @@ object FixtureDriver {
         Files.createDirectories(work)
 
         val rows = ArrayList<Map<String, Any?>>()
+        var runtimeSignerNegative: Map<String, Any?>? = null
+        var runtimeTagNegative: Map<String, Any?>? = null
         var device: Map<String, Any?> = emptyMap()
         var failure: Throwable? = null
         try {
             val tools = Tools.find()
-            val adb = if (hostOnly) null else Adb(tools.adb)
-            device = adb?.deviceInfo() ?: linkedMapOf("mode" to "host-only")
+            val adb = if (hostOnly) null else Adb(tools.adb, expectedAbi)
+            device = if (adb == null) linkedMapOf("mode" to "host-only") else emptyMap()
             val credentials = if (signedInputCorpus == null || !skipNegatives) {
                 Credentials.create(tools, signing.resolve("primary.jks"), "m301-primary")
             } else null
@@ -61,12 +64,16 @@ object FixtureDriver {
                 println("M3-01 fixture case start: ${fixture.id}")
                 rows += runCase(fixture, work.resolve("cases/${fixture.id}"), tools, adb, credentials, signedInputCorpus)
             }
+            if (adb != null) device = adb.deviceInfo()
             if (!skipNegatives) runSignerNegatives(
                 fixtures.first(), work.resolve("negative"), tools, checkNotNull(credentials), checkNotNull(alternate),
             )
             if (!skipNegatives && adb != null) {
-                runDifferentSignerRuntimeNegative(
+                runtimeSignerNegative = runDifferentSignerRuntimeNegative(
                     fixtures.first(), work.resolve("different-signer"), tools, adb, checkNotNull(credentials), checkNotNull(alternate),
+                )
+                runtimeTagNegative = runTagTamperRuntimeNegative(
+                    root, fixtures.first(), work.resolve("tag-tamper"), tools, adb, checkNotNull(credentials),
                 )
             }
         } catch (caught: Throwable) {
@@ -89,6 +96,8 @@ object FixtureDriver {
             } else {
                 listOf("unsigned_input", "multiple_current_signer", "different_output_signer")
             },
+            "runtime_signer_negative" to runtimeSignerNegative,
+            "runtime_tag_negative" to runtimeTagNegative,
             "test_signing_cleanup" to !Files.exists(signing),
             "failure" to failure?.let { it::class.java.simpleName },
         )
@@ -141,12 +150,19 @@ object FixtureDriver {
         val shouldInstall = adb != null &&
             (fixture.expectedOutcome == "compatible" || abi.startsWith("arm") || abi.startsWith("armeabi"))
         var events: List<String> = emptyList()
+        var expectedEvents = fixture.expectedEvents
+        var configurationRelaunch = false
+        var processFacts: Map<String, Any?>? = null
         if (adb != null) try {
             if (shouldInstall) {
                 adb.install(checkNotNull(if (signedInputCorpus == null) signedOutput else null))
                 adb.clearLogcat()
                 val launch = adb.start(packageName)
-                events = adb.awaitEvents(packageName, fixture.expectedEvents, launch)
+                val observation = adb.awaitEvents(fixture.id, packageName, fixture.expectedEvents, launch)
+                events = observation.observed
+                expectedEvents = observation.expected
+                configurationRelaunch = observation.configurationRelaunch
+                processFacts = adb.processFacts(packageName)
             } else {
                 val text = Files.readString(productReport, StandardCharsets.UTF_8)
                 val armOnlyLimitation = Regex(
@@ -164,8 +180,11 @@ object FixtureDriver {
             "id" to fixture.id,
             "status" to "pass",
             "installed" to shouldInstall,
-            "expected_events" to fixture.expectedEvents,
+            "catalog_expected_events" to fixture.expectedEvents,
+            "expected_events" to expectedEvents,
             "observed_events" to events,
+            "configuration_relaunch" to configurationRelaunch,
+            "process_facts" to processFacts,
             "payload_abis" to fixture.payloadAbis,
             "expected_outcome" to fixture.expectedOutcome,
             "input_sha256" to inputBefore,
@@ -219,7 +238,7 @@ object FixtureDriver {
         adb: Adb,
         primary: Credentials,
         alternate: Credentials,
-    ) {
+    ): Map<String, Any?> {
         Files.createDirectories(root)
         val input = root.resolve("input.apk")
         val output = root.resolve("output.apk")
@@ -229,16 +248,79 @@ object FixtureDriver {
         check(runProduct(input, output, report).exit == 0)
         alternate.sign(tools, output, mismatched)
         val packageName = packageName(fixture.id)
+        var launchExit = -1
+        var events: List<String> = emptyList()
         try {
             adb.install(mismatched)
             val launch = adb.launch(packageName)
-            val events = adb.observeEvents(packageName, fixture.expectedEvents, Duration.ofSeconds(3))
+            launchExit = launch.exit
+            events = adb.observeEvents(packageName, fixture.expectedEvents, Duration.ofSeconds(3))
             check(launch.exit != 0 || events.none(fixture.expectedEvents::contains)) {
                 "different signer reached business events: $events"
             }
         } finally {
             adb.uninstall(packageName)
         }
+        return linkedMapOf(
+            "status" to "pass",
+            "launch_exit" to launchExit,
+            "observed_events" to events,
+            "business_events_reached" to false,
+            "package_cleanup" to !adb.isInstalled(packageName),
+        )
+    }
+
+    private fun runTagTamperRuntimeNegative(
+        repository: Path,
+        fixture: FixtureDescriptor,
+        root: Path,
+        tools: Tools,
+        adb: Adb,
+        credentials: Credentials,
+    ): Map<String, Any?> {
+        Files.createDirectories(root)
+        val input = root.resolve("input.apk")
+        val output = root.resolve("protected-unsigned.apk")
+        val report = root.resolve("protect-report.json")
+        val mutations = repository.resolve("build/m3-04/fixture-tag-tamper")
+        mutations.toFile().deleteRecursively()
+        Files.createDirectories(mutations)
+        val tampered = mutations.resolve("m0-05-payload-tag-first-unsigned.apk")
+        val signedTampered = root.resolve("payload-tag-first.apk")
+        credentials.sign(tools, fixture.unsignedFixtureApk, input)
+        check(runProduct(input, output, report).exit == 0) { "tag-tamper baseline protection failed" }
+        check(run(
+            listOf(
+                "node", repository.resolve("tools/validation/create-m0-05-test-apks.mjs").toString(),
+                output.toString(), mutations.toString(),
+            ),
+            Duration.ofMinutes(1),
+            workingDirectory = repository,
+        ).exit == 0 && Files.isRegularFile(tampered)) { "authenticated tag mutation failed" }
+        credentials.sign(tools, tampered, signedTampered)
+        val packageName = packageName(fixture.id)
+        var launchExit = -1
+        var events: List<String> = emptyList()
+        try {
+            adb.install(signedTampered)
+            adb.clearLogcat()
+            val launch = adb.launch(packageName)
+            launchExit = launch.exit
+            events = adb.observeEvents(packageName, fixture.expectedEvents, Duration.ofSeconds(3))
+            check(events.none(fixture.expectedEvents::contains)) {
+                "authenticated tag tamper reached business events: $events"
+            }
+        } finally {
+            adb.uninstall(packageName)
+        }
+        return linkedMapOf(
+            "status" to "pass",
+            "launch_exit" to launchExit,
+            "observed_events" to events,
+            "business_events_reached" to false,
+            "package_cleanup" to !adb.isInstalled(packageName),
+            "tampered_apk_sha256" to sha256(signedTampered),
+        )
     }
 
     private fun runProduct(
@@ -311,22 +393,51 @@ object FixtureDriver {
         }
     }
 
-    private class Adb(private val tool: Path) {
+    private class Adb(private val tool: Path, private val expectedAbi: String?) {
+        private var observedProcessFacts: Map<String, Any?>? = null
+
         fun deviceInfo(): Map<String, Any?> {
             val state = command("get-state")
             check(state.output.trim() == "device") { "exactly one authorized adb device is required" }
-            return linkedMapOf("sdk" to shell("getprop", "ro.build.version.sdk").output.trim(), "abi" to abi())
+            return linkedMapOf<String, Any?>(
+                "sdk" to shell("getprop", "ro.build.version.sdk").output.trim(),
+                "reported_primary_abi" to abi(),
+                "supported_abis" to shell("getprop", "ro.product.cpu.abilist").output.trim().split(',').filter(String::isNotBlank),
+                "process" to observedProcessFacts,
+            )
         }
 
         fun abi(): String = shell("getprop", "ro.product.cpu.abi").output.trim()
 
         fun install(apk: Path) {
+            val arguments = mutableListOf("install", "--no-incremental", "-r", "-t")
+            if (expectedAbi != null) arguments += listOf("--abi", expectedAbi)
+            arguments += apk.toString()
             val result = command(
-                "install", "--no-incremental", "-r", "-t", apk.toString(),
+                *arguments.toTypedArray(),
                 allowFailure = true,
                 timeout = Duration.ofMinutes(2),
             )
             check(result.exit == 0 && "Success" in result.output) { "adb install failed: ${result.output.take(300)}" }
+        }
+
+        fun processFacts(packageName: String): Map<String, Any?> {
+            val result = shell("content", "query", "--uri", "content://$packageName.events/events")
+            fun field(name: String): String = Regex("(?:^|, )$name=([^,\\r\\n]+)")
+                .find(result.output)?.groupValues?.get(1)?.trim()
+                ?: error("fixture did not report $name")
+            val facts = linkedMapOf<String, Any?>(
+                "sdk" to field("sdk").toInt(),
+                "process_abi" to field("process_abi"),
+                "supported_abis" to field("supported_abis").split('|'),
+                "is_64_bit" to field("is_64_bit").toBooleanStrict(),
+            )
+            if (expectedAbi != null) check(facts["process_abi"] == expectedAbi) {
+                "expected process ABI $expectedAbi but Android reported ${facts["process_abi"]}"
+            }
+            observedProcessFacts?.let { check(it == facts) { "fixture process facts changed within one cell" } }
+            observedProcessFacts = facts
+            return facts
         }
 
         fun clearLogcat() {
@@ -350,14 +461,20 @@ object FixtureDriver {
             return events(packageName)
         }
 
-        fun awaitEvents(packageName: String, expected: List<String>, launch: Result): List<String> {
+        fun awaitEvents(
+            fixtureId: String,
+            packageName: String,
+            expected: List<String>,
+            launch: Result,
+        ): EventObservation {
             // `content query` starts the exported provider when the application process is not yet
             // ready. Polling it concurrently with `am start` can therefore create a second startup
             // on slower API 29 devices. `am start -W` supplies the synchronization boundary; allow
             // the remote worker process a bounded settle window, then observe exactly once.
             Thread.sleep(if ("worker.create" in expected) 1_000 else 250)
             val observed = events(packageName)
-            if (observed == expected) return observed
+            matchDeviceEvents(shell("getprop", "ro.build.version.sdk").output.trim().toInt(), fixtureId, expected, observed)
+                ?.let { return it }
             val diagnostics = focusedDiagnostics(packageName)
             error(
                 "$packageName events did not reach $expected; observed=$observed; " +
@@ -403,13 +520,47 @@ object FixtureDriver {
         ): Result = run(listOf(tool.toString()) + arguments, timeout, allowFailure)
     }
 
+    internal data class EventObservation(
+        val expected: List<String>,
+        val observed: List<String>,
+        val configurationRelaunch: Boolean,
+    )
+
+    internal fun matchDeviceEvents(
+        apiLevel: Int,
+        fixtureId: String,
+        catalogExpected: List<String>,
+        observed: List<String>,
+    ): EventObservation? {
+        if (observed == catalogExpected) return EventObservation(catalogExpected, observed, false)
+        if (apiLevel != 29) return null
+        val relaunchedExpected = catalogExpected + activityRelaunchEvents(fixtureId)
+        return if (observed == relaunchedExpected) EventObservation(relaunchedExpected, observed, true) else null
+    }
+
+    private fun activityRelaunchEvents(fixtureId: String): List<String> = when (fixtureId) {
+        "kotlin-single-dex" -> listOf("activity.create", "kotlin.marker")
+        "kotlin-multidex" -> listOf("activity.create", "kotlin.marker", "multidex.class")
+        "jni-four-abi", "jni-arm-only" -> listOf("activity.create", "jni.marker")
+        "java-single-dex", "custom-application", "custom-factory", "startup-provider", "multi-process" ->
+            listOf("activity.create")
+        else -> error("unknown fixture for configuration relaunch: $fixtureId")
+    }
+
     private data class Result(val exit: Int, val output: String)
 
-    private fun run(command: List<String>, timeout: Duration, allowFailure: Boolean = false): Result {
+    private fun run(
+        command: List<String>,
+        timeout: Duration,
+        allowFailure: Boolean = false,
+        workingDirectory: Path? = null,
+    ): Result {
         val actual = if (isWindows() && command.first().endsWith(".bat", ignoreCase = true)) {
             listOf("cmd.exe", "/d", "/c") + command
         } else command
-        val process = ProcessBuilder(actual).redirectErrorStream(true).start()
+        val builder = ProcessBuilder(actual).redirectErrorStream(true)
+        workingDirectory?.let { builder.directory(it.toFile()) }
+        val process = builder.start()
         val captured = ByteArrayOutputStream()
         val readFailure = AtomicReference<Throwable?>()
         val reader = Thread({

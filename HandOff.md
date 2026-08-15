@@ -1,13 +1,13 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260815-071821
-updated_at: 2026-08-15T07:18:21+08:00
+handoff_id: HO-20260815-092507
+updated_at: 2026-08-15T09:25:07+08:00
 updated_by: /root
-state: blocked
+state: active
 source_branch: chore/m3-04-api-abi-matrix
-base_commit: 1a2c2d85be62502913066b301c1083b05de37d00
-working_tree: clean
+base_commit: a65433ae0bda651fc1088d187913b2dbfa7b02d1
+working_tree: dirty
 current_milestone: M3
 active_task: M3-04
 next_owner: /root
@@ -17,12 +17,15 @@ next_owner: /root
 
 ## Objective
 
-Resolve the real-device and pinned-image inventory required by M3-04 before implementing its API 29-36 by four-process-ABI compatibility matrix.
+Implement the revised M3-04 complete API/ABI inventory, verify the four available mandatory cells, and mark unavailable combinations `UNVERIFIED` without starting M3-05.
 
 ## Current State
 
-- The user explicitly ordered M3-03, M3-04 and M3-05 sequentially. M3-03 is merged and complete, including post-merge main Build `31849486229` and Governance `31849486307`. M3-04 is now the only active task; M3-05 has not started.
-- M3-04 requires 32 real process cells: every integer API 29 through 36 crossed with `armeabi-v7a`, `arm64-v8a`, `x86` and `x86_64`. Read-only device discovery found one authorized API 29 `user` device reporting `arm64-v8a,armeabi-v7a,armeabi`; the repository pins only API 29/36 x86_64 system images. API 30-36 ARM process evidence is absent, and API 30-35 emulator images are not yet pinned by immutable revision and hash. The task card explicitly forbids substituting builds, simulated reports or another ABI, so implementation is paused before creating false acceptance machinery.
+- M3-06 is complete. PR #57 merged with expected-head `8da49b52fc7c2ea65bf7f0a19b5804d9137130e6` as `a65433ae0bda651fc1088d187913b2dbfa7b02d1`; Issue #56 closed. Merger-ready Build `31855996092`, Governance `31855996089`, main Build `31856224545`, main Governance `31856224541`, local strict HandOff and project governance all passed. Repeated fuzz/equivalence workflows were cancelled by scope and no device/KVM ran for the contract task.
+- The preserved M3-04 blocker commit `72a5fce85bbee5b0f1888028049f096487febb7e` is being merged with verified post-M3-06 `main`; only `HandOff.md` conflicted because the old branch recorded the now-resolved user decision.
+- ADR 0012 and the revised M3-04 contract enumerate the full API 29-36 by four-ABI grid while reserving `VERIFIED` for real Android-reported process evidence, `FAILED` for executed regressions, and `UNVERIFIED` for unavailable combinations that carry no positive compatibility claim. The mandatory current M3-04 baseline is API 29 ARM32/ARM64 plus API 29/36 x86_64.
+- Read-only inventory provides an authorized API 29 `user` physical device capable of `arm64-v8a` and `armeabi-v7a` processes, plus pinned API 29 revision 8 and API 36 revision 2 x86_64 KVM images. API 30-35 and all other unavailable combinations will be emitted as `UNVERIFIED`; they will not trigger downloads or inferred claims.
+- M3-04 is the only active task. M3-05 remains unstarted and cannot begin until M3-04 merges and its post-merge gates pass.
 - M3-03 final implementation `f53989e83b8a030139ec3e564ebfb41bdb81129a` passed Cross-platform equivalence `31847937221`, Build `31847937347` and Governance `31847937260` on the exact head. Windows and Ubuntu each produced 18 authenticated outputs; the final summary compared 36 outputs and proved stable semantics, random non-reuse, independent authentication/decryption, immutable inputs, unsigned outputs, equivalent negative errors and zero absolute-path findings. PR [#55](https://github.com/xiaokh31/androidAppHardening/pull/55) merged with expected-head protection as `af0fe5c5d0e9098d8cca86b3d5de3e09ed8412fb`, and Issue #20 closed. M3-03 is Host-only; out-of-scope KVM and M3-02 fuzz runs were cancelled.
 - M2-08 is complete. Final head `626a14c63c1b77f2552236659eb98d47bb027a12` passed Build `31820302813` on Ubuntu/Windows, including Ubuntu ASan/UBSan, and Governance `31820302849`; independent review was `P0=0/P1=0/P2=0`. PR #54 merged with expected-head protection as `ed0d0fb97c255a98c04628dc1746801985591c3c`, Issue #53 closed, and unrelated KVM run `31820302818` was cancelled by scope. M3-02 PR #52 may resume.
 - M3-02 is complete on `main`. Final local implementation freeze `90ef2ecf662371c82fed5f3d0fa92dbf9324e9e2` adds the generated 69-case catalog, real unsigned APK/Binary AXML corpus and binary regressions, Jazzer `0.29.1` APK/AXML targets, Clang `18.1.3` libFuzzer + ASan/UBSan, exact resource/runner locks, five-target fail-closed aggregation, and API 29/36 named Runtime mutation evidence. Final bounded Host validation passed in 1m24s without a device, and the final independent review is `P0=0/P1=0/P2=0`. Fuzz `31830770675` passed all five targets at `d961d4a`; final CI-lock `699ea23` passed Build `31832372574`, Governance `31832372727`, and API 29/36 KVM `31832372549`; evidence-only `592e88a` passed Build `31834088916` and Governance `31834089182`. PR #52 merged from the verified expected head as `1913d37d4561fb9b965ee1b4f23863f8a901b37e`, and Issue #19 closed. Repeated documentation-only KVM/fuzz runs were cancelled because no executable or acceptance input changed.
@@ -184,8 +187,9 @@ Resolve the real-device and pinned-image inventory required by M3-04 before impl
 
 | Task | Owner | Branch | Status | Dependencies | Next checkpoint |
 |---|---|---|---|---|---|
-| M3-04 | `/root` | `chore/m3-04-api-abi-matrix` | blocked | M0-03, M2-04, M3-01, M3-02 | User chooses a real API 30-36 ARM device farm or authorizes an ADR/task-contract revision that records those cells unverified |
-| M3-03 | `/root` | `main` | done | M0-03, M1-05, M1-06, M2-06, M3-01 | PR #55 merged; exact-head Windows/Ubuntu equivalence and post-merge main Build/Governance passed |
+| M3-06 | `/root` | `main` | done | M0-03, M2-04, M3-01, M3-02 | PR #57 merged as `a65433a`; Issue #56 closed; exact-head and post-merge Ubuntu/Windows Build/Governance passed |
+| M3-04 | `/root` | `chore/m3-04-api-abi-matrix` | in_progress | M0-03, M2-04, M3-01, M3-02, M3-06 | Resolve the main merge, implement the complete inventory/schema/summary, then execute only the four mandatory real-process cells |
+| M3-03 | `/root` | `main` | done | M0-03, M1-05, M1-06, M2-06, M3-01 | PR #55 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | done | M2-02 | PR #54 merged; exact regression, ASan/UBSan, dual-platform Build/Governance and independent review passed |
 | M3-02 | `/root` | `main` | done | M1-03, M1-04, M1-06, M2-02, M2-03, M2-06, M2-08, M3-01 | PR #52 merged; README/evidence synchronized; wait for next task selection |
 | M0-04 | `runtime-security-agent` | `spike/m0-04-classloader-poc` | done | M0-03 | PR #29、正式设备矩阵和独立复核已通过 |
@@ -211,6 +215,7 @@ Resolve the real-device and pinned-image inventory required by M3-04 before impl
 
 ## Decisions and Invariants
 
+- ADR 0012 separates four-ABI build capability from device compatibility claims. The complete M3-04 grid may contain `UNVERIFIED` cells, but only exact real-process `VERIFIED` cells may appear as release-validated; any `FAILED` cell blocks completion and release.
 - M2-07 Windows runner maintenance adds only exact mapping `20260810.198.2` -> `win25-vs2026/20260810.198`; all prior mappings and exact compiler/SDK assertions remain, and every unknown future image remains fail-closed. No retry against an older hosted image is accepted as evidence.
 - 继续遵守 ADR 0001 至 ADR 0003、ADR 0005 至 ADR 0008；ADR 0004 已被 ADR 0008 supersede。ADR 0007 固定 sourceDir 配置通道，ADR 0006 保持 768-byte ConfigV2 且 `container_major=2`。
 - AHDC v2 是 v0.1 唯一容器 major：64 KiB canonical compressed-plaintext chunk，每 chunk 独立 AES-256-GCM tag；tag 成功后才进入每 DEX 唯一连续 zlib inflater，AHDC v1 不得回退接受。
@@ -232,6 +237,9 @@ Resolve the real-device and pinned-image inventory required by M3-04 before impl
 
 ## Changes Since Previous Handoff
 
+- Created Issue #56 and branch `docs/m3-06-api-abi-validation-contract` from `main@1a2c2d8` after preserving the original M3-04 blocker on commit `72a5fce`. Added ADR 0012, the M3-06 task/evidence plan, and synchronized the M3-04 task, task index, compatibility matrix, test strategy, project plan, roadmap, ABI/ClassLoader ADR references, and M4 review contract. No executable file changed.
+- Frozen the governance implementation as `ef8785951a6bfe26cd54d48b687faf890ee8b039`; all bounded local checks passed and contract hashes were recorded. No device, KVM, fuzz, benchmark, Gradle, or download was executed.
+- Published the unique Issue #56 draft PR #57. Exact published head `6fea281b761c4da3b65343ef028a05b20546171c` passed Ubuntu/Windows Build `31855670237` and Governance `31855670231`; out-of-scope fuzz/equivalence were cancelled and no KVM/device workflow ran. Remote evidence is recorded for the merger-ready documentation successor.
 - Superseded initial M3-02 freeze `e5b329bde53c9cd42ed58c6f9f3eff3c54bd52fc` after independent review found three P1 evidence gaps. Final implementation `90ef2ecf662371c82fed5f3d0fa92dbf9324e9e2` closes exact per-case evidence, real binary corpus/regressions, five-target aggregation, unsigned APK v1/v2/v3 rejection, fixed Host stages and duplicate/extra startup handling. Bounded local validation and final independent review passed with `P0=0/P1=0/P2=0`; required 600-second parallel targets, API 29/36 KVM and publication remain pending.
 - Evidence-only head `150fac76dd0fe1c462445a73dd41043a00b7624b` passed Build `31757448127` and Governance `31757448107` on Ubuntu/Windows after the independent `P0=0/P1=0/P2=0` review. Automatic KVM `31757448073` was cancelled as explicitly out of scope. PR #51 was transitioned to ready and merged with expected-head protection as `09345a99d44b3faac2e3a24b71012e03546a451f`; Issue #50 closed and local `main` was fast-forwarded.
 - GitHub final-main Build `31754337214` failed only in Windows job `94626822969` because the hosted pool assigned new exact image `20260810.198.2`; the gate failed before compiler invocation. Official `actions/runner-images` ref/commit/blob and installed LLVM/VS/x64-tools/SDK inventory were independently checked. Issue #50 and the bounded maintenance branch were created; no Android/KVM/device test is repeated.
@@ -1487,22 +1495,55 @@ Resolve the real-device and pinned-image inventory required by M3-04 before impl
 - sha256: not_applicable
 - result: PASS; exact-head Ubuntu/Windows Build and Governance all passed, both Build jobs matched all four M1-06 hashes, PR #40 merged as d0eb39264f1382469712a4f3c28a7d42ab19d1dd, and Issue #11 closed
 
+### M3-03 post-merge closure
+
+- task_id: M3-03
+- git_commit: 1a2c2d85be62502913066b301c1083b05de37d00
+- command: GitHub Actions Build run 31849486229 and Governance run 31849486307 after expected-head merge of PR 55
+- exit_code: 0
+- environment: GitHub ubuntu-24.04 and windows-2025 with pinned repository toolchain
+- timestamp: 2026-08-15T06:56:51+08:00
+- artifact: https://github.com/xiaokh31/androidAppHardening/actions/runs/31849486229 ; https://github.com/xiaokh31/androidAppHardening/actions/runs/31849486307 ; https://github.com/xiaokh31/androidAppHardening/pull/55
+- sha256: 9dfdb791d005f119e28063fec179c936e6400bcf3138c2f3755d79f4c6fd6383
+- result: PASS; PR 55 merged as af0fe5c5d0e9098d8cca86b3d5de3e09ed8412fb, Issue 20 closed, README/evidence synchronized, and post-merge Ubuntu/Windows Build plus Governance passed without repeating KVM or fuzz
+
+### M3-06 local governance freeze
+
+- task_id: M3-06
+- git_commit: ef8785951a6bfe26cd54d48b687faf890ee8b039
+- command: local bounded governance validation plus GitHub Actions Build 31855670237 and Governance 31855670231
+- exit_code: 0
+- environment: Windows 10.0.19045.0 with Node.js v24.12.0; GitHub ubuntu-24.04 and windows-2025
+- timestamp: 2026-08-15T09:06:04+08:00
+- artifact: docs/evidence/M3-06/local-validation.md ; docs/evidence/M3-06/remote-validation.md ; https://github.com/xiaokh31/androidAppHardening/pull/57
+- sha256: 0568add20e85cd5d3b412fbf84d865de89b5d78c3ccff9d68a56e91b4055e4c1
+- result: PASS; full grid and three-state claim semantics synchronized, exact published-head Ubuntu/Windows Build/Governance passed, out-of-scope workflows were cancelled, and no executable/device/KVM/fuzz/benchmark input changed
+
 ## Blockers and Required Approvals
 
-M3-04 cannot satisfy its fixed 32-cell real-device contract with the current inventory. `/root` needs one user decision: either provide/authorize a device farm that exposes real `armeabi-v7a` and `arm64-v8a` processes for every API 30-36 and authorize pinning API 30-35 emulator packages, or authorize an independent ADR/task-contract revision that limits the verified release claim and explicitly marks the missing combinations unverified. M3-05 remains paused behind M3-04 by the user-ordered sequence.
+None
 
 ## Ordered Next Actions
 
-1. Obtain the user's M3-04 device-contract decision without downloading large images or starting emulators.
-2. If strict scope is retained, inventory and pin every required device/system image before implementing the fail-closed generator; if scope is revised, complete and merge the independent ADR/task-contract change first.
-3. Resume M3-04 on this branch only after the blocker is closed; complete and merge it before starting M3-05.
+1. Complete the main merge and update `docs/evidence/M3-04/implementation-plan.md` to ADR 0012.
+2. Implement the deterministic 32-cell inventory/schema/Markdown consistency checks and bounded device acceptance without changing product behavior.
+3. Run API 29 ARM32/ARM64 physical acceptance and API 29/36 x86_64 KVM once; explicitly mark every unavailable cell `UNVERIFIED` and record cleanup/evidence hashes.
+4. Publish the unique Issue #21 PR, pass exact-head Build/Governance/KVM as applicable, merge with expected-head protection, and only then start M3-05.
 
 ## Relevant Files and Artifacts
 
+- `docs/adr/0012-api-abi-validation-claim-boundary.md`
+- `docs/tasks/M3-06-api-abi-validation-claim-contract.md`
 - `docs/tasks/M3-04-api-and-abi-matrix.md`
-- `docs/evidence/M3-04/implementation-plan.md`
+- `docs/evidence/M3-06/implementation-plan.md`
+- `docs/evidence/M3-06/local-validation.md`
+- `docs/evidence/M3-06/remote-validation.md`
 - `docs/COMPATIBILITY_MATRIX.md`
-- `docs/adr/0005-runtime-abi-policy.md`
+- `docs/TEST_STRATEGY.md`
+- `docs/tasks/INDEX.md`
+- `tools/governance/validate-project-package.mjs`
+- `docs/evidence/M3-04/implementation-plan.md`
+- preserved blocker commit `72a5fce85bbee5b0f1888028049f096487febb7e`
 - `docs/tasks/M3-03-windows-ubuntu-equivalence.md`
 - `integration-tests/build.gradle.kts`
 - `integration-tests/src/main/kotlin/ah/integration/equivalence/`

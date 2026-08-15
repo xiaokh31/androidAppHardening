@@ -60,7 +60,8 @@ M1-07 的 AHDC v2 合同必须先经独立安全复核并合并；随后 M1 与 
 | M3-01 | [#18](https://github.com/xiaokh31/androidAppHardening/issues/18) | [Android fixtures](M3-01-android-fixtures.md) | `qa-governance-agent` | M1-06, M2-04 |
 | M3-02 | [#19](https://github.com/xiaokh31/androidAppHardening/issues/19) | [Tamper and fuzz tests](M3-02-tamper-and-fuzz-tests.md) | `qa-governance-agent` | M1-03, M1-04, M1-06, M2-02, M2-03, M2-06, M2-08, M3-01 |
 | M3-03 | [#20](https://github.com/xiaokh31/androidAppHardening/issues/20) | [Windows and Ubuntu equivalence](M3-03-windows-ubuntu-equivalence.md) | `qa-governance-agent` | M0-03, M1-05, M1-06, M2-06, M3-01 |
-| M3-04 | [#21](https://github.com/xiaokh31/androidAppHardening/issues/21) | [API and ABI matrix](M3-04-api-and-abi-matrix.md) | `qa-governance-agent` | M0-03, M2-04, M3-01, M3-02 |
+| M3-06 | [#56](https://github.com/xiaokh31/androidAppHardening/issues/56) | [API/ABI validation-claim contract](M3-06-api-abi-validation-claim-contract.md) | `qa-governance-agent` | M0-03, M2-04, M3-01, M3-02 |
+| M3-04 | [#21](https://github.com/xiaokh31/androidAppHardening/issues/21) | [API and ABI matrix](M3-04-api-and-abi-matrix.md) | `qa-governance-agent` | M0-03, M2-04, M3-01, M3-02, M3-06 |
 | M3-05 | [#22](https://github.com/xiaokh31/androidAppHardening/issues/22) | [Size, startup, and memory benchmarks](M3-05-size-startup-memory-benchmarks.md) | `qa-governance-agent` | M1-06, M2-04, M2-06, M3-01 |
 
 ## M4 Release
@@ -81,7 +82,7 @@ M1-04 → M2-07 → M2-02 → M2-03
 M1-03 + M1-04 + M2-03 → M2-01 → M2-04 → M2-05 → M2-06
 M2-04 + M1-06 → M3-01
 M2-02 → M2-08 → M3-02
-M2-06 + M3-01 + M2-08 → M3-02 → M3-04
+M2-06 + M3-01 + M2-08 → M3-02 → M3-06 → M3-04
 M2-06 + M3-01 → M3-03
 M2-06 + M3-01 → M3-05
 M3-02 + M3-03 + M3-04 + M3-05 → M4-01 → M4-02 → M4-03

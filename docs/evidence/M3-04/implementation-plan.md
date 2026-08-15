@@ -1,30 +1,48 @@
-# M3-04 implementation plan and device-inventory gate
+# M3-04 implementation plan
 
 - Task: `M3-04`
 - Issue: `#21`
 - Branch: `chore/m3-04-api-abi-matrix`
-- Base: `1a2c2d85be62502913066b301c1083b05de37d00`
+- Base: `a65433ae0bda651fc1088d187913b2dbfa7b02d1`
 - Validation mode: `full-flow`
+- Contract dependency: M3-06/ADR 0012 is merged and complete.
 - Adjacent-task boundary: M3-05 is not started.
 
-## Fixed contract
+## Complete inventory contract
 
-The task card requires every integer API level from the version catalog minimum `29` through compile SDK `36`, crossed with four real process ABIs: `armeabi-v7a`, `arm64-v8a`, `x86` and `x86_64`. This is 32 required device cells. A cell may not be filled by a build, simulated report, runner label, another ABI or another API level.
+The generator enumerates every API `29..36` crossed with `armeabi-v7a`, `arm64-v8a`, `x86`, and `x86_64`: exactly 32 unique cells. Each cell is exactly one of `VERIFIED`, `FAILED`, or `UNVERIFIED`.
 
-Each cell must report and verify framework device facts, run `java-single-dex` and `kotlin-multidex`, preserve its first failure and at most one retry, and provide immutable evidence hashes. The task also layers `custom-factory`, `jni-four-abi`, ARM-only limitation, signer mismatch, authenticated-container tag tamper and x86/x86_64 zero-risk checks exactly as specified by the task card.
+- `VERIFIED` requires Android-reported API/process ABI facts, mandatory positive and payload-before-load negative results, artifact hashes, retry count, and cleanup proof.
+- `FAILED` retains the first failure and at most one retry and blocks M3-04.
+- `UNVERIFIED` requires a stable reason, `deviceFacts: null`, no positive fixture result, and a human-readable “not validated/no compatibility claim” rendering.
+- Missing, duplicate, unknown, contradictory, inferred, or overclaimed cells fail schema/summary validation.
 
-## Verified inventory on 2026-08-15
+## Mandatory available baseline
 
-- One connected physical `user` device reports API `29` and ABI list `arm64-v8a,armeabi-v7a,armeabi`; the shell is non-root. Its raw serial is deliberately not recorded.
-- Repository provenance pins API 29 revision 8 and API 36 revision 2 x86_64 system images plus Emulator 37.1.11.
-- No current evidence source provides real API 30-36 `arm64-v8a` and `armeabi-v7a` process cells.
-- API 30-35 emulator package revisions and archive hashes are not yet approved in the repository supply-chain lock.
+- API 29 `armeabi-v7a` on the authorized non-root physical `user` device.
+- API 29 `arm64-v8a` on the same physical device.
+- API 29 `x86_64` on pinned system image revision 8.
+- API 36 `x86_64` on pinned system image revision 2.
 
-## Blocked decision
+The repository already fixes the Linux emulator and image provenance. No API 30-35 image, new tool, or large local download is authorized. Every other cell remains explicit `UNVERIFIED` unless an already authorized real environment is discovered before freeze.
 
-The implementation must not manufacture a green matrix while device facts are unavailable. Before code or downloads continue, the user must choose one of two bounded routes:
+## Bounded validation layers
 
-1. retain the 32-cell contract and provide/authorize a real ARM device farm for API 30-36, while also authorizing immutable API 30-35 emulator package pinning; or
-2. authorize an independent ADR/task-contract revision that narrows the verified release claim and explicitly records every omitted API/ABI combination as unverified.
+1. Implement deterministic inventory generation, JSON schema, semantic validator, Markdown renderer, and mutation self-tests.
+2. Reuse the existing M3-01 Host full-flow and M3-02/M2 device runners; add only M3-04 orchestration and exact result extraction, not another Runtime or fixture implementation.
+3. For every mandatory cell, run single/multidex; run custom Factory on x86_64, applicable four-ABI JNI, signer mismatch, authenticated tag tamper, payload/session-before-load assertions, ARM-only classification, x86 zero-risk, and cleanup.
+4. Preserve the first failure, allow at most one retry, and never retry transport/device authorization failures into a false product pass.
+5. Generate one `compatibility-matrix.json` and `docs/generated/COMPATIBILITY_RESULTS.md` from the same normalized model; verify artifact hashes and scan retained evidence for device identifiers, paths, key material, and plaintext DEX magic.
 
-No emulator, installation, large download, product code, Runtime code or M3-05 benchmark work was started while this decision is pending.
+## Efficiency boundary
+
+- Do not rerun unchanged fuzz, Host equivalence, benchmarks, or historical M0/M1/M2 matrices.
+- Inherit an existing artifact only when the production Runtime, fixture, acceptance script, and protected APK are byte-identical and the commit/diff boundary is recorded; otherwise execute the mandatory cell once.
+- API 29/36 x86_64 runs only in bounded GitHub KVM with overall timeout and unconditional cleanup. No local emulator is started.
+- Physical-device work is one bounded two-ABI campaign with package/file cleanup and no repeated install loop.
+
+## Completion boundary
+
+- All 32 cells are present; the four mandatory cells are `VERIFIED`; no cell is `FAILED`; unavailable cells are `UNVERIFIED` and never rendered as supported.
+- Local static/generator checks, physical ARM campaign, exact-head API 29/36 KVM, Ubuntu/Windows Build/Governance, artifact/hash verification, README, HandOff, and expected-head merge are complete.
+- Only after M3-04 post-merge main gates pass may M3-05 start.

@@ -116,13 +116,13 @@ M2-05 额外执行 ADR-0010 的纯评分矩阵和真实当前进程采集：覆�
 
 ## 4. API 与 ABI 矩阵
 
-强制 Android API 为 `29` 到 M0-03 在仓库中锁定的 `compileSdk` 之间的每一个整数 API。最低边界必须始终包含 `29`，发布证据必须明确列出实际最高 API；不得用只测首尾替代中间版本。
+矩阵清单必须枚举 `29` 到 M0-03 锁定 `compileSdk` 之间的每一个整数 API 与四个 Runtime ABI。最低边界始终包含 `29`；不得删除中间版本，也不得用只测首尾推导中间版本。
 
 ```text
 29..locked compileSdk
 ```
 
-当项目提高 `compileSdk` 或 Android 发布新的稳定 API 时，新增目标通过兼容性变更任务进入矩阵，不自动扩大已发布版本的承诺。
+当项目提高 `compileSdk` 或 Android 发布新的稳定 API 时，新增目标通过兼容性变更任务进入清单，不自动扩大已发布版本的承诺。
 
 强制 Runtime ABI：
 
@@ -133,12 +133,21 @@ x86
 x86_64
 ```
 
-至少覆盖：
+每个格子只能是 ADR 0012 定义的 `VERIFIED`、`FAILED` 或 `UNVERIFIED`：
 
-- API 29：四 ABI，验证最低平台边界；
-- 每个中间 API：至少 `arm64-v8a` 与 `x86_64`；
-- 当前最高声明 API：四 ABI；
-- ARM-only fixture 在 x86-only 设备上得到明确不兼容结论，不得标记为 Runtime ABI 成功。
+- `VERIFIED` 必须有 Android 真实回报的 API/进程 ABI、完整 fixture/负向结果和证据哈希；runner 标签、构建成功和其他格子不能替代；
+- `FAILED` 保留执行证据并阻止任务/发布；最多重试一次，首轮失败仍归档；
+- `UNVERIFIED` 必须有稳定原因，不能带伪造设备事实，不能在 JSON、Markdown 或发布文档中表示为支持；
+- 缺格、重复格、未知状态或 JSON/Markdown 语义不一致均失败关闭。
+
+当前强制执行一次的可获得基线为：
+
+- API 29：`armeabi-v7a`、`arm64-v8a` 物理设备进程；
+- API 29 与 API 36：`x86_64` 固定 Linux/KVM 进程；
+- 每个强制格运行单/多 DEX、适用的 JNI、异 signer 和认证 tag 篡改；x86_64 额外运行自定义 Factory；
+- ARM-only fixture 在已验证 x86/x86_64 格子上得到明确原应用 ABI 不兼容结论，不得标记为 Runtime ABI 成功。
+
+其他 API/ABI 组合保留在清单中并标为 `UNVERIFIED`，直到获得固定来源的真实环境并执行同一合同。若继承既有设备证据，必须证明生产 Runtime、fixture、验收脚本和被测 artifact 未变化，并记录祖先提交、diff 边界与哈希；不能为了形式重复完全相同的长测。
 
 完整产品分类见 [兼容性矩阵](COMPATIBILITY_MATRIX.md)。
 

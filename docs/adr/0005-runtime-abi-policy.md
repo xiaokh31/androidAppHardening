@@ -4,6 +4,8 @@
 
 Accepted
 
+设备级 API/ABI 验证声明由后续 [ADR 0012](0012-api-abi-validation-claim-boundary.md) 限定；本 ADR 的四 ABI `Supported` 表述只代表构建、注入与输入 ABI 策略，不自动证明每个设备组合已验证。
+
 ## Context
 
 Runtime 包含 Native 容器解析、密钥恢复和内存解密代码，必须与设备进程 ABI 匹配。项目要求覆盖 `armeabi-v7a`、`arm64-v8a`、`x86`、`x86_64`。但向一个 ARM-only 原生应用注入 x86 Runtime 库可能让包结构看似支持 x86，原应用自身的 JNI 库仍然缺失，不能形成真实跨架构能力。
@@ -64,13 +66,13 @@ Host 报告同时列出 `runtime_available_abis`、`input_native_abis` 和 `outp
 
 ## Compatibility Impact
 
-无 Native 业务库的标准 Java/Kotlin 应用支持四 ABI。含 Native 库的应用只支持原 APK 已提供且属于四 ABI 集合的交集。ARM-only 保持 ARM-only；64-bit-only 不获得 32-bit 能力。未知 ABI 或 Native 打包冲突必须在 Host 写出前明确拒绝。
+无 Native 业务库的标准 Java/Kotlin 应用可注入四 ABI Runtime；具体设备兼容声明还必须命中 M3-04 的精确 `VERIFIED` API/ABI 格子。含 Native 库的应用只保留原 APK 已提供且属于四 ABI 集合的交集。ARM-only 保持 ARM-only；64-bit-only 不获得 32-bit 能力。未知 ABI 或 Native 打包冲突必须在 Host 写出前明确拒绝。
 
 ## Verification
 
 - CI 为四 ABI 构建相同 Runtime 版本并比较导出 JNI symbol 清单。
-- API 29 最低边界和最高声明 API 对四 ABI 执行启动用例。
-- 无 Native fixture 的输出含四 ABI 并分别启动。
+- M3-04 完整枚举 API 29 至锁定最高 API 的四 ABI 格子；只有真实执行的精确组合可标 `VERIFIED`，其余必须按 ADR 0012 标为 `UNVERIFIED`。
+- 无 Native fixture 的输出包含适用 Runtime ABI；强制可获得基线在对应真实进程分别启动。
 - ARM-only fixture 的输出只含输入 ARM ABI；在 x86-only 环境得到明确不兼容结果。
 - 对每种输入 ABI 子集验证 `output_effective_abis` 和实际 ZIP 条目一致。
 - 替换、删除或混用 Runtime `.so` 时在业务代码前失败。

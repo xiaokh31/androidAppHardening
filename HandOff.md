@@ -1,13 +1,13 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260816-002830
-updated_at: 2026-08-16T00:28:30+08:00
+handoff_id: HO-20260816-004237
+updated_at: 2026-08-16T00:42:37+08:00
 updated_by: /root
 state: active
 source_branch: chore/m3-05-performance-benchmarks
 base_commit: 930b759c99f330218dc4404368e9844e80456c82
-working_tree: clean
+working_tree: dirty
 current_milestone: M3
 active_task: M3-05
 next_owner: /root
@@ -24,7 +24,7 @@ Complete the bounded M3-05 size, Host, observed LOW cold-start, memory and test-
 - M3-05 correction `fba4da0bc8669374f0c73bb823a549d1160b38b9` proved the fixed archive and source-tree hashes on Ubuntu, then exposed that PowerShell cannot promote the upstream Unix symlink tree on that runner; Windows continued normally. The bounded replacement uses the repository's already proven Bash `tar/mv` path on Linux and retains PowerShell only on Windows, with identical immutable archive/source-tree validation.
 
 - M3-07 is complete. Final implementation freeze `90f754ea185a8633acd585d181ee108db016209d` passed independent review with `P0=0/P1=0/P2=0`; exact published head `4e77aa38b508a99c60a576e41804ba2d08b6b9fd` passed Build `31891662932` and Governance `31891662909` on Ubuntu/Windows. PR #62 merged with expected-head protection as `859cfa217b2fc0726cc001519967cdde606d2146`, Issue #61 closed, and post-merge `main@930b759c99f330218dc4404368e9844e80456c82` passed Build `31892091205` and Governance `31892091344`. No device, emulator or KVM ran for M3-07.
-- M3-05 remains active on `chore/m3-05-performance-benchmarks` with unique draft PR #63 linked to Issue #22. Prior exact head `438b3621e6a6978ad2f356e4175823f3bd557e40` passed Governance `31894406946` and Ubuntu/Windows Build `31894406924`. Ubuntu Host completed both fixed passes, but Windows exceeded the unchanged 10% repeatability gate in two independent attempts because wall-clock `hostProcessMs` included hosted-runner scheduling delay; no further retry is permitted. API 36 KVM `31894406945` reached the Android harness but AndroidX Macrobenchmark rejected the required emulator and intentionally non-profileable Release fixture before sampling. Correction `809a7d26e67185a515c3a9fcf4eeb619eaf708ee` defines `hostProcessMs` as fail-closed child CPU duration while retaining wall-clock diagnostics, and passes only the test-harness suppression list `EMULATOR,NOT-PROFILEABLE`; budgets, repeatability threshold and product safety controls are unchanged. Host compile/check, M3-07 mutation/contract, governance, strict HandOff and diff checks all pass locally. One replacement exact-head matrix remains, followed by exactly one API 29 ARM64 physical run only if remote results are stable. No local emulator will be started. `stash@{0}` remains a recovery backup until merge.
+- M3-05 remains active on `chore/m3-05-performance-benchmarks` with unique draft PR #63 linked to Issue #22. Correction `809a7d26e67185a515c3a9fcf4eeb619eaf708ee` and coordination head `193e124804d161b38ddf9c0fc82c2f15d5a84cdb` passed Governance `31895635883`, Ubuntu/Windows Build `31895635802`, and Host benchmark `31895635768`; both platforms passed two fixed runs, all budgets and the unchanged 10% repeatability gate. KVM `31895635822` passed its branch-limited API 29 job, while API 36 installed the first fixture and then proved a narrow package-visibility defect: Macrobenchmark could not resolve the installed target. The current dirty correction enumerates only the three synthetic M3-01 packages in the benchmark main/androidTest manifests, without `QUERY_ALL_PACKAGES` or product-manifest changes. One replacement KVM remains; successful Host/Build/Governance results are inherited across the manifest-only diff. Exactly one API 29 ARM64 physical run follows only if KVM is stable. No local emulator will be started. `stash@{0}` remains a recovery backup until merge.
 - M2-09 is merged and complete. Production implementation `9ba6ec28c7d1450c3ca51175f78e3aa2d292331f`, test remediation `dd78179f41c97aab7e3f38c0f571c4e6198f8939` and exact PR head `186dfd79ee4f32c749c4ccfdebf5bc82a3476637` passed independent `P0=0/P1=0/P2=0` review, Build `31862011459`, Governance `31862011393`, and API 29/36 KVM `31862011460`. PR #60 merged as `77b3aee7d88eaf4446ae780f20fe6988796609af`; final main coordination `e3a676ed2f4864d2b33077e1d00c300cf2a59817` passed Build `31863095498` and Governance `31863095500`.
 - M3-06 is complete. PR #57 merged with expected-head `8da49b52fc7c2ea65bf7f0a19b5804d9137130e6` as `a65433ae0bda651fc1088d187913b2dbfa7b02d1`; Issue #56 closed. Merger-ready and post-merge Ubuntu/Windows Build/Governance passed, while device/KVM/fuzz remained out of scope.
 - M3-04 resumed on draft PR #58 by merging verified `main@e3a676ed2f4864d2b33077e1d00c300cf2a59817` as `f152d34b314b9cbf89a3e10999d914f81e78a522`. Governance `31863503632` and Build `31863503635` passed on Ubuntu/Windows. KVM `31863503643` passed the complete API 36 x86_64 fixture, signer/tag negative, Runtime and cleanup matrix; API 29 passed five fixtures and then retained one exact configuration-relaunch observation `[provider.ready,startup_provider.create,activity.create,activity.create]`. M2-09 correctly allowed the second Activity construction, but the M3-04 runner still compared only the canonical single-Activity catalog list. The bounded correction accepts only one exact per-fixture Activity-recreation suffix on API 29, records catalog/normalized expected/observed sequences and `configuration_relaunch`, and rejects extra, reordered or non-API-29 duplicates. Kotlin contract tests, Node syntax/self-tests and diff checks pass locally; the coordination snapshot declares the post-commit tree clean.
@@ -1605,8 +1605,8 @@ None
 
 ## Ordered Next Actions
 
-1. Validate, commit and push the bounded Host CPU-duration and API 36 Macrobenchmark environment corrections, then run one replacement exact-head Governance, Build, Host and API 36 KVM matrix.
-2. Only after replacement Host and KVM results are stable, run exactly one API 29 ARM64 physical-device benchmark matrix; do not launch a local emulator or repeat unrelated historical suites.
+1. Validate, commit and push the three-package benchmark visibility correction, then retain only one replacement API 36 KVM run; inherit successful exact-parent Host, Build and Governance across the manifest-only diff.
+2. Only after replacement KVM is stable, run exactly one API 29 ARM64 physical-device benchmark matrix; do not launch a local emulator or repeat unrelated historical suites.
 3. Record exact commands, hashes, budgets, cleanup and known limitations; update README/task evidence, revalidate the evidence-only head, then merge PR #63 with expected-head protection and close Issue #22.
 
 ## Relevant Files and Artifacts

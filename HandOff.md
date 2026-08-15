@@ -1524,7 +1524,9 @@ Implement the revised M3-04 complete API/ABI inventory, verify the four availabl
 
 ## Blockers and Required Approvals
 
-None
+- User authorization is required for a separate bounded M2-01 Runtime lifecycle ADR/task/Issue/branch/PR. PR #58 cannot own the production Shell fix.
+- API 29 x86_64 failed the retained first attempt and single retry when an Activity configuration relaunch required a second component instantiation; no further M3-04 retry is permitted before the dependency fix merges.
+- The authorized API 29 physical device rejected both bounded first installs with `INSTALL_FAILED_USER_RESTRICTED`; the resumed ARM32/ARM64 campaign requires the user present to approve the OEM prompt.
 
 ## Ordered Next Actions
 

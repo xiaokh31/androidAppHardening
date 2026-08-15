@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260815-111347
-updated_at: 2026-08-15T11:13:47+08:00
+handoff_id: HO-20260815-112345
+updated_at: 2026-08-15T11:23:45+08:00
 updated_by: /root
 state: active
 source_branch: fix/m2-09-component-relaunch-lifecycle
@@ -22,7 +22,7 @@ Fix the API 29 same-process Shell Factory configuration-relaunch lifecycle under
 ## Current State
 
 - M2-09 is the only active task. User authorization created Issue #59 and branch `fix/m2-09-component-relaunch-lifecycle` from `main@a65433ae0bda651fc1088d187913b2dbfa7b02d1`. ADR 0013 and the task contract limit the fix to attaching a later Shell wrapper to the existing process-wide `READY` result with exact final-loader identity; Guard reopening, fallback, Host/container/ABI changes, ARM installation and M3-05 are excluded.
-- M2-09 implementation is frozen at `9ba6ec28c7d1450c3ca51175f78e3aa2d292331f`. Targeted bootstrap JVM/lint/androidTest, extracted/direct Release/R8 fixture packaging, the new bounded real `Activity.recreate()` compile path, architecture validator, Governance, strict HandOff and diff checks pass. No device or emulator ran; independent review and remote gates are still mandatory.
+- M2-09 production implementation is frozen at `9ba6ec28c7d1450c3ca51175f78e3aa2d292331f`. First independent review found no production defect but rejected that freeze with `P0=0/P1=0/P2=1` because the JVM suite did not drive the second Shell boundary across READY/mismatch/NEW/INSTALLING/FAILED. Test-only remediation `dd78179f41c97aab7e3f38c0f571c4e6198f8939` adds the exact matrix; targeted self-test and architecture verifier pass. No device or emulator ran; incremental review and remote gates remain mandatory.
 - M3-04 remains paused on draft PR #58 at remote blocker head `a290a6f678f90783ed6f7488c0b7956e78e612f7`. Retained API 29 KVM runs `31858315765` and `31859364008` completed the first custom-Factory sequence, then failed the Framework configuration relaunch with `AAH-RUNTIME-BOOT-COMPONENT`. API 36 passed historically; ARM install approval remains a later M3-04 gate. No third retry or local emulator is allowed before M2-09 merges.
 - The user authorized an independent ADR/task-contract revision after M3-04 proved impossible under its original 32-real-device-cell gate. Issue #56 and unique draft PR #57 contain the governance-only M3-06 change; no production/fixture code, device, KVM, fuzz, benchmark, or tool download is in scope.
 - M3-04 is safely paused on local branch `chore/m3-04-api-abi-matrix` at blocker commit `72a5fce85bbee5b0f1888028049f096487febb7e`. That snapshot records the available API 29 ARM32/ARM64 physical environment and pinned API 29/36 x86_64 images, plus the unavailable API 30-35/full-ABI combinations. It must not be pushed or resumed until M3-06 merges.
@@ -244,6 +244,7 @@ Fix the API 29 same-process Shell Factory configuration-relaunch lifecycle under
 
 - Preserved and pushed the M3-04 blocked snapshot `a290a6f678f90783ed6f7488c0b7956e78e612f7`, then switched to verified `main@a65433ae0bda651fc1088d187913b2dbfa7b02d1`. Created Issue #59 and branch `fix/m2-09-component-relaunch-lifecycle`; added the bounded M2-09 task contract and ADR 0013 before changing Runtime production code.
 - Frozen the minimal Runtime implementation as `9ba6ec28c7d1450c3ca51175f78e3aa2d292331f`: one synchronized READY-only lookup, final-loader identity attachment in later Shell wrappers, JVM/connected regressions and one bounded production M201 configuration relaunch. Repository-local targeted gates passed in under two minutes of executed Gradle work.
+- Archived first independent review as FAIL with only one test P2. Remediation `dd78179f41c97aab7e3f38c0f571c4e6198f8939` uses the existing JVM test-only allocation/reflection harness to exercise second-Shell READY identity, loader mismatch, NEW, reentrant INSTALLING and cached FAILED; it proves Guard open and Factory construct/hook counts do not increase. Production files are unchanged.
 - Created Issue #56 and branch `docs/m3-06-api-abi-validation-contract` from `main@1a2c2d8` after preserving the original M3-04 blocker on commit `72a5fce`. Added ADR 0012, the M3-06 task/evidence plan, and synchronized the M3-04 task, task index, compatibility matrix, test strategy, project plan, roadmap, ABI/ClassLoader ADR references, and M4 review contract. No executable file changed.
 - Frozen the governance implementation as `ef8785951a6bfe26cd54d48b687faf890ee8b039`; all bounded local checks passed and contract hashes were recorded. No device, KVM, fuzz, benchmark, Gradle, or download was executed.
 - Published the unique Issue #56 draft PR #57. Exact published head `6fea281b761c4da3b65343ef028a05b20546171c` passed Ubuntu/Windows Build `31855670237` and Governance `31855670231`; out-of-scope fuzz/equivalence were cancelled and no KVM/device workflow ran. Remote evidence is recorded for the merger-ready documentation successor.
@@ -401,14 +402,14 @@ Fix the API 29 same-process Shell Factory configuration-relaunch lifecycle under
 ### M2-09 local implementation freeze
 
 - task_id: M2-09
-- git_commit: 9ba6ec28c7d1450c3ca51175f78e3aa2d292331f
+- git_commit: dd78179f41c97aab7e3f38c0f571c4e6198f8939
 - command: architecture verifier; repository-local offline bootstrap JVM/lint/androidTest; extracted/direct M201 Release/R8 plus androidTest packaging; Release AAR; Governance; strict HandOff; diff check
 - exit_code: 0
 - environment: Windows x64; Eclipse Temurin 17.0.19+10; Gradle 9.5.0; Node.js 24.12.0; ignored repository-root toolchains; no emulator or physical device
-- timestamp: 2026-08-15T11:13:47+08:00
-- artifact: `docs/evidence/M2-09/local-validation.md`; bootstrap Release AAR; two M201 Release APKs; two M201 androidTest APKs
+- timestamp: 2026-08-15T11:23:45+08:00
+- artifact: `docs/evidence/M2-09/local-validation.md`; `docs/evidence/M2-09/security-review-1.md`; bootstrap Release AAR; two M201 Release APKs; two M201 androidTest APKs
 - sha256: 9c71b6519bec3095ad3217c39394a6a7ec8ebaffdb77b8b67838f7fbfa1a9490
-- result: PASS for bounded local gates; READY attachment preserves exact final-loader identity and one Guard/Factory hook, while the real configuration relaunch compiles into both device variants; independent review and remote KVM/CI remain pending
+- result: PASS for bounded local gates after first review remediation; review 1 rejected the prior freeze with P2=1 only for missing JVM state coverage, and `dd78179` closes that exact matrix without production changes; incremental review and remote KVM/CI remain pending
 
 ### M2-08 final acceptance and merge
 
@@ -1533,7 +1534,7 @@ Fix the API 29 same-process Shell Factory configuration-relaunch lifecycle under
 
 ## Ordered Next Actions
 
-1. Obtain an independent read-only security review of frozen implementation `9ba6ec28c7d1450c3ca51175f78e3aa2d292331f`; any finding requires a new freeze.
+1. Obtain an incremental independent read-only review of test-only remediation `dd78179f41c97aab7e3f38c0f571c4e6198f8939`; any open finding requires a new freeze.
 2. After all findings close, push one branch, create the unique Issue #59 draft PR and run exact-head Ubuntu/Windows Build/Governance plus one bounded API 29/36 KVM acceptance.
 3. Merge M2-09 with expected-head protection and pass post-merge gates.
 4. Resume M3-04 PR #58 from its preserved blocker head; do not start M3-05 first.
@@ -1543,6 +1544,7 @@ Fix the API 29 same-process Shell Factory configuration-relaunch lifecycle under
 - `docs/tasks/M2-09-shell-factory-relaunch-lifecycle.md`
 - `docs/adr/0013-shell-factory-relaunch-lifecycle.md`
 - `docs/evidence/M2-09/local-validation.md`
+- `docs/evidence/M2-09/security-review-1.md`
 - `runtime/bootstrap/src/main/java/ah/runtime/bootstrap/HardeningBootstrap.java`
 - `runtime/bootstrap/src/main/java/ah/runtime/bootstrap/ShellAppComponentFactory.java`
 - `runtime/bootstrap/src/test/java/ah/runtime/bootstrap/BootstrapSelfTest.java`

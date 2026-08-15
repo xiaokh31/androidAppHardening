@@ -128,6 +128,8 @@ Guard 只能从 `LoadedPayload.authenticatedMetadata()` 构造 `VerifiedStartupC
 
 `deny` 不属于 v0.1 环境风险引擎输出。signer、AEAD 和受认证完整性失败由独立 Guard 直接 fail closed，不能通过风险分数降低或覆盖。
 
+性能测试也不能向该生产策略增加强制结果入口。按 [ADR-0014](adr/0014-test-only-high-benchmark-boundary.md)，真实冷启动只记录未修改生产引擎观察到的 level/action；HIGH 额外成本由 Android-test fixture 对已认证、同一 owned handle 调用既有单调 profile 入口隔离测量，并明确不构成真实 HIGH 冷启动证据。manifest、BuildConfig、system property、文件标记、调试器或生产 setter 均不是合法 benchmark 输入。
+
 ### 4.5 Memory Exposure Controls
 
 控制包括按需解密、短生命周期缓冲、显式清零、避免内存重复副本、禁止明文落盘和减少敏感 crash 内容。这些控制不阻止拥有进程调试或内核能力的攻击者读取内存。

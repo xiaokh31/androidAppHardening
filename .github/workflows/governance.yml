@@ -52,11 +52,22 @@ jobs:
           node --check tools/governance/validate-project-package.mjs
           node --check tools/governance/hash-project-package.mjs
           node --check tools/governance/test-handoff-validator.mjs
+          node --check tools/governance/verify-m3-07-high-benchmark-contract.mjs
           node --check .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs
 
       - name: Validate project package
         shell: bash
-        run: node tools/governance/validate-project-package.mjs
+        run: |
+          node tools/governance/validate-project-package.mjs
+          node tools/governance/verify-m3-07-high-benchmark-contract.mjs
+          node tools/governance/verify-m3-07-high-benchmark-contract.mjs --self-test
+
+      - name: Enforce M3-07 zero production diff
+        if: github.event_name == 'pull_request' && github.head_ref == 'docs/m3-07-high-benchmark-contract'
+        shell: bash
+        env:
+          M307_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node tools/governance/verify-m3-07-high-benchmark-contract.mjs --base-ref "$M307_BASE_SHA"
 
       - name: Validate HandOff on pull request
         if: github.event_name == 'pull_request'

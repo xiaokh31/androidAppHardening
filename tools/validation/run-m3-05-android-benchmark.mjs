@@ -5,6 +5,22 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+if (process.argv.length === 3 && process.argv[2] === "--self-test") {
+  requireSuccessfulInstrumentation({ stdout: "OK (1 test)\n", stderr: "" }, "success-without-final-code");
+  requireSuccessfulInstrumentation({ stdout: "OK (1 test)\nINSTRUMENTATION_CODE: -1\n", stderr: "" }, "legacy-success");
+  for (const stdout of ["", "FAILURES!!!\n", "Error in startupAndMemory\n", "INSTRUMENTATION_CODE: -1\n"]) {
+    let rejected = false;
+    try {
+      requireSuccessfulInstrumentation({ stdout, stderr: "" }, "negative");
+    } catch {
+      rejected = true;
+    }
+    if (!rejected) throw new Error("instrumentation marker self-test accepted an invalid result");
+  }
+  console.log("OK: M3-05 instrumentation success markers");
+  process.exit(0);
+}
+
 const args = new Map();
 for (let index = 2; index < process.argv.length; index += 2) args.set(process.argv[index], process.argv[index + 1]);
 for (const key of ["--adb", "--benchmark-apk", "--test-apk", "--targets", "--output"]) {
@@ -47,6 +63,18 @@ function install(apk) {
 function uninstall(packageName) {
   run(["uninstall", packageName], { allowFailure: true, timeout: 30_000 });
   installed.delete(packageName);
+}
+
+function removePrivateResult(fileName) {
+  run(["shell", "run-as", benchmarkPackage, "rm", "-f", `files/${fileName}`]);
+}
+
+function requireSuccessfulInstrumentation(result, label) {
+  if (!result.stdout.includes("OK (1 test)") ||
+      result.stdout.includes("FAILURES!!!") ||
+      result.stdout.includes("Error in ")) {
+    throw new Error(`${label} instrumentation failed: ${sanitize(result.stdout)} ${sanitize(result.stderr)}`);
+  }
 }
 
 function percentile(values, quantile) {
@@ -177,6 +205,7 @@ try {
       uninstall(packageName);
       install(apk);
       installed.add(packageName);
+      removePrivateResult("m3-05-result.json");
       const instrumentation = run([
         "shell", "am", "instrument", "-w",
         "-e", "androidx.benchmark.suppressErrors", "EMULATOR,NOT-PROFILEABLE",
@@ -186,9 +215,7 @@ try {
         "-e", "mode", mode,
         instrumentationComponent,
       ], { timeout: 360_000, recordOutput: false });
-      if (!instrumentation.stdout.includes("INSTRUMENTATION_CODE: -1")) {
-        throw new Error(`${fixtureId}/${mode} instrumentation failed: ${sanitize(instrumentation.stdout)} ${sanitize(instrumentation.stderr)}`);
-      }
+      requireSuccessfulInstrumentation(instrumentation, `${fixtureId}/${mode}`);
       const pulled = run(["exec-out", "run-as", "ah.benchmarks.android", "cat", "files/m3-05-result.json"]);
       const value = JSON.parse(pulled.stdout);
       if (value.fixtureId !== fixtureId || value.mode !== mode || value.sampleCount !== 30) throw new Error("benchmark result identity mismatch");
@@ -200,6 +227,7 @@ try {
       if (mode === "protected") {
         for (let sampleIndex = 0; sampleIndex < 30; sampleIndex++) {
           run(["shell", "am", "force-stop", benchmarkPackage]);
+          removePrivateResult("m3-05-high-result.json");
           const highInstrumentation = run([
             "shell", "am", "instrument", "-w",
             "-e", "class", "ah.benchmarks.android.M305HighProfileBridge#isolatedHighUpgrade",
@@ -207,9 +235,7 @@ try {
             "-e", "targetPackage", packageName,
             instrumentationComponent,
           ], { timeout: 120_000, recordOutput: false });
-          if (!highInstrumentation.stdout.includes("INSTRUMENTATION_CODE: -1")) {
-            throw new Error(`${fixtureId} isolated HIGH sample ${sampleIndex} failed`);
-          }
+          requireSuccessfulInstrumentation(highInstrumentation, `${fixtureId} isolated HIGH sample ${sampleIndex}`);
           const highPulled = run(["exec-out", "run-as", "ah.benchmarks.android", "cat", "files/m3-05-high-result.json"]);
           high[fixtureId].push(JSON.parse(highPulled.stdout));
         }

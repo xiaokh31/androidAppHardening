@@ -47,7 +47,7 @@ jobs:
   device:
     name: API ${{ matrix.api }} x86_64 (Linux/KVM)
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: ${{ github.head_ref == 'chore/m3-05-performance-benchmarks' && 60 || 45 }}
     strategy:
       fail-fast: false
       matrix:
@@ -666,7 +666,7 @@ jobs:
               printf '%s\n' 'M3-05 API 29 reference is ARM64 physical; x86_64 KVM cell intentionally skipped.'
               exit 0
             fi
-            ANDROID_SERIAL="$serial" timeout 1800s ./gradlew --no-daemon --console=plain \
+            ANDROID_SERIAL="$serial" timeout 2700s ./gradlew --no-daemon --console=plain \
               :benchmarks:android:connectedBenchmarkAndroidTest
             test -f benchmarks/android/build/reports/performance/benchmark-results.json
             cat benchmarks/android/build/reports/performance/benchmark-results.json

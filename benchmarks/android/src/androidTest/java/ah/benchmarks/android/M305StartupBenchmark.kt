@@ -36,6 +36,7 @@ class M305StartupBenchmark {
         }
 
         val samples = CopyOnWriteArrayList<Sample>()
+        val observations = CopyOnWriteArrayList<StartupObservation>()
         benchmarkRule.measureRepeated(
             packageName = packageName,
             metrics = listOf(StartupTimingMetric()),
@@ -48,6 +49,7 @@ class M305StartupBenchmark {
             memory.start()
             startActivityAndWait(Intent().setClassName(packageName, "ah.fixtures.android.m301.FixtureActivity"))
             val timing = awaitTiming(packageName)
+            observations += timing
             val stableAt = timing.interactiveMs + 5_000L
             while (SystemClock.elapsedRealtime() < stableAt) SystemClock.sleep(20)
             memory.stop()
@@ -60,10 +62,10 @@ class M305StartupBenchmark {
                 stable.first,
             )
         }
-        require(samples.size == 30) { "wrong M3-05 Android sample count" }
-        val observation = awaitTiming(packageName)
+        require(samples.size == 30 && observations.size == 30) { "wrong M3-05 Android sample count" }
+        val observation = observations.last()
         if (mode == "protected") {
-            require(observation.observedLevel == "LOW" && observation.observedAction == "ALLOW") {
+            require(observations.all { it.observedLevel == "LOW" && it.observedAction == "ALLOW" }) {
                 "fixed reference environment is not LOW/ALLOW"
             }
         }

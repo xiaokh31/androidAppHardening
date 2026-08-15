@@ -19,13 +19,14 @@ public final class BootstrapSelfTest {
     public static void main(String[] args) throws Exception {
         readyWithoutFactory();
         customFactoryAndCache();
+        terminalReadyAttachment();
         concurrentInstallOnce();
         failuresCloseOnceAndCache();
         cleanupFailureDoesNotReplacePrimary();
         configurationFailures();
         reentryFailsClosed();
         metadataIsIgnored();
-        System.out.println("M2-01 bootstrap self-test PASS (9 groups)");
+        System.out.println("M2-09 bootstrap self-test PASS (10 groups)");
     }
 
     private static void readyWithoutFactory() {
@@ -53,6 +54,31 @@ public final class BootstrapSelfTest {
         same(adapter.finalLoader, result.finalClassLoader(), "delegated final loader");
         same(adapter.factory, result.originalFactory(), "retained original factory");
         require(result.owner() != null, "READY did not retain session owner");
+    }
+
+    private static void terminalReadyAttachment() {
+        FakeSession session = new FakeSession("a.b.OriginalFactory");
+        FakeAdapter adapter = new FakeAdapter();
+        AtomicInteger opens = new AtomicInteger();
+        HardeningBootstrap.Coordinator coordinator = new HardeningBootstrap.Coordinator(
+                (loader, info) -> {
+                    opens.incrementAndGet();
+                    return session;
+                }, adapter);
+        require(coordinator.readyResult() == null, "NEW exposed a READY result");
+        BootstrapResult ready = coordinator.install(SHELL, info(null));
+        same(ready, coordinator.readyResult(), "terminal READY attachment identity");
+        equal(1, opens.get(), "READY attachment reopened Guard");
+        equal(1, adapter.createCount.get(), "READY attachment reconstructed factory");
+        equal(1, adapter.delegateCount.get(), "READY attachment repeated factory hook");
+
+        FakeSession failedSession = new FakeSession("a.b.OriginalFactory");
+        FakeAdapter failedAdapter = new FakeAdapter();
+        failedAdapter.mode = "hook";
+        HardeningBootstrap.Coordinator failed = coordinator(failedSession, failedAdapter);
+        equal(BootstrapResult.Status.FAILURE,
+                failed.install(SHELL, info(null)).status(), "failed terminal status");
+        require(failed.readyResult() == null, "FAILED exposed a READY result");
     }
 
     private static void concurrentInstallOnce() throws Exception {

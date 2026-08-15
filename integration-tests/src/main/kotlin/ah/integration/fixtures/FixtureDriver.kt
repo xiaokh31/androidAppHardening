@@ -288,6 +288,7 @@ object FixtureDriver {
                 output.toString(), mutations.toString(),
             ),
             Duration.ofMinutes(1),
+            workingDirectory = repository,
         ).exit == 0 && Files.isRegularFile(tampered)) { "authenticated tag mutation failed" }
         credentials.sign(tools, tampered, signedTampered)
         val packageName = packageName(fixture.id)
@@ -508,11 +509,18 @@ object FixtureDriver {
 
     private data class Result(val exit: Int, val output: String)
 
-    private fun run(command: List<String>, timeout: Duration, allowFailure: Boolean = false): Result {
+    private fun run(
+        command: List<String>,
+        timeout: Duration,
+        allowFailure: Boolean = false,
+        workingDirectory: Path? = null,
+    ): Result {
         val actual = if (isWindows() && command.first().endsWith(".bat", ignoreCase = true)) {
             listOf("cmd.exe", "/d", "/c") + command
         } else command
-        val process = ProcessBuilder(actual).redirectErrorStream(true).start()
+        val builder = ProcessBuilder(actual).redirectErrorStream(true)
+        workingDirectory?.let { builder.directory(it.toFile()) }
+        val process = builder.start()
         val captured = ByteArrayOutputStream()
         val readFailure = AtomicReference<Throwable?>()
         val reader = Thread({

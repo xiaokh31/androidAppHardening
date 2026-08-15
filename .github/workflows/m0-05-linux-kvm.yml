@@ -981,11 +981,12 @@ jobs:
             "build/m3-02/device-api${API}-x86_64/fuzz-summary.json"
 
           if [[ "${GITHUB_HEAD_REF:-${GITHUB_REF_NAME:-}}" = "chore/m3-04-api-abi-matrix" ]]; then
+            source_commit="${{ github.event.pull_request.head.sha || github.sha }}"
             node tools/device-capability-probe/index.mjs cell \
               --api "$API" \
               --abi x86_64 \
               --platform "api${API}-x86_64-linux-kvm" \
-              --source-commit "$GITHUB_SHA" \
+              --source-commit "$source_commit" \
               --fixture-report "build/m3-04/device-api${API}-x86_64/fixture-results.json" \
               --runtime-report "build/m2-04/device-api${API}-x86_64/x86_64/evidence/report.json" \
               --signer-report "build/m2-03/device-api${API}-x86_64/signer-matrix/signer-matrix-report.json" \

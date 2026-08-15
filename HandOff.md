@@ -1,12 +1,12 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260815-230234
-updated_at: 2026-08-15T23:02:34+08:00
+handoff_id: HO-20260815-231219
+updated_at: 2026-08-15T23:12:19+08:00
 updated_by: /root
 state: active
-source_branch: docs/m3-07-high-benchmark-contract
-base_commit: 3584b379f6abd1ba85726831aa1f68a2fac4183b
+source_branch: main
+base_commit: 859cfa217b2fc0726cc001519967cdde606d2146
 working_tree: clean
 current_milestone: M3
 active_task: M3-07
@@ -17,11 +17,11 @@ next_owner: /root
 
 ## Objective
 
-Define and merge the bounded M3-07 test-only HIGH benchmark contract without adding a product risk override or executing the M3-05 device matrix.
+Close M3-07 on main, verify the post-merge coordination gate, and restore the saved M3-05 worktree without rerunning M3-07 device work.
 
 ## Current State
 
-- M3-07 is active on `docs/m3-07-high-benchmark-contract` from exact `main@3584b379f6abd1ba85726831aa1f68a2fac4183b`, associated only with Issue #61. ADR 0014 separates unmodified `observed_cold_start` release evidence from fixture-only `isolated_high_upgrade` cost evidence and adds no Runtime API. Independent review rejected frozen `ab166d0ad396c11595ad3d7a5d6bef5b14f44635` with `P0=0/P1=2/P2=0`; incremental review rejected `56c5473713e4e9d6196aca1577cc42a129677fbe` with `P0=0/P1=1/P2=0`. Final implementation freeze `90f754ea185a8633acd585d181ee108db016209d` closes both review rounds: product `src/main` and `src/release` surfaces share one base-diff predicate, formal `--report` validation is mandatory, 10 surface plus 20 serialized-report negatives fail closed, and final independent review is `P0=0/P1=0/P2=0`. The unfinished M3-05 worktree remains safely stored as `stash@{0}`.
+- M3-07 is merged and closing on `main`. Final implementation freeze `90f754ea185a8633acd585d181ee108db016209d` passed independent review with `P0=0/P1=0/P2=0`; exact published head `4e77aa38b508a99c60a576e41804ba2d08b6b9fd` passed Build `31891662932` and Governance `31891662909` on Ubuntu/Windows. PR #62 merged with expected-head protection as `859cfa217b2fc0726cc001519967cdde606d2146`, Issue #61 closed, and out-of-scope Fuzz/equivalence runs were cancelled. No device, emulator or KVM ran. The unfinished M3-05 worktree remains safely stored as `stash@{0}` until this main coordination commit passes.
 - M2-09 is merged and complete. Production implementation `9ba6ec28c7d1450c3ca51175f78e3aa2d292331f`, test remediation `dd78179f41c97aab7e3f38c0f571c4e6198f8939` and exact PR head `186dfd79ee4f32c749c4ccfdebf5bc82a3476637` passed independent `P0=0/P1=0/P2=0` review, Build `31862011459`, Governance `31862011393`, and API 29/36 KVM `31862011460`. PR #60 merged as `77b3aee7d88eaf4446ae780f20fe6988796609af`; final main coordination `e3a676ed2f4864d2b33077e1d00c300cf2a59817` passed Build `31863095498` and Governance `31863095500`.
 - M3-06 is complete. PR #57 merged with expected-head `8da49b52fc7c2ea65bf7f0a19b5804d9137130e6` as `a65433ae0bda651fc1088d187913b2dbfa7b02d1`; Issue #56 closed. Merger-ready and post-merge Ubuntu/Windows Build/Governance passed, while device/KVM/fuzz remained out of scope.
 - M3-04 resumed on draft PR #58 by merging verified `main@e3a676ed2f4864d2b33077e1d00c300cf2a59817` as `f152d34b314b9cbf89a3e10999d914f81e78a522`. Governance `31863503632` and Build `31863503635` passed on Ubuntu/Windows. KVM `31863503643` passed the complete API 36 x86_64 fixture, signer/tag negative, Runtime and cleanup matrix; API 29 passed five fixtures and then retained one exact configuration-relaunch observation `[provider.ready,startup_provider.create,activity.create,activity.create]`. M2-09 correctly allowed the second Activity construction, but the M3-04 runner still compared only the canonical single-Activity catalog list. The bounded correction accepts only one exact per-fixture Activity-recreation suffix on API 29, records catalog/normalized expected/observed sequences and `configuration_relaunch`, and rejects extra, reordered or non-API-29 duplicates. Kotlin contract tests, Node syntax/self-tests and diff checks pass locally; the coordination snapshot declares the post-commit tree clean.
@@ -197,7 +197,7 @@ Define and merge the bounded M3-07 test-only HIGH benchmark contract without add
 | M2-09 | `/root` | `main` | done | M2-01 | PR #60 merged; exact-head review, dual-platform CI and API 29/36 KVM passed; README/evidence synchronized |
 | M3-06 | `/root` | `main` | done | M0-03, M2-04, M3-01, M3-02 | PR #57 merged as `a65433a`; claim-boundary contract is active |
 | M3-04 | `/root` | `main` | done | M0-03, M2-04, M2-09, M3-01, M3-02, M3-06 | PR #58 merged; mandatory real-process cells and final main gates passed |
-| M3-07 | `/root` | `docs/m3-07-high-benchmark-contract` | in_progress | M2-05, M2-06, M3-01 | Publish the reviewed evidence head and pass Ubuntu/Windows Build/Governance |
+| M3-07 | `/root` | `main` | in_progress | M2-05, M2-06, M3-01 | Push post-merge README/evidence/HandOff and pass main Build/Governance |
 | M3-03 | `/root` | `main` | done | M0-03, M1-05, M1-06, M2-06, M3-01 | PR #55 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | done | M2-02 | PR #54 merged; exact regression, ASan/UBSan, dual-platform Build/Governance and independent review passed |
 | M3-02 | `/root` | `main` | done | M1-03, M1-04, M1-06, M2-02, M2-03, M2-06, M2-08, M3-01 | PR #52 merged; README/evidence synchronized; wait for next task selection |
@@ -406,6 +406,18 @@ Define and merge the bounded M3-07 test-only HIGH benchmark contract without add
 - M2-02 第三实现层已完成本地检查点：同一 `sourceDir` 只读文件映射、OS 只读 DEX commit、generation+slot 类型化 JNI handle、同 handle `AHMD` 认证 metadata、精确五 JNI 方法、Java primitive/finally 交接窗口、幂等 `LoadedPayload` owner，以及 M0-05 等价 Native 搜索路径和三参数 API 29 `InMemoryDexClassLoader` 已接通。Java 17 编译/lint、NDK 四 ABI warnings-as-errors 与离线根 `assembleRelease check` 284-task 均 PASS，四个 ELF 都含唯一 104-byte alloc/read-only `.ah_share_v1`，未启动设备或模拟器。证据更新于 `docs/evidence/M2-02/local-validation.md`；任务仍未完成或发布，下一步仅补 failure injection、Host sanitizer/fuzz/OOM 与已授权 KVM/arm64 验收，不启动 M2-03。
 
 ## Verification Evidence
+
+### M3-07 test-only HIGH benchmark contract
+
+- task_id: M3-07
+- git_commit: 4e77aa38b508a99c60a576e41804ba2d08b6b9fd
+- command: 10 production-surface and 20 serialized-report mutations; base-to-HEAD zero-production diff; project governance; strict HandOff; independent read-only review; exact-head Build `31891662932`; Governance `31891662909`; expected-head merge of PR #62
+- exit_code: 0
+- environment: Windows local governance; GitHub Ubuntu 24.04 and Windows 2025; no device, emulator, KVM, physical installation, Fuzz or cross-platform equivalence acceptance
+- timestamp: 2026-08-15T23:10:49+08:00
+- artifact: `docs/evidence/M3-07/local-validation.md`; `docs/evidence/M3-07/security-review-1.md`; `docs/evidence/M3-07/security-review-2.md`; `docs/evidence/M3-07/security-review-3.md`; `docs/evidence/M3-07/remote-validation.md`; PR #62; merge `859cfa217b2fc0726cc001519967cdde606d2146`
+- sha256: 7bbd807ac243164f778a638345d751547cf6fd5338c60c88cc83345a0124234d
+- result: PASS; ADR 0014 separates unmodified observed Release cold starts from fixture-only isolated HIGH upgrades, adds no product trigger/API, and the reviewed production/report gates fail closed with P0/P1/P2 all zero
 
 ### M3-04 mandatory cells and complete matrix
 
@@ -1589,9 +1601,9 @@ None
 
 ## Ordered Next Actions
 
-1. Commit the final all-zero review and local validation as an evidence-only child of implementation freeze `90f754ea185a8633acd585d181ee108db016209d`.
-2. Push the unique Issue #61 branch, create its sole draft PR, and pass exact-head Ubuntu/Windows Build/Governance.
-3. Merge with expected-head protection, then restore `chore/m3-05-performance-benchmarks` and `stash@{0}` without running device/KVM for M3-07.
+1. Commit and push this post-merge README, remote evidence and HandOff coordination snapshot to `main`.
+2. Pass the resulting main Ubuntu/Windows Build/Governance without running device/KVM/Fuzz/equivalence.
+3. Restore `chore/m3-05-performance-benchmarks`, integrate updated `main`, and apply `stash@{0}` exactly once before resuming M3-05.
 
 ## Relevant Files and Artifacts
 
@@ -1607,6 +1619,7 @@ None
 - `docs/evidence/M3-07/security-review-2.md`
 - `docs/evidence/M3-07/security-review-3.md`
 - `docs/evidence/M3-07/local-validation.md`
+- `docs/evidence/M3-07/remote-validation.md`
 - Issue #61
 - `docs/tasks/M2-09-shell-factory-relaunch-lifecycle.md`
 - `docs/adr/0013-shell-factory-relaunch-lifecycle.md`

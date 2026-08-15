@@ -52,11 +52,15 @@ jobs:
           node --check tools/governance/validate-project-package.mjs
           node --check tools/governance/hash-project-package.mjs
           node --check tools/governance/test-handoff-validator.mjs
+          node --check tools/governance/verify-m3-07-high-benchmark-contract.mjs
           node --check .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs
 
       - name: Validate project package
         shell: bash
-        run: node tools/governance/validate-project-package.mjs
+        run: |
+          node tools/governance/validate-project-package.mjs
+          node tools/governance/verify-m3-07-high-benchmark-contract.mjs
+          node tools/governance/verify-m3-07-high-benchmark-contract.mjs --self-test
 
       - name: Validate HandOff on pull request
         if: github.event_name == 'pull_request'

@@ -47,6 +47,7 @@ const expectedTasks = [
   "M2-08-native-parser-topology-bounds.md",
   "M2-09-shell-factory-relaunch-lifecycle.md",
   "M3-06-api-abi-validation-claim-contract.md",
+  "M3-07-test-only-high-benchmark-contract.md",
 ];
 
 const taskHeadings = [
@@ -191,6 +192,8 @@ if (!fs.existsSync(indexFile)) {
             ? "59"
           : id === "M3-06"
             ? "56"
+          : id === "M3-07"
+            ? "61"
           : String(expectedTasks.indexOf(expectedFile) + 1);
     if (!issueMatch || issueMatch[1] !== issueMatch[2] || issueMatch[1] !== expectedIssue) {
       errors.push(`docs/tasks/INDEX.md: ${id} must link its GitHub Issue`);
@@ -372,6 +375,7 @@ for (const tool of [
   "tools/governance/validate-project-package.mjs",
   "tools/governance/hash-project-package.mjs",
   "tools/governance/test-handoff-validator.mjs",
+  "tools/governance/verify-m3-07-high-benchmark-contract.mjs",
 ]) {
   if (!fs.existsSync(path.join(root, tool))) errors.push(`Missing governance tool: ${tool}`);
 }
@@ -407,6 +411,7 @@ const expectedAdrs = [
   "docs/adr/0011-memory-exposure-controls.md",
   "docs/adr/0012-api-abi-validation-claim-boundary.md",
   "docs/adr/0013-shell-factory-relaunch-lifecycle.md",
+  "docs/adr/0014-test-only-high-benchmark-boundary.md",
 ];
 const adrHeadings = [
   "## Status",

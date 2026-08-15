@@ -9,6 +9,7 @@ depends_on:
   - M2-04
   - M2-06
   - M3-01
+  - M3-07
 required_skills:
   - validate-protected-apk
 security_sensitive: false
@@ -28,6 +29,7 @@ security_sensitive: false
 - M2-04 四 ABI Runtime Release 产物。
 - M3-01 的 `java-single-dex`、`kotlin-multidex` 和 `jni-four-abi` fixture。
 - 锁定的 benchmark 环境与测试工具版本。
+- M3-07 与 ADR 0014 固定的真实冷启动/隔离 HIGH 增量测量边界。
 
 ## Expected Outputs
 
@@ -44,7 +46,7 @@ security_sensitive: false
 - Windows/Ubuntu Host 处理时间与峰值 RSS。
 - Android 从 process start 到 `Application.onCreate`、从 process start 到首个测试 Activity 可交互的 P50/P95。
 - 启动窗口峰值 PSS、启动窗口 Native heap 峰值和启动完成 5 秒后的稳定 PSS 的 P50/P95。
-- `LOW` 和 `HIGH` 风险策略的额外启动成本。
+- 未修改生产策略的 `LOW` 真实冷启动成本，以及通过测试专用边界测得、单独报告的 `HIGH` profile 增量成本。
 
 ## Out of Scope
 
@@ -63,11 +65,14 @@ security_sensitive: false
 - 大小分项字段固定为 `bootstrapDexBytes`、`selectedRuntimeAbiBytes`、`fourAbiRuntimeBaselineBytes`、`containerMetadataBytes`、`encryptedPayloadBytes` 和 `zipStructureDeltaBytes`。对实际未签名输出，适用分项与输入大小必须无遗漏地调和到输出总字节数；四 ABI 全集基准单独报告，不重复计入单 ABI 实际输出。
 - Host 对 100 MiB 合成输入的处理 median 不超过 60 秒、峰值 RSS 不超过 1 GiB；输入文件前后 SHA-256 必须相同。
 - 高风险策略的额外延迟需单列，M2-06 固定抖动仍必须落在 20–50 ms，不从冷启动总开销中剔除。
+- Android 测量模式固定为 `observed_cold_start` 与 `isolated_high_upgrade`。前者只能运行未修改的生产风险引擎，并在启动计时停止后记录 `riskObservationTiming=post_start` 与另行观察到的 level/action；它不声称读取 Guard 私有的早期报告，固定 reference profile 若非 LOW 则按环境不可比失败。后者每个样本先 force-stop 到新进程，只能由 Android-test fixture 对新鲜、已认证、同一 owned handle 调用现有 `MemoryProfile.HIGH`，且必须发生在任何 fixture class/resource lookup 前。
+- `isolated_high_upgrade` 单独报告 `highProfileIncrementalMs`、Native jitter、same-handle、lookup 与 cleanup 证据。Native jitter 每个样本必须在 20–50 ms，wall-clock 每个样本不得超过 250 ms；其 P50/P95 不得称为真实 HIGH 冷启动，也不得与 LOW 相加后作为发布门禁。
+- 禁止为 benchmark 新增生产 manifest/BuildConfig/system property/intent/file/environment override、风险 setter 或新的 public/package-private Runtime API。测试 bridge 与 keep 规则只能存在于 Android-test/M3-05 fixture source set，且必须证明未进入 Runtime AAR、生产 fixture APK、CLI 或 distribution 产物。
 
 ## Public Interfaces
 
 - Gradle 入口 `:benchmarks:host:jmh` 与 `:benchmarks:android:connectedBenchmarkAndroidTest`。
-- `benchmark-results.json` 字段为 `fixtureId`、`environmentId`、`metric`、`samples`、`p50`、`p95`、`baseline`、`delta`、`budget` 和 `pass`；`metric` 固定枚举 `hostProcessMs`、`hostPeakRssBytes`、`processToApplicationOnCreateMs`、`processToInteractiveMs`、`peakPssBytes`、`nativeHeapPeakBytes`、`stablePssBytes`。
+- `benchmark-results.json` 字段为 `fixtureId`、`environmentId`、`measurementMode`、`observedRiskLevel`、`observedRiskAction`、`riskObservationTiming`、`metric`、`samples`、`p50`、`p95`、`baseline`、`delta`、`budget` 和 `pass`；`metric` 固定枚举 `hostProcessMs`、`hostPeakRssBytes`、`processToApplicationOnCreateMs`、`processToInteractiveMs`、`peakPssBytes`、`nativeHeapPeakBytes`、`stablePssBytes`、`highProfileIncrementalMs` 和 `nativeJitterMs`。HIGH 隔离记录另含 `sameHandle`、`lookupCountBeforeUpgrade`、`lookupCountAfterUpgrade` 与 `cleanupPassed`；不适用字段显式为 `null`，不得省略或伪造。
 - 每个 fixture 另有 `artifactSizes`，固定包含 `inputSignedApkBytes`、`outputUnsignedApkBytes`、`outputExternallySignedApkBytes` 和上述六个 `sizeBreakdown` 字段。
 - 环境文件 `benchmarks/environment.json` 与汇总 `build/reports/benchmark-summary.md`。
 - 失败时进程退出码固定为非零且列出超预算 metric。
@@ -75,6 +80,7 @@ security_sensitive: false
 ## Security Constraints
 
 - benchmark 不关闭签名/容器完整性、AEAD、四 ABI 或内存控制。
+- benchmark 不伪造风险报告；测试专用 HIGH bridge 不进入产品接口或分发产物，且不得把隔离 profile 增量表述为真实环境 HIGH 冷启动。
 - Android 安装仅使用 M3-01 的外部一次性非生产证书；产品永不签名，证书私钥不提交。
 - 报告不记录设备序列号、用户绝对路径、密钥或明文 DEX。
 - 结果必须同时披露成本与残余安全边界，不把性能数据表述为绝对防御能力。
@@ -99,7 +105,7 @@ security_sensitive: false
 
 - 统计器、单位换算、预算边界、缺失样本和异常值标注测试。
 - 三类 fixture 的 Host 三种 APK 大小、六项大小分解、耗时与 RSS benchmark。
-- 两个 reference profile 的两个启动终点、peak/stable PSS、Native heap peak 与 LOW/HIGH 策略 benchmark。
+- 两个 reference profile 的两个真实 LOW 启动终点、peak/stable PSS 与 Native heap peak，以及隔离 HIGH profile 的同 handle、零预查找、20–50 ms jitter、250 ms wall bound、后置查找和 exactly-once cleanup benchmark。
 - x86/x86_64 不自动进入高风险以及输入只读回归测试。
 
 ## Required Evidence

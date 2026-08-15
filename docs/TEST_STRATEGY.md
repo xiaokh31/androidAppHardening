@@ -195,6 +195,8 @@ M3-05 对每个基准 fixture 至少执行 30 次冷启动，分别报告未加�
 - 输入 APK、输出未签名 APK 和外部签名后 APK 大小；
 - bootstrap、实际注入 Runtime ABI、四 ABI 全集基准和 container metadata 的分项增量。
 
+Android 成本按 ADR 0014 分成两个不可混淆的 measurement mode。`observed_cold_start` 只能运行未修改的 Release/R8 生产风险引擎；启动计时停止后另行记录 `riskObservationTiming=post_start` 与 risk level/action，不声称读取 Guard 私有的早期报告，固定 reference profile 若非 LOW 则环境不可比。`isolated_high_upgrade` 的每个样本必须来自 force-stop 后的新进程，只能在 Android-test fixture 中对新鲜、已认证、同一 owned handle 调用既有 `MemoryProfile.HIGH`，在任何 fixture class/resource lookup 前计时并单独报告 `highProfileIncrementalMs`、20–50 ms Native jitter、250 ms wall bound、后置 lookup 和 exactly-once cleanup。隔离结果不得称为真实 HIGH 冷启动，不得与 LOW 相加后作为发布门禁；测试 bridge、keep 与触发控制不得进入 Runtime AAR 或任何产品/分发产物。
+
 测试设备在同一对比组中保持型号、系统镜像、电源模式和后台负载配置一致。异常值规则和统计脚本版本必须写入报告。预算由 M3-05 形成基线后作为发布配置入库，任何调整需要评审记录。
 
 ## 8. 测试证据格式

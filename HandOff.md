@@ -1,15 +1,15 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260815-135251
-updated_at: 2026-08-15T13:52:51+08:00
+handoff_id: HO-20260815-223446
+updated_at: 2026-08-15T22:34:46+08:00
 updated_by: /root
 state: active
-source_branch: main
-base_commit: d29664129be659cbc3deeda86be8c50c4f7250dd
+source_branch: docs/m3-07-high-benchmark-contract
+base_commit: 3584b379f6abd1ba85726831aa1f68a2fac4183b
 working_tree: clean
 current_milestone: M3
-active_task: M3-04
+active_task: M3-07
 next_owner: /root
 ---
 
@@ -17,10 +17,11 @@ next_owner: /root
 
 ## Objective
 
-Close merged M3-04 on `main` with synchronized README/evidence, strict HandOff, Governance and final Ubuntu/Windows Build before starting M3-05.
+Define and merge the bounded M3-07 test-only HIGH benchmark contract without adding a product risk override or executing the M3-05 device matrix.
 
 ## Current State
 
+- M3-07 is active on `docs/m3-07-high-benchmark-contract` from exact `main@3584b379f6abd1ba85726831aa1f68a2fac4183b`, associated only with Issue #61. ADR 0014 separates unmodified `observed_cold_start` release evidence from fixture-only `isolated_high_upgrade` cost evidence. The contract forbids production manifest/property/file/BuildConfig/setter overrides and adds no Runtime API. The 20-negative mutation suite, project governance, strict HandOff, link/UTF-8/diff/sensitive scans and production-diff exclusion pass locally. The unfinished M3-05 worktree is safely stored as `stash@{0}` and will be restored only after M3-07 merges.
 - M2-09 is merged and complete. Production implementation `9ba6ec28c7d1450c3ca51175f78e3aa2d292331f`, test remediation `dd78179f41c97aab7e3f38c0f571c4e6198f8939` and exact PR head `186dfd79ee4f32c749c4ccfdebf5bc82a3476637` passed independent `P0=0/P1=0/P2=0` review, Build `31862011459`, Governance `31862011393`, and API 29/36 KVM `31862011460`. PR #60 merged as `77b3aee7d88eaf4446ae780f20fe6988796609af`; final main coordination `e3a676ed2f4864d2b33077e1d00c300cf2a59817` passed Build `31863095498` and Governance `31863095500`.
 - M3-06 is complete. PR #57 merged with expected-head `8da49b52fc7c2ea65bf7f0a19b5804d9137130e6` as `a65433ae0bda651fc1088d187913b2dbfa7b02d1`; Issue #56 closed. Merger-ready and post-merge Ubuntu/Windows Build/Governance passed, while device/KVM/fuzz remained out of scope.
 - M3-04 resumed on draft PR #58 by merging verified `main@e3a676ed2f4864d2b33077e1d00c300cf2a59817` as `f152d34b314b9cbf89a3e10999d914f81e78a522`. Governance `31863503632` and Build `31863503635` passed on Ubuntu/Windows. KVM `31863503643` passed the complete API 36 x86_64 fixture, signer/tag negative, Runtime and cleanup matrix; API 29 passed five fixtures and then retained one exact configuration-relaunch observation `[provider.ready,startup_provider.create,activity.create,activity.create]`. M2-09 correctly allowed the second Activity construction, but the M3-04 runner still compared only the canonical single-Activity catalog list. The bounded correction accepts only one exact per-fixture Activity-recreation suffix on API 29, records catalog/normalized expected/observed sequences and `configuration_relaunch`, and rejects extra, reordered or non-API-29 duplicates. Kotlin contract tests, Node syntax/self-tests and diff checks pass locally; the coordination snapshot declares the post-commit tree clean.
@@ -30,7 +31,7 @@ Close merged M3-04 on `main` with synchronized README/evidence, strict HandOff, 
 - The final exact implementation-head physical API 29 ARM campaign completed both ARM64 and ARM32 cells after the user accepted the OEM prompt. Both cells are `VERIFIED`; all nine fixture packages were independently confirmed absent afterward. No local emulator was started and no device rerun is required.
 - ADR 0012 and the revised M3-04 contract enumerate the full API 29-36 by four-ABI grid while reserving `VERIFIED` for real Android-reported process evidence, `FAILED` for executed regressions, and `UNVERIFIED` for unavailable combinations that carry no positive compatibility claim. The mandatory current M3-04 baseline is API 29 ARM32/ARM64 plus API 29/36 x86_64.
 - Read-only inventory provides an authorized API 29 `user` physical device capable of `arm64-v8a` and `armeabi-v7a` processes, plus pinned API 29 revision 8 and API 36 revision 2 x86_64 KVM images. API 30-35 and all other unavailable combinations will be emitted as `UNVERIFIED`; they will not trigger downloads or inferred claims.
-- M3-04 is merged and remains the only active coordination task until final `main` strict/Governance/Build pass. M3-05 remains unstarted until those gates close.
+- M3-04 is complete on `main`; PR #58 merged with expected-head protection and its post-merge Build/Governance gates passed. M3-05 began on its own branch but is paused solely for M3-07; no M3-05 implementation is included in this branch.
 - Retained API 29 KVM runs `31858315765` and `31859364008` document the pre-M2-09 configuration-relaunch defect. They are historical only; final exact implementation-head KVM `31864724589` and the ARM campaign supersede them.
 - M3-03 final implementation `f53989e83b8a030139ec3e564ebfb41bdb81129a` passed Cross-platform equivalence `31847937221`, Build `31847937347` and Governance `31847937260` on the exact head. Windows and Ubuntu each produced 18 authenticated outputs; the final summary compared 36 outputs and proved stable semantics, random non-reuse, independent authentication/decryption, immutable inputs, unsigned outputs, equivalent negative errors and zero absolute-path findings. PR [#55](https://github.com/xiaokh31/androidAppHardening/pull/55) merged with expected-head protection as `af0fe5c5d0e9098d8cca86b3d5de3e09ed8412fb`, and Issue #20 closed. M3-03 is Host-only; out-of-scope KVM and M3-02 fuzz runs were cancelled.
 - M2-08 is complete. Final head `626a14c63c1b77f2552236659eb98d47bb027a12` passed Build `31820302813` on Ubuntu/Windows, including Ubuntu ASan/UBSan, and Governance `31820302849`; independent review was `P0=0/P1=0/P2=0`. PR #54 merged with expected-head protection as `ed0d0fb97c255a98c04628dc1746801985591c3c`, Issue #53 closed, and unrelated KVM run `31820302818` was cancelled by scope. M3-02 PR #52 may resume.
@@ -195,7 +196,8 @@ Close merged M3-04 on `main` with synchronized README/evidence, strict HandOff, 
 |---|---|---|---|---|---|
 | M2-09 | `/root` | `main` | done | M2-01 | PR #60 merged; exact-head review, dual-platform CI and API 29/36 KVM passed; README/evidence synchronized |
 | M3-06 | `/root` | `main` | done | M0-03, M2-04, M3-01, M3-02 | PR #57 merged as `a65433a`; claim-boundary contract is active |
-| M3-04 | `/root` | `chore/m3-04-api-abi-matrix` | in_progress | M0-03, M2-04, M2-09, M3-01, M3-02, M3-06 | Validate and push the reconciled main merge, then execute only the four mandatory real-process cells |
+| M3-04 | `/root` | `main` | done | M0-03, M2-04, M2-09, M3-01, M3-02, M3-06 | PR #58 merged; mandatory real-process cells and final main gates passed |
+| M3-07 | `/root` | `docs/m3-07-high-benchmark-contract` | in_progress | M2-05, M2-06, M3-01 | Freeze the governance-only contract, obtain independent review, then run exact-head Build/Governance |
 | M3-03 | `/root` | `main` | done | M0-03, M1-05, M1-06, M2-06, M3-01 | PR #55 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | done | M2-02 | PR #54 merged; exact regression, ASan/UBSan, dual-platform Build/Governance and independent review passed |
 | M3-02 | `/root` | `main` | done | M1-03, M1-04, M1-06, M2-02, M2-03, M2-06, M2-08, M3-01 | PR #52 merged; README/evidence synchronized; wait for next task selection |
@@ -1583,16 +1585,25 @@ Close merged M3-04 on `main` with synchronized README/evidence, strict HandOff, 
 
 ## Blockers and Required Approvals
 
-- Device, KVM, PR and Issue blockers are closed. Only the post-merge `main` README/HandOff commit and its strict/Governance/Build gates remain before M3-05 may start.
+None
 
 ## Ordered Next Actions
 
-1. Commit and push this post-merge README/HandOff/remote-evidence synchronization on `main`.
-2. Run strict HandOff, Governance and Ubuntu/Windows Build on that exact `main`; do not rerun device, KVM, fuzz or equivalence.
-3. After the final gates pass, mark M3-04 complete and start M3-05 on its own Issue/branch/PR.
+1. Pass the M3-07 contract validator, mutation self-tests, project governance, strict HandOff, link/diff/sensitive checks and confirm the diff contains no production source.
+2. Freeze the documentation/governance commit and complete one independent read-only security review; remediate only findings within M3-07.
+3. Push the unique Issue #61 branch/PR, pass exact-head Ubuntu/Windows Build/Governance, merge with expected-head protection, then restore `chore/m3-05-performance-benchmarks` and `stash@{0}` without running device/KVM for M3-07.
 
 ## Relevant Files and Artifacts
 
+- `docs/adr/0014-test-only-high-benchmark-boundary.md`
+- `docs/tasks/M3-07-test-only-high-benchmark-contract.md`
+- `docs/tasks/M3-05-size-startup-memory-benchmarks.md`
+- `docs/tasks/INDEX.md`
+- `docs/ARCHITECTURE.md`
+- `docs/TEST_STRATEGY.md`
+- `tools/governance/verify-m3-07-high-benchmark-contract.mjs`
+- `.github/workflows/governance.yml`
+- Issue #61
 - `docs/tasks/M2-09-shell-factory-relaunch-lifecycle.md`
 - `docs/adr/0013-shell-factory-relaunch-lifecycle.md`
 - `docs/evidence/M2-09/local-validation.md`

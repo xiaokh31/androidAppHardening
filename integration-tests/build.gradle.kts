@@ -124,8 +124,8 @@ tasks.register<JavaExec>("prepareM305AndroidBenchmark") {
     systemProperty("m301.signing", layout.buildDirectory.dir("m3-05-test-signing").get().asFile.absolutePath)
     systemProperty("m301.work", layout.buildDirectory.dir("m3-05-device-targets").get().asFile.absolutePath)
     systemProperty("m301.case", "java-single-dex,kotlin-multidex,jni-four-abi")
+    systemProperty("m301.hostOnly", "true")
     systemProperty("m303.skipNegatives", "true")
-    systemProperty("m305.keepInstalled", "true")
 }
 
 tasks.register("prepareAndroidPerformanceBenchmark") {

@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260815-120215
-updated_at: 2026-08-15T12:02:15+08:00
+handoff_id: HO-20260815-132053
+updated_at: 2026-08-15T13:20:53+08:00
 updated_by: /root
 state: active
 source_branch: chore/m3-04-api-abi-matrix
@@ -23,9 +23,10 @@ Implement the revised M3-04 complete API/ABI inventory, verify the four availabl
 
 - M2-09 is merged and complete. Production implementation `9ba6ec28c7d1450c3ca51175f78e3aa2d292331f`, test remediation `dd78179f41c97aab7e3f38c0f571c4e6198f8939` and exact PR head `186dfd79ee4f32c749c4ccfdebf5bc82a3476637` passed independent `P0=0/P1=0/P2=0` review, Build `31862011459`, Governance `31862011393`, and API 29/36 KVM `31862011460`. PR #60 merged as `77b3aee7d88eaf4446ae780f20fe6988796609af`; final main coordination `e3a676ed2f4864d2b33077e1d00c300cf2a59817` passed Build `31863095498` and Governance `31863095500`.
 - M3-06 is complete. PR #57 merged with expected-head `8da49b52fc7c2ea65bf7f0a19b5804d9137130e6` as `a65433ae0bda651fc1088d187913b2dbfa7b02d1`; Issue #56 closed. Merger-ready and post-merge Ubuntu/Windows Build/Governance passed, while device/KVM/fuzz remained out of scope.
-- The preserved M3-04 draft head `a290a6f678f90783ed6f7488c0b7956e78e612f7` is being merged with verified `main@e3a676ed2f4864d2b33077e1d00c300cf2a59817`. The only conflict is the root HandOff; production and validation sources merge cleanly.
+- M3-04 resumed on draft PR #58 by merging verified `main@e3a676ed2f4864d2b33077e1d00c300cf2a59817` as `f152d34b314b9cbf89a3e10999d914f81e78a522`. Governance `31863503632` and Build `31863503635` passed on Ubuntu/Windows. KVM `31863503643` passed the complete API 36 x86_64 fixture, signer/tag negative, Runtime and cleanup matrix; API 29 passed five fixtures and then retained one exact configuration-relaunch observation `[provider.ready,startup_provider.create,activity.create,activity.create]`. M2-09 correctly allowed the second Activity construction, but the M3-04 runner still compared only the canonical single-Activity catalog list. The bounded correction accepts only one exact per-fixture Activity-recreation suffix on API 29, records catalog/normalized expected/observed sequences and `configuration_relaunch`, and rejects extra, reordered or non-API-29 duplicates. Kotlin contract tests, Node syntax/self-tests and diff checks pass locally; the coordination snapshot declares the post-commit tree clean.
+- Frozen device-behavior implementation `015e2b375a2fd24fa99c8748671f56ed142b19f9` passed Build `31864724608`, Governance `31864724604`, and API 29/36 x86_64 KVM `31864724589`. The authorized API 29 non-root `user` ARM campaign produced `VERIFIED` ARM64 and ARM32 cells with 9/9 fixtures, zero retries, signer/tag rejection before load, and cleanup. Its final cleanup loop then hit a PowerShell null-output `.Trim()` false negative after both cells were written; direct `pm path` checks proved all nine packages absent, and the evidence-only successor makes that check null-safe without rerunning the device. The four cells generate a 32-cell matrix with 4 `VERIFIED` and 28 explicit `UNVERIFIED` entries; JSON/Markdown equivalence passes.
 - M3-04 implementation now adds the executable 32-cell inventory, versioned JSON Schema, exact JSON-to-Markdown renderer, mutation self-tests, Android-reported process facts, forced-ABI fixture installation, authenticated-tag/signer pre-business negatives, bounded API 29 ARM campaign, and branch-limited API 29/36 KVM cell extraction. Node syntax/self-tests, PowerShell parsing, `git diff --check`, Kotlin compilation, one API 29 fixture Java compilation, project governance, strict HandOff and the single nine-fixture Host full-flow pass offline. The Host pass completed in 5m23s with all nine fixture rows and negative cleanup. Draft PR #58 targets Issue #21. Exact implementation head `a467aee7a2f94931f16304ef3696f7e12aaf21c0` passed Ubuntu/Windows Build `31857495922`; its first KVM `31857496019` built both Release/R8 targets and then exposed one shared M3-04 orchestration defect before the authenticated-tag negative: the child mutation generator inherited the Gradle subproject working directory and rejected the repository `build/m3-04` output. Commit `4c9ee6f1f6bd7c5dfa3ed173f7bd12ae6e574c90` runs only that child in the repository root. Head `5adf1647c8c015e1a09135362a08805262176060` passed Ubuntu/Windows Build `31858315761` and Governance `31858315811`; API 36 KVM completed every device assertion and cleanup with PASS, then failed only because the final evidence step incorrectly assumed a merge checkout with `HEAD^2`. Run metadata and checkout both bind directly to the exact PR head, so the final bounded correction uses `GITHUB_SHA` without parent inference. API 29 in the same run retained one first-attempt system relaunch failure after the complete custom-Factory event sequence; the replacement exact-head KVM is its single allowed retry and will be recorded as flaky if it passes. Targeted Kotlin/matrix/governance/strict/diff checks and a real protected-APK path-boundary generation pass all succeed locally.
-- The first bounded physical API 29 ARM campaign reached only the OEM install confirmation and stopped with `INSTALL_FAILED_USER_RESTRICTED`; no product/device assertion ran and no retry loop was used. One bounded retry remains after the user is present and permits the prompt. No local emulator was started.
+- The resumed exact-head physical API 29 ARM campaign at `f152d34` again reached only the OEM install confirmation and stopped with `INSTALL_FAILED_USER_RESTRICTED`; no product/device assertion ran. The candidate retains one final bounded retry after the user confirms presence and accepts the prompt. No local emulator was started.
 - ADR 0012 and the revised M3-04 contract enumerate the full API 29-36 by four-ABI grid while reserving `VERIFIED` for real Android-reported process evidence, `FAILED` for executed regressions, and `UNVERIFIED` for unavailable combinations that carry no positive compatibility claim. The mandatory current M3-04 baseline is API 29 ARM32/ARM64 plus API 29/36 x86_64.
 - Read-only inventory provides an authorized API 29 `user` physical device capable of `arm64-v8a` and `armeabi-v7a` processes, plus pinned API 29 revision 8 and API 36 revision 2 x86_64 KVM images. API 30-35 and all other unavailable combinations will be emitted as `UNVERIFIED`; they will not trigger downloads or inferred claims.
 - M3-04 is the only active task. M3-05 remains unstarted and cannot begin until M3-04 merges and its post-merge gates pass.
@@ -402,6 +403,18 @@ Implement the revised M3-04 complete API/ABI inventory, verify the four availabl
 - M2-02 第三实现层已完成本地检查点：同一 `sourceDir` 只读文件映射、OS 只读 DEX commit、generation+slot 类型化 JNI handle、同 handle `AHMD` 认证 metadata、精确五 JNI 方法、Java primitive/finally 交接窗口、幂等 `LoadedPayload` owner，以及 M0-05 等价 Native 搜索路径和三参数 API 29 `InMemoryDexClassLoader` 已接通。Java 17 编译/lint、NDK 四 ABI warnings-as-errors 与离线根 `assembleRelease check` 284-task 均 PASS，四个 ELF 都含唯一 104-byte alloc/read-only `.ah_share_v1`，未启动设备或模拟器。证据更新于 `docs/evidence/M2-02/local-validation.md`；任务仍未完成或发布，下一步仅补 failure injection、Host sanitizer/fuzz/OOM 与已授权 KVM/arm64 验收，不启动 M2-03。
 
 ## Verification Evidence
+
+### M3-04 mandatory cells and complete matrix
+
+- task_id: M3-04
+- git_commit: 015e2b375a2fd24fa99c8748671f56ed142b19f9
+- command: exact-head Build `31864724608`; Governance `31864724604`; API 29/36 x86_64 KVM `31864724589`; one authorized API 29 ARM64/ARM32 physical campaign; direct nine-package cleanup check; deterministic four-cell generation; offline `:integration-tests:runApiAbiMatrix`
+- exit_code: 0
+- environment: Windows 10 x64 coordination; Ubuntu 24.04/Windows 2025 Build/Governance; API 29 r8 and API 36 r2 x86_64 Linux/KVM; API 29 non-root `user` ARM64/ARM32 physical device; no local emulator
+- timestamp: 2026-08-15T13:20:53+08:00
+- artifact: `docs/evidence/M3-04/local-validation.md`; `docs/evidence/M3-04/remote-validation.md`; four JSON cells; `docs/evidence/M3-04/compatibility-matrix.json`; `docs/generated/COMPATIBILITY_RESULTS.md`; PR #58
+- sha256: e8fdf34228802d4bba4899f7523f11904dd6d9ae64d487479d1c9bb373a26439
+- result: PASS; four mandatory cells are VERIFIED with 9/9 fixtures, zero retries, signer/tag rejection before load and cleanup; 28 unavailable cells are explicit UNVERIFIED; JSON/Markdown semantics match. The physical campaign wrote both passing cells before its final empty `pm path` `.Trim()` false negative; direct checks proved all nine packages absent and the evidence-only successor fixes that null handling without another device run.
 
 ### M3-03 final equivalence and merge
 
@@ -1569,14 +1582,14 @@ Implement the revised M3-04 complete API/ABI inventory, verify the four availabl
 
 ## Blockers and Required Approvals
 
-- The resumed API 29 ARM32/ARM64 campaign requires the authorized physical device to be connected, unlocked and able to accept the OEM installation prompt. M3-05 must not start.
+- Device, KVM, Build and Governance acceptance blockers are closed for frozen implementation `015e2b3`. PR #58 remains draft until the evidence-only successor passes local governance/strict validation and replacement Ubuntu/Windows Build/Governance. M3-05 must not start before expected-head merge and final `main` gates.
 
 ## Ordered Next Actions
 
-1. Validate and push the reconciled `main@e3a676e` merge to PR #58 without rewriting retained M3-04 failures.
-2. Run one fresh exact-head API 29/36 x86_64 KVM candidate; do not inherit the earlier non-exact API 36 cell or the pre-M2-09 API 29 failures.
-3. With the device present and unlocked, execute one bounded API 29 ARM32/ARM64 campaign; preserve every unavailable API/ABI cell as `UNVERIFIED`.
-4. Complete M3-04 review/evidence/expected-head merge before starting M3-05.
+1. Commit and push the evidence-only M3-04 successor containing the four cells, 32-cell outputs, null-safe cleanup check, PR-head evidence binding, validation records, and this `/root` HandOff.
+2. Run replacement Ubuntu/Windows Build/Governance only; the evidence-only diff does not require another device, KVM, or fuzz run.
+3. Convert PR #58 to ready and merge with expected-head protection after all required checks pass; close Issue #21.
+4. Update `main` README/HandOff, pass strict/Governance/Build, then and only then start M3-05.
 
 ## Relevant Files and Artifacts
 
@@ -1591,7 +1604,7 @@ Implement the revised M3-04 complete API/ABI inventory, verify the four availabl
 - `runtime/bootstrap/src/main/java/ah/runtime/bootstrap/ShellAppComponentFactory.java`
 - `runtime/bootstrap/src/test/java/ah/runtime/bootstrap/BootstrapSelfTest.java`
 - `runtime/bootstrap/src/androidTest/java/ah/runtime/bootstrap/BootstrapConnectedRunner.java`
-- retained M3-04 blocker branch `chore/m3-04-api-abi-matrix` at `a290a6f678f90783ed6f7488c0b7956e78e612f7`
+- active M3-04 branch `chore/m3-04-api-abi-matrix`; frozen device-behavior implementation `015e2b375a2fd24fa99c8748671f56ed142b19f9` plus the evidence-only successor
 - `docs/adr/0012-api-abi-validation-claim-boundary.md`
 - `docs/tasks/M3-06-api-abi-validation-claim-contract.md`
 - `docs/tasks/M3-04-api-and-abi-matrix.md`
@@ -1604,6 +1617,11 @@ Implement the revised M3-04 complete API/ABI inventory, verify the four availabl
 - `tools/governance/validate-project-package.mjs`
 - `docs/evidence/M3-04/implementation-plan.md`
 - `docs/evidence/M3-04/blocked-validation.md`
+- `docs/evidence/M3-04/local-validation.md`
+- `docs/evidence/M3-04/remote-validation.md`
+- `docs/evidence/M3-04/cells/`
+- `docs/evidence/M3-04/compatibility-matrix.json`
+- `docs/generated/COMPATIBILITY_RESULTS.md`
 - `integration-tests/schemas/compatibility-matrix.schema.json`
 - `tools/device-capability-probe/index.mjs`
 - `tools/validation/run-m3-04-arm-device.ps1`

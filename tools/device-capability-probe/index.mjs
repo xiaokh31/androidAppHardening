@@ -267,7 +267,7 @@ function render(matrix) {
       `${cell.deviceFacts.platform}; reports ${Object.values(cell.artifactSha256).map((value) => value.slice(0, 12)).join(", ")}`;
     lines.push(`| ${cell.apiLevel} | \`${cell.processAbi}\` | **${cell.status}** | ${claim} | ${evidence} |`);
   }
-  lines.push("", `Summary: VERIFIED ${matrix.summary.verified}; FAILED ${matrix.summary.failed}; UNVERIFIED ${matrix.summary.unverified}.`, "");
+  lines.push("", `Summary: VERIFIED ${matrix.summary.verified}; FAILED ${matrix.summary.failed}; UNVERIFIED ${matrix.summary.unverified}.`);
   return `${lines.join("\n")}\n`;
 }
 
@@ -292,6 +292,7 @@ function selfTest() {
   if (!markdown.includes("Not validated; no compatibility claim") || markdown.includes("UNVERIFIED** | Validated")) {
     fail("UNVERIFIED rendering is a positive claim");
   }
+  if (markdown.endsWith("\n\n")) fail("Markdown renderer emitted a trailing blank line");
   process.stdout.write("OK: M3-04 inventory/status/render mutation self-tests\n");
 }
 

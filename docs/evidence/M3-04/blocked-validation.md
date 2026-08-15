@@ -1,4 +1,6 @@
-# M3-04 blocked validation
+# M3-04 blocked validation (superseded)
+
+This file preserves the historical blocker and failed-attempt record. The blockers were closed by M2-09 and the final M3-04 evidence recorded in `local-validation.md` and `remote-validation.md`; it is not the current acceptance status.
 
 - Candidate head: `96e1fa91b8293622714ad61adb3932ede67027cb`
 - Draft PR: `#58`

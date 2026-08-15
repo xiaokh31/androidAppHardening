@@ -79,7 +79,7 @@ foreach ($package in @(
     "ah.fixtures.android.m301.multi_process", "ah.fixtures.android.m301.jni_four",
     "ah.fixtures.android.m301.jni_arm"
 )) {
-    $path = (& $adbPath -s $Serial shell pm path $package 2>$null).Trim()
+    $path = ((& $adbPath -s $Serial shell pm path $package 2>$null) -join "`n").Trim()
     if ($path) { throw "M3-04 package cleanup failed" }
 }
 

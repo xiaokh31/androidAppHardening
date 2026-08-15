@@ -1,0 +1,290 @@
+{
+  "apiLevel": 36,
+  "processAbi": "x86_64",
+  "status": "VERIFIED",
+  "reasonCode": null,
+  "deviceFacts": {
+    "sdkInt": 36,
+    "processAbi": "x86_64",
+    "supportedAbis": [
+      "x86_64"
+    ],
+    "is64Bit": true,
+    "buildType": "user",
+    "nonRoot": true,
+    "serialSha256": "04ab3fc382bfb33ea4fbc120f5172ecfc4aed71652e00977064492ca0f65a017",
+    "platform": "api36-x86_64-linux-kvm"
+  },
+  "fixtureResults": [
+    {
+      "id": "java-single-dex",
+      "status": "PASS",
+      "installed": true,
+      "expectedEvents": [
+        "provider.ready",
+        "activity.create"
+      ],
+      "observedEvents": [
+        "provider.ready",
+        "activity.create"
+      ],
+      "catalogExpectedEvents": [
+        "provider.ready",
+        "activity.create"
+      ],
+      "configurationRelaunch": false,
+      "packageCleanup": true,
+      "artifactSha256": {
+        "input": "8b39550d7e9a5355d01cae7129056cc3926ddc2374bcc1addd577a1b954e0d28",
+        "unsignedOutput": "a0df50d2aad483ef910cf1e89960a7d8ed8569db759c0c98e0ee5dac8a5d0482",
+        "signedOutput": "1e0be26cb3ed75d1a5c4fbf159dfa366a8320360440555f7cf1dd8ee38ab9982",
+        "report": "9a585d403a37a675e85c3a4821e9affb1ebeff92fb99633e4a5073440910a7b8"
+      }
+    },
+    {
+      "id": "kotlin-single-dex",
+      "status": "PASS",
+      "installed": true,
+      "expectedEvents": [
+        "provider.ready",
+        "activity.create",
+        "kotlin.marker"
+      ],
+      "observedEvents": [
+        "provider.ready",
+        "activity.create",
+        "kotlin.marker"
+      ],
+      "catalogExpectedEvents": [
+        "provider.ready",
+        "activity.create",
+        "kotlin.marker"
+      ],
+      "configurationRelaunch": false,
+      "packageCleanup": true,
+      "artifactSha256": {
+        "input": "115022a1ce24d3934694d41b8f66de55ea17e4644a9c9d3568a4eb70126c0a53",
+        "unsignedOutput": "0297edaa2eb0921ac7b382c3f6e8d4cb700dd93147c3b21183e9faa34701b3b7",
+        "signedOutput": "2acb7bb7c572556975bbaa13eb9399e398157df7d9632ef95cca8eea98ae4209",
+        "report": "b2c894bac2f6ee473f9f77024d33104f026c9efef25bfe8fb0ed984d69418ba5"
+      }
+    },
+    {
+      "id": "kotlin-multidex",
+      "status": "PASS",
+      "installed": true,
+      "expectedEvents": [
+        "provider.ready",
+        "activity.create",
+        "kotlin.marker",
+        "multidex.class"
+      ],
+      "observedEvents": [
+        "provider.ready",
+        "activity.create",
+        "kotlin.marker",
+        "multidex.class"
+      ],
+      "catalogExpectedEvents": [
+        "provider.ready",
+        "activity.create",
+        "kotlin.marker",
+        "multidex.class"
+      ],
+      "configurationRelaunch": false,
+      "packageCleanup": true,
+      "artifactSha256": {
+        "input": "31326238f4e1cbf34c2977e0847c9cbad3cedff51d4c4f97733f8891550f5031",
+        "unsignedOutput": "3a8088e836d6cba5139524905b799a28445121ed4b48d8c9efe50597deae645f",
+        "signedOutput": "05215e3a2333dcf3d91a32de7306c4a07dd140ee7516c64bdd7845a78edef125",
+        "report": "c575f7417e0f368f45ec11e62be9bb87da161ffc38a36ee32dc38644d9fe29c6"
+      }
+    },
+    {
+      "id": "custom-application",
+      "status": "PASS",
+      "installed": true,
+      "expectedEvents": [
+        "provider.ready",
+        "custom_application.create",
+        "activity.create"
+      ],
+      "observedEvents": [
+        "provider.ready",
+        "custom_application.create",
+        "activity.create"
+      ],
+      "catalogExpectedEvents": [
+        "provider.ready",
+        "custom_application.create",
+        "activity.create"
+      ],
+      "configurationRelaunch": false,
+      "packageCleanup": true,
+      "artifactSha256": {
+        "input": "e1cee3249aec8cf8d5bce12173d4782a94ebdc3032ae8533919a47925b1b397e",
+        "unsignedOutput": "82a716757dd6f6c58f6b0e7ee1458034398aed17f887806948e3f6dfd03be32e",
+        "signedOutput": "003d16ed21b3f9ecaf80545966c26a148cac554c285e63e3a0c112d7fd1d1dc7",
+        "report": "135ea38c197cb36fda6d077a03624bb52be9a8c7782f3195d382a42d3c9b0a7e"
+      }
+    },
+    {
+      "id": "custom-factory",
+      "status": "PASS",
+      "installed": true,
+      "expectedEvents": [
+        "factory.classloader",
+        "factory.application",
+        "provider.ready",
+        "activity.create"
+      ],
+      "observedEvents": [
+        "factory.classloader",
+        "factory.application",
+        "provider.ready",
+        "activity.create"
+      ],
+      "catalogExpectedEvents": [
+        "factory.classloader",
+        "factory.application",
+        "provider.ready",
+        "activity.create"
+      ],
+      "configurationRelaunch": false,
+      "packageCleanup": true,
+      "artifactSha256": {
+        "input": "bd31e2b9263ac11015c0f50702240ec7d262a57e619e8624a76177d5bf033a13",
+        "unsignedOutput": "f3a43177795506473dd27dace46dd2de91895c3b40c028e9da1eb4c5fa2c770c",
+        "signedOutput": "42713ff83b1bdad4fb6429105d66e0991851791e3f7678278507a1ab7f98d7b2",
+        "report": "d9e7f987e1b1ecfbff31c82771563baa5d855b17b63efd8b0dd7a5536fce3d9e"
+      }
+    },
+    {
+      "id": "startup-provider",
+      "status": "PASS",
+      "installed": true,
+      "expectedEvents": [
+        "provider.ready",
+        "startup_provider.create",
+        "activity.create"
+      ],
+      "observedEvents": [
+        "provider.ready",
+        "startup_provider.create",
+        "activity.create"
+      ],
+      "catalogExpectedEvents": [
+        "provider.ready",
+        "startup_provider.create",
+        "activity.create"
+      ],
+      "configurationRelaunch": false,
+      "packageCleanup": true,
+      "artifactSha256": {
+        "input": "8cbbfac7b64d4dc5015cead0e1bf452bf144fe16c1945f91e06da752b9c7c8eb",
+        "unsignedOutput": "d1be1fe8b3fcbb17da473e4327195d2f0f1d2399938b40397bb0ce72a6f3093e",
+        "signedOutput": "940e777c439f3d4d73282f822c550a9be311f7dda11fdfb50ae8c652bf5a8eef",
+        "report": "b06bca4c5a33dd18dceba35a02f2280f4ac5bdf1aed3c62ac2b3d271bf0f4cf2"
+      }
+    },
+    {
+      "id": "multi-process",
+      "status": "PASS",
+      "installed": true,
+      "expectedEvents": [
+        "provider.ready",
+        "activity.create",
+        "worker.create"
+      ],
+      "observedEvents": [
+        "provider.ready",
+        "activity.create",
+        "worker.create"
+      ],
+      "catalogExpectedEvents": [
+        "provider.ready",
+        "activity.create",
+        "worker.create"
+      ],
+      "configurationRelaunch": false,
+      "packageCleanup": true,
+      "artifactSha256": {
+        "input": "1dfa5f1de9503beb3b6dd4d1f5946c82c6dce0182ca748367edce288f4480103",
+        "unsignedOutput": "ebd9e69a05a51c3ee07240f9ea5ce91cd8b6ccea77288d17c121aa80d9929d1f",
+        "signedOutput": "960ce357871c77adfdc856331ff8e7b5926f77f96785a805ed8a61a0bdcf748b",
+        "report": "0c9a7024aa323dc0f377f7a9211a788170960e3c1a971a42b6a72904053fb40c"
+      }
+    },
+    {
+      "id": "jni-four-abi",
+      "status": "PASS",
+      "installed": true,
+      "expectedEvents": [
+        "provider.ready",
+        "activity.create",
+        "jni.marker"
+      ],
+      "observedEvents": [
+        "provider.ready",
+        "activity.create",
+        "jni.marker"
+      ],
+      "catalogExpectedEvents": [
+        "provider.ready",
+        "activity.create",
+        "jni.marker"
+      ],
+      "configurationRelaunch": false,
+      "packageCleanup": true,
+      "artifactSha256": {
+        "input": "3f981439df65fad4e74f87f7267efe72318c78494440424f045184ae093e1c78",
+        "unsignedOutput": "4315372bfc902114aaef3ea79d79620556f1b6ed4e6f40ba82e39229704f0f5f",
+        "signedOutput": "ea1f545be9b50946dc6e3a27d094f0c3c3da79ee81ac13dcc08ebeb7798aa9b5",
+        "report": "4670dd497eff3971dbf37d4b69f40afc6a9032ab84d1b62b94d0d05293efb924"
+      }
+    },
+    {
+      "id": "jni-arm-only",
+      "status": "PASS",
+      "installed": false,
+      "expectedEvents": [
+        "provider.ready",
+        "activity.create",
+        "jni.marker"
+      ],
+      "observedEvents": [],
+      "catalogExpectedEvents": [
+        "provider.ready",
+        "activity.create",
+        "jni.marker"
+      ],
+      "configurationRelaunch": false,
+      "packageCleanup": true,
+      "artifactSha256": {
+        "input": "f5c2e513d0b94e2575cfa844d6852856c7048fc75619e12f26a0aa17979758be",
+        "unsignedOutput": "5dcdc5804064ca3b424ce95fcd8ca2cf086deb0ecc07ced1dda1ec89d21a1cbc",
+        "signedOutput": "36536f0d0d7b3bafbd740377f907bee3ed6e610bda302ca895c001d36238b708",
+        "report": "a0c86db6f143e6f107c4382657e90bfb085446ef2be34d88fd4fa314fd3f4e27"
+      }
+    }
+  ],
+  "retryCount": 0,
+  "artifactSha256": {
+    "fixtureReport": "87be1638e15033ce8d9377edf6fcd816af0d5c141180dd36861b99f2a15b7031",
+    "runtimeReport": "3acab34d2bda02857b7bb536bfe02fb9074cfac699afe6b0748156f26d2dff17",
+    "signerReport": "06b5ad3cf8f09161bab4623322e77df6f17cc93cad1d824fc86449dbbaeef7f7"
+  },
+  "evidence": {
+    "sourceCommit": "015e2b375a2fd24fa99c8748671f56ed142b19f9",
+    "positiveFixturesPassed": true,
+    "signerMismatchBeforeLoad": true,
+    "signerEvidence": "DIRECT_LOOKUP_AND_SESSION_MARKERS",
+    "authenticatedTagTamperBeforeLoad": true,
+    "tagEvidence": "DIRECT_LOOKUP_AND_SESSION_MARKERS",
+    "payloadLookupCount": 0,
+    "sessionPublished": false,
+    "armOnlyClassification": "LIMITED",
+    "abiRiskContribution": 0,
+    "cleanupPassed": true
+  }
+}

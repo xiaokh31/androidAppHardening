@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260815-235609
-updated_at: 2026-08-15T23:56:09+08:00
+handoff_id: HO-20260816-000125
+updated_at: 2026-08-16T00:01:25+08:00
 updated_by: /root
 state: active
 source_branch: chore/m3-05-performance-benchmarks
@@ -20,6 +20,8 @@ next_owner: /root
 Complete the bounded M3-05 size, Host, observed LOW cold-start, memory and test-only isolated HIGH benchmark matrix without repeating unrelated historical validation.
 
 ## Current State
+
+- M3-05 correction `fba4da0bc8669374f0c73bb823a549d1160b38b9` proved the fixed archive and source-tree hashes on Ubuntu, then exposed that PowerShell cannot promote the upstream Unix symlink tree on that runner; Windows continued normally. The bounded replacement uses the repository's already proven Bash `tar/mv` path on Linux and retains PowerShell only on Windows, with identical immutable archive/source-tree validation.
 
 - M3-07 is complete. Final implementation freeze `90f754ea185a8633acd585d181ee108db016209d` passed independent review with `P0=0/P1=0/P2=0`; exact published head `4e77aa38b508a99c60a576e41804ba2d08b6b9fd` passed Build `31891662932` and Governance `31891662909` on Ubuntu/Windows. PR #62 merged with expected-head protection as `859cfa217b2fc0726cc001519967cdde606d2146`, Issue #61 closed, and post-merge `main@930b759c99f330218dc4404368e9844e80456c82` passed Build `31892091205` and Governance `31892091344`. No device, emulator or KVM ran for M3-07.
 - M3-05 is active on `chore/m3-05-performance-benchmarks` from `main@930b759c99f330218dc4404368e9844e80456c82`. Implementation parent `242d1587604d18f44742a930c65b0d45c3f61e66`, HandOff child `311d280b6d044471a53a1bcf3b8762d78e8caec1`, and exclusive-install correction `b44e709fccb3aebc361a2c46a4f724695f412eac` are pushed; unique draft PR #63 links Issue #22. The first physical-device command completed all builds, then stopped before measurement because preparation attempted a redundant install outside the owned benchmark runner; MIUI rejected it and independent `pm path` checks proved all fixture/benchmark packages absent. The bounded correction makes preparation Host-only so the runner exclusively owns install/uninstall and unconditional cleanup. Exact-head Governance `31893898654` passed; Host run `31893898533` failed identically on Ubuntu/Windows before sampling because its workflow omitted the already pinned and verified M2-07 Native crypto source preparation required by fixture assembly. The workflow now applies the existing immutable archive/source-tree checks before either Host pass; Build and KVM from the superseded head are not completion evidence. The saved implementation was restored without its stale HandOff snapshot; `stash@{0}` remains only as a recovery backup until merge. Host and Android harnesses, fixed environments, size reconciliation, two-pass Host workflow and branch-limited API 36 KVM entry are present. ADR 0014 is implemented as distinct `observed_cold_start` LOW/ALLOW rows and an Android-test-only `isolated_high_upgrade` bridge with same-handle, zero/one lookup, Native jitter and exactly-once cleanup evidence. Formal mutation, syntax, diff, statistics, compilation, packaging, lint and ZIP-aware artifact-boundary gates pass locally. No benchmark sample has run yet; the replacement Host/KVM/ARM matrix remains one exact-head batch.

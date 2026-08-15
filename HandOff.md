@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260815-225926
-updated_at: 2026-08-15T22:59:26+08:00
+handoff_id: HO-20260815-230234
+updated_at: 2026-08-15T23:02:34+08:00
 updated_by: /root
 state: active
 source_branch: docs/m3-07-high-benchmark-contract
@@ -21,7 +21,7 @@ Define and merge the bounded M3-07 test-only HIGH benchmark contract without add
 
 ## Current State
 
-- M3-07 is active on `docs/m3-07-high-benchmark-contract` from exact `main@3584b379f6abd1ba85726831aa1f68a2fac4183b`, associated only with Issue #61. ADR 0014 separates unmodified `observed_cold_start` release evidence from fixture-only `isolated_high_upgrade` cost evidence and adds no Runtime API. Independent review rejected frozen `ab166d0ad396c11595ad3d7a5d6bef5b14f44635` with `P0=0/P1=2/P2=0`: product-surface scanning was incomplete and report validation was self-test-only/weakly typed. Incremental review rejected remediation `56c5473713e4e9d6196aca1577cc42a129677fbe` with `P0=0/P1=1/P2=0`: formal report validation was closed, but `src/release` product sources remained outside the scanner and base-diff predicate. The bounded successor now enumerates product `src/main` and `src/release` surfaces, adds base-to-HEAD zero-production diff, exposes formal `--report`, and drives 10 surface plus 20 strict serialized-report negatives through the same scanner/CLI path. The unfinished M3-05 worktree remains safely stored as `stash@{0}`.
+- M3-07 is active on `docs/m3-07-high-benchmark-contract` from exact `main@3584b379f6abd1ba85726831aa1f68a2fac4183b`, associated only with Issue #61. ADR 0014 separates unmodified `observed_cold_start` release evidence from fixture-only `isolated_high_upgrade` cost evidence and adds no Runtime API. Independent review rejected frozen `ab166d0ad396c11595ad3d7a5d6bef5b14f44635` with `P0=0/P1=2/P2=0`; incremental review rejected `56c5473713e4e9d6196aca1577cc42a129677fbe` with `P0=0/P1=1/P2=0`. Final implementation freeze `90f754ea185a8633acd585d181ee108db016209d` closes both review rounds: product `src/main` and `src/release` surfaces share one base-diff predicate, formal `--report` validation is mandatory, 10 surface plus 20 serialized-report negatives fail closed, and final independent review is `P0=0/P1=0/P2=0`. The unfinished M3-05 worktree remains safely stored as `stash@{0}`.
 - M2-09 is merged and complete. Production implementation `9ba6ec28c7d1450c3ca51175f78e3aa2d292331f`, test remediation `dd78179f41c97aab7e3f38c0f571c4e6198f8939` and exact PR head `186dfd79ee4f32c749c4ccfdebf5bc82a3476637` passed independent `P0=0/P1=0/P2=0` review, Build `31862011459`, Governance `31862011393`, and API 29/36 KVM `31862011460`. PR #60 merged as `77b3aee7d88eaf4446ae780f20fe6988796609af`; final main coordination `e3a676ed2f4864d2b33077e1d00c300cf2a59817` passed Build `31863095498` and Governance `31863095500`.
 - M3-06 is complete. PR #57 merged with expected-head `8da49b52fc7c2ea65bf7f0a19b5804d9137130e6` as `a65433ae0bda651fc1088d187913b2dbfa7b02d1`; Issue #56 closed. Merger-ready and post-merge Ubuntu/Windows Build/Governance passed, while device/KVM/fuzz remained out of scope.
 - M3-04 resumed on draft PR #58 by merging verified `main@e3a676ed2f4864d2b33077e1d00c300cf2a59817` as `f152d34b314b9cbf89a3e10999d914f81e78a522`. Governance `31863503632` and Build `31863503635` passed on Ubuntu/Windows. KVM `31863503643` passed the complete API 36 x86_64 fixture, signer/tag negative, Runtime and cleanup matrix; API 29 passed five fixtures and then retained one exact configuration-relaunch observation `[provider.ready,startup_provider.create,activity.create,activity.create]`. M2-09 correctly allowed the second Activity construction, but the M3-04 runner still compared only the canonical single-Activity catalog list. The bounded correction accepts only one exact per-fixture Activity-recreation suffix on API 29, records catalog/normalized expected/observed sequences and `configuration_relaunch`, and rejects extra, reordered or non-API-29 duplicates. Kotlin contract tests, Node syntax/self-tests and diff checks pass locally; the coordination snapshot declares the post-commit tree clean.
@@ -197,7 +197,7 @@ Define and merge the bounded M3-07 test-only HIGH benchmark contract without add
 | M2-09 | `/root` | `main` | done | M2-01 | PR #60 merged; exact-head review, dual-platform CI and API 29/36 KVM passed; README/evidence synchronized |
 | M3-06 | `/root` | `main` | done | M0-03, M2-04, M3-01, M3-02 | PR #57 merged as `a65433a`; claim-boundary contract is active |
 | M3-04 | `/root` | `main` | done | M0-03, M2-04, M2-09, M3-01, M3-02, M3-06 | PR #58 merged; mandatory real-process cells and final main gates passed |
-| M3-07 | `/root` | `docs/m3-07-high-benchmark-contract` | in_progress | M2-05, M2-06, M3-01 | Freeze the `src/release` closure and obtain final incremental independent review |
+| M3-07 | `/root` | `docs/m3-07-high-benchmark-contract` | in_progress | M2-05, M2-06, M3-01 | Publish the reviewed evidence head and pass Ubuntu/Windows Build/Governance |
 | M3-03 | `/root` | `main` | done | M0-03, M1-05, M1-06, M2-06, M3-01 | PR #55 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | done | M2-02 | PR #54 merged; exact regression, ASan/UBSan, dual-platform Build/Governance and independent review passed |
 | M3-02 | `/root` | `main` | done | M1-03, M1-04, M1-06, M2-02, M2-03, M2-06, M2-08, M3-01 | PR #52 merged; README/evidence synchronized; wait for next task selection |
@@ -1589,9 +1589,9 @@ None
 
 ## Ordered Next Actions
 
-1. Pass the remediated full product-surface scan, base-to-HEAD diff gate, formal report validator, 30 mutation negatives, project governance, strict HandOff and diff/sensitive checks.
-2. Freeze the bounded `src/release` closure and obtain one final incremental independent review limited to the remaining P1 finding.
-3. After `P0/P1/P2=0`, push the unique Issue #61 branch/PR, pass exact-head Ubuntu/Windows Build/Governance, merge with expected-head protection, then restore `chore/m3-05-performance-benchmarks` and `stash@{0}` without running device/KVM for M3-07.
+1. Commit the final all-zero review and local validation as an evidence-only child of implementation freeze `90f754ea185a8633acd585d181ee108db016209d`.
+2. Push the unique Issue #61 branch, create its sole draft PR, and pass exact-head Ubuntu/Windows Build/Governance.
+3. Merge with expected-head protection, then restore `chore/m3-05-performance-benchmarks` and `stash@{0}` without running device/KVM for M3-07.
 
 ## Relevant Files and Artifacts
 
@@ -1605,6 +1605,8 @@ None
 - `.github/workflows/governance.yml`
 - `docs/evidence/M3-07/security-review-1.md`
 - `docs/evidence/M3-07/security-review-2.md`
+- `docs/evidence/M3-07/security-review-3.md`
+- `docs/evidence/M3-07/local-validation.md`
 - Issue #61
 - `docs/tasks/M2-09-shell-factory-relaunch-lifecycle.md`
 - `docs/adr/0013-shell-factory-relaunch-lifecycle.md`

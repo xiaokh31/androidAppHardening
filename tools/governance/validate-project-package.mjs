@@ -45,6 +45,7 @@ const expectedTasks = [
   "M1-07-chunk-authenticated-container-contract.md",
   "M2-07-native-crypto-backend.md",
   "M2-08-native-parser-topology-bounds.md",
+  "M3-06-api-abi-validation-claim-contract.md",
 ];
 
 const taskHeadings = [
@@ -183,8 +184,10 @@ if (!fs.existsSync(indexFile)) {
         ? "36"
         : id === "M2-07"
           ? "41"
-          : id === "M2-08"
-            ? "53"
+        : id === "M2-08"
+          ? "53"
+          : id === "M3-06"
+            ? "56"
           : String(expectedTasks.indexOf(expectedFile) + 1);
     if (!issueMatch || issueMatch[1] !== issueMatch[2] || issueMatch[1] !== expectedIssue) {
       errors.push(`docs/tasks/INDEX.md: ${id} must link its GitHub Issue`);

@@ -33,7 +33,9 @@ M0 基础建设与可行性验证以及 M1 Host 处理链已经完成。M1-01 �
 | [M3-01](docs/tasks/M3-01-android-fixtures.md) | 已完成 | 九个公开 fixture、Host full-flow、Ubuntu/Windows、API 29/36 x86_64 KVM、API 29 arm64 真机与清理均已通过；PR #49、Issue #18 已关闭 |
 | [M3-02](docs/tasks/M3-02-tamper-and-fuzz-tests.md) | 已完成 | 69 项篡改 catalog、Jazzer APK/AXML、Native libFuzzer + ASan/UBSan、Ubuntu/Windows、API 29/36 KVM 与独立全零复核均已通过；PR #52、Issue #19 已关闭 |
 | [M3-03](docs/tasks/M3-03-windows-ubuntu-equivalence.md) | 已完成 | 九个 fixture 在 Windows/Ubuntu 各运行两轮；36 个输出的稳定语义等价、随机字段不复用、独立认证解密、稳定负例、输入只读与无绝对路径泄漏均通过；PR #55、Issue #20 已关闭 |
-| M3-04 ～ M4 | 未启动 | 后续 API/ABI、基准与发布阶段按任务依赖顺序执行 |
+| [M3-06](docs/tasks/M3-06-api-abi-validation-claim-contract.md) | 执行中 | Issue #56 的独立 ADR/任务合同修订正在固定 `VERIFIED`/`FAILED`/`UNVERIFIED` 声明边界；治理 PR 不运行设备、KVM 或 fuzz |
+| [M3-04](docs/tasks/M3-04-api-and-abi-matrix.md) | 已暂停 | 原始全 32 格真实设备合同缺少 API 30-35 与多 ABI 环境；阻塞提交已保留，待 M3-06 合并后按显式未验证合同恢复 |
+| M3-05 ～ M4 | 未启动 | M3-05 必须等待 M3-04 完整关闭；发布阶段继续按任务依赖顺序执行 |
 
 任务按 [`docs/tasks/INDEX.md`](docs/tasks/INDEX.md) 的依赖顺序执行。每个任务只有在 PR 合并、合并后门禁与证据完成后才在本表标记“已完成”；每个任务的收尾协调提交必须同步本 README，避免公开进度长期滞后。
 

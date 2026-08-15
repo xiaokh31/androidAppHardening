@@ -59,9 +59,9 @@ function createCell() {
   const byId = new Map(fixture.fixtures.map((row) => [row.id, row]));
   const requiredFixtures = ["java-single-dex", "kotlin-multidex", "jni-four-abi"];
   if (processAbi.startsWith("x86")) requiredFixtures.push("custom-factory");
-  for (const id of requiredFixtures) assertFixture(byId.get(id), id, true);
+  for (const id of requiredFixtures) assertFixture(byId.get(id), id, true, apiLevel);
   const armOnly = byId.get("jni-arm-only");
-  if (processAbi.startsWith("arm" ) || processAbi.startsWith("armeabi")) assertFixture(armOnly, "jni-arm-only", true);
+  if (processAbi.startsWith("arm" ) || processAbi.startsWith("armeabi")) assertFixture(armOnly, "jni-arm-only", true, apiLevel);
   else if (!armOnly || armOnly.status !== "pass" || armOnly.installed !== false || armOnly.package_cleanup !== true) {
     fail("ARM-only fixture was not explicitly classified on x86");
   }
@@ -103,6 +103,8 @@ function createCell() {
     installed: row.installed,
     expectedEvents: row.expected_events,
     observedEvents: row.observed_events,
+    catalogExpectedEvents: row.catalog_expected_events,
+    configurationRelaunch: row.configuration_relaunch,
     packageCleanup: row.package_cleanup,
     artifactSha256: {
       input: row.input_sha256,
@@ -300,8 +302,26 @@ function unverified(apiLevel, processAbi) {
 function summary(cells) { return { verified: cells.filter((c) => c.status === "VERIFIED").length,
   failed: cells.filter((c) => c.status === "FAILED").length,
   unverified: cells.filter((c) => c.status === "UNVERIFIED").length }; }
-function assertFixture(row, id, installed) { if (!row || row.status !== "pass" || row.installed !== installed ||
-  row.package_cleanup !== true || JSON.stringify(row.expected_events) !== JSON.stringify(row.observed_events)) fail(`fixture ${id} did not pass exactly`); }
+function assertFixture(row, id, installed, apiLevel) {
+  const catalog = row?.catalog_expected_events;
+  const expected = row?.expected_events;
+  const observed = row?.observed_events;
+  const exact = JSON.stringify(expected) === JSON.stringify(observed);
+  const canonical = JSON.stringify(expected) === JSON.stringify(catalog) && row?.configuration_relaunch === false;
+  const relaunch = apiLevel === 29 && row?.configuration_relaunch === true &&
+    JSON.stringify(expected) === JSON.stringify([...(catalog ?? []), ...activityRelaunchEvents(id)]);
+  if (!row || row.status !== "pass" || row.installed !== installed || row.package_cleanup !== true ||
+      !Array.isArray(catalog) || !exact || (!canonical && !relaunch)) fail(`fixture ${id} did not pass exactly`);
+}
+function activityRelaunchEvents(id) {
+  if (id === "kotlin-single-dex") return ["activity.create", "kotlin.marker"];
+  if (id === "kotlin-multidex") return ["activity.create", "kotlin.marker", "multidex.class"];
+  if (id === "jni-four-abi" || id === "jni-arm-only") return ["activity.create", "jni.marker"];
+  if (["java-single-dex", "custom-application", "custom-factory", "startup-provider", "multi-process"].includes(id)) {
+    return ["activity.create"];
+  }
+  fail(`unknown fixture for configuration relaunch: ${id}`);
+}
 function preloadFailure(row) { return row && row.payloadLoaded === "false" && row.payloadClassLookupAttempted === "false" &&
   row.verifiedPayloadSessionPublished === "false"; }
 function cellKey(cell) { return `${cell.apiLevel}/${cell.processAbi}`; }

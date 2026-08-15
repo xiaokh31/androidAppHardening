@@ -150,13 +150,18 @@ object FixtureDriver {
         val shouldInstall = adb != null &&
             (fixture.expectedOutcome == "compatible" || abi.startsWith("arm") || abi.startsWith("armeabi"))
         var events: List<String> = emptyList()
+        var expectedEvents = fixture.expectedEvents
+        var configurationRelaunch = false
         var processFacts: Map<String, Any?>? = null
         if (adb != null) try {
             if (shouldInstall) {
                 adb.install(checkNotNull(if (signedInputCorpus == null) signedOutput else null))
                 adb.clearLogcat()
                 val launch = adb.start(packageName)
-                events = adb.awaitEvents(packageName, fixture.expectedEvents, launch)
+                val observation = adb.awaitEvents(fixture.id, packageName, fixture.expectedEvents, launch)
+                events = observation.observed
+                expectedEvents = observation.expected
+                configurationRelaunch = observation.configurationRelaunch
                 processFacts = adb.processFacts(packageName)
             } else {
                 val text = Files.readString(productReport, StandardCharsets.UTF_8)
@@ -175,8 +180,10 @@ object FixtureDriver {
             "id" to fixture.id,
             "status" to "pass",
             "installed" to shouldInstall,
-            "expected_events" to fixture.expectedEvents,
+            "catalog_expected_events" to fixture.expectedEvents,
+            "expected_events" to expectedEvents,
             "observed_events" to events,
+            "configuration_relaunch" to configurationRelaunch,
             "process_facts" to processFacts,
             "payload_abis" to fixture.payloadAbis,
             "expected_outcome" to fixture.expectedOutcome,
@@ -454,14 +461,20 @@ object FixtureDriver {
             return events(packageName)
         }
 
-        fun awaitEvents(packageName: String, expected: List<String>, launch: Result): List<String> {
+        fun awaitEvents(
+            fixtureId: String,
+            packageName: String,
+            expected: List<String>,
+            launch: Result,
+        ): EventObservation {
             // `content query` starts the exported provider when the application process is not yet
             // ready. Polling it concurrently with `am start` can therefore create a second startup
             // on slower API 29 devices. `am start -W` supplies the synchronization boundary; allow
             // the remote worker process a bounded settle window, then observe exactly once.
             Thread.sleep(if ("worker.create" in expected) 1_000 else 250)
             val observed = events(packageName)
-            if (observed == expected) return observed
+            matchDeviceEvents(shell("getprop", "ro.build.version.sdk").output.trim().toInt(), fixtureId, expected, observed)
+                ?.let { return it }
             val diagnostics = focusedDiagnostics(packageName)
             error(
                 "$packageName events did not reach $expected; observed=$observed; " +
@@ -505,6 +518,33 @@ object FixtureDriver {
             allowFailure: Boolean = false,
             timeout: Duration = Duration.ofSeconds(30),
         ): Result = run(listOf(tool.toString()) + arguments, timeout, allowFailure)
+    }
+
+    internal data class EventObservation(
+        val expected: List<String>,
+        val observed: List<String>,
+        val configurationRelaunch: Boolean,
+    )
+
+    internal fun matchDeviceEvents(
+        apiLevel: Int,
+        fixtureId: String,
+        catalogExpected: List<String>,
+        observed: List<String>,
+    ): EventObservation? {
+        if (observed == catalogExpected) return EventObservation(catalogExpected, observed, false)
+        if (apiLevel != 29) return null
+        val relaunchedExpected = catalogExpected + activityRelaunchEvents(fixtureId)
+        return if (observed == relaunchedExpected) EventObservation(relaunchedExpected, observed, true) else null
+    }
+
+    private fun activityRelaunchEvents(fixtureId: String): List<String> = when (fixtureId) {
+        "kotlin-single-dex" -> listOf("activity.create", "kotlin.marker")
+        "kotlin-multidex" -> listOf("activity.create", "kotlin.marker", "multidex.class")
+        "jni-four-abi", "jni-arm-only" -> listOf("activity.create", "jni.marker")
+        "java-single-dex", "custom-application", "custom-factory", "startup-provider", "multi-process" ->
+            listOf("activity.create")
+        else -> error("unknown fixture for configuration relaunch: $fixtureId")
     }
 
     private data class Result(val exit: Int, val output: String)

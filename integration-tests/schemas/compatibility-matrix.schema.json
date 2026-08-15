@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://android-app-hardening.invalid/schemas/compatibility-matrix.schema.json",
+  "title": "M3-04 API and ABI validation matrix",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "generatedFromCommit", "minApi", "maxApi", "abis", "cells", "summary", "compatibilityClaim"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "generatedFromCommit": { "type": ["string", "null"], "pattern": "^[0-9a-f]{40}$" },
+    "minApi": { "const": 29 },
+    "maxApi": { "const": 36 },
+    "abis": { "const": ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"] },
+    "cells": {
+      "type": "array",
+      "minItems": 32,
+      "maxItems": 32,
+      "items": { "$ref": "#/$defs/cell" }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verified", "failed", "unverified"],
+      "properties": {
+        "verified": { "type": "integer", "minimum": 0, "maximum": 32 },
+        "failed": { "type": "integer", "minimum": 0, "maximum": 32 },
+        "unverified": { "type": "integer", "minimum": 0, "maximum": 32 }
+      }
+    },
+    "compatibilityClaim": { "type": "string", "minLength": 20 }
+  },
+  "$defs": {
+    "cell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["apiLevel", "processAbi", "status", "reasonCode", "deviceFacts", "fixtureResults", "retryCount", "artifactSha256", "evidence"],
+      "properties": {
+        "apiLevel": { "type": "integer", "minimum": 29, "maximum": 36 },
+        "processAbi": { "enum": ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"] },
+        "status": { "enum": ["VERIFIED", "FAILED", "UNVERIFIED"] },
+        "reasonCode": { "type": ["string", "null"] },
+        "deviceFacts": { "type": ["object", "null"] },
+        "fixtureResults": { "type": "array" },
+        "retryCount": { "type": "integer", "minimum": 0, "maximum": 1 },
+        "artifactSha256": { "type": "object", "additionalProperties": { "type": "string", "pattern": "^[0-9a-f]{64}$" } },
+        "evidence": { "type": "object" }
+      }
+    }
+  }
+}

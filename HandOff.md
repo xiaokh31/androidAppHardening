@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260815-092507
-updated_at: 2026-08-15T09:25:07+08:00
+handoff_id: HO-20260815-094355
+updated_at: 2026-08-15T09:43:55+08:00
 updated_by: /root
 state: active
 source_branch: chore/m3-04-api-abi-matrix
@@ -22,7 +22,8 @@ Implement the revised M3-04 complete API/ABI inventory, verify the four availabl
 ## Current State
 
 - M3-06 is complete. PR #57 merged with expected-head `8da49b52fc7c2ea65bf7f0a19b5804d9137130e6` as `a65433ae0bda651fc1088d187913b2dbfa7b02d1`; Issue #56 closed. Merger-ready Build `31855996092`, Governance `31855996089`, main Build `31856224545`, main Governance `31856224541`, local strict HandOff and project governance all passed. Repeated fuzz/equivalence workflows were cancelled by scope and no device/KVM ran for the contract task.
-- The preserved M3-04 blocker commit `72a5fce85bbee5b0f1888028049f096487febb7e` is being merged with verified post-M3-06 `main`; only `HandOff.md` conflicted because the old branch recorded the now-resolved user decision.
+- The preserved M3-04 blocker commit `72a5fce85bbee5b0f1888028049f096487febb7e` is resumed on top of verified post-M3-06 `main` by `98cbd7738eaff3083429d8a5778d62a53577393c`. The only merge conflict was the root HandOff and it was reconciled by `/root`.
+- M3-04 implementation now adds the executable 32-cell inventory, versioned JSON Schema, exact JSON-to-Markdown renderer, mutation self-tests, Android-reported process facts, forced-ABI fixture installation, authenticated-tag/signer pre-business negatives, bounded API 29 ARM campaign, and branch-limited API 29/36 KVM cell extraction. Node syntax/self-tests, PowerShell parsing, `git diff --check`, Kotlin compilation, one API 29 fixture Java compilation, project governance, strict HandOff and the single nine-fixture Host full-flow pass offline. The Host pass completed in 5m23s with all nine fixture rows and negative cleanup; no device or emulator has run yet.
 - ADR 0012 and the revised M3-04 contract enumerate the full API 29-36 by four-ABI grid while reserving `VERIFIED` for real Android-reported process evidence, `FAILED` for executed regressions, and `UNVERIFIED` for unavailable combinations that carry no positive compatibility claim. The mandatory current M3-04 baseline is API 29 ARM32/ARM64 plus API 29/36 x86_64.
 - Read-only inventory provides an authorized API 29 `user` physical device capable of `arm64-v8a` and `armeabi-v7a` processes, plus pinned API 29 revision 8 and API 36 revision 2 x86_64 KVM images. API 30-35 and all other unavailable combinations will be emitted as `UNVERIFIED`; they will not trigger downloads or inferred claims.
 - M3-04 is the only active task. M3-05 remains unstarted and cannot begin until M3-04 merges and its post-merge gates pass.
@@ -1525,10 +1526,10 @@ None
 
 ## Ordered Next Actions
 
-1. Complete the main merge and update `docs/evidence/M3-04/implementation-plan.md` to ADR 0012.
-2. Implement the deterministic 32-cell inventory/schema/Markdown consistency checks and bounded device acceptance without changing product behavior.
-3. Run API 29 ARM32/ARM64 physical acceptance and API 29/36 x86_64 KVM once; explicitly mark every unavailable cell `UNVERIFIED` and record cleanup/evidence hashes.
-4. Publish the unique Issue #21 PR, pass exact-head Build/Governance/KVM as applicable, merge with expected-head protection, and only then start M3-05.
+1. Finish the bounded M3-04 implementation review and local static/offline checks, then freeze one implementation commit.
+2. Run API 29 ARM32/ARM64 physical acceptance once and retain the two normalized cell records with cleanup hashes.
+3. Push the unique Issue #21 branch, create its sole draft PR, run API 29/36 KVM once, and aggregate the four real cells plus 28 explicit `UNVERIFIED` cells.
+4. Pass exact-head Build/Governance, update README/task/evidence, merge with expected-head protection, pass post-merge main gates, and only then start M3-05.
 
 ## Relevant Files and Artifacts
 
@@ -1543,6 +1544,11 @@ None
 - `docs/tasks/INDEX.md`
 - `tools/governance/validate-project-package.mjs`
 - `docs/evidence/M3-04/implementation-plan.md`
+- `integration-tests/schemas/compatibility-matrix.schema.json`
+- `tools/device-capability-probe/index.mjs`
+- `tools/validation/run-m3-04-arm-device.ps1`
+- `fixtures/android/src/m301Common/java/ah/fixtures/android/m301/FixtureEventProvider.java`
+- `.github/workflows/m0-05-linux-kvm.yml`
 - preserved blocker commit `72a5fce85bbee5b0f1888028049f096487febb7e`
 - `docs/tasks/M3-03-windows-ubuntu-equivalence.md`
 - `integration-tests/build.gradle.kts`

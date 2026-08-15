@@ -59,6 +59,7 @@ v0.1 的成功标准不是“不可破解”，而是在不破坏已声明兼容
 目标是完成注入 APK 的最小启动与防护 Runtime。
 
 - M2-01：Shell `AppComponentFactory`。
+- M2-09：Shell Factory 配置 relaunch 生命周期维护。
 - M2-02：Native 解密与内存 ClassLoader。
 - M2-03：运行时签名和完整性校验。
 - M2-04：四 ABI Runtime。
@@ -96,7 +97,7 @@ v0.1 的成功标准不是“不可破解”，而是在不破坏已声明兼容
 
 ```text
 M0-03 -> M0-04 -> M0-06 -> M0-05 -> interface freeze
-interface freeze -> M1-07 -> M1-04 -> M2-02 -> M3-06 -> M3-04 -> M4
+interface freeze -> M1-07 -> M1-04 -> M2-02 -> M2-09 -> M3-06 -> M3-04 -> M4
 ```
 
 M0-03 完成后，M0-04 可与治理校验并行。M0-04 通过后先完成 M0-06，再恢复 M0-05。M1-04 首轮复核发现容器认证/内存合同冲突后，必须先合并 M1-07 的 AHDC v2 分块认证合同；只有该合同独立复核通过，M1 Host 与 M2 Runtime 才可按同一 HeaderV2/RecordV2/ChunkV2、ConfigV2、单一 Manifest 属性变换和错误语义继续。M3 fixture 可提前建设，但矩阵结论必须基于已合并的 M1 和 M2。

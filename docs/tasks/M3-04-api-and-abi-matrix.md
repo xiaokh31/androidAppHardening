@@ -7,6 +7,7 @@ owner_role: qa-governance-agent
 depends_on:
   - M0-03
   - M2-04
+  - M2-09
   - M3-01
   - M3-02
   - M3-06
@@ -132,7 +133,7 @@ security_sensitive: false
 
 ## Dependencies and Blockers
 
-M3-06 未合并、四个强制基线格子缺少真实进程证据、M2-04 缺少 ABI 产物、M3-02 存在未修复认证绕过、出现任一 `FAILED` 格子或 `UNVERIFIED` 被表述为支持时，任务保持 blocked。不得用模拟报告、构建成功或其他 API/ABI 的结果填补证据。
+M3-06 或 M2-09 未合并、四个强制基线格子缺少真实进程证据、M2-04 缺少 ABI 产物、M3-02 存在未修复认证绕过、出现任一 `FAILED` 格子或 `UNVERIFIED` 被表述为支持时，任务保持 blocked。不得用模拟报告、构建成功或其他 API/ABI 的结果填补证据。
 
 ## Agent Handoff Requirements
 

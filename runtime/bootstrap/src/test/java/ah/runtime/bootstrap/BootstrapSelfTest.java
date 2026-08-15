@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 /** Dependency-free JVM contract suite for the M2-01 bootstrap state machine. */
@@ -19,13 +20,14 @@ public final class BootstrapSelfTest {
     public static void main(String[] args) throws Exception {
         readyWithoutFactory();
         customFactoryAndCache();
+        secondShellStateMatrix();
         concurrentInstallOnce();
         failuresCloseOnceAndCache();
         cleanupFailureDoesNotReplacePrimary();
         configurationFailures();
         reentryFailsClosed();
         metadataIsIgnored();
-        System.out.println("M2-01 bootstrap self-test PASS (9 groups)");
+        System.out.println("M2-09 bootstrap self-test PASS (10 groups)");
     }
 
     private static void readyWithoutFactory() {
@@ -53,6 +55,103 @@ public final class BootstrapSelfTest {
         same(adapter.finalLoader, result.finalClassLoader(), "delegated final loader");
         same(adapter.factory, result.originalFactory(), "retained original factory");
         require(result.owner() != null, "READY did not retain session owner");
+    }
+
+    private static void secondShellStateMatrix() {
+        FakeSession session = new FakeSession("a.b.OriginalFactory");
+        FakeAdapter adapter = new FakeAdapter();
+        AtomicInteger opens = new AtomicInteger();
+        HardeningBootstrap.Coordinator coordinator = new HardeningBootstrap.Coordinator(
+                (loader, info) -> {
+                    opens.incrementAndGet();
+                    return session;
+                }, adapter);
+        expectComponentFailure(shell(coordinator), SHELL, "NEW second Shell");
+        equal(0, opens.get(), "NEW second Shell opened Guard");
+        BootstrapResult ready = coordinator.install(SHELL, info(null));
+        ShellAppComponentFactory secondShell = shell(coordinator);
+        same(ready, invokeRequireReady(secondShell, adapter.finalLoader),
+                "terminal READY attachment identity");
+        expectComponentFailure(secondShell, new ClassLoader(adapter.finalLoader) {},
+                "mismatched second Shell loader");
+        equal(1, opens.get(), "READY attachment reopened Guard");
+        equal(1, adapter.createCount.get(), "READY attachment reconstructed factory");
+        equal(1, adapter.delegateCount.get(), "READY attachment repeated factory hook");
+
+        HardeningBootstrap.Coordinator[] installing = new HardeningBootstrap.Coordinator[1];
+        AtomicInteger installingOpens = new AtomicInteger();
+        FakeSession installingSession = new FakeSession(null);
+        installing[0] = new HardeningBootstrap.Coordinator((loader, info) -> {
+            installingOpens.incrementAndGet();
+            expectComponentFailure(shell(installing[0]), loader,
+                    "INSTALLING second Shell");
+            return installingSession;
+        }, new FakeAdapter());
+        equal(BootstrapResult.Status.READY,
+                installing[0].install(SHELL, info(null)).status(), "installing terminal status");
+        equal(1, installingOpens.get(), "INSTALLING second Shell reopened Guard");
+
+        FakeSession failedSession = new FakeSession("a.b.OriginalFactory");
+        FakeAdapter failedAdapter = new FakeAdapter();
+        failedAdapter.mode = "hook";
+        AtomicInteger failedOpens = new AtomicInteger();
+        HardeningBootstrap.Coordinator failed = new HardeningBootstrap.Coordinator(
+                (loader, info) -> {
+                    failedOpens.incrementAndGet();
+                    return failedSession;
+                }, failedAdapter);
+        equal(BootstrapResult.Status.FAILURE,
+                failed.install(SHELL, info(null)).status(), "failed terminal status");
+        expectComponentFailure(shell(failed), adapter.finalLoader,
+                "FAILED second Shell");
+        equal(BootstrapResult.Status.FAILURE,
+                failed.install(SHELL, info(null)).status(), "failed cached status");
+        equal(1, failedOpens.get(), "FAILED second Shell retried Guard");
+        equal(1, failedAdapter.createCount.get(), "FAILED second Shell reconstructed factory");
+        equal(1, failedAdapter.delegateCount.get(), "FAILED second Shell repeated factory hook");
+    }
+
+    private static BootstrapResult invokeRequireReady(
+            ShellAppComponentFactory shell,
+            ClassLoader loader) {
+        try {
+            Method method = ShellAppComponentFactory.class.getDeclaredMethod(
+                    "requireReady", ClassLoader.class);
+            method.setAccessible(true);
+            return (BootstrapResult) method.invoke(shell, loader);
+        } catch (InvocationTargetException failure) {
+            Throwable cause = failure.getCause();
+            if (cause instanceof RuntimeException) throw (RuntimeException) cause;
+            if (cause instanceof Error) throw (Error) cause;
+            throw new AssertionError("second Shell invocation failed", cause);
+        } catch (ReflectiveOperationException failure) {
+            throw new AssertionError("second Shell reflection failed", failure);
+        }
+    }
+
+    private static ShellAppComponentFactory shell(HardeningBootstrap.Coordinator coordinator) {
+        ShellAppComponentFactory shell = allocate(ShellAppComponentFactory.class);
+        try {
+            Field field = ShellAppComponentFactory.class.getDeclaredField("coordinator");
+            field.setAccessible(true);
+            field.set(shell, coordinator);
+            return shell;
+        } catch (ReflectiveOperationException failure) {
+            throw new AssertionError("second Shell allocation failed", failure);
+        }
+    }
+
+    private static void expectComponentFailure(
+            ShellAppComponentFactory shell,
+            ClassLoader loader,
+            String label) {
+        try {
+            invokeRequireReady(shell, loader);
+            throw new AssertionError(label + " unexpectedly attached");
+        } catch (BootstrapFailure expected) {
+            equal(BootstrapFailure.message(BootstrapFailure.COMPONENT), expected.getMessage(),
+                    label + " code");
+        }
     }
 
     private static void concurrentInstallOnce() throws Exception {

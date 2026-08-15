@@ -45,6 +45,7 @@ const expectedTasks = [
   "M1-07-chunk-authenticated-container-contract.md",
   "M2-07-native-crypto-backend.md",
   "M2-08-native-parser-topology-bounds.md",
+  "M2-09-shell-factory-relaunch-lifecycle.md",
   "M3-06-api-abi-validation-claim-contract.md",
 ];
 
@@ -186,6 +187,8 @@ if (!fs.existsSync(indexFile)) {
           ? "41"
         : id === "M2-08"
           ? "53"
+          : id === "M2-09"
+            ? "59"
           : id === "M3-06"
             ? "56"
           : String(expectedTasks.indexOf(expectedFile) + 1);
@@ -402,6 +405,8 @@ const expectedAdrs = [
   "docs/adr/0009-native-cryptography-backend.md",
   "docs/adr/0010-environment-risk-policy.md",
   "docs/adr/0011-memory-exposure-controls.md",
+  "docs/adr/0012-api-abi-validation-claim-boundary.md",
+  "docs/adr/0013-shell-factory-relaunch-lifecycle.md",
 ];
 const adrHeadings = [
   "## Status",

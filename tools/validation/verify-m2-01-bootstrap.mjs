@@ -44,6 +44,11 @@ requireCondition(bootstrap.includes("RuntimeStartupGuard.openVerifiedPayload(app
   "frozen Guard call is absent");
 requireCondition((bootstrap.match(/RuntimeStartupGuard\.openVerifiedPayload\(/gu) ?? []).length === 1,
   "Guard call count is not exactly one");
+requireCondition(bootstrap.includes("synchronized BootstrapResult readyResult()")
+    && bootstrap.includes("state != State.READY")
+    && shell.includes("result = coordinator.readyResult()")
+    && shell.includes("loader != result.finalClassLoader()"),
+  "second Shell wrapper cannot safely attach the terminal READY result");
 requireCondition(!bootstrap.includes("failure.getMessage()")
     && bootstrap.includes("BootstrapFailure.create(BootstrapFailure.GUARD)"),
   "untrusted Throwable methods crossed the stable Guard classification boundary");
@@ -76,7 +81,7 @@ requireCondition(shell.includes("AAH-RUNTIME-BOOT-") || combined.includes("AAH-R
   "stable bootstrap error prefix absent");
 for (const marker of ["platform_callbacks=6", "main_install=1", "secondary_install=1",
   "custom_application=true", "early_provider=true", "multidex=true", "jni=true",
-  "metadata_null=true", "plaintext_dex_files=0"]) {
+  "configuration_relaunch=true", "metadata_null=true", "plaintext_dex_files=0"]) {
   requireCondition(deviceRunner.includes(marker), `device acceptance marker absent: ${marker}`);
 }
 requireCondition(deviceRunner.includes('result.putString("summary", summary)')
@@ -90,6 +95,10 @@ requireCondition(deviceRunner.includes("waitForJniMarker()")
 requireCondition(deviceRunner.includes("waitForServiceMarker()")
     && deviceRunner.includes("service lifecycle marker did not converge"),
   "device runner does not observe platform-default Service creation");
+requireCondition(deviceRunner.includes("activity::recreate")
+    && deviceRunner.includes("waitForActivityWithTimeout(5_000L)")
+    && deviceRunner.includes('ProbeSignal.factoryCount("activity"), "relaunch activity count"'),
+  "device runner does not exercise the bounded configuration relaunch");
 requireCondition(deviceManifest.includes('android:process=":m201secondary"'),
   "independent-process component is absent");
 requireCondition(deviceManifest.includes(

@@ -113,6 +113,27 @@ tasks.register<JavaExec>("runFixtureHostMatrix") {
     providers.gradleProperty("m301Case").orNull?.let { systemProperty("m301.case", it) }
 }
 
+tasks.register<JavaExec>("prepareM305AndroidBenchmark") {
+    group = "verification"
+    description = "Protects, externally signs, and installs the three fixed M3-05 benchmark targets."
+    dependsOn(tasks.named("classes"), tasks.named("test"), generateM301RuntimeBundle)
+    classpath = sourceSets["main"].runtimeClasspath + files(generatedRuntimeBundle)
+    mainClass.set("ah.integration.fixtures.FixtureDriver")
+    systemProperty("m301.root", rootProject.layout.projectDirectory.asFile.absolutePath)
+    systemProperty("m301.report", rootProject.layout.buildDirectory.file("m3-05/android-preparation.json").get().asFile.absolutePath)
+    systemProperty("m301.signing", layout.buildDirectory.dir("m3-05-test-signing").get().asFile.absolutePath)
+    systemProperty("m301.work", layout.buildDirectory.dir("m3-05-device-targets").get().asFile.absolutePath)
+    systemProperty("m301.case", "java-single-dex,kotlin-multidex,jni-four-abi")
+    systemProperty("m303.skipNegatives", "true")
+    systemProperty("m305.keepInstalled", "true")
+}
+
+tasks.register("prepareAndroidPerformanceBenchmark") {
+    group = "verification"
+    description = "Stable dependency alias for the Android performance harness."
+    dependsOn("prepareM305AndroidBenchmark")
+}
+
 val m303Seed = rootProject.layout.buildDirectory.dir("equivalence/input-corpus")
 val m303Inputs = providers.gradleProperty("m303InputCorpus")
     .map { rootProject.layout.projectDirectory.dir(it) }

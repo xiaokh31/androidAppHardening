@@ -8,6 +8,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Process;
 
+import java.lang.reflect.Method;
 import java.util.Locale;
 
 public final class FixtureEventProvider extends ContentProvider {
@@ -24,18 +25,38 @@ public final class FixtureEventProvider extends ContentProvider {
     @Override
     public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
         MatrixCursor cursor = new MatrixCursor(new String[] {
-                "sequence", "event", "sdk", "process_abi", "supported_abis", "is_64_bit"
+                "sequence", "event", "sdk", "process_abi", "supported_abis", "is_64_bit",
+                "process_start_ms", "application_on_create_ms", "interactive_ms",
+                "observed_level", "observed_action"
         });
         if (getContext() == null) return cursor;
         int sequence = 0;
         String processAbi = processAbi();
         String supportedAbis = String.join("|", Build.SUPPORTED_ABIS);
+        long[] timings = FixtureTimings.read(getContext());
+        String[] observation = observeEnvironment();
         for (String event : FixtureEvents.read(getContext())) {
             cursor.addRow(new Object[] {
-                    sequence++, event, Build.VERSION.SDK_INT, processAbi, supportedAbis, Process.is64Bit()
+                    sequence++, event, Build.VERSION.SDK_INT, processAbi, supportedAbis, Process.is64Bit(),
+                    timings[0], timings[1], timings[2], observation[0], observation[1]
             });
         }
         return cursor;
+    }
+
+    /** Records the shipped policy after startup; the unsigned baseline has no Runtime classes. */
+    private String[] observeEnvironment() {
+        try {
+            ClassLoader loader = getClass().getClassLoader();
+            Class<?> engine = Class.forName("ah.runtime.risk.EnvironmentRiskEngine", true, loader);
+            Method evaluate = engine.getMethod("evaluate", android.content.pm.ApplicationInfo.class);
+            Object report = evaluate.invoke(null, getContext().getApplicationInfo());
+            Method level = report.getClass().getMethod("level");
+            Method action = report.getClass().getMethod("action");
+            return new String[] {String.valueOf(level.invoke(report)), String.valueOf(action.invoke(report))};
+        } catch (ReflectiveOperationException | LinkageError unavailable) {
+            return new String[] {"UNAVAILABLE", "UNAVAILABLE"};
+        }
     }
 
     private static String processAbi() {

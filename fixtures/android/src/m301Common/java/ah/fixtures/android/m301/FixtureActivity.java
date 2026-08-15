@@ -7,6 +7,8 @@ import android.os.Bundle;
 import java.lang.reflect.Method;
 
 public final class FixtureActivity extends Activity {
+    private boolean interactiveReported;
+
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -15,6 +17,16 @@ public final class FixtureActivity extends Activity {
         if ("kotlin-multidex".equals(ah.fixtures.android.BuildConfig.FIXTURE_ID)) verifyMultidex();
         if (ah.fixtures.android.BuildConfig.M301_JNI) verifyJni();
         if (ah.fixtures.android.BuildConfig.M301_MULTI_PROCESS) startService(new Intent(this, WorkerService.class));
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus && !interactiveReported) {
+            interactiveReported = true;
+            FixtureTimings.markInteractive(this);
+            reportFullyDrawn();
+        }
     }
 
     private void verifyKotlin() {

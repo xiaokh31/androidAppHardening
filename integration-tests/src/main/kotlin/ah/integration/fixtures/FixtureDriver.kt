@@ -35,6 +35,7 @@ object FixtureDriver {
         val expectedAbi = System.getProperty("m304.expectedAbi")?.takeIf(String::isNotBlank)
         val signedInputCorpus = System.getProperty("m303.signedInputCorpus")?.let { Path.of(it) }?.toAbsolutePath()?.normalize()
         val skipNegatives = System.getProperty("m303.skipNegatives") == "true"
+        val keepInstalled = System.getProperty("m305.keepInstalled") == "true"
         require(signing.startsWith(ownedBuild) && work.startsWith(ownedBuild))
         signing.toFile().deleteRecursively()
         work.toFile().deleteRecursively()
@@ -54,15 +55,16 @@ object FixtureDriver {
                 Credentials.create(tools, signing.resolve("primary.jks"), "m301-primary")
             } else null
             val alternate = if (!skipNegatives) Credentials.create(tools, signing.resolve("alternate.jks"), "m301-alternate") else null
-            val requestedCase = System.getProperty("m301.case").orEmpty()
+            val requestedCases = System.getProperty("m301.case").orEmpty()
+                .split(',').map(String::trim).filter(String::isNotEmpty).toSet()
             val fixtures = FixtureCatalog.load(root).let { catalog ->
-                if (requestedCase.isEmpty()) catalog else catalog.filter { it.id == requestedCase }.also {
-                    check(it.size == 1) { "unknown M3-01 fixture case" }
+                if (requestedCases.isEmpty()) catalog else catalog.filter { it.id in requestedCases }.also {
+                    check(it.map(FixtureDescriptor::id).toSet() == requestedCases) { "unknown M3-01 fixture case" }
                 }
             }
             fixtures.forEach { fixture ->
                 println("M3-01 fixture case start: ${fixture.id}")
-                rows += runCase(fixture, work.resolve("cases/${fixture.id}"), tools, adb, credentials, signedInputCorpus)
+                rows += runCase(fixture, work.resolve("cases/${fixture.id}"), tools, adb, credentials, signedInputCorpus, keepInstalled)
             }
             if (adb != null) device = adb.deviceInfo()
             if (!skipNegatives) runSignerNegatives(
@@ -113,6 +115,7 @@ object FixtureDriver {
         adb: Adb?,
         credentials: Credentials?,
         signedInputCorpus: Path?,
+        keepInstalled: Boolean,
     ): Map<String, Any?> {
         Files.createDirectories(caseRoot)
         val signedInput = caseRoot.resolve("signed-input.apk")
@@ -173,7 +176,7 @@ object FixtureDriver {
                 }
             }
         } finally {
-            adb.uninstall(packageName)
+            if (!keepInstalled) adb.uninstall(packageName)
         }
 
         return linkedMapOf(
@@ -193,7 +196,8 @@ object FixtureDriver {
             "product_report_sha256" to sha256(productReport),
             "same_current_signer" to (outputSigner == null || inputSigner == outputSigner),
             "product_output_unsigned" to true,
-            "package_cleanup" to (adb == null || !adb.isInstalled(packageName)),
+            "package_cleanup" to (adb == null || (!keepInstalled && !adb.isInstalled(packageName))),
+            "package_cleanup_deferred" to (adb != null && keepInstalled),
         )
     }
 

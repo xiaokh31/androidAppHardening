@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "host": {
+    "jdk": "17.0.19+10",
+    "gradle": "9.5.0",
+    "jmh": "1.37",
+    "warmups": 3,
+    "measurements": 10,
+    "operatingSystems": ["ubuntu-24.04", "windows-2025-vs2026"]
+  },
+  "android": {
+    "benchmark": "1.4.1",
+    "warmups": 5,
+    "measurements": 30,
+    "profiles": ["api29-arm64-user", "api36-x86_64-kvm"],
+    "startupMode": "COLD",
+    "stablePssDelayMs": 5000
+  }
+}

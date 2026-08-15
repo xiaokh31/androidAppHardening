@@ -1,15 +1,15 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260815-231219
-updated_at: 2026-08-15T23:12:19+08:00
+handoff_id: HO-20260815-233842
+updated_at: 2026-08-15T23:38:42+08:00
 updated_by: /root
 state: active
-source_branch: main
-base_commit: 859cfa217b2fc0726cc001519967cdde606d2146
-working_tree: clean
+source_branch: chore/m3-05-performance-benchmarks
+base_commit: 930b759c99f330218dc4404368e9844e80456c82
+working_tree: dirty
 current_milestone: M3
-active_task: M3-07
+active_task: M3-05
 next_owner: /root
 ---
 
@@ -17,11 +17,12 @@ next_owner: /root
 
 ## Objective
 
-Close M3-07 on main, verify the post-merge coordination gate, and restore the saved M3-05 worktree without rerunning M3-07 device work.
+Complete the bounded M3-05 size, Host, observed LOW cold-start, memory and test-only isolated HIGH benchmark matrix without repeating unrelated historical validation.
 
 ## Current State
 
-- M3-07 is merged and closing on `main`. Final implementation freeze `90f754ea185a8633acd585d181ee108db016209d` passed independent review with `P0=0/P1=0/P2=0`; exact published head `4e77aa38b508a99c60a576e41804ba2d08b6b9fd` passed Build `31891662932` and Governance `31891662909` on Ubuntu/Windows. PR #62 merged with expected-head protection as `859cfa217b2fc0726cc001519967cdde606d2146`, Issue #61 closed, and out-of-scope Fuzz/equivalence runs were cancelled. No device, emulator or KVM ran. The unfinished M3-05 worktree remains safely stored as `stash@{0}` until this main coordination commit passes.
+- M3-07 is complete. Final implementation freeze `90f754ea185a8633acd585d181ee108db016209d` passed independent review with `P0=0/P1=0/P2=0`; exact published head `4e77aa38b508a99c60a576e41804ba2d08b6b9fd` passed Build `31891662932` and Governance `31891662909` on Ubuntu/Windows. PR #62 merged with expected-head protection as `859cfa217b2fc0726cc001519967cdde606d2146`, Issue #61 closed, and post-merge `main@930b759c99f330218dc4404368e9844e80456c82` passed Build `31892091205` and Governance `31892091344`. No device, emulator or KVM ran for M3-07.
+- M3-05 is active on `chore/m3-05-performance-benchmarks` from `main@930b759c99f330218dc4404368e9844e80456c82`. The saved implementation was restored without its stale HandOff snapshot; `stash@{0}` remains only as a recovery backup until the new work is committed. Host and Android harnesses, fixed environments, size reconciliation, two-pass Host workflow and branch-limited API 36 KVM entry are present. ADR 0014 is now implemented as distinct `observed_cold_start` LOW/ALLOW rows and an Android-test-only `isolated_high_upgrade` bridge with same-handle, zero/one lookup, Native jitter and exactly-once cleanup evidence. The formal report mutation self-test, Node syntax, diff check, Host statistics test, Android/Host compilation, fixture Java compilation, Android test APK packaging, lint and ZIP-aware artifact-boundary scan pass locally. No device or emulator has run; the full Host/KVM/ARM matrix remains a single future batch after freeze.
 - M2-09 is merged and complete. Production implementation `9ba6ec28c7d1450c3ca51175f78e3aa2d292331f`, test remediation `dd78179f41c97aab7e3f38c0f571c4e6198f8939` and exact PR head `186dfd79ee4f32c749c4ccfdebf5bc82a3476637` passed independent `P0=0/P1=0/P2=0` review, Build `31862011459`, Governance `31862011393`, and API 29/36 KVM `31862011460`. PR #60 merged as `77b3aee7d88eaf4446ae780f20fe6988796609af`; final main coordination `e3a676ed2f4864d2b33077e1d00c300cf2a59817` passed Build `31863095498` and Governance `31863095500`.
 - M3-06 is complete. PR #57 merged with expected-head `8da49b52fc7c2ea65bf7f0a19b5804d9137130e6` as `a65433ae0bda651fc1088d187913b2dbfa7b02d1`; Issue #56 closed. Merger-ready and post-merge Ubuntu/Windows Build/Governance passed, while device/KVM/fuzz remained out of scope.
 - M3-04 resumed on draft PR #58 by merging verified `main@e3a676ed2f4864d2b33077e1d00c300cf2a59817` as `f152d34b314b9cbf89a3e10999d914f81e78a522`. Governance `31863503632` and Build `31863503635` passed on Ubuntu/Windows. KVM `31863503643` passed the complete API 36 x86_64 fixture, signer/tag negative, Runtime and cleanup matrix; API 29 passed five fixtures and then retained one exact configuration-relaunch observation `[provider.ready,startup_provider.create,activity.create,activity.create]`. M2-09 correctly allowed the second Activity construction, but the M3-04 runner still compared only the canonical single-Activity catalog list. The bounded correction accepts only one exact per-fixture Activity-recreation suffix on API 29, records catalog/normalized expected/observed sequences and `configuration_relaunch`, and rejects extra, reordered or non-API-29 duplicates. Kotlin contract tests, Node syntax/self-tests and diff checks pass locally; the coordination snapshot declares the post-commit tree clean.
@@ -197,7 +198,8 @@ Close M3-07 on main, verify the post-merge coordination gate, and restore the sa
 | M2-09 | `/root` | `main` | done | M2-01 | PR #60 merged; exact-head review, dual-platform CI and API 29/36 KVM passed; README/evidence synchronized |
 | M3-06 | `/root` | `main` | done | M0-03, M2-04, M3-01, M3-02 | PR #57 merged as `a65433a`; claim-boundary contract is active |
 | M3-04 | `/root` | `main` | done | M0-03, M2-04, M2-09, M3-01, M3-02, M3-06 | PR #58 merged; mandatory real-process cells and final main gates passed |
-| M3-07 | `/root` | `main` | in_progress | M2-05, M2-06, M3-01 | Push post-merge README/evidence/HandOff and pass main Build/Governance |
+| M3-07 | `/root` | `main` | done | M2-05, M2-06, M3-01 | PR #62 merged; post-merge Build/Governance and README/evidence synchronization passed |
+| M3-05 | `/root` | `chore/m3-05-performance-benchmarks` | in_progress | M1-06, M2-04, M2-06, M3-01, M3-07 | Freeze implementation, open unique draft PR #22 linkage, then run one Host/KVM/ARM matrix |
 | M3-03 | `/root` | `main` | done | M0-03, M1-05, M1-06, M2-06, M3-01 | PR #55 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | done | M2-02 | PR #54 merged; exact regression, ASan/UBSan, dual-platform Build/Governance and independent review passed |
 | M3-02 | `/root` | `main` | done | M1-03, M1-04, M1-06, M2-02, M2-03, M2-06, M2-08, M3-01 | PR #52 merged; README/evidence synchronized; wait for next task selection |
@@ -1601,12 +1603,23 @@ None
 
 ## Ordered Next Actions
 
-1. Commit and push this post-merge README, remote evidence and HandOff coordination snapshot to `main`.
-2. Pass the resulting main Ubuntu/Windows Build/Governance without running device/KVM/Fuzz/equivalence.
-3. Restore `chore/m3-05-performance-benchmarks`, integrate updated `main`, and apply `stash@{0}` exactly once before resuming M3-05.
+1. Run governance, strict HandOff, sensitive/diff checks; freeze and push the unique M3-05 implementation branch and create the sole draft PR linked to Issue #22.
+2. Run one exact-head batch: Ubuntu/Windows Host benchmark and Build/Governance, API 36 x86_64 KVM, and the authorized API 29 ARM64 physical-device benchmark. Do not rerun unrelated M0-M3 matrices.
+3. Record exact commands, hashes, budgets, cleanup and known limitations; update README/task evidence, revalidate the evidence-only head, then merge with expected-head protection and close Issue #22.
 
 ## Relevant Files and Artifacts
 
+- `docs/tasks/M3-05-size-startup-memory-benchmarks.md`
+- `docs/evidence/M3-05/implementation-plan.md`
+- `benchmarks/host/`
+- `benchmarks/android/`
+- `benchmarks/environment.json`
+- `tools/validation/run-m3-05-android-benchmark.mjs`
+- `tools/validation/verify-m3-05-test-bridge-artifacts.mjs`
+- `tools/validation/compare-m3-05-benchmarks.mjs`
+- `.github/workflows/benchmarks.yml`
+- `.github/workflows/m0-05-linux-kvm.yml`
+- Issue #22
 - `docs/adr/0014-test-only-high-benchmark-boundary.md`
 - `docs/tasks/M3-07-test-only-high-benchmark-contract.md`
 - `docs/tasks/M3-05-size-startup-memory-benchmarks.md`

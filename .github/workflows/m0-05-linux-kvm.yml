@@ -981,7 +981,11 @@ jobs:
             "build/m3-02/device-api${API}-x86_64/fuzz-summary.json"
 
           if [[ "${GITHUB_HEAD_REF:-${GITHUB_REF_NAME:-}}" = "chore/m3-04-api-abi-matrix" ]]; then
-            source_commit="${{ github.event.pull_request.head.sha || github.sha }}"
+            source_commit="$GITHUB_SHA"
+            if [[ "$GITHUB_EVENT_NAME" = "pull_request" ]]; then
+              source_commit="$(jq -r '.pull_request.head.sha // empty' "$GITHUB_EVENT_PATH")"
+            fi
+            [[ "$source_commit" =~ ^[0-9a-f]{40}$ ]]
             node tools/device-capability-probe/index.mjs cell \
               --api "$API" \
               --abi x86_64 \

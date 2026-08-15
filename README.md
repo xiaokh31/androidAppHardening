@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-M0 基础建设与可行性验证以及 M1 Host 处理链已经完成。M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换器、M1-07 AHDC v2 分块认证容器合同、M1-04 AHDC v2 Host 实现、M1-05 APK 重打包与对齐、M1-06 CLI 与 JSON 报告均已合并并通过双平台门禁。M2 已完成并合并独立前置任务 M2-07、Native AHDC v2 解密与内存 DEX loader M2-02、Runtime signer/authenticated metadata/启动事务所有权门禁 M2-03、生产 Shell `AppComponentFactory` 启动链 M2-01、四 ABI Runtime 构建与装配 M2-04、版本化环境风险信号与评分引擎 M2-05，以及内存 dump 成本控制 M2-06。M3-01 的九个公开 Android fixture、Host full-flow、Ubuntu/Windows、API 29/36 x86_64 KVM 与 API 29 arm64 真机矩阵均已通过并由 PR #49 合并。M3-02 的 69 项篡改 catalog、Jazzer/Native sanitizer fuzz、Ubuntu/Windows 与 API 29/36 KVM 矩阵也已全部通过并由 PR #52 合并。M3-03 的九 fixture 双轮随机化 Windows/Ubuntu 语义等价矩阵、独立 AHDC/DEX 验证、稳定负例与输入只读门禁已通过并由 PR #55 合并。M3-06 进一步用 ADR 0012 固定逐格 `VERIFIED`/`FAILED`/`UNVERIFIED` 声明边界，四 ABI 构建能力不再被误写成所有 API/ABI 组合均已验证。随后 M2-07 的 Windows hosted-runner 精确锁已通过 PR #51 更新至已复核镜像 `20260810.198.2`，保持未知镜像失败关闭，且未重复 KVM 或真机矩阵。这些控制只提高攻击成本，不承诺阻止 root、注入或进程控制攻击者。生产 RuntimeBundle 与可发布端到端发行包仍属于后续任务。
+M0 基础建设与可行性验证以及 M1 Host 处理链已经完成。M1-01 输入检查、M1-02 signer policy、M1-03 Binary AXML 转换器、M1-07 AHDC v2 分块认证容器合同、M1-04 AHDC v2 Host 实现、M1-05 APK 重打包与对齐、M1-06 CLI 与 JSON 报告均已合并并通过双平台门禁。M2 已完成并合并独立前置任务 M2-07、Native AHDC v2 解密与内存 DEX loader M2-02、Runtime signer/authenticated metadata/启动事务所有权门禁 M2-03、生产 Shell `AppComponentFactory` 启动链 M2-01、四 ABI Runtime 构建与装配 M2-04、版本化环境风险信号与评分引擎 M2-05，以及内存 dump 成本控制 M2-06。M3-01 的九个公开 Android fixture、Host full-flow、Ubuntu/Windows、API 29/36 x86_64 KVM 与 API 29 arm64 真机矩阵均已通过并由 PR #49 合并。M3-02 的 69 项篡改 catalog、Jazzer/Native sanitizer fuzz、Ubuntu/Windows 与 API 29/36 KVM 矩阵也已全部通过并由 PR #52 合并。M3-03 的九 fixture 双轮随机化 Windows/Ubuntu 语义等价矩阵、独立 AHDC/DEX 验证、稳定负例与输入只读门禁已通过并由 PR #55 合并。M3-06 进一步用 ADR 0012 固定逐格 `VERIFIED`/`FAILED`/`UNVERIFIED` 声明边界，四 ABI 构建能力不再被误写成所有 API/ABI 组合均已验证。M3-04 已生成完整 32 格 API/ABI 清单；API 29 ARM32/ARM64 与 API 29/36 x86_64 四个强制格子均由真实进程证据标记为 `VERIFIED`，其余 28 格明确为 `UNVERIFIED`，并由 PR #58 合并。随后 M2-07 的 Windows hosted-runner 精确锁已通过 PR #51 更新至已复核镜像 `20260810.198.2`，保持未知镜像失败关闭，且未重复 KVM 或真机矩阵。这些控制只提高攻击成本，不承诺阻止 root、注入或进程控制攻击者。生产 RuntimeBundle 与可发布端到端发行包仍属于后续任务。
 
 开发者和 Agent 从 [`docs/README_FIRST.md`](docs/README_FIRST.md) 开始。项目统筹状态以 [`HandOff.md`](HandOff.md) 为准。
 
@@ -35,8 +35,8 @@ M0 基础建设与可行性验证以及 M1 Host 处理链已经完成。M1-01 �
 | [M3-02](docs/tasks/M3-02-tamper-and-fuzz-tests.md) | 已完成 | 69 项篡改 catalog、Jazzer APK/AXML、Native libFuzzer + ASan/UBSan、Ubuntu/Windows、API 29/36 KVM 与独立全零复核均已通过；PR #52、Issue #19 已关闭 |
 | [M3-03](docs/tasks/M3-03-windows-ubuntu-equivalence.md) | 已完成 | 九个 fixture 在 Windows/Ubuntu 各运行两轮；36 个输出的稳定语义等价、随机字段不复用、独立认证解密、稳定负例、输入只读与无绝对路径泄漏均通过；PR #55、Issue #20 已关闭 |
 | [M3-06](docs/tasks/M3-06-api-abi-validation-claim-contract.md) | 已完成 | ADR 0012 与逐格声明合同已固定；PR #57 exact-head Ubuntu/Windows Build/Governance 通过，设备/KVM/fuzz 按治理范围未运行 |
-| [M3-04](docs/tasks/M3-04-api-and-abi-matrix.md) | 恢复中 | M2-09 生命周期依赖已合并；完整 32 格清单保留，API 29 ARM32/ARM64 与 API 29/36 x86_64 为强制可获得基线，其余不可提供组合明确为 `UNVERIFIED` |
-| M3-05 ～ M4 | 未启动 | M3-05 必须等待 M3-04 完整关闭；发布阶段继续按任务依赖顺序执行 |
+| [M3-04](docs/tasks/M3-04-api-and-abi-matrix.md) | 已完成 | 完整 32 格清单、四个真实 `VERIFIED` 强制格子、28 个明确 `UNVERIFIED` 格子、JSON/Markdown 等价及清理均已通过；PR #58、Issue #21 已关闭 |
+| M3-05 ～ M4 | 未启动 | M3-05 在本次 post-merge `main` 门禁通过后启动；发布阶段继续按任务依赖顺序执行 |
 
 任务按 [`docs/tasks/INDEX.md`](docs/tasks/INDEX.md) 的依赖顺序执行。每个任务只有在 PR 合并、合并后门禁与证据完成后才在本表标记“已完成”；每个任务的收尾协调提交必须同步本 README，避免公开进度长期滞后。
 

@@ -1,7 +1,9 @@
 # M3-04 remote validation
 
 - Frozen implementation head: `015e2b375a2fd24fa99c8748671f56ed142b19f9`
-- PR: [#58](https://github.com/xiaokh31/androidAppHardening/pull/58), closing Issue #21
+- Merger-ready evidence head: `c6d86663dee243ec6fabedbabeff2fd53063ae54`
+- Merge commit: `d29664129be659cbc3deeda86be8c50c4f7250dd`
+- PR: [#58](https://github.com/xiaokh31/androidAppHardening/pull/58), merged with expected-head protection; Issue #21 closed
 - Scope: exact Ubuntu/Windows Build/Governance and one bounded API 29/36 x86_64 KVM run; no additional fuzz workflow.
 
 ## Exact implementation-head CI
@@ -11,6 +13,8 @@
 | Build | [31864724608](https://github.com/xiaokh31/androidAppHardening/actions/runs/31864724608) | Ubuntu and Windows PASS at `015e2b3` |
 | Governance | [31864724604](https://github.com/xiaokh31/androidAppHardening/actions/runs/31864724604) | Ubuntu and Windows PASS at `015e2b3` |
 | M0-05 Linux KVM | [31864724589](https://github.com/xiaokh31/androidAppHardening/actions/runs/31864724589) | API 29 and API 36 x86_64 PASS at PR head `015e2b3` |
+| Evidence-head Build | [31867027270](https://github.com/xiaokh31/androidAppHardening/actions/runs/31867027270) | Ubuntu and Windows PASS at `c6d8666` |
+| Evidence-head Governance | [31867027316](https://github.com/xiaokh31/androidAppHardening/actions/runs/31867027316) | Ubuntu and Windows PASS at `c6d8666` |
 
 Both KVM cells contain 9/9 passing fixture rows, zero retries, exact component-event checks, different-signer and authenticated-tag rejection before lookup/session publication, ARM-only classification, and successful cleanup.
 

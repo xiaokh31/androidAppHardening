@@ -1,10 +1,10 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260815-102931
-updated_at: 2026-08-15T10:29:31+08:00
+handoff_id: HO-20260815-105520
+updated_at: 2026-08-15T10:55:20+08:00
 updated_by: /root
-state: active
+state: blocked
 source_branch: chore/m3-04-api-abi-matrix
 base_commit: a65433ae0bda651fc1088d187913b2dbfa7b02d1
 working_tree: clean
@@ -28,6 +28,7 @@ Implement the revised M3-04 complete API/ABI inventory, verify the four availabl
 - ADR 0012 and the revised M3-04 contract enumerate the full API 29-36 by four-ABI grid while reserving `VERIFIED` for real Android-reported process evidence, `FAILED` for executed regressions, and `UNVERIFIED` for unavailable combinations that carry no positive compatibility claim. The mandatory current M3-04 baseline is API 29 ARM32/ARM64 plus API 29/36 x86_64.
 - Read-only inventory provides an authorized API 29 `user` physical device capable of `arm64-v8a` and `armeabi-v7a` processes, plus pinned API 29 revision 8 and API 36 revision 2 x86_64 KVM images. API 30-35 and all other unavailable combinations will be emitted as `UNVERIFIED`; they will not trigger downloads or inferred claims.
 - M3-04 is the only active task. M3-05 remains unstarted and cannot begin until M3-04 merges and its post-merge gates pass.
+- M3-04 is blocked after the contract-limited API 29 KVM retry. Run `31858315765` job `94947032544` and run `31859364008` job `94949834547` both observed a complete first component-event sequence followed by an API 29 Activity configuration relaunch; the second production Shell component instantiation failed with `AAH-RUNTIME-BOOT-COMPONENT`. API 36 job `94949834605` passed the complete bounded matrix and cleanup, while exact-head Build `31859363997` and Governance `31859363978` are green. The API 36 cell is historical only because its source field captured PR merge checkout `c03a8238` instead of head `96e1fa9`. The ARM campaign and its single retry both stopped before testing with OEM `INSTALL_FAILED_USER_RESTRICTED`. PR #58 remains draft; no third KVM or install retry is allowed. A separate M2-01 Runtime relaunch maintenance contract must merge before M3-04 resumes, and M3-05 remains forbidden.
 - M3-03 final implementation `f53989e83b8a030139ec3e564ebfb41bdb81129a` passed Cross-platform equivalence `31847937221`, Build `31847937347` and Governance `31847937260` on the exact head. Windows and Ubuntu each produced 18 authenticated outputs; the final summary compared 36 outputs and proved stable semantics, random non-reuse, independent authentication/decryption, immutable inputs, unsigned outputs, equivalent negative errors and zero absolute-path findings. PR [#55](https://github.com/xiaokh31/androidAppHardening/pull/55) merged with expected-head protection as `af0fe5c5d0e9098d8cca86b3d5de3e09ed8412fb`, and Issue #20 closed. M3-03 is Host-only; out-of-scope KVM and M3-02 fuzz runs were cancelled.
 - M2-08 is complete. Final head `626a14c63c1b77f2552236659eb98d47bb027a12` passed Build `31820302813` on Ubuntu/Windows, including Ubuntu ASan/UBSan, and Governance `31820302849`; independent review was `P0=0/P1=0/P2=0`. PR #54 merged with expected-head protection as `ed0d0fb97c255a98c04628dc1746801985591c3c`, Issue #53 closed, and unrelated KVM run `31820302818` was cancelled by scope. M3-02 PR #52 may resume.
 - M3-02 is complete on `main`. Final local implementation freeze `90ef2ecf662371c82fed5f3d0fa92dbf9324e9e2` adds the generated 69-case catalog, real unsigned APK/Binary AXML corpus and binary regressions, Jazzer `0.29.1` APK/AXML targets, Clang `18.1.3` libFuzzer + ASan/UBSan, exact resource/runner locks, five-target fail-closed aggregation, and API 29/36 named Runtime mutation evidence. Final bounded Host validation passed in 1m24s without a device, and the final independent review is `P0=0/P1=0/P2=0`. Fuzz `31830770675` passed all five targets at `d961d4a`; final CI-lock `699ea23` passed Build `31832372574`, Governance `31832372727`, and API 29/36 KVM `31832372549`; evidence-only `592e88a` passed Build `31834088916` and Governance `31834089182`. PR #52 merged from the verified expected head as `1913d37d4561fb9b965ee1b4f23863f8a901b37e`, and Issue #19 closed. Repeated documentation-only KVM/fuzz runs were cancelled because no executable or acceptance input changed.
@@ -1527,10 +1528,10 @@ None
 
 ## Ordered Next Actions
 
-1. Finish the bounded M3-04 implementation review and local static/offline checks, then freeze one implementation commit.
-2. Run API 29 ARM32/ARM64 physical acceptance once and retain the two normalized cell records with cleanup hashes.
-3. Push the unique Issue #21 branch, create its sole draft PR, run API 29/36 KVM once, and aggregate the four real cells plus 28 explicit `UNVERIFIED` cells.
-4. Pass exact-head Build/Governance, update README/task/evidence, merge with expected-head protection, pass post-merge main gates, and only then start M3-05.
+1. Obtain user authorization for a separate bounded M2-01 Runtime lifecycle ADR/task/Issue/branch/PR that fixes repeated component instantiation after API 29 configuration relaunch; do not change production Runtime inside PR #58.
+2. On that maintenance task, add the exact relaunch regression, complete independent read-only review and required Host/API 29 gates, then merge it before resuming M3-04.
+3. Rebase PR #58 onto the maintenance merge, read the PR head SHA from the event payload, and run one fresh API 29/36 KVM candidate; do not inherit the non-exact normalized cell.
+4. With the user present to approve OEM installation, execute one bounded API 29 ARM32/ARM64 campaign, generate the 32-cell matrix, and close README/task/evidence/expected-head merge/post-merge gates before starting M3-05.
 
 ## Relevant Files and Artifacts
 
@@ -1545,6 +1546,7 @@ None
 - `docs/tasks/INDEX.md`
 - `tools/governance/validate-project-package.mjs`
 - `docs/evidence/M3-04/implementation-plan.md`
+- `docs/evidence/M3-04/blocked-validation.md`
 - `integration-tests/schemas/compatibility-matrix.schema.json`
 - `tools/device-capability-probe/index.mjs`
 - `tools/validation/run-m3-04-arm-device.ps1`

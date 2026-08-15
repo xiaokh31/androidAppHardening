@@ -82,7 +82,7 @@ security_sensitive: true
 ## Compatibility Requirements
 
 - 审查对象必须是与 M3-03/M3-04/M3-05 相同 commit 和锁定 toolchain 构建的 Release Candidate。
-- 四 ABI、API 29 至最高受支持 API、Windows 与 Ubuntu 证据必须完整。
+- 四 ABI 构建、Windows/Ubuntu 与 M3-04 完整 API/ABI 清单证据必须完整；仅精确 `VERIFIED` 格子可形成设备兼容声明，`UNVERIFIED` 必须逐格保留且不得被发布文档扩大。
 - ARM-only 限制和 x86/x86_64 非风险信号规则必须出现在审查清单。
 - SBOM 同时覆盖 Host 分发依赖与嵌入 APK 的 Runtime 依赖。
 

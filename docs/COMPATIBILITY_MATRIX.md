@@ -9,6 +9,8 @@
 - `Conditional`：满足明确前提时支持，报告必须给出判定。
 - `Not promised`：可能在个别环境运行，但不构成产品承诺，也不得在成功报告中标记为已验证支持。
 
+设备级 API/ABI 声明另使用 ADR 0012 的证据状态：`VERIFIED` 表示精确组合已在真实进程通过强制验收，`FAILED` 表示已执行但失败，`UNVERIFIED` 表示缺少适用环境且不作兼容承诺。Runtime 构建能力、输入 ABI 可接受性与设备验证状态必须分别判断。
+
 ## 2. 输入与打包格式
 
 | 能力 | 状态 | 判定 |
@@ -30,10 +32,11 @@
 | --- | --- | --- |
 | 输入 `minSdk >= 29` | Supported | 继续其他检查 |
 | 输入 `minSdk < 29` | Rejected | `COMPAT_MIN_SDK` |
-| 设备 API 29 | Supported | 最低强制测试边界 |
-| 设备 API 30 至仓库锁定 `compileSdk` | Supported | 每个整数 API 都进入强制矩阵 |
+| 设备 API 29 至仓库锁定 `compileSdk` | Conditional | 仅精确 API/进程 ABI 格子在 M3-04 为 `VERIFIED` 时形成发布兼容声明；其余为 `UNVERIFIED`/Not promised |
 | 设备 API 高于当前发布证据的最高 API | Not promised | 完成新增矩阵前不扩大承诺 |
 | 设备 API 28 及以下 | Rejected | Runtime 依赖 API 29 公开 ClassLoader hook |
+
+当前 M3-04 的强制可获得验证基线为 API 29 `armeabi-v7a`/`arm64-v8a` 真机进程，以及 API 29/36 `x86_64` 固定 KVM 进程。API 30-35 与其他不可获得组合仍保留在完整清单中并明确标为 `UNVERIFIED`；端点测试不能外推中间 API。
 
 ## 4. 语言与 DEX
 
@@ -60,13 +63,13 @@
 | `x86_64` | Supported | 注入对应 `libah_runtime.so` |
 | 其他 ABI | Rejected | v0.1 Runtime 不提供 |
 
-四 ABI 只描述项目 Runtime。原 APK 包含 Native 库时，还必须满足原应用 ABI：
+四 ABI 的 `Supported` 只描述项目 Runtime 的构建、注入和固定接口能力，不自动表示每个 API/ABI 设备组合已验证。实际运行声明还必须命中 M3-04 的精确 `VERIFIED` 格子。原 APK 包含 Native 库时，还必须满足原应用 ABI：
 
 | 原应用 Native 情况 | 目标设备 | 状态 |
 | --- | --- | --- |
-| 无 Native 库 | 任一受支持 Runtime ABI | Supported |
-| 同时提供四 ABI | 对应四 ABI 设备 | Supported |
-| 仅 ARM ABI | ARM 设备 | Conditional：设备 ABI 与原库匹配 |
+| 无 Native 库 | 任一 Runtime 构建 ABI | Conditional：精确 API/ABI 格子必须为 `VERIFIED` |
+| 同时提供四 ABI | 对应四 ABI 设备 | Conditional：精确 API/ABI 格子必须为 `VERIFIED` |
+| 仅 ARM ABI | ARM 设备 | Conditional：设备 ABI 与原库匹配，且精确 API/ABI 格子为 `VERIFIED` |
 | 仅 ARM ABI | x86-only 设备 | Rejected：不得用 Runtime x86 库伪装兼容 |
 | 仅 64-bit 原库 | 32-bit-only 设备 | Rejected |
 | ABI 目录含未知或冲突库 | 任意 | Rejected 或在任务定义的安全白名单内明确分类 |

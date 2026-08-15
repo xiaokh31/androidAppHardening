@@ -74,7 +74,7 @@ Host 只在 Manifest 中把 `android:appComponentFactory` 替换为 Shell Factor
 - M0-05 在 `instantiateClassLoader` 的实际回调中证明 `ApplicationInfo.sourceDir` 可只读访问，固定 `apksig` 能在 API 29/36 的 ARM/x86 环境返回与安装时相同的唯一 signer；异 signer、多个 signer、损坏 APK 必须在 payload 打开前失败。
 - M0-05 证明同一回调可从 `sourceDir` 定位唯一 `STORED` ConfigV2 与 payload entry，并完成 PoC 级 `EARLY_CONFIG_APK_AUTHENTICATED < LOADER_CREATED`；重复名称、压缩条目、data descriptor、CRC/长度错误和截断 ZIP 均在 payload 分配前失败。完整生产 ConfigV2 认证仍由 M1-04/M2-02/M2-03 实现和验证。
 - M0-05 在 `ApplicationInfo.metaData == null` 时通过相同设备矩阵，且静态扫描证明启动链不引用 `PackageManager`、`ActivityThread`、`LoadedApk` 或 hidden API。
-- API 29 至仓库锁定 `compileSdk` 的每个整数 API记录启动事件序列并与未加固 fixture 比较。
+- M3-04 按 ADR 0012 枚举 API 29 至仓库锁定 `compileSdk` 的每个整数 API；有适用真实环境的精确 API/ABI 格子记录启动事件并与未加固 fixture 比较，其余格子明确为 `UNVERIFIED` 且不形成兼容声明。
 - 静态扫描和运行时 strict mode 证明没有 hidden API 使用。
 - 文件系统监控证明无明文 DEX 写入。
 - 原 Factory 指向 Shell、缺失类或抛出异常时得到稳定失败，而非递归或回退。

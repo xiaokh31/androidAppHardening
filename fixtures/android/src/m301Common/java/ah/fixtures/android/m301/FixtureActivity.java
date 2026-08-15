@@ -25,7 +25,11 @@ public final class FixtureActivity extends Activity {
         if (hasFocus && !interactiveReported) {
             interactiveReported = true;
             FixtureTimings.markInteractive(this);
-            reportFullyDrawn();
+            // Keep the fixture visually empty while guaranteeing that the
+            // fully-drawn marker is enclosed by a Choreographer frame. This
+            // lets Macrobenchmark consume the trace without changing the
+            // separately recorded interactive timestamp.
+            getWindow().getDecorView().postOnAnimation(this::reportFullyDrawn);
         }
     }
 

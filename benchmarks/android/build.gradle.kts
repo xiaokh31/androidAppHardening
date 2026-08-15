@@ -48,11 +48,13 @@ dependencies.add(
     "org.jetbrains.kotlin:kotlin-stdlib:${libs.versions.kotlin.get()}",
 )
 
-val embeddedStdlib = layout.buildDirectory.file("generated/self-instrumenting-dependencies/kotlin-stdlib.jar")
+val embeddedStdlibName = "kotlin-stdlib.jar"
+val embeddedStdlibDirectory = layout.buildDirectory.dir("generated/self-instrumenting-dependencies")
+val embeddedStdlib = embeddedStdlibDirectory.map { it.file(embeddedStdlibName) }
 val prepareSelfInstrumentingStdlib by tasks.registering(Copy::class) {
     from(selfInstrumentingStdlib)
-    into(embeddedStdlib.map { it.asFile.parentFile })
-    rename { embeddedStdlib.get().asFile.name }
+    into(embeddedStdlibDirectory)
+    rename { "kotlin-stdlib.jar" }
     outputs.file(embeddedStdlib)
 }
 

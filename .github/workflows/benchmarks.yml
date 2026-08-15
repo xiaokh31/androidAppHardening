@@ -59,6 +59,59 @@ jobs:
           & $sdkmanager "platforms;android-36" "build-tools;36.1.0" `
             "ndk;29.0.14206865" "cmake;4.1.2"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prepare verified M2-07 Native crypto source
+        shell: pwsh
+        run: |
+          $archiveDir = Join-Path $pwd ".toolchains/native-crypto/downloads"
+          $sourceParent = Join-Path $pwd ".toolchains/native-crypto/src"
+          $sourceRoot = Join-Path $sourceParent "mbedtls-4.1.1"
+          $extractRoot = Join-Path $sourceParent ".mbedtls-4.1.1.extract"
+          $archive = Join-Path $archiveDir "mbedtls-4.1.1.tar.bz2"
+          $cmakeName = if ($IsWindows) { "cmake.exe" } else { "cmake" }
+          $cmake = Join-Path $env:ANDROID_HOME "cmake/4.1.2/bin/$cmakeName"
+          $curl = if ($IsWindows) { "curl.exe" } else { "curl" }
+          New-Item -ItemType Directory -Force -Path $archiveDir, $sourceParent | Out-Null
+          try {
+            & $curl --fail --location --retry 3 `
+              --output $archive `
+              "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-4.1.1/mbedtls-4.1.1.tar.bz2"
+            if ($LASTEXITCODE -ne 0) { throw "M2-07 archive download failed: $LASTEXITCODE" }
+            node tools/validation/verify-m2-07-native-crypto.mjs --archive-only
+            if ($LASTEXITCODE -ne 0) { throw "M2-07 archive verification failed: $LASTEXITCODE" }
+            $members = & $cmake -E tar tjf $archive
+            if ($LASTEXITCODE -ne 0) { throw "M2-07 verified archive listing failed: $LASTEXITCODE" }
+            foreach ($memberValue in $members) {
+              $member = "$memberValue".Replace('\', '/')
+              $segments = $member.Split('/', [System.StringSplitOptions]::RemoveEmptyEntries)
+              if (-not $member.StartsWith('mbedtls-4.1.1/') -or $member.StartsWith('/') -or $segments -contains '..') {
+                throw "unsafe or unexpected archive member: $member"
+              }
+            }
+            Remove-Item -Recurse -Force -LiteralPath $extractRoot, $sourceRoot -ErrorAction SilentlyContinue
+            New-Item -ItemType Directory -Path $extractRoot | Out-Null
+            Push-Location $extractRoot
+            try {
+              & $cmake -E tar xjf $archive
+              if ($LASTEXITCODE -ne 0) { throw "M2-07 verified archive extraction failed: $LASTEXITCODE" }
+            } finally {
+              Pop-Location
+            }
+            node tools/validation/verify-m2-07-native-crypto.mjs --self-test --pre-promote `
+              "--source-root=$extractRoot/mbedtls-4.1.1"
+            if ($LASTEXITCODE -ne 0) { throw "M2-07 temporary source-tree verification failed: $LASTEXITCODE" }
+            $stampPath = "$extractRoot/mbedtls-4.1.1/.aah-m2-07-verified"
+            $stamp = "archive_sha256=3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c`n" +
+              "source_tree_sha256=7c4ba6554fed6eb67c201054bc75b124fcdc0649e2f56cd762746e01a25d2140`n"
+            [IO.File]::WriteAllText($stampPath, $stamp, [Text.UTF8Encoding]::new($false))
+            Move-Item -LiteralPath "$extractRoot/mbedtls-4.1.1" -Destination $sourceRoot
+            Remove-Item -LiteralPath $extractRoot
+            node tools/validation/verify-m2-07-native-crypto.mjs --self-test
+            if ($LASTEXITCODE -ne 0) { throw "M2-07 promoted source-tree verification failed: $LASTEXITCODE" }
+          } catch {
+            Remove-Item -Recurse -Force -LiteralPath $extractRoot, $sourceRoot -ErrorAction SilentlyContinue
+            Remove-Item -Force -LiteralPath $archive -ErrorAction SilentlyContinue
+            throw
+          }
       - name: Run two fixed Host benchmark passes
         shell: pwsh
         run: |

@@ -19,7 +19,7 @@ M3-05 uses two explicitly different measurement modes.
 
 The isolated timer surrounds only the existing monotonic HIGH upgrade. Every raw sample records `highProfileIncrementalMs`, the Native-reported jitter, capability observations and cleanup result. Native jitter must remain 20–50 ms and each wall-clock sample must remain bounded by 250 ms; P50/P95 are reported but are not presented as naturally observed HIGH cold-start latency. A real environment that naturally reports HIGH may additionally produce `observed_cold_start` evidence, but such evidence is optional and must not be synthesized.
 
-The fixture-only bridge is permitted only in `benchmarks/android/src/androidTest` or a dedicated M3-05 Android-test source set. Its class names, keep rules and test controls must be absent from Runtime AARs, production fixture APKs, CLI/distribution artifacts and product reports. CI must fail if production main sources gain an M3-05/HIGH override, if an isolated sample is labeled as a cold start, or if a report omits its measurement mode and observed-versus-isolated boundary.
+The fixture-only bridge is permitted only in `benchmarks/android/src/androidTest` or a dedicated M3-05 Android-test source set. Its class names, keep rules and test controls must be absent from Runtime AARs, production fixture APKs, CLI/distribution artifacts and product reports. CI enumerates all Runtime/Host/production-fixture/distribution main and Release surfaces, rejects M3-07 base-to-HEAD production changes, and must fail if any such surface gains a manifest/property/environment/file/BuildConfig/intent/setter M3-05/HIGH override. The same formal report validator used by M3-05 must reject an isolated sample labeled as a cold start, omitted/ill-typed fields, wrong sample counts, inconsistent LOW/action pairs and missing observed-versus-isolated boundaries.
 
 ## Consequences
 
@@ -46,7 +46,7 @@ No wire format, minimum SDK, ABI policy, production API or supported application
 
 ## Verification
 
-- Governance validation rejects production main-source HIGH benchmark overrides and requires the two fixed measurement-mode labels.
-- Mutation self-tests reject manifest/property/file/BuildConfig overrides, production test setters and false `isolated_high_upgrade` cold-start labels.
+- Governance validation enumerates every production main/Release surface, rejects base-to-HEAD production changes, rejects HIGH benchmark overrides and requires the two fixed Android measurement-mode labels.
+- Mutation self-tests create representative temporary production layouts and serialized reports, then use the same production scanner/report CLI path to reject manifest/property/environment/file/BuildConfig/intent overrides, production setters, wrong/missing/null/types, 29/31 samples, inconsistent risk/action pairs and false `isolated_high_upgrade` cold-start labels.
 - M3-05 Android tests prove authenticated session ownership, pre-upgrade zero lookup, one monotonic HIGH upgrade, 20–50 ms Native jitter, bounded wall time, post-upgrade lookup, exactly-once close and package cleanup.
 - Artifact scans prove the bridge and its keep controls are absent from Runtime AARs and distributable production artifacts.

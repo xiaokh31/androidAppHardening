@@ -72,10 +72,11 @@ security_sensitive: false
 ## Public Interfaces
 
 - Gradle 入口 `:benchmarks:host:jmh` 与 `:benchmarks:android:connectedBenchmarkAndroidTest`。
-- `benchmark-results.json` 字段为 `fixtureId`、`environmentId`、`measurementMode`、`observedRiskLevel`、`observedRiskAction`、`riskObservationTiming`、`metric`、`samples`、`p50`、`p95`、`baseline`、`delta`、`budget` 和 `pass`；`metric` 固定枚举 `hostProcessMs`、`hostPeakRssBytes`、`processToApplicationOnCreateMs`、`processToInteractiveMs`、`peakPssBytes`、`nativeHeapPeakBytes`、`stablePssBytes`、`highProfileIncrementalMs` 和 `nativeJitterMs`。HIGH 隔离记录另含 `sameHandle`、`lookupCountBeforeUpgrade`、`lookupCountAfterUpgrade` 与 `cleanupPassed`；不适用字段显式为 `null`，不得省略或伪造。
+- `benchmark-results.json` 字段为 `fixtureId`、`environmentId`、`measurementMode`、`observedRiskLevel`、`observedRiskAction`、`riskObservationTiming`、`metric`、`samples`、`p50`、`p95`、`baseline`、`delta`、`budget` 和 `pass`；`metric` 固定枚举 `hostProcessMs`、`hostPeakRssBytes`、`processToApplicationOnCreateMs`、`processToInteractiveMs`、`peakPssBytes`、`nativeHeapPeakBytes`、`stablePssBytes` 和 `highProfileIncrementalMs`。HIGH 隔离记录另含 30 个 `nativeJitterMs` 样本、`claimType=incremental_profile`、`freshProcess`、`sameHandle`、`lookupCountBeforeUpgrade`、`lookupCountAfterUpgrade` 与 `cleanupPassed`；不适用字段显式为 `null`，不得省略或伪造。Host 行 `measurementMode=null` 且为 10 个样本，Android 行必须为 30 个有限数值样本。
 - 每个 fixture 另有 `artifactSizes`，固定包含 `inputSignedApkBytes`、`outputUnsignedApkBytes`、`outputExternallySignedApkBytes` 和上述六个 `sizeBreakdown` 字段。
 - 环境文件 `benchmarks/environment.json` 与汇总 `build/reports/benchmark-summary.md`。
 - 失败时进程退出码固定为非零且列出超预算 metric。
+- 每个本地/CI `benchmark-results.json` 必须通过 `node tools/governance/verify-m3-07-high-benchmark-contract.mjs --report <file>`；缺字段、额外类型、非有限数值、错误样本数、LOW/DEGRADE 不一致或 mode/metric 专属字段漂移均 fail closed。
 
 ## Security Constraints
 

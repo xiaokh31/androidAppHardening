@@ -32,7 +32,7 @@ The fixed M3-05 reference devices cannot deterministically enter HIGH through an
 
 - Accepted ADR 0014.
 - Revised M3-05 and TEST_STRATEGY contracts with exact observed and isolated measurement labels.
-- A governance validator and mutation negatives that prevent production overrides and false cold-start claims.
+- A governance validator and mutation negatives that enumerate all product surfaces, prevent production overrides and validate actual benchmark reports against the observed/isolated contract.
 
 ## In Scope
 
@@ -57,6 +57,7 @@ The fixed M3-05 reference devices cannot deterministically enter HIGH through an
 ## Public Interfaces
 
 - No product interface changes.
+- Formal report validation entry: `node tools/governance/verify-m3-07-high-benchmark-contract.mjs --report <benchmark-results.json>`. M3-05 local and CI acceptance must invoke this exact entry on every retained report.
 - Benchmark report fields add `measurementMode`, `observedRiskLevel`, `observedRiskAction`, `riskObservationTiming`, `highProfileIncrementalMs`, `nativeJitterMs`, `sameHandle`, `lookupCountBeforeUpgrade`, `lookupCountAfterUpgrade` and `cleanupPassed` as applicable to the selected mode. Non-Android and isolated fields that do not apply are explicit `null`, never omitted or fabricated.
 - Measurement-mode values are exactly `observed_cold_start` and `isolated_high_upgrade`.
 
@@ -74,14 +75,14 @@ The fixed M3-05 reference devices cannot deterministically enter HIGH through an
 ## Acceptance Criteria
 
 - ADR 0014, M3-05, TEST_STRATEGY, task index and dependency graph agree on the two measurement modes.
-- Governance and mutation tests reject every prohibited production override and any isolated sample labeled as a cold start.
+- Governance and mutation tests enumerate every production main/Release surface, reject base-to-HEAD production changes, reject every prohibited override and validate real serialized reports through the formal `--report` entry.
 - No production source or public API changes appear in the task diff.
 - Independent read-only security review returns P0/P1/P2 all zero before merge.
 
 ## Required Tests
 
 - Positive structural validation for both measurement-mode contracts.
-- Mutation negatives for manifest metadata, BuildConfig, system property, filesystem marker, production setter and false cold-start labels.
+- Mutation negatives for production-surface enumeration, manifest metadata, BuildConfig, system/environment property, intent, filesystem/preferences marker, production setter, false cold-start labels, wrong types, missing/null fields, 29/31 samples and inconsistent LOW/action pairs.
 - Governance, strict HandOff, UTF-8/link, diff and sensitive-information checks.
 
 ## Required Evidence

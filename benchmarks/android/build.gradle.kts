@@ -9,6 +9,7 @@ android {
 
     defaultConfig {
         applicationId = "ah.benchmarks.android"
+        testApplicationId = "ah.benchmarks.android"
         minSdk = libs.versions.android.min.sdk.get().toInt()
         targetSdk = libs.versions.android.target.sdk.get().toInt()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

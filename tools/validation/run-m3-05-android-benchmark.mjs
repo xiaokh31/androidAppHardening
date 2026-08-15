@@ -19,7 +19,9 @@ const fixtures = [
   ["kotlin-multidex", "ah.fixtures.android.m301.kotlin_multidex"],
   ["jni-four-abi", "ah.fixtures.android.m301.jni_four"],
 ];
-const installed = new Set(["ah.benchmarks.android", "ah.benchmarks.android.test"]);
+const benchmarkPackage = "ah.benchmarks.android";
+const instrumentationComponent = `${benchmarkPackage}/androidx.test.runner.AndroidJUnitRunner`;
+const installed = new Set([benchmarkPackage]);
 const commands = [];
 
 function run(commandArgs, { timeout = 60_000, allowFailure = false, recordOutput = true } = {}) {
@@ -163,7 +165,6 @@ try {
   if (artifactBoundary.error || artifactBoundary.status !== 0) {
     throw new Error(`test-only bridge artifact boundary failed: ${(artifactBoundary.stderr || artifactBoundary.error?.message || "unknown").slice(-500)}`);
   }
-  install(path.resolve(args.get("--benchmark-apk")));
   install(path.resolve(args.get("--test-apk")));
   const raw = {};
   const high = {};
@@ -183,7 +184,7 @@ try {
         "-e", "fixtureId", fixtureId,
         "-e", "targetPackage", packageName,
         "-e", "mode", mode,
-        "ah.benchmarks.android.test/androidx.test.runner.AndroidJUnitRunner",
+        instrumentationComponent,
       ], { timeout: 360_000, recordOutput: false });
       if (!instrumentation.stdout.includes("INSTRUMENTATION_CODE: -1")) {
         throw new Error(`${fixtureId}/${mode} instrumentation failed: ${sanitize(instrumentation.stdout)} ${sanitize(instrumentation.stderr)}`);
@@ -198,13 +199,13 @@ try {
       writeFileSync(path.join(output, `${fixtureId}-${mode}.json`), `${JSON.stringify(value)}\n`, "utf8");
       if (mode === "protected") {
         for (let sampleIndex = 0; sampleIndex < 30; sampleIndex++) {
-          run(["shell", "am", "force-stop", "ah.benchmarks.android"]);
+          run(["shell", "am", "force-stop", benchmarkPackage]);
           const highInstrumentation = run([
             "shell", "am", "instrument", "-w",
             "-e", "class", "ah.benchmarks.android.M305HighProfileBridge#isolatedHighUpgrade",
             "-e", "fixtureId", fixtureId,
             "-e", "targetPackage", packageName,
-            "ah.benchmarks.android.test/androidx.test.runner.AndroidJUnitRunner",
+            instrumentationComponent,
           ], { timeout: 120_000, recordOutput: false });
           if (!highInstrumentation.stdout.includes("INSTRUMENTATION_CODE: -1")) {
             throw new Error(`${fixtureId} isolated HIGH sample ${sampleIndex} failed`);

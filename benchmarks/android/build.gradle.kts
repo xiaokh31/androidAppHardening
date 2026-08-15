@@ -4,6 +4,7 @@ plugins {
 
 android {
     namespace = "ah.benchmarks.android"
+    experimentalProperties["android.experimental.self-instrumenting"] = true
     compileSdk = libs.versions.android.compile.sdk.get().toInt()
     buildToolsVersion = libs.versions.android.build.tools.get()
 
@@ -37,7 +38,29 @@ android {
     }
 }
 
+val selfInstrumentingStdlib by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isTransitive = false
+}
+dependencies.add(
+    selfInstrumentingStdlib.name,
+    "org.jetbrains.kotlin:kotlin-stdlib:${libs.versions.kotlin.get()}",
+)
+
+val embeddedStdlib = layout.buildDirectory.file("generated/self-instrumenting-dependencies/kotlin-stdlib.jar")
+val prepareSelfInstrumentingStdlib by tasks.registering(Copy::class) {
+    from(selfInstrumentingStdlib)
+    into(embeddedStdlib.map { it.asFile.parentFile })
+    rename { embeddedStdlib.get().asFile.name }
+    outputs.file(embeddedStdlib)
+}
+
 dependencies {
+    // AGP normally removes dependencies also supplied by the tested APK. This
+    // copied, pinned artifact keeps stdlib inside the independently installed
+    // self-instrumenting test APK while the empty main APK stays uninstalled.
+    androidTestImplementation(files(embeddedStdlib).builtBy(prepareSelfInstrumentingStdlib))
     androidTestImplementation(libs.androidx.benchmark.macro.junit4)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)

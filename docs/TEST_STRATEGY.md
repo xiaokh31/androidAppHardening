@@ -83,6 +83,7 @@ M3-02 将上述要求固定为 `:tools:validation:regressionFuzz`、`:tools:vali
 - 默认及自定义 `Application`；
 - 无 Factory 及自定义 `AppComponentFactory`；
 - 自定义 Factory 的 `instantiateClassLoader` 恰好调用一次，返回 loader 成为组件使用的 final loader；
+- API 29 配置 relaunch 即使重建 Shell Factory wrapper，也只能以相同 final loader 附着进程已有 `READY` 结果；Guard open、原 Factory 构造与 ClassLoader hook 仍各为一次；
 - Factory 构造/hook/null/重入失败在 `READY` 前恰好一次关闭 payload session，清理 Native handle/direct buffer/部分引用，cleanup 异常不覆盖主错误；
 - eager/lazy Provider；
 - Java/Kotlin JNI 调用；

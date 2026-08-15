@@ -1,15 +1,15 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260815-091303
-updated_at: 2026-08-15T09:13:03+08:00
+handoff_id: HO-20260815-110450
+updated_at: 2026-08-15T11:04:50+08:00
 updated_by: /root
-state: ready
-source_branch: main
-base_commit: 1a2c2d85be62502913066b301c1083b05de37d00
-working_tree: clean
-current_milestone: M3
-active_task: NONE
+state: active
+source_branch: fix/m2-09-component-relaunch-lifecycle
+base_commit: a65433ae0bda651fc1088d187913b2dbfa7b02d1
+working_tree: dirty
+current_milestone: M2
+active_task: M2-09
 next_owner: /root
 ---
 
@@ -17,10 +17,12 @@ next_owner: /root
 
 ## Objective
 
-Close the merger-ready M3-06 API/ABI validation-claim contract on `main`, run the normal post-merge gates, then resume preserved M3-04 while keeping M3-05 untouched.
+Fix the API 29 same-process Shell Factory configuration-relaunch lifecycle under the independent M2-09 contract, then resume paused M3-04 without starting M3-05.
 
 ## Current State
 
+- M2-09 is the only active task. User authorization created Issue #59 and branch `fix/m2-09-component-relaunch-lifecycle` from `main@a65433ae0bda651fc1088d187913b2dbfa7b02d1`. ADR 0013 and the task contract limit the fix to attaching a later Shell wrapper to the existing process-wide `READY` result with exact final-loader identity; Guard reopening, fallback, Host/container/ABI changes, ARM installation and M3-05 are excluded.
+- M3-04 remains paused on draft PR #58 at remote blocker head `a290a6f678f90783ed6f7488c0b7956e78e612f7`. Retained API 29 KVM runs `31858315765` and `31859364008` completed the first custom-Factory sequence, then failed the Framework configuration relaunch with `AAH-RUNTIME-BOOT-COMPONENT`. API 36 passed historically; ARM install approval remains a later M3-04 gate. No third retry or local emulator is allowed before M2-09 merges.
 - The user authorized an independent ADR/task-contract revision after M3-04 proved impossible under its original 32-real-device-cell gate. Issue #56 and unique draft PR #57 contain the governance-only M3-06 change; no production/fixture code, device, KVM, fuzz, benchmark, or tool download is in scope.
 - M3-04 is safely paused on local branch `chore/m3-04-api-abi-matrix` at blocker commit `72a5fce85bbee5b0f1888028049f096487febb7e`. That snapshot records the available API 29 ARM32/ARM64 physical environment and pinned API 29/36 x86_64 images, plus the unavailable API 30-35/full-ABI combinations. It must not be pushed or resumed until M3-06 merges.
 - ADR 0012 and the revised M3-04 contract enumerate the full API 29-36 by four-ABI grid while reserving `VERIFIED` for real Android-reported process evidence, `FAILED` for executed regressions, and `UNVERIFIED` for unavailable combinations that carry no positive compatibility claim. The mandatory current M3-04 baseline is API 29 ARM32/ARM64 plus API 29/36 x86_64.
@@ -187,8 +189,9 @@ Close the merger-ready M3-06 API/ABI validation-claim contract on `main`, run th
 
 | Task | Owner | Branch | Status | Dependencies | Next checkpoint |
 |---|---|---|---|---|---|
+| M2-09 | `/root` | `fix/m2-09-component-relaunch-lifecycle` | in_progress | M2-01 | Freeze ADR/task contract, implement exact second-wrapper READY attachment and targeted regressions |
 | M3-06 | `/root` | `main` | done | M0-03, M2-04, M3-01, M3-02 | PR #57 exact-head merge and post-merge main Build/Governance are the only remaining coordination actions |
-| M3-04 | `/root` | `chore/m3-04-api-abi-matrix` | planned | M0-03, M2-04, M3-01, M3-02, M3-06 | Preserve blocker commit `72a5fce`; reconcile onto verified post-M3-06 main and execute the revised mandatory baseline |
+| M3-04 | `/root` | `chore/m3-04-api-abi-matrix` | blocked | M0-03, M2-04, M2-09, M3-01, M3-02, M3-06 | Keep PR #58 draft; resume from `a290a6f` only after M2-09 merges and post-merge gates pass |
 | M3-03 | `/root` | `main` | done | M0-03, M1-05, M1-06, M2-06, M3-01 | PR #55 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | done | M2-02 | PR #54 merged; exact regression, ASan/UBSan, dual-platform Build/Governance and independent review passed |
 | M3-02 | `/root` | `main` | done | M1-03, M1-04, M1-06, M2-02, M2-03, M2-06, M2-08, M3-01 | PR #52 merged; README/evidence synchronized; wait for next task selection |
@@ -215,6 +218,7 @@ Close the merger-ready M3-06 API/ABI validation-claim contract on `main`, run th
 
 ## Decisions and Invariants
 
+- ADR 0013 permits a later same-process Shell wrapper to read only an already committed `READY` terminal result and only when the Framework loader is the identical frozen final loader. It cannot reopen Guard, replace ownership, attach to partial/failed state or share across processes.
 - ADR 0012 separates four-ABI build capability from device compatibility claims. The complete M3-04 grid may contain `UNVERIFIED` cells, but only exact real-process `VERIFIED` cells may appear as release-validated; any `FAILED` cell blocks completion and release.
 - M2-07 Windows runner maintenance adds only exact mapping `20260810.198.2` -> `win25-vs2026/20260810.198`; all prior mappings and exact compiler/SDK assertions remain, and every unknown future image remains fail-closed. No retry against an older hosted image is accepted as evidence.
 - 继续遵守 ADR 0001 至 ADR 0003、ADR 0005 至 ADR 0008；ADR 0004 已被 ADR 0008 supersede。ADR 0007 固定 sourceDir 配置通道，ADR 0006 保持 768-byte ConfigV2 且 `container_major=2`。
@@ -237,6 +241,7 @@ Close the merger-ready M3-06 API/ABI validation-claim contract on `main`, run th
 
 ## Changes Since Previous Handoff
 
+- Preserved and pushed the M3-04 blocked snapshot `a290a6f678f90783ed6f7488c0b7956e78e612f7`, then switched to verified `main@a65433ae0bda651fc1088d187913b2dbfa7b02d1`. Created Issue #59 and branch `fix/m2-09-component-relaunch-lifecycle`; added the bounded M2-09 task contract and ADR 0013 before changing Runtime production code.
 - Created Issue #56 and branch `docs/m3-06-api-abi-validation-contract` from `main@1a2c2d8` after preserving the original M3-04 blocker on commit `72a5fce`. Added ADR 0012, the M3-06 task/evidence plan, and synchronized the M3-04 task, task index, compatibility matrix, test strategy, project plan, roadmap, ABI/ClassLoader ADR references, and M4 review contract. No executable file changed.
 - Frozen the governance implementation as `ef8785951a6bfe26cd54d48b687faf890ee8b039`; all bounded local checks passed and contract hashes were recorded. No device, KVM, fuzz, benchmark, Gradle, or download was executed.
 - Published the unique Issue #56 draft PR #57. Exact published head `6fea281b761c4da3b65343ef028a05b20546171c` passed Ubuntu/Windows Build `31855670237` and Governance `31855670231`; out-of-scope fuzz/equivalence were cancelled and no KVM/device workflow ran. Remote evidence is recorded for the merger-ready documentation successor.
@@ -1509,17 +1514,25 @@ Close the merger-ready M3-06 API/ABI validation-claim contract on `main`, run th
 
 ## Blockers and Required Approvals
 
-None
+- M3-04 PR #58 is blocked until M2-09 merges and its post-merge Build/Governance pass. M3-05 must not start.
+- M2-09 cannot merge until its frozen implementation receives an independent read-only review with P0/P1/P2 all zero and exact-head Ubuntu/Windows plus bounded API 29/36 KVM evidence pass.
 
 ## Ordered Next Actions
 
-1. Transition PR #57 to ready after the merger-ready evidence HEAD passes exact Ubuntu/Windows Build/Governance; merge with expected-head protection and confirm Issue #56 closes.
-2. Synchronize local `main`, run strict HandOff plus normal main Build/Governance, and do not repeat device, KVM, fuzz or equivalence workflows.
-3. Reconcile the preserved M3-04 blocker branch onto synchronized `main`, execute only the revised mandatory baseline, and explicitly emit every unavailable cell as `UNVERIFIED`.
-4. Complete and merge M3-04 before starting M3-05.
+1. Validate and commit the M2-09 ADR/task contract, then implement the minimal coordinator READY lookup and second-wrapper regression without changing public interfaces.
+2. Run targeted local JVM/static/Android compile gates, freeze the implementation and obtain an independent read-only security review.
+3. After all findings close, push one branch, create the unique Issue #59 draft PR and run exact-head Ubuntu/Windows Build/Governance plus one bounded API 29/36 KVM acceptance.
+4. Merge M2-09 with expected-head protection, pass post-merge gates, then resume M3-04 PR #58; do not start M3-05 first.
 
 ## Relevant Files and Artifacts
 
+- `docs/tasks/M2-09-shell-factory-relaunch-lifecycle.md`
+- `docs/adr/0013-shell-factory-relaunch-lifecycle.md`
+- `runtime/bootstrap/src/main/java/ah/runtime/bootstrap/HardeningBootstrap.java`
+- `runtime/bootstrap/src/main/java/ah/runtime/bootstrap/ShellAppComponentFactory.java`
+- `runtime/bootstrap/src/test/java/ah/runtime/bootstrap/BootstrapSelfTest.java`
+- `runtime/bootstrap/src/androidTest/java/ah/runtime/bootstrap/BootstrapConnectedRunner.java`
+- retained M3-04 blocker branch `chore/m3-04-api-abi-matrix` at `a290a6f678f90783ed6f7488c0b7956e78e612f7`
 - `docs/adr/0012-api-abi-validation-claim-boundary.md`
 - `docs/tasks/M3-06-api-abi-validation-claim-contract.md`
 - `docs/tasks/M3-04-api-and-abi-matrix.md`

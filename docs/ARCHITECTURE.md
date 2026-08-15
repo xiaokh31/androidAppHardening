@@ -96,7 +96,7 @@ Bootstrap Runtime -> verified in-memory business DEX -> original app components
 3. Guard 调用 Native Loader 按 ADR 0007 认证 signer policy、完整 ConfigV2 和容器；只有认证后才暴露原 Factory 与策略配置。
 4. Guard 建立 provisional payload ClassLoader，并返回拥有其内存生命周期和已认证启动配置的 `VerifiedPayloadSession`。
 5. 原 Factory 存在时，Shell 用 provisional loader 实例化一次，再恰好一次委托其 `instantiateClassLoader`；非空返回值成为 final loader。无原 Factory 时 provisional loader 直接成为 final loader。
-6. `READY` 前 session 由当前引导调用独占；任何 Factory 构造/hook、递归、重入或 final loader 验证失败都在 `finally` 恰好一次 close session 并清除部分引用。成功时才把 session、provisional/final loader 和原 Factory 转移为进程级强引用并返回 final loader；随后把 Application、Activity、Service、Receiver 和 Provider 创建委托给同一 Factory。原 Application 使用 Framework 传入的 `className`。
+6. `READY` 前 session 由当前引导调用独占；任何 Factory 构造/hook、递归、重入或 final loader 验证失败都在 `finally` 恰好一次 close session 并清除部分引用。成功时才把 session、provisional/final loader 和原 Factory 转移为进程级强引用并返回 final loader；随后把 Application、Activity、Service、Receiver 和 Provider 创建委托给同一 Factory。Android 在同一进程配置 relaunch 中构造新的 Shell wrapper 时，只能按 ADR 0013 以 final loader 引用相等附着该进程已有的 `READY` 结果，不得重开 Guard。原 Application 使用 Framework 传入的 `className`。
 
 没有原 Factory 时使用平台默认实例化语义。`:runtime:bootstrap` 只编译依赖 `:runtime:policy` 的 guard API；`:runtime:native` 是 policy 的非传递 implementation dependency，bootstrap 不得导入低层 loader。不得通过隐藏 API 获取 Context 或修改系统 ClassLoader 内部字段。
 

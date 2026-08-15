@@ -6,8 +6,8 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const repositoryRoot = process.cwd();
 const scriptPath = fileURLToPath(import.meta.url);
+const repositoryRoot = path.resolve(path.dirname(scriptPath), "../..");
 const HOST_METRICS = new Set(["hostProcessMs", "hostPeakRssBytes"]);
 const OBSERVED_METRICS = new Set([
   "processToApplicationOnCreateMs",

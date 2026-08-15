@@ -1,15 +1,15 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260815-090604
-updated_at: 2026-08-15T09:06:04+08:00
+handoff_id: HO-20260815-091303
+updated_at: 2026-08-15T09:13:03+08:00
 updated_by: /root
-state: active
-source_branch: docs/m3-06-api-abi-validation-contract
+state: ready
+source_branch: main
 base_commit: 1a2c2d85be62502913066b301c1083b05de37d00
 working_tree: clean
 current_milestone: M3
-active_task: M3-06
+active_task: NONE
 next_owner: /root
 ---
 
@@ -17,14 +17,14 @@ next_owner: /root
 
 ## Objective
 
-Complete the independently authorized M3-06 API/ABI validation-claim contract, then resume the preserved M3-04 task and keep M3-05 untouched until M3-04 is complete.
+Close the merger-ready M3-06 API/ABI validation-claim contract on `main`, run the normal post-merge gates, then resume preserved M3-04 while keeping M3-05 untouched.
 
 ## Current State
 
-- The user authorized an independent ADR/task-contract revision after M3-04 proved impossible under its original 32-real-device-cell gate. Issue #56 and branch `docs/m3-06-api-abi-validation-contract` were created from verified `main@1a2c2d85be62502913066b301c1083b05de37d00`. M3-06 is governance-only: no production/fixture code, device, KVM, fuzz, benchmark, or tool download is in scope.
+- The user authorized an independent ADR/task-contract revision after M3-04 proved impossible under its original 32-real-device-cell gate. Issue #56 and unique draft PR #57 contain the governance-only M3-06 change; no production/fixture code, device, KVM, fuzz, benchmark, or tool download is in scope.
 - M3-04 is safely paused on local branch `chore/m3-04-api-abi-matrix` at blocker commit `72a5fce85bbee5b0f1888028049f096487febb7e`. That snapshot records the available API 29 ARM32/ARM64 physical environment and pinned API 29/36 x86_64 images, plus the unavailable API 30-35/full-ABI combinations. It must not be pushed or resumed until M3-06 merges.
 - ADR 0012 and the revised M3-04 contract enumerate the full API 29-36 by four-ABI grid while reserving `VERIFIED` for real Android-reported process evidence, `FAILED` for executed regressions, and `UNVERIFIED` for unavailable combinations that carry no positive compatibility claim. The mandatory current M3-04 baseline is API 29 ARM32/ARM64 plus API 29/36 x86_64.
-- M3-06 implementation commit `ef8785951a6bfe26cd54d48b687faf890ee8b039` is frozen. Bounded local governance, strict pending-clean HandOff, diff, UTF-8, stale-claim and changed-file scope checks passed; hashes are recorded in `docs/evidence/M3-06/local-validation.md`. The branch is ready for publication and one exact-head Build/Governance cycle.
+- M3-06 published head `6fea281b761c4da3b65343ef028a05b20546171c` passed Build `31855670237` and Governance `31855670231` on Ubuntu/Windows. Out-of-scope Fuzz `31855670205` and Cross-platform equivalence `31855670204` were cancelled; no KVM or physical device ran. The documentation-only merger-ready successor must pass the same exact-head Build/Governance before expected-head merge.
 - The user explicitly ordered M3-03, M3-04 and M3-05 sequentially. M3-03 is merged and complete. M3-04 reached the inventory blocker and is paused for this independently authorized M3-06 contract dependency; M3-05 remains unstarted and cannot begin until M3-04 completes.
 - M3-03 final implementation `f53989e83b8a030139ec3e564ebfb41bdb81129a` passed Cross-platform equivalence `31847937221`, Build `31847937347` and Governance `31847937260` on the exact head. Windows and Ubuntu each produced 18 authenticated outputs; the final summary compared 36 outputs and proved stable semantics, random non-reuse, independent authentication/decryption, immutable inputs, unsigned outputs, equivalent negative errors and zero absolute-path findings. PR [#55](https://github.com/xiaokh31/androidAppHardening/pull/55) merged with expected-head protection as `af0fe5c5d0e9098d8cca86b3d5de3e09ed8412fb`, and Issue #20 closed. M3-03 is Host-only; out-of-scope KVM and M3-02 fuzz runs were cancelled.
 - M2-08 is complete. Final head `626a14c63c1b77f2552236659eb98d47bb027a12` passed Build `31820302813` on Ubuntu/Windows, including Ubuntu ASan/UBSan, and Governance `31820302849`; independent review was `P0=0/P1=0/P2=0`. PR #54 merged with expected-head protection as `ed0d0fb97c255a98c04628dc1746801985591c3c`, Issue #53 closed, and unrelated KVM run `31820302818` was cancelled by scope. M3-02 PR #52 may resume.
@@ -187,8 +187,8 @@ Complete the independently authorized M3-06 API/ABI validation-claim contract, t
 
 | Task | Owner | Branch | Status | Dependencies | Next checkpoint |
 |---|---|---|---|---|---|
-| M3-06 | `/root` | `docs/m3-06-api-abi-validation-contract` | review | M0-03, M2-04, M3-01, M3-02 | Publish frozen implementation, create the unique Issue #56 draft PR, and run one exact-head Build/Governance cycle |
-| M3-04 | `/root` | `chore/m3-04-api-abi-matrix` | blocked | M0-03, M2-04, M3-01, M3-02, M3-06 | Preserve blocker commit `72a5fce`; resume only after M3-06 merge and post-merge gates |
+| M3-06 | `/root` | `main` | done | M0-03, M2-04, M3-01, M3-02 | PR #57 exact-head merge and post-merge main Build/Governance are the only remaining coordination actions |
+| M3-04 | `/root` | `chore/m3-04-api-abi-matrix` | planned | M0-03, M2-04, M3-01, M3-02, M3-06 | Preserve blocker commit `72a5fce`; reconcile onto verified post-M3-06 main and execute the revised mandatory baseline |
 | M3-03 | `/root` | `main` | done | M0-03, M1-05, M1-06, M2-06, M3-01 | PR #55 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | done | M2-02 | PR #54 merged; exact regression, ASan/UBSan, dual-platform Build/Governance and independent review passed |
 | M3-02 | `/root` | `main` | done | M1-03, M1-04, M1-06, M2-02, M2-03, M2-06, M2-08, M3-01 | PR #52 merged; README/evidence synchronized; wait for next task selection |
@@ -239,6 +239,7 @@ Complete the independently authorized M3-06 API/ABI validation-claim contract, t
 
 - Created Issue #56 and branch `docs/m3-06-api-abi-validation-contract` from `main@1a2c2d8` after preserving the original M3-04 blocker on commit `72a5fce`. Added ADR 0012, the M3-06 task/evidence plan, and synchronized the M3-04 task, task index, compatibility matrix, test strategy, project plan, roadmap, ABI/ClassLoader ADR references, and M4 review contract. No executable file changed.
 - Frozen the governance implementation as `ef8785951a6bfe26cd54d48b687faf890ee8b039`; all bounded local checks passed and contract hashes were recorded. No device, KVM, fuzz, benchmark, Gradle, or download was executed.
+- Published the unique Issue #56 draft PR #57. Exact published head `6fea281b761c4da3b65343ef028a05b20546171c` passed Ubuntu/Windows Build `31855670237` and Governance `31855670231`; out-of-scope fuzz/equivalence were cancelled and no KVM/device workflow ran. Remote evidence is recorded for the merger-ready documentation successor.
 - Superseded initial M3-02 freeze `e5b329bde53c9cd42ed58c6f9f3eff3c54bd52fc` after independent review found three P1 evidence gaps. Final implementation `90ef2ecf662371c82fed5f3d0fa92dbf9324e9e2` closes exact per-case evidence, real binary corpus/regressions, five-target aggregation, unsigned APK v1/v2/v3 rejection, fixed Host stages and duplicate/extra startup handling. Bounded local validation and final independent review passed with `P0=0/P1=0/P2=0`; required 600-second parallel targets, API 29/36 KVM and publication remain pending.
 - Evidence-only head `150fac76dd0fe1c462445a73dd41043a00b7624b` passed Build `31757448127` and Governance `31757448107` on Ubuntu/Windows after the independent `P0=0/P1=0/P2=0` review. Automatic KVM `31757448073` was cancelled as explicitly out of scope. PR #51 was transitioned to ready and merged with expected-head protection as `09345a99d44b3faac2e3a24b71012e03546a451f`; Issue #50 closed and local `main` was fast-forwarded.
 - GitHub final-main Build `31754337214` failed only in Windows job `94626822969` because the hosted pool assigned new exact image `20260810.198.2`; the gate failed before compiler invocation. Official `actions/runner-images` ref/commit/blob and installed LLVM/VS/x64-tools/SDK inventory were independently checked. Issue #50 and the bounded maintenance branch were created; no Android/KVM/device test is repeated.
@@ -1498,25 +1499,24 @@ Complete the independently authorized M3-06 API/ABI validation-claim contract, t
 
 - task_id: M3-06
 - git_commit: ef8785951a6bfe26cd54d48b687faf890ee8b039
-- command: node tools/governance/validate-project-package.mjs; strict pending-clean HandOff validation; diff, UTF-8, stale-claim and changed-file scope checks
+- command: local bounded governance validation plus GitHub Actions Build 31855670237 and Governance 31855670231
 - exit_code: 0
-- environment: Windows 10.0.19045.0 with Node.js v24.12.0
+- environment: Windows 10.0.19045.0 with Node.js v24.12.0; GitHub ubuntu-24.04 and windows-2025
 - timestamp: 2026-08-15T09:06:04+08:00
-- artifact: docs/evidence/M3-06/local-validation.md
+- artifact: docs/evidence/M3-06/local-validation.md ; docs/evidence/M3-06/remote-validation.md ; https://github.com/xiaokh31/androidAppHardening/pull/57
 - sha256: 0568add20e85cd5d3b412fbf84d865de89b5d78c3ccff9d68a56e91b4055e4c1
-- result: PASS; governance-only implementation frozen, full grid and three-state claim semantics synchronized, and no executable/device/KVM/fuzz/benchmark input changed
+- result: PASS; full grid and three-state claim semantics synchronized, exact published-head Ubuntu/Windows Build/Governance passed, out-of-scope workflows were cancelled, and no executable/device/KVM/fuzz/benchmark input changed
 
 ## Blockers and Required Approvals
 
-M3-04 is dependency-blocked until M3-06 merges and its post-merge README/HandOff plus normal Build/Governance gates pass. No additional user approval is pending for the authorized M3-06 Issue, branch, unique PR, CI, ready transition, or expected-head merge. M3-05 remains unstarted.
+None
 
 ## Ordered Next Actions
 
-1. Validate and freeze the governance-only M3-06 diff; push the branch and create the unique Issue #56 draft PR.
-2. Run exact-head Ubuntu/Windows Build and Governance once; do not run device, KVM, fuzz, benchmark, or tool download workflows.
-3. Update README/HandOff evidence, merge M3-06 with expected-head protection, and close Issue #56.
-4. Reconcile the preserved M3-04 blocker branch onto synchronized `main`, execute only the revised mandatory baseline, and explicitly emit every unavailable cell as `UNVERIFIED`.
-5. Complete and merge M3-04 before starting M3-05.
+1. Transition PR #57 to ready after the merger-ready evidence HEAD passes exact Ubuntu/Windows Build/Governance; merge with expected-head protection and confirm Issue #56 closes.
+2. Synchronize local `main`, run strict HandOff plus normal main Build/Governance, and do not repeat device, KVM, fuzz or equivalence workflows.
+3. Reconcile the preserved M3-04 blocker branch onto synchronized `main`, execute only the revised mandatory baseline, and explicitly emit every unavailable cell as `UNVERIFIED`.
+4. Complete and merge M3-04 before starting M3-05.
 
 ## Relevant Files and Artifacts
 
@@ -1524,6 +1524,8 @@ M3-04 is dependency-blocked until M3-06 merges and its post-merge README/HandOff
 - `docs/tasks/M3-06-api-abi-validation-claim-contract.md`
 - `docs/tasks/M3-04-api-and-abi-matrix.md`
 - `docs/evidence/M3-06/implementation-plan.md`
+- `docs/evidence/M3-06/local-validation.md`
+- `docs/evidence/M3-06/remote-validation.md`
 - `docs/COMPATIBILITY_MATRIX.md`
 - `docs/TEST_STRATEGY.md`
 - `docs/tasks/INDEX.md`

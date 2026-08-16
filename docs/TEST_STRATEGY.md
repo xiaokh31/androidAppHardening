@@ -199,6 +199,8 @@ Android 成本按 ADR 0014 分成两个不可混淆的 measurement mode。`obser
 
 测试设备在同一对比组中保持型号、系统镜像、电源模式和后台负载配置一致。异常值规则和统计脚本版本必须写入报告。预算由 M3-05 形成基线后作为发布配置入库，任何调整需要评审记录。
 
+API 36 启动重复性按 ADR 0015 使用同一 exact head、同一 KVM job 与同一 emulator boot 的恰好两个 campaign。`A` 为正向 fixture 顺序和 `baseline_then_protected`，`B` 同时反转 fixture 与 mode 顺序；每个 campaign/mode 仍为 5 次预热和 30 次测量。两个 campaign 必须分别通过原预算，且三 fixture、五 observed Android metric 的 baseline/protected/delta P50/P95 共 90 行都满足原 10% 门禁。失败样本不得补测，禁止第三 campaign、跨 SHA/job/boot 配对和结果挑选；只有该协议稳定后仍存在的预算失败才可进入独立 Runtime 优化任务。
+
 ## 8. 测试证据格式
 
 每项任务的证据至少记录：

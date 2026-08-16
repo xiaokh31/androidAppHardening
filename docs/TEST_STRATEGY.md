@@ -201,6 +201,8 @@ Android 成本按 ADR 0014 分成两个不可混淆的 measurement mode。`obser
 
 API 36 启动重复性按 ADR 0015 使用同一 exact head、同一 KVM job 与同一 emulator boot 的恰好两个 campaign。`A` 为正向 fixture 顺序和 `baseline_then_protected`，`B` 同时反转 fixture 与 mode 顺序；每个 campaign/mode 仍为 5 次预热和 30 次测量。两个 campaign 必须分别通过原预算，且三 fixture、五 observed Android metric 的 baseline/protected/delta P50/P95 共 90 行都满足原 10% 门禁。失败样本不得补测，禁止第三 campaign、跨 SHA/job/boot 配对和结果挑选；只有该协议稳定后仍存在的预算失败才可进入独立 Runtime 优化任务。
 
+M2-10 按 ADR 0016 使用一个测试专用 API 36 `java-single-dex` 诊断 campaign 定位 Runtime 启动阶段，固定 5 次预热和 15 个保留样本；它不是 M3-05 A/B，不得替代发布证据。只有在两个固定样本半区中同一阶段 P50 均至少贡献 30 ms 时才允许优化该单一阶段。优化后只运行 API 29/36 x86_64 Runtime 回归矩阵；M2-10 不运行 ARM、不改变 M3-05 预算/样本/10% 门禁，也不把计时 observer 或触发控制带入 Release Runtime。
+
 ## 8. 测试证据格式
 
 每项任务的证据至少记录：

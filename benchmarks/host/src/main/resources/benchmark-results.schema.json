@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xiaokh31/androidAppHardening/benchmarks/host/src/main/resources/benchmark-results.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "environmentId", "results", "artifactSizes", "stress100MiB", "hostTimingBasis", "hostWallDiagnostics", "allBudgetsPass", "sizeClaim"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "environmentId": { "type": "string", "pattern": "^[a-z0-9_.-]{1,64}$" },
+    "results": { "type": "array", "items": { "$ref": "#/$defs/result" } },
+    "artifactSizes": { "type": "array", "minItems": 3, "maxItems": 3 },
+    "stress100MiB": { "type": "object" },
+    "hostTimingBasis": { "const": "child_process_cpu_duration_including_jvm_and_cli" },
+    "hostWallDiagnostics": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fixtureId", "samples", "p50", "p95", "timeoutMs"],
+        "properties": {
+          "fixtureId": { "type": "string" },
+          "samples": { "type": "array", "minItems": 10, "maxItems": 10, "items": { "type": "number", "minimum": 0 } },
+          "p50": { "type": "number", "minimum": 0 },
+          "p95": { "type": "number", "minimum": 0 },
+          "timeoutMs": { "const": 120000 }
+        }
+      }
+    },
+    "allBudgetsPass": { "type": "boolean" },
+    "sizeClaim": { "const": "overhead-controlled-output-not-guaranteed-smaller" }
+  },
+  "$defs": {
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fixtureId", "environmentId", "measurementMode", "observedRiskLevel", "observedRiskAction", "riskObservationTiming", "metric", "samples", "p50", "p95", "baseline", "delta", "budget", "pass", "claimType", "freshProcess", "sameHandle", "lookupCountBeforeUpgrade", "lookupCountAfterUpgrade", "cleanupPassed", "nativeJitterMs"],
+      "properties": {
+        "fixtureId": { "type": "string" },
+        "environmentId": { "type": "string" },
+        "measurementMode": { "type": "null" },
+        "observedRiskLevel": { "type": "null" },
+        "observedRiskAction": { "type": "null" },
+        "riskObservationTiming": { "type": "null" },
+        "metric": { "enum": ["hostProcessMs", "hostPeakRssBytes", "processToApplicationOnCreateMs", "processToInteractiveMs", "peakPssBytes", "nativeHeapPeakBytes", "stablePssBytes"] },
+        "samples": { "type": "array", "minItems": 10, "items": { "type": "number", "minimum": 0 } },
+        "p50": { "type": "number", "minimum": 0 },
+        "p95": { "type": "number", "minimum": 0 },
+        "baseline": { "type": "number", "minimum": 0 },
+        "delta": { "type": "number" },
+        "budget": { "type": "number", "minimum": 0 },
+        "pass": { "type": "boolean" },
+        "claimType": { "type": "null" },
+        "freshProcess": { "type": "null" },
+        "sameHandle": { "type": "null" },
+        "lookupCountBeforeUpgrade": { "type": "null" },
+        "lookupCountAfterUpgrade": { "type": "null" },
+        "cleanupPassed": { "type": "null" },
+        "nativeJitterMs": { "type": "null" }
+      }
+    }
+  }
+}

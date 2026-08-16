@@ -696,8 +696,12 @@ android {
                 buildConfigField("boolean", "M301_STARTUP_PROVIDER", (id == "startup-provider").toString())
                 buildConfigField("boolean", "M301_MULTI_PROCESS", (id == "multi-process").toString())
                 buildConfigField("boolean", "M301_JNI", (id.startsWith("jni-")).toString())
-                manifestPlaceholders["fixtureApplication"] =
-                    if (id == "custom-application") "ah.fixtures.android.m301.CustomFixtureApplication" else "android.app.Application"
+                manifestPlaceholders["fixtureApplication"] = when (id) {
+                    "custom-application" -> "ah.fixtures.android.m301.CustomFixtureApplication"
+                    "java-single-dex", "kotlin-multidex", "jni-four-abi" ->
+                        "ah.fixtures.android.m301.BenchmarkFixtureApplication"
+                    else -> "android.app.Application"
+                }
                 if (id == "kotlin-multidex") multiDexEnabled = true
             }
         }

@@ -38,7 +38,7 @@ M0 基础建设与可行性验证以及 M1 Host 处理链已经完成。M1-01 �
 | [M3-04](docs/tasks/M3-04-api-and-abi-matrix.md) | 已完成 | 完整 32 格清单、四个真实 `VERIFIED` 强制格子、28 个明确 `UNVERIFIED` 格子、JSON/Markdown 等价及清理均已通过；PR #58、Issue #21 已关闭 |
 | [M3-07](docs/tasks/M3-07-test-only-high-benchmark-contract.md) | 已完成 | ADR 0014、10 个产品面负例、20 个报告负例、独立全零复核及 Ubuntu/Windows Build/Governance 均已通过；PR #62、Issue #61 已关闭；未运行设备或 KVM |
 | [M3-08](docs/tasks/M3-08-startup-performance-stability-contract.md) | 已完成 | PR #65、Issue #64、独立全零复核、45 个负例、expected-head 合并与 post-merge Ubuntu/Windows Build/Governance 均已关闭；未运行 KVM、设备或 benchmark |
-| [M3-05](docs/tasks/M3-05-size-startup-memory-benchmarks.md) | 待恢复 | PR #63 仅允许按 ADR 0015 运行一次同 SHA/job/boot 的 API 36 A/B 替代矩阵；通过前不运行 ARM 真机 |
+| [M3-05](docs/tasks/M3-05-size-startup-memory-benchmarks.md) | 阻塞 | PR #63 的首次且唯一 ADR 0015 API 36 A/B 已完成；两 campaign 均超固定启动预算，25/90 稳定性比较失败。禁止重跑与 ARM，需单独启动 Runtime 性能优化 ADR/任务。 |
 | M4 | 未启动 | 发布阶段继续按任务依赖顺序执行 |
 
 任务按 [`docs/tasks/INDEX.md`](docs/tasks/INDEX.md) 的依赖顺序执行。每个任务只有在 PR 合并、合并后门禁与证据完成后才在本表标记“已完成”；每个任务的收尾协调提交必须同步本 README，避免公开进度长期滞后。

@@ -1,0 +1,183 @@
+name: M3-05 Benchmarks
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/benchmarks.yml"
+      - "benchmarks/**"
+      - "fixtures/android/**"
+      - "host/**"
+      - "integration-tests/**"
+      - "runtime/**"
+      - "tools/validation/run-m3-05-android-benchmark.mjs"
+      - "tools/validation/verify-m3-05-test-bridge-artifacts.mjs"
+      - "tools/validation/compare-m3-05-benchmarks.mjs"
+      - "gradle/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m3-05-benchmarks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host:
+    name: Host benchmark (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Set up Temurin JDK
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95
+        with:
+          distribution: temurin
+          java-version: "17.0.19+10"
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24.12.0
+          check-latest: false
+      - name: Install pinned Android packages
+        shell: pwsh
+        run: |
+          $sdkmanager = if ($IsWindows) {
+            Join-Path $env:ANDROID_HOME "cmdline-tools/latest/bin/sdkmanager.bat"
+          } else {
+            Join-Path $env:ANDROID_HOME "cmdline-tools/latest/bin/sdkmanager"
+          }
+          & $sdkmanager "platforms;android-36" "build-tools;36.1.0" `
+            "ndk;29.0.14206865" "cmake;4.1.2"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prepare verified M2-07 Native crypto source (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive=".toolchains/native-crypto/downloads/mbedtls-4.1.1.tar.bz2"
+          source_parent=".toolchains/native-crypto/src"
+          source_root="$source_parent/mbedtls-4.1.1"
+          extract_root="$source_parent/.mbedtls-4.1.1.extract"
+          cleanup() {
+            rm -rf -- "$extract_root" "$source_root"
+            rm -f -- "$archive"
+          }
+          trap cleanup ERR
+          mkdir -p "$(dirname "$archive")" "$source_parent"
+          curl --fail --location --retry 3 \
+            --output "$archive" \
+            "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-4.1.1/mbedtls-4.1.1.tar.bz2"
+          node tools/validation/verify-m2-07-native-crypto.mjs --archive-only
+          while IFS= read -r member; do
+            case "$member" in
+              mbedtls-4.1.1/*) ;;
+              *) echo "unsafe or unexpected archive member: $member" >&2; exit 1 ;;
+            esac
+            case "/$member/" in
+              */../*) echo "archive traversal member: $member" >&2; exit 1 ;;
+            esac
+          done < <(tar -tjf "$archive")
+          rm -rf -- "$extract_root" "$source_root"
+          mkdir "$extract_root"
+          tar -xjf "$archive" -C "$extract_root"
+          node tools/validation/verify-m2-07-native-crypto.mjs --self-test --pre-promote \
+            --source-root="$extract_root/mbedtls-4.1.1"
+          printf '%s\n' \
+            'archive_sha256=3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c' \
+            'source_tree_sha256=7c4ba6554fed6eb67c201054bc75b124fcdc0649e2f56cd762746e01a25d2140' \
+            > "$extract_root/mbedtls-4.1.1/.aah-m2-07-verified"
+          mv "$extract_root/mbedtls-4.1.1" "$source_root"
+          rmdir "$extract_root"
+          node tools/validation/verify-m2-07-native-crypto.mjs --self-test
+          trap - ERR
+      - name: Prepare verified M2-07 Native crypto source (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $archiveDir = Join-Path $pwd ".toolchains/native-crypto/downloads"
+          $sourceParent = Join-Path $pwd ".toolchains/native-crypto/src"
+          $sourceRoot = Join-Path $sourceParent "mbedtls-4.1.1"
+          $extractRoot = Join-Path $sourceParent ".mbedtls-4.1.1.extract"
+          $archive = Join-Path $archiveDir "mbedtls-4.1.1.tar.bz2"
+          $cmakeName = if ($IsWindows) { "cmake.exe" } else { "cmake" }
+          $cmake = Join-Path $env:ANDROID_HOME "cmake/4.1.2/bin/$cmakeName"
+          $curl = if ($IsWindows) { "curl.exe" } else { "curl" }
+          New-Item -ItemType Directory -Force -Path $archiveDir, $sourceParent | Out-Null
+          try {
+            & $curl --fail --location --retry 3 `
+              --output $archive `
+              "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-4.1.1/mbedtls-4.1.1.tar.bz2"
+            if ($LASTEXITCODE -ne 0) { throw "M2-07 archive download failed: $LASTEXITCODE" }
+            node tools/validation/verify-m2-07-native-crypto.mjs --archive-only
+            if ($LASTEXITCODE -ne 0) { throw "M2-07 archive verification failed: $LASTEXITCODE" }
+            $members = & $cmake -E tar tjf $archive
+            if ($LASTEXITCODE -ne 0) { throw "M2-07 verified archive listing failed: $LASTEXITCODE" }
+            foreach ($memberValue in $members) {
+              $member = "$memberValue".Replace('\', '/')
+              $segments = $member.Split('/', [System.StringSplitOptions]::RemoveEmptyEntries)
+              if (-not $member.StartsWith('mbedtls-4.1.1/') -or $member.StartsWith('/') -or $segments -contains '..') {
+                throw "unsafe or unexpected archive member: $member"
+              }
+            }
+            Remove-Item -Recurse -Force -LiteralPath $extractRoot, $sourceRoot -ErrorAction SilentlyContinue
+            New-Item -ItemType Directory -Path $extractRoot | Out-Null
+            Push-Location $extractRoot
+            try {
+              & $cmake -E tar xjf $archive
+              if ($LASTEXITCODE -ne 0) { throw "M2-07 verified archive extraction failed: $LASTEXITCODE" }
+            } finally {
+              Pop-Location
+            }
+            node tools/validation/verify-m2-07-native-crypto.mjs --self-test --pre-promote `
+              "--source-root=$extractRoot/mbedtls-4.1.1"
+            if ($LASTEXITCODE -ne 0) { throw "M2-07 temporary source-tree verification failed: $LASTEXITCODE" }
+            $stampPath = "$extractRoot/mbedtls-4.1.1/.aah-m2-07-verified"
+            $stamp = "archive_sha256=3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c`n" +
+              "source_tree_sha256=7c4ba6554fed6eb67c201054bc75b124fcdc0649e2f56cd762746e01a25d2140`n"
+            [IO.File]::WriteAllText($stampPath, $stamp, [Text.UTF8Encoding]::new($false))
+            Move-Item -LiteralPath "$extractRoot/mbedtls-4.1.1" -Destination $sourceRoot
+            Remove-Item -LiteralPath $extractRoot
+            node tools/validation/verify-m2-07-native-crypto.mjs --self-test
+            if ($LASTEXITCODE -ne 0) { throw "M2-07 promoted source-tree verification failed: $LASTEXITCODE" }
+          } catch {
+            Remove-Item -Recurse -Force -LiteralPath $extractRoot, $sourceRoot -ErrorAction SilentlyContinue
+            Remove-Item -Force -LiteralPath $archive -ErrorAction SilentlyContinue
+            throw
+          }
+      - name: Run two fixed Host benchmark passes
+        shell: pwsh
+        run: |
+          $gradle = if ($IsWindows) { ".\gradlew.bat" } else { "./gradlew" }
+          $environment = "$($env:RUNNER_OS.ToLowerInvariant())-$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant())"
+          & $gradle --no-daemon --console=plain :benchmarks:host:jmh "-Pm305Environment=$environment"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tools/governance/verify-m3-07-high-benchmark-contract.mjs --report benchmarks/host/build/m3-05/benchmark-results.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force build/m3-05/host-run1,build/m3-05/host-run2 | Out-Null
+          Copy-Item -Recurse -Force benchmarks/host/build/m3-05/* build/m3-05/host-run1/
+          & $gradle --no-daemon --console=plain :benchmarks:host:jmh "-Pm305Environment=$environment"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tools/governance/verify-m3-07-high-benchmark-contract.mjs --report benchmarks/host/build/m3-05/benchmark-results.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item -Recurse -Force benchmarks/host/build/m3-05/* build/m3-05/host-run2/
+          node tools/validation/compare-m3-05-benchmarks.mjs `
+            build/m3-05/host-run1/benchmark-results.json `
+            build/m3-05/host-run2/benchmark-results.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload Host benchmark evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: m3-05-host-${{ runner.os }}
+          if-no-files-found: error
+          retention-days: 7
+          path: build/m3-05/host-run*/

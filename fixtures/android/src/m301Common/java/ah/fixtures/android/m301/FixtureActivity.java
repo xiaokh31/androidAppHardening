@@ -3,10 +3,15 @@ package ah.fixtures.android.m301;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.View;
+import android.view.ViewTreeObserver;
 
 import java.lang.reflect.Method;
 
 public final class FixtureActivity extends Activity {
+    private boolean interactiveReported;
+    private boolean fullyDrawnReported;
+
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -15,6 +20,31 @@ public final class FixtureActivity extends Activity {
         if ("kotlin-multidex".equals(ah.fixtures.android.BuildConfig.FIXTURE_ID)) verifyMultidex();
         if (ah.fixtures.android.BuildConfig.M301_JNI) verifyJni();
         if (ah.fixtures.android.BuildConfig.M301_MULTI_PROCESS) startService(new Intent(this, WorkerService.class));
+
+        // The fixture intentionally has no content view. Bind the fully-drawn
+        // marker to the decor's first real traversal so StartupTimingMetric
+        // observes both the UI frame and its associated RenderThread frame.
+        View decorView = getWindow().getDecorView();
+        decorView.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
+            @Override
+            public boolean onPreDraw() {
+                if (!fullyDrawnReported) {
+                    fullyDrawnReported = true;
+                    decorView.getViewTreeObserver().removeOnPreDrawListener(this);
+                    reportFullyDrawn();
+                }
+                return true;
+            }
+        });
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus && !interactiveReported) {
+            interactiveReported = true;
+            FixtureTimings.markInteractive(this);
+        }
     }
 
     private void verifyKotlin() {

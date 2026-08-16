@@ -5,5 +5,4 @@
         <package android:name="ah.fixtures.android.m301.kotlin_multidex" />
         <package android:name="ah.fixtures.android.m301.jni_four" />
     </queries>
-    <application android:allowBackup="false" android:label="Android Performance Harness" />
 </manifest>

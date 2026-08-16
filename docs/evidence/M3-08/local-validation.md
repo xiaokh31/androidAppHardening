@@ -31,7 +31,8 @@ No Gradle, KVM, emulator, physical device, APK install, fuzz or benchmark comman
 | `tools/governance/verify-m3-08-startup-stability-contract.mjs` | `ad9f3bba62abb37f5d521d263200e9402706ee48b656d31f2c757023da355338` |
 | `docs/evidence/M3-08/security-review-1.md` | `fb2a55f68f62f536db04f7b5d820b7fde6e1ee8f03f00643e75e9017914db362` |
 | `docs/evidence/M3-08/security-review-2.md` | `ab209de7f96c9f73e34569d6ec1282b39286f3b01ad4651cd96c954d5d39670c` |
+| `docs/evidence/M3-08/security-review-3.md` | `143305183a6c18732b3691ad7e58fdb193e5b72f37f0a750ef622c9a0d90cc2a` |
 
-## Pending gate
+## Independent review gate
 
-The same independent read-only reviewer must confirm that review-2's remaining source-identity finding is closed and return `P0=0/P1=0/P2=0` for final corrected freeze `7e949e9d58ca0a0202790bff70e6199272c75c7f`. Only then may this branch be published and subjected to Ubuntu/Windows Build and Governance; device and benchmark workflows remain excluded.
+Independent review 3 confirmed review-2's remaining source-identity finding is closed and returned `P0=0/P1=0/P2=0` for final corrected freeze `7e949e9d58ca0a0202790bff70e6199272c75c7f`. The branch may now be published and subjected only to Ubuntu/Windows Build and Governance; device and benchmark workflows remain excluded until the later M3-05 replacement job.

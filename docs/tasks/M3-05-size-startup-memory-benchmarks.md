@@ -10,6 +10,7 @@ depends_on:
   - M2-06
   - M3-01
   - M3-07
+  - M3-08
 required_skills:
   - validate-protected-apk
 security_sensitive: false
@@ -30,6 +31,7 @@ security_sensitive: false
 - M3-01 的 `java-single-dex`、`kotlin-multidex` 和 `jni-four-abi` fixture。
 - 锁定的 benchmark 环境与测试工具版本。
 - M3-07 与 ADR 0014 固定的真实冷启动/隔离 HIGH 增量测量边界。
+- M3-08 与 ADR 0015 固定的同 SHA、同 KVM job、同 emulator boot 双 campaign 测量稳定性边界。
 
 ## Expected Outputs
 
@@ -70,6 +72,9 @@ security_sensitive: false
 - Android 测量模式固定为 `observed_cold_start` 与 `isolated_high_upgrade`。前者只能运行未修改的生产风险引擎，并在启动计时停止后记录 `riskObservationTiming=post_start` 与另行观察到的 level/action；它不声称读取 Guard 私有的早期报告，固定 reference profile 若非 LOW 则按环境不可比失败。后者每个样本先 force-stop 到新进程，只能由 Android-test fixture 对新鲜、已认证、同一 owned handle 调用现有 `MemoryProfile.HIGH`，且必须发生在任何 fixture class/resource lookup 前。
 - `isolated_high_upgrade` 单独报告 `highProfileIncrementalMs`、Native jitter、same-handle、lookup 与 cleanup 证据。Native jitter 每个样本必须在 20–50 ms，wall-clock 每个样本不得超过 250 ms；其 P50/P95 不得称为真实 HIGH 冷启动，也不得与 LOW 相加后作为发布门禁。
 - 禁止为 benchmark 新增生产 manifest/BuildConfig/system property/intent/file/environment override、风险 setter 或新的 public/package-private Runtime API。测试 bridge 与 keep 规则只能存在于 Android-test/M3-05 fixture source set，且必须证明未进入 Runtime AAR、生产 fixture APK、CLI 或 distribution 产物。
+- API 36 release gate 必须在同一 exact-head KVM job 与同一 emulator boot 内运行恰好两个 campaign。`A` 使用正向 fixture 顺序与 `baseline_then_protected`；`B` 使用反向 fixture 顺序与 `protected_then_baseline`。每个 campaign/mode 均保留 5 次预热和 30 次测量，任何无效样本使整个 campaign 失败，不得补样、删异常值或启动第三个 campaign。
+- 两个 campaign 必须分别通过全部固定预算；三 fixture × 五 observed Android metric × `baselineP50`/`baselineP95`/`protectedP50`/`protectedP95`/`deltaP50`/`deltaP95` 共 90 行比较全部使用 `abs(A-B) / max(1, min(abs(A), abs(B))) <= 0.10`。不同 SHA、job、boot 或 artifact manifest 的报告仅可诊断，不得作为验收配对。
+- M3-05 只可修改 benchmark/test orchestration 以实现 ADR 0015。若稳定的双 campaign 仍超预算，必须另建 Runtime 优化任务与 ADR；不得在本任务修改生产 Runtime。
 
 ## Public Interfaces
 
@@ -79,6 +84,7 @@ security_sensitive: false
 - 环境文件 `benchmarks/environment.json` 与汇总 `build/reports/benchmark-summary.md`。
 - 失败时进程退出码固定为非零且列出超预算 metric。
 - 每个本地/CI `benchmark-results.json` 必须通过 `node tools/governance/verify-m3-07-high-benchmark-contract.mjs --report <file>`；缺字段、额外类型、非有限数值、错误样本数、LOW/DEGRADE 不一致或 mode/metric 专属字段漂移均 fail closed。
+- API 36 双 campaign 汇总必须通过 M3-08 正式入口，并同时传入 `--report`、`--campaign-a`、`--campaign-b`、`--expected-head`、`--expected-run-id`、`--expected-job-id`、`--expected-run-attempt`、`--expected-environment`、`--expected-boot-hash`、`--artifact-manifest` 与 `--artifact-root`。规范 JSON manifest 必须绑定执行 job/boot、A/B 身份与顺序、两份不同 report 的实际 SHA-256，以及三 fixture 的六份 baseline/protected APK 规范文件名和 SHA-256；验证器还必须直接哈希 `--artifact-root` 下六份 APK，再从两份原始报告复算 percentile/delta/budget 和 90 行比较。不得信任自报摘要或布尔值，不得复用同一或历史 job 报告。
 
 ## Security Constraints
 
@@ -102,6 +108,7 @@ security_sensitive: false
 - 三种 APK 大小全部存在；外部签名测试副本与输入使用同一当前 signer。六项大小分解字段齐全，实际输出分项可精确调和，四 ABI 全集基准单列且不重复计数。
 - 100 MiB 合成输入在 Windows/Ubuntu 的 Host median 与峰值 RSS 均达标，输入哈希前后相同。
 - 每个 metric 具备规定样本数、原始样本、环境描述、基线、增量和 pass 判定，连续两次汇总差异在 10% 内。
+- API 36 的首个且唯一 A/B campaign 对在同一 SHA/job/boot 内完成，两个 campaign 分别通过预算且 90 行重复性比较全部不超过 10%；不接受第三次结果替换。
 - 报告明确写明大小只控制增量、不保证输出更小，且未隐藏高风险策略的额外开销。
 
 ## Required Tests
@@ -110,6 +117,7 @@ security_sensitive: false
 - 三类 fixture 的 Host 三种 APK 大小、六项大小分解、耗时与 RSS benchmark。
 - 两个 reference profile 的两个真实 LOW 启动终点、peak/stable PSS 与 Native heap peak，以及隔离 HIGH profile 的同 handle、零预查找、20–50 ms jitter、250 ms wall bound、后置查找和 exactly-once cleanup benchmark。
 - x86/x86_64 不自动进入高风险以及输入只读回归测试。
+- M3-08 aggregate validator 的双 campaign 正向测试，以及第三 campaign、身份漂移、顺序漂移、4/6 warmup、29/31 sample、比较缺失/重复、阈值放宽、算术错误、预算失败与 cleanup 失败负例。
 
 ## Required Evidence
 
@@ -117,6 +125,7 @@ security_sensitive: false
 - 原始样本、两个启动终点与三项内存统计、预算判定和两次重复运行差异。
 - 输入、未签名输出、同证书外部签名输出 APK、bootstrap、各 Runtime ABI、container metadata、大小分解 manifest 和结果文件 SHA-256。
 - 临时测试证书清理、敏感信息扫描与已知测量限制。
+- 两个 API 36 campaign 的 exact-head/environment/boot/artifact/report SHA-256、固定顺序、90 行比较和无第三次执行证明。
 
 ## Likely Files
 
@@ -130,7 +139,7 @@ security_sensitive: false
 
 ## Dependencies and Blockers
 
-M1-06 或 M2-04 尚未形成 Release 候选产物时不得建立发布基线。任一安全控制导致预算失败时任务保持 blocked，并提交可量化优化任务；不得删除安全控制或放宽预算而不经 ADR 与安全评审。
+M1-06、M2-04 或 M3-08 尚未形成已合并合同/Release 候选时不得建立发布基线。任一安全控制导致预算失败时任务保持 blocked，并提交可量化优化任务；不得删除安全控制或放宽预算而不经 ADR 与安全评审。
 
 ## Agent Handoff Requirements
 

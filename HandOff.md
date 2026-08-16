@@ -1,12 +1,12 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260816-043541
-updated_at: 2026-08-16T04:35:41+08:00
+handoff_id: HO-20260816-141025
+updated_at: 2026-08-16T14:10:25+08:00
 updated_by: /root
-state: blocked
+state: active
 source_branch: chore/m3-05-performance-benchmarks
-base_commit: 930b759c99f330218dc4404368e9844e80456c82
+base_commit: 7f10a0b84d9680e4b9311e680d0508e7fde512cd
 working_tree: clean
 current_milestone: M3
 active_task: M3-05
@@ -17,15 +17,14 @@ next_owner: /root
 
 ## Objective
 
-Complete the bounded M3-05 size, Host, observed LOW cold-start, memory and test-only isolated HIGH benchmark matrix without repeating unrelated historical validation.
+Resume M3-05 after M3-08 and execute exactly one ADR 0015 API 36 same-SHA/job/boot A/B replacement matrix before any ARM campaign.
 
 ## Current State
 
-- M3-05 correction `fba4da0bc8669374f0c73bb823a549d1160b38b9` proved the fixed archive and source-tree hashes on Ubuntu, then exposed that PowerShell cannot promote the upstream Unix symlink tree on that runner; Windows continued normally. The bounded replacement uses the repository's already proven Bash `tar/mv` path on Linux and retains PowerShell only on Windows, with identical immutable archive/source-tree validation.
-
-- M3-07 is complete. Final implementation freeze `90f754ea185a8633acd585d181ee108db016209d` passed independent review with `P0=0/P1=0/P2=0`; exact published head `4e77aa38b508a99c60a576e41804ba2d08b6b9fd` passed Build `31891662932` and Governance `31891662909` on Ubuntu/Windows. PR #62 merged with expected-head protection as `859cfa217b2fc0726cc001519967cdde606d2146`, Issue #61 closed, and post-merge `main@930b759c99f330218dc4404368e9844e80456c82` passed Build `31892091205` and Governance `31892091344`. No device, emulator or KVM ran for M3-07.
 - M3-05 remains on `chore/m3-05-performance-benchmarks` with unique draft PR #63 linked to Issue #22. Stable head `193e124804d161b38ddf9c0fc82c2f15d5a84cdb` passed Governance `31895635883`, Ubuntu/Windows Build `31895635802`, and Host benchmark `31895635768`; both platforms passed two fixed runs, all budgets and the unchanged 10% repeatability gate. Subsequent bounded KVM corrections closed package visibility, self-instrumentation, copied pinned Kotlin stdlib, real RenderThread framing, explicit JUnit success handling, post-measurement observation ownership, and the isolated HIGH worker Native search path without changing thresholds or product Runtime. The final evaluated runs and current blocker are recorded in the next item. No local emulator was started, the ARM campaign remains gated on stable API 36 results, and `stash@{0}` remains a recovery backup until merge.
-- Exact-head `065f97b7413113420be7b12257469637cf69cb0b` passed Build `31903066849`, Governance `31903066921`, Host benchmark `31903066912` on Ubuntu/Windows and API 29 KVM job `95056680111`. API 36 job `95056680035` produced a complete contract-valid report and proved the corrected isolated HIGH worker, then exposed only a validator working-directory defect. Tool-only successor `61652979caea471a8dae058c08bf5b4620321fe5` passed Build `31905067470`, Governance `31905066201`, Host benchmark `31905067854` on Ubuntu/Windows and API 29 KVM job `95061478402`; its API 36 job `95061478417` generated and validated another complete report with cleanup true. That second report failed the fixed release budget: `kotlin-multidex/processToApplicationOnCreateMs` P50 delta was `331 ms` against `300 ms`. Comparing the two complete API 36 reports also found six P50/P95 summaries above the fixed 10% repeatability gate, with maximum variation `21.30%`. M3-05 is therefore blocked; no threshold is relaxed, no third KVM run is allowed, the API 29 ARM64 physical run was not started, PR #63 remains draft and Issue #22 remains open. Recovery requires an independent bounded startup-performance optimization/measurement-stability ADR and task before M3-05 resumes.
+- Exact-head `065f97b7413113420be7b12257469637cf69cb0b` and tool-only successor `61652979caea471a8dae058c08bf5b4620321fe5` retained the two historical complete API 36 reports. The latter recorded `kotlin-multidex/processToApplicationOnCreateMs` P50 delta `331 ms` against `300 ms`, while cross-job comparison found six summaries above 10%; these remain diagnostic failures and cannot be reused as ADR 0015 acceptance evidence.
+- M3-08 is complete. Final freeze `7e949e9d58ca0a0202790bff70e6199272c75c7f` passed independent review `P0=0/P1=0/P2=0`; final PR head `a5d76806850ecc68cb92e87c4a06e29d9cfe0b1b` passed all checks and merged as `4c3efc1614158a0372eb877fc02fd1db27dcffb3`; Issue #64 closed. Post-merge coordination head `e12542db48eac96f17c4a1f4306ec20c62dcfa1f` passed Build `31929454365` and Governance `31929454381` on Ubuntu/Windows plus local M3-08/governance/strict/diff gates. No KVM, emulator, physical device or benchmark ran. M3-05 PR #63 is now eligible to resume its single ADR 0015 API 36 A/B replacement job.
+- M3-07 is complete on `main`. Final implementation freeze `90f754ea185a8633acd585d181ee108db016209d` passed independent review with `P0=0/P1=0/P2=0`; exact published head `4e77aa38b508a99c60a576e41804ba2d08b6b9fd` passed Build `31891662932` and Governance `31891662909` on Ubuntu/Windows. PR #62 merged with expected-head protection as `859cfa217b2fc0726cc001519967cdde606d2146`, Issue #61 closed, and post-merge `main@930b759c99f330218dc4404368e9844e80456c82` passed Build `31892091205` and Governance `31892091344`. No device, emulator or KVM ran for M3-07.
 - M2-09 is merged and complete. Production implementation `9ba6ec28c7d1450c3ca51175f78e3aa2d292331f`, test remediation `dd78179f41c97aab7e3f38c0f571c4e6198f8939` and exact PR head `186dfd79ee4f32c749c4ccfdebf5bc82a3476637` passed independent `P0=0/P1=0/P2=0` review, Build `31862011459`, Governance `31862011393`, and API 29/36 KVM `31862011460`. PR #60 merged as `77b3aee7d88eaf4446ae780f20fe6988796609af`; final main coordination `e3a676ed2f4864d2b33077e1d00c300cf2a59817` passed Build `31863095498` and Governance `31863095500`.
 - M3-06 is complete. PR #57 merged with expected-head `8da49b52fc7c2ea65bf7f0a19b5804d9137130e6` as `a65433ae0bda651fc1088d187913b2dbfa7b02d1`; Issue #56 closed. Merger-ready and post-merge Ubuntu/Windows Build/Governance passed, while device/KVM/fuzz remained out of scope.
 - M3-04 resumed on draft PR #58 by merging verified `main@e3a676ed2f4864d2b33077e1d00c300cf2a59817` as `f152d34b314b9cbf89a3e10999d914f81e78a522`. Governance `31863503632` and Build `31863503635` passed on Ubuntu/Windows. KVM `31863503643` passed the complete API 36 x86_64 fixture, signer/tag negative, Runtime and cleanup matrix; API 29 passed five fixtures and then retained one exact configuration-relaunch observation `[provider.ready,startup_provider.create,activity.create,activity.create]`. M2-09 correctly allowed the second Activity construction, but the M3-04 runner still compared only the canonical single-Activity catalog list. The bounded correction accepts only one exact per-fixture Activity-recreation suffix on API 29, records catalog/normalized expected/observed sequences and `configuration_relaunch`, and rejects extra, reordered or non-API-29 duplicates. Kotlin contract tests, Node syntax/self-tests and diff checks pass locally; the coordination snapshot declares the post-commit tree clean.
@@ -35,7 +34,7 @@ Complete the bounded M3-05 size, Host, observed LOW cold-start, memory and test-
 - The final exact implementation-head physical API 29 ARM campaign completed both ARM64 and ARM32 cells after the user accepted the OEM prompt. Both cells are `VERIFIED`; all nine fixture packages were independently confirmed absent afterward. No local emulator was started and no device rerun is required.
 - ADR 0012 and the revised M3-04 contract enumerate the full API 29-36 by four-ABI grid while reserving `VERIFIED` for real Android-reported process evidence, `FAILED` for executed regressions, and `UNVERIFIED` for unavailable combinations that carry no positive compatibility claim. The mandatory current M3-04 baseline is API 29 ARM32/ARM64 plus API 29/36 x86_64.
 - Read-only inventory provides an authorized API 29 `user` physical device capable of `arm64-v8a` and `armeabi-v7a` processes, plus pinned API 29 revision 8 and API 36 revision 2 x86_64 KVM images. API 30-35 and all other unavailable combinations will be emitted as `UNVERIFIED`; they will not trigger downloads or inferred claims.
-- M3-04 is complete on `main`; PR #58 merged with expected-head protection and its post-merge Build/Governance gates passed. M3-07 subsequently merged and unblocked M3-05 contract work; M3-05 is now blocked by its measured API 36 budget and repeatability failures described above.
+- M3-04, M3-07 and M3-08 are complete on `main`. M3-05 is active only to implement ADR 0015 benchmark/test orchestration and run its first and only same-job API 36 A/B replacement; ARM remains blocked until that result passes.
 - Retained API 29 KVM runs `31858315765` and `31859364008` document the pre-M2-09 configuration-relaunch defect. They are historical only; final exact implementation-head KVM `31864724589` and the ARM campaign supersede them.
 - M3-03 final implementation `f53989e83b8a030139ec3e564ebfb41bdb81129a` passed Cross-platform equivalence `31847937221`, Build `31847937347` and Governance `31847937260` on the exact head. Windows and Ubuntu each produced 18 authenticated outputs; the final summary compared 36 outputs and proved stable semantics, random non-reuse, independent authentication/decryption, immutable inputs, unsigned outputs, equivalent negative errors and zero absolute-path findings. PR [#55](https://github.com/xiaokh31/androidAppHardening/pull/55) merged with expected-head protection as `af0fe5c5d0e9098d8cca86b3d5de3e09ed8412fb`, and Issue #20 closed. M3-03 is Host-only; out-of-scope KVM and M3-02 fuzz runs were cancelled.
 - M2-08 is complete. Final head `626a14c63c1b77f2552236659eb98d47bb027a12` passed Build `31820302813` on Ubuntu/Windows, including Ubuntu ASan/UBSan, and Governance `31820302849`; independent review was `P0=0/P1=0/P2=0`. PR #54 merged with expected-head protection as `ed0d0fb97c255a98c04628dc1746801985591c3c`, Issue #53 closed, and unrelated KVM run `31820302818` was cancelled by scope. M3-02 PR #52 may resume.
@@ -202,7 +201,8 @@ Complete the bounded M3-05 size, Host, observed LOW cold-start, memory and test-
 | M3-06 | `/root` | `main` | done | M0-03, M2-04, M3-01, M3-02 | PR #57 merged as `a65433a`; claim-boundary contract is active |
 | M3-04 | `/root` | `main` | done | M0-03, M2-04, M2-09, M3-01, M3-02, M3-06 | PR #58 merged; mandatory real-process cells and final main gates passed |
 | M3-07 | `/root` | `main` | done | M2-05, M2-06, M3-01 | PR #62 merged; post-merge Build/Governance and README/evidence synchronization passed |
-| M3-05 | `/root` | `chore/m3-05-performance-benchmarks` | blocked | M1-06, M2-04, M2-06, M3-01, M3-07 | Authorize an independent startup-performance optimization/measurement-stability ADR task; keep PR #63 draft and do not run ARM until API 36 budgets and repeatability pass without threshold changes |
+| M3-08 | `/root` | `main` | done | M3-01, M3-07 | PR #65 merged; independent review and post-merge main Build/Governance complete |
+| M3-05 | `/root` | `chore/m3-05-performance-benchmarks` | in_progress | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08 | Implement ADR 0015 and run exactly one same-SHA/job/boot API 36 A/B replacement before any ARM run |
 | M3-03 | `/root` | `main` | done | M0-03, M1-05, M1-06, M2-06, M3-01 | PR #55 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | done | M2-02 | PR #54 merged; exact regression, ASan/UBSan, dual-platform Build/Governance and independent review passed |
 | M3-02 | `/root` | `main` | done | M1-03, M1-04, M1-06, M2-02, M2-03, M2-06, M2-08, M3-01 | PR #52 merged; README/evidence synchronized; wait for next task selection |
@@ -251,6 +251,8 @@ Complete the bounded M3-05 size, Host, observed LOW cold-start, memory and test-
 - 根 `README.md` 必须维护公开任务进度表；任务仅在合并后门禁完成时标记“已完成”，每个任务的收尾协调提交必须同步该表，不能以 README 替代 `HandOff.md` 的证据。
 
 ## Changes Since Previous Handoff
+
+- Started independent M3-08 from `main@930b759c99f330218dc4404368e9844e80456c82`, created Issue #64 and added proposed ADR 0015, the task card, M3-05/TEST_STRATEGY/INDEX dependency changes, README state, a formal aggregate validator and Governance integration. No production, benchmark implementation, fixture, Runtime, Host, KVM or device surface is in scope.
 
 - Preserved and pushed the M3-04 blocked snapshot `a290a6f678f90783ed6f7488c0b7956e78e612f7`, then switched to verified `main@a65433ae0bda651fc1088d187913b2dbfa7b02d1`. Created Issue #59 and branch `fix/m2-09-component-relaunch-lifecycle`; added the bounded M2-09 task contract and ADR 0013 before changing Runtime production code.
 - Frozen the minimal Runtime implementation as `9ba6ec28c7d1450c3ca51175f78e3aa2d292331f`: one synchronized READY-only lookup, final-loader identity attachment in later Shell wrappers, JVM/connected regressions and one bounded production M201 configuration relaunch. Repository-local targeted gates passed in under two minutes of executed Gradle work.
@@ -411,6 +413,114 @@ Complete the bounded M3-05 size, Host, observed LOW cold-start, memory and test-
 - M2-02 第三实现层已完成本地检查点：同一 `sourceDir` 只读文件映射、OS 只读 DEX commit、generation+slot 类型化 JNI handle、同 handle `AHMD` 认证 metadata、精确五 JNI 方法、Java primitive/finally 交接窗口、幂等 `LoadedPayload` owner，以及 M0-05 等价 Native 搜索路径和三参数 API 29 `InMemoryDexClassLoader` 已接通。Java 17 编译/lint、NDK 四 ABI warnings-as-errors 与离线根 `assembleRelease check` 284-task 均 PASS，四个 ELF 都含唯一 104-byte alloc/read-only `.ah_share_v1`，未启动设备或模拟器。证据更新于 `docs/evidence/M2-02/local-validation.md`；任务仍未完成或发布，下一步仅补 failure injection、Host sanitizer/fuzz/OOM 与已授权 KVM/arm64 验收，不启动 M2-03。
 
 ## Verification Evidence
+
+### M3-08 local contract freeze
+
+- task_id: M3-08
+- git_commit: c523c8d8826b24e4fd2595294e08119833d23464
+- command: node M3-08 contract/syntax/self-test/base-ref validators; project governance; strict HandOff; git diff check
+- exit_code: 0
+- environment: Windows 10.0.19045.0; Node.js v24.12.0
+- timestamp: 2026-08-16T12:08:43+08:00
+- artifact: docs/evidence/M3-08/local-validation.md
+- sha256: d00f81d711daa45eee73edea1603f421ddc18d8e17718fd368df02933c19c086
+- result: PASS; 1 forbidden-diff and 20 report mutations rejected, 33 task cards/11 core docs/15 ADRs valid, zero production/fixture/benchmark implementation diff, no Gradle/KVM/emulator/device/benchmark execution
+
+### M3-08 independent review 1
+
+- task_id: M3-08
+- git_commit: 409a73a6ee471da3d2f9ba56f4ac2c50f6e6b522
+- command: independent read-only audit of ADR/task/dependency/validator/mutations/base-diff boundary
+- exit_code: 1
+- environment: read-only repository inspection; no network, Gradle, KVM, emulator or device
+- timestamp: 2026-08-16T12:25:13+08:00
+- artifact: docs/evidence/M3-08/security-review-1.md
+- sha256: not_applicable
+- result: FAIL; P0=0/P1=2/P2=2; source report and execution identity binding, delta arithmetic and recursive sensitive-path rejection require remediation
+
+### M3-08 corrected contract freeze
+
+- task_id: M3-08
+- git_commit: 3db35f69a00e3a8804461b5aaba60717dc14da74
+- command: node M3-08 syntax/base-ref/self-test validators; project governance; strict HandOff; git diff check
+- exit_code: 0
+- environment: Windows 10.0.19045.0; Node.js v24.12.0
+- timestamp: 2026-08-16T12:30:19+08:00
+- artifact: docs/evidence/M3-08/local-validation.md
+- sha256: bcb39018e2930ee5a494f43fe952841e06ab196fa3c7eea1eb8b7090fef677cb
+- result: PASS; both retained source reports and manifest bytes are hashed and validated, raw samples and all 90 comparisons are recomputed, execution identity is explicit, recursive sensitive scanning is active, 1 forbidden diff + 37 package negatives + 2 arithmetic positives pass, and no Gradle/KVM/emulator/device/benchmark ran
+
+### M3-08 independent review 2
+
+- task_id: M3-08
+- git_commit: 3db35f69a00e3a8804461b5aaba60717dc14da74
+- command: incremental independent read-only review of all review-1 findings and corrected evidence head 83929e4008b56e78510df85cd329462969110e01
+- exit_code: 1
+- environment: read-only repository inspection plus short Node/governance checks; no network, Gradle, KVM, emulator, device or benchmark
+- timestamp: 2026-08-16T12:39:00+08:00
+- artifact: docs/evidence/M3-08/security-review-2.md
+- sha256: not_applicable
+- result: FAIL; P0=0/P1=1/P2=0; source-byte recomputation, delta arithmetic and sensitive scanning closed, but canonical campaign/job/APK manifest binding remained required
+
+### M3-08 final corrected contract freeze
+
+- task_id: M3-08
+- git_commit: 7e949e9d58ca0a0202790bff70e6199272c75c7f
+- command: node M3-08 syntax/base-ref/self-test validators; project governance; strict HandOff; git diff check
+- exit_code: 0
+- environment: Windows 10.0.19045.0; Node.js v24.12.0
+- timestamp: 2026-08-16T12:41:29+08:00
+- artifact: docs/evidence/M3-08/local-validation.md
+- sha256: ad9f3bba62abb37f5d521d263200e9402706ee48b656d31f2c757023da355338
+- result: PASS; canonical manifest identity and order, distinct report bytes, historical-job rejection, six actual APK byte hashes, 1 forbidden diff + 45 package negatives + 2 arithmetic positives pass; no Gradle/KVM/emulator/device/benchmark ran
+
+### M3-08 independent review 3
+
+- task_id: M3-08
+- git_commit: 7e949e9d58ca0a0202790bff70e6199272c75c7f
+- command: final incremental independent read-only review of review-2 P1 and manifest/APK/source binding
+- exit_code: 0
+- environment: read-only repository inspection plus short Node/governance checks; no network, Gradle, KVM, emulator, device or benchmark
+- timestamp: 2026-08-16T12:44:13+08:00
+- artifact: docs/evidence/M3-08/security-review-3.md
+- sha256: not_applicable
+- result: PASS; P0=0/P1=0/P2=0; all prior findings closed and no new security or scope finding
+
+### M3-08 draft PR initial CI
+
+- task_id: M3-08
+- git_commit: add7a839440e24b52ba8cfb3c851212f7d344c7b
+- command: GitHub Actions Build 31928514207 and Governance 31928516421 on draft PR #65
+- exit_code: 0
+- environment: GitHub Ubuntu 24.04 and Windows 2025; no KVM, emulator, physical device or benchmark
+- timestamp: 2026-08-16T13:19:32+08:00
+- artifact: docs/evidence/M3-08/remote-validation.md
+- sha256: dd25d6ba3a03f4f71bae87c02d8551c6de54deb68c8eb9eabb034bbde3c0a703
+- result: PASS; Ubuntu/Windows Build and Governance four jobs passed exact head; out-of-scope auto-triggered M3-02 Fuzz and Cross-platform equivalence were cancelled and are not claimed
+
+### M3-08 merger-ready and merge
+
+- task_id: M3-08
+- git_commit: a5d76806850ecc68cb92e87c4a06e29d9cfe0b1b
+- command: GitHub Actions Build 31928811438, Governance 31928811435, automatic Cross-platform equivalence 31928811426 and M3-02 Fuzz 31928811541; expected-head merge of PR #65
+- exit_code: 0
+- environment: GitHub Ubuntu 24.04 and Windows 2025; no KVM, emulator, physical device or benchmark
+- timestamp: 2026-08-16T13:35:40+08:00
+- artifact: docs/evidence/M3-08/remote-validation.md ; https://github.com/xiaokh31/androidAppHardening/pull/65
+- sha256: 0af714303b8ece10fd8a71fabb6480553b6d10f78e5138aa6199166e1e1c3a22
+- result: PASS; all exact-head PR checks passed, PR #65 merged as 4c3efc1614158a0372eb877fc02fd1db27dcffb3 and Issue #64 closed
+
+### M3-08 post-merge main acceptance
+
+- task_id: M3-08
+- git_commit: e12542db48eac96f17c4a1f4306ec20c62dcfa1f
+- command: local M3-08 contract validator, project governance, strict HandOff and diff check; GitHub Actions Build 31929454365 and Governance 31929454381
+- exit_code: 0
+- environment: Windows 10.0.19045.0 local validation; GitHub Ubuntu 24.04 and Windows 2025; no KVM, emulator, physical device or benchmark
+- timestamp: 2026-08-16T13:44:39+08:00
+- artifact: docs/evidence/M3-08/remote-validation.md
+- sha256: ed7f0fe392b8ec30334de1b41337b3ebdd34a0eb4106bfe14f273241c02aaf67
+- result: PASS; post-merge main Build and Governance passed on both required platforms, M3-08 is complete, and M3-05 may resume only with its single ADR 0015 API 36 A/B replacement job
 
 ### M3-07 test-only HIGH benchmark contract
 
@@ -1602,17 +1712,20 @@ Complete the bounded M3-05 size, Host, observed LOW cold-start, memory and test-
 
 ## Blockers and Required Approvals
 
-M3-05 exact-head API 36 produced a real release-budget failure: `kotlin-multidex/processToApplicationOnCreateMs` P50 delta `331 ms` exceeds the fixed `300 ms` limit. Across the two complete API 36 reports, six Android P50/P95 summaries exceed the fixed 10% repeatability gate (maximum `21.30%`). A third rerun, threshold relaxation, ARM campaign or PR #63 merge would hide rather than close the failure. Unblock owner: `/root`, after the user authorizes an independent bounded startup-performance optimization/measurement-stability ADR and task.
+None
 
 ## Ordered Next Actions
 
-1. Obtain explicit authorization for an independent bounded startup-performance optimization/measurement-stability ADR and task; do not change M3-05 budgets, sample counts or security controls in PR #63.
-2. After that task is reviewed and merged, resume M3-05 from PR #63 and run one API 36 replacement matrix; require every fixed budget and the 10% repeatability gate to pass.
-3. Only after API 36 is stable, run exactly one API 29 ARM64 physical-device matrix, update evidence/README/task, and merge PR #63 with expected-head protection. Do not start M4 while M3-05 is blocked.
+1. Finish the conflict-free `main` integration and implement only ADR 0015 benchmark/test orchestration; do not change production Runtime, budgets, sample counts or security controls.
+2. Freeze and push one exact head, then run exactly one API 36 same-SHA/job/boot A/B replacement job; no third campaign, retry or result selection is permitted.
+3. Run ARM exactly once only if the API 36 aggregate passes every budget and all 90 repeatability comparisons; otherwise open a separate Runtime optimization task.
 
 ## Relevant Files and Artifacts
 
-- `docs/tasks/M3-05-size-startup-memory-benchmarks.md`
+- `docs/adr/0015-startup-performance-measurement-stability.md`
+- `docs/tasks/M3-08-startup-performance-stability-contract.md`
+- `tools/governance/verify-m3-08-startup-stability-contract.mjs`
+- Issue #64
 - `docs/evidence/M3-05/implementation-plan.md`
 - `benchmarks/host/`
 - `benchmarks/android/`

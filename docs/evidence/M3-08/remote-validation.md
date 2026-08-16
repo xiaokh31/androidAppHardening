@@ -34,3 +34,13 @@ GitHub also auto-triggered M3-02 Fuzz run `31928515267` and Cross-platform equiv
 - Issue #64: CLOSED
 
 No KVM, emulator, physical device or benchmark workflow ran. Post-merge `main` Build/Governance remain the final M3-08 completion gate.
+
+## Post-merge main
+
+- Coordination head: `e12542db48eac96f17c4a1f4306ec20c62dcfa1f`
+- Build: run `31929454365`; Ubuntu job `95122002423` PASS; Windows job `95122002429` PASS
+- Governance: run `31929454381`; Ubuntu job `95121973549` PASS; Windows job `95121973480` PASS
+- Local M3-08 validator, project governance, strict HandOff and diff check: PASS
+- Superseded merge-commit Build/Fuzz runs and the coordination-head non-required Fuzz run were cancelled; they are not acceptance evidence.
+
+M3-08 is complete. M3-05 PR #63 may resume for exactly one ADR 0015 API 36 A/B replacement job.

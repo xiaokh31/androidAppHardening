@@ -1,10 +1,10 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260816-142900
-updated_at: 2026-08-16T14:29:00+08:00
+handoff_id: HO-20260816-155000
+updated_at: 2026-08-16T15:50:00+08:00
 updated_by: /root
-state: active
+state: blocked
 source_branch: chore/m3-05-performance-benchmarks
 base_commit: 7f10a0b84d9680e4b9311e680d0508e7fde512cd
 working_tree: clean
@@ -17,12 +17,12 @@ next_owner: /root
 
 ## Objective
 
-Resume M3-05 after M3-08 and execute exactly one ADR 0015 API 36 same-SHA/job/boot A/B replacement matrix before any ARM campaign.
+Archive the first and only ADR 0015 API 36 A/B result, keep ARM blocked, and hand off the required separate Runtime startup-performance optimization decision.
 
 ## Current State
 
 - M3-05 remains on `chore/m3-05-performance-benchmarks` with unique draft PR #63 linked to Issue #22. Stable head `193e124804d161b38ddf9c0fc82c2f15d5a84cdb` passed Governance `31895635883`, Ubuntu/Windows Build `31895635802`, and Host benchmark `31895635768`; both platforms passed two fixed runs, all budgets and the unchanged 10% repeatability gate. Subsequent bounded KVM corrections closed package visibility, self-instrumentation, copied pinned Kotlin stdlib, real RenderThread framing, explicit JUnit success handling, post-measurement observation ownership, and the isolated HIGH worker Native search path without changing thresholds or product Runtime. The final evaluated runs and current blocker are recorded in the next item. No local emulator was started, the ARM campaign remains gated on stable API 36 results, and `stash@{0}` remains a recovery backup until merge.
-- M3-05 resumed from verified `main@7f10a0b84d9680e4b9311e680d0508e7fde512cd`; implementation freeze `e41f9d2d5071525f92dc23a34cc25d1d89b06e47` supplies only the ADR 0015 A/B test orchestration and evidence generator. Local runner/generator/M3-07/M3-08 mutation checks, Governance, strict HandOff, diff check and pinned offline Gradle configuration pass. The forthcoming single push schedules only API 36, skips the PR merge-ref KVM duplicate, and must accept its first A/B pair without rerun or result selection. ARM remains blocked until that aggregate passes.
+- M3-05 resumed from verified `main@7f10a0b84d9680e4b9311e680d0508e7fde512cd`; implementation freeze `e41f9d2d5071525f92dc23a34cc25d1d89b06e47` supplies only the ADR 0015 A/B test orchestration and evidence generator. Exact evaluated head `1c030334d607bc10054b876dd969ea8048725cb3` passed Build `31931429739`, Governance `31931429726` and Host benchmarks `31931429740`. Its first and only API 36 A/B run `31931428130` completed both bound reports, six byte-identical APK identities, cleanup and all 90 comparison rows, but both campaigns failed fixed startup budgets and 25 rows failed the 10% repeatability limit. This is a valid final rejection, not an orchestration retry condition. PR #63 stays draft, ARM is forbidden, and recovery requires a separate authorized Runtime optimization ADR/task.
 - Exact-head `065f97b7413113420be7b12257469637cf69cb0b` and tool-only successor `61652979caea471a8dae058c08bf5b4620321fe5` retained the two historical complete API 36 reports. The latter recorded `kotlin-multidex/processToApplicationOnCreateMs` P50 delta `331 ms` against `300 ms`, while cross-job comparison found six summaries above 10%; these remain diagnostic failures and cannot be reused as ADR 0015 acceptance evidence.
 - M3-08 is complete. Final freeze `7e949e9d58ca0a0202790bff70e6199272c75c7f` passed independent review `P0=0/P1=0/P2=0`; final PR head `a5d76806850ecc68cb92e87c4a06e29d9cfe0b1b` passed all checks and merged as `4c3efc1614158a0372eb877fc02fd1db27dcffb3`; Issue #64 closed. Post-merge coordination head `e12542db48eac96f17c4a1f4306ec20c62dcfa1f` passed Build `31929454365` and Governance `31929454381` on Ubuntu/Windows plus local M3-08/governance/strict/diff gates. No KVM, emulator, physical device or benchmark ran. M3-05 PR #63 is now eligible to resume its single ADR 0015 API 36 A/B replacement job.
 - M3-07 is complete on `main`. Final implementation freeze `90f754ea185a8633acd585d181ee108db016209d` passed independent review with `P0=0/P1=0/P2=0`; exact published head `4e77aa38b508a99c60a576e41804ba2d08b6b9fd` passed Build `31891662932` and Governance `31891662909` on Ubuntu/Windows. PR #62 merged with expected-head protection as `859cfa217b2fc0726cc001519967cdde606d2146`, Issue #61 closed, and post-merge `main@930b759c99f330218dc4404368e9844e80456c82` passed Build `31892091205` and Governance `31892091344`. No device, emulator or KVM ran for M3-07.
@@ -35,7 +35,7 @@ Resume M3-05 after M3-08 and execute exactly one ADR 0015 API 36 same-SHA/job/bo
 - The final exact implementation-head physical API 29 ARM campaign completed both ARM64 and ARM32 cells after the user accepted the OEM prompt. Both cells are `VERIFIED`; all nine fixture packages were independently confirmed absent afterward. No local emulator was started and no device rerun is required.
 - ADR 0012 and the revised M3-04 contract enumerate the full API 29-36 by four-ABI grid while reserving `VERIFIED` for real Android-reported process evidence, `FAILED` for executed regressions, and `UNVERIFIED` for unavailable combinations that carry no positive compatibility claim. The mandatory current M3-04 baseline is API 29 ARM32/ARM64 plus API 29/36 x86_64.
 - Read-only inventory provides an authorized API 29 `user` physical device capable of `arm64-v8a` and `armeabi-v7a` processes, plus pinned API 29 revision 8 and API 36 revision 2 x86_64 KVM images. API 30-35 and all other unavailable combinations will be emitted as `UNVERIFIED`; they will not trigger downloads or inferred claims.
-- M3-04, M3-07 and M3-08 are complete on `main`. M3-05 is active only to implement ADR 0015 benchmark/test orchestration and run its first and only same-job API 36 A/B replacement; ARM remains blocked until that result passes.
+- M3-04, M3-07 and M3-08 are complete on `main`. M3-05 is blocked by its final ADR 0015 API 36 A/B budget and repeatability failure; ARM and M4 remain blocked, and no replacement run is permitted.
 - Retained API 29 KVM runs `31858315765` and `31859364008` document the pre-M2-09 configuration-relaunch defect. They are historical only; final exact implementation-head KVM `31864724589` and the ARM campaign supersede them.
 - M3-03 final implementation `f53989e83b8a030139ec3e564ebfb41bdb81129a` passed Cross-platform equivalence `31847937221`, Build `31847937347` and Governance `31847937260` on the exact head. Windows and Ubuntu each produced 18 authenticated outputs; the final summary compared 36 outputs and proved stable semantics, random non-reuse, independent authentication/decryption, immutable inputs, unsigned outputs, equivalent negative errors and zero absolute-path findings. PR [#55](https://github.com/xiaokh31/androidAppHardening/pull/55) merged with expected-head protection as `af0fe5c5d0e9098d8cca86b3d5de3e09ed8412fb`, and Issue #20 closed. M3-03 is Host-only; out-of-scope KVM and M3-02 fuzz runs were cancelled.
 - M2-08 is complete. Final head `626a14c63c1b77f2552236659eb98d47bb027a12` passed Build `31820302813` on Ubuntu/Windows, including Ubuntu ASan/UBSan, and Governance `31820302849`; independent review was `P0=0/P1=0/P2=0`. PR #54 merged with expected-head protection as `ed0d0fb97c255a98c04628dc1746801985591c3c`, Issue #53 closed, and unrelated KVM run `31820302818` was cancelled by scope. M3-02 PR #52 may resume.
@@ -203,7 +203,7 @@ Resume M3-05 after M3-08 and execute exactly one ADR 0015 API 36 same-SHA/job/bo
 | M3-04 | `/root` | `main` | done | M0-03, M2-04, M2-09, M3-01, M3-02, M3-06 | PR #58 merged; mandatory real-process cells and final main gates passed |
 | M3-07 | `/root` | `main` | done | M2-05, M2-06, M3-01 | PR #62 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M3-08 | `/root` | `main` | done | M3-01, M3-07 | PR #65 merged; independent review and post-merge main Build/Governance complete |
-| M3-05 | `/root` | `chore/m3-05-performance-benchmarks` | in_progress | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08 | Implement ADR 0015 and run exactly one same-SHA/job/boot API 36 A/B replacement before any ARM run |
+| M3-05 | `/root` | `chore/m3-05-performance-benchmarks` | blocked | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08 | First/only API 36 A/B failed fixed budgets and 25/90 repeatability rows; ARM and M4 blocked pending separate Runtime optimization ADR/task |
 | M3-03 | `/root` | `main` | done | M0-03, M1-05, M1-06, M2-06, M3-01 | PR #55 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | done | M2-02 | PR #54 merged; exact regression, ASan/UBSan, dual-platform Build/Governance and independent review passed |
 | M3-02 | `/root` | `main` | done | M1-03, M1-04, M1-06, M2-02, M2-03, M2-06, M2-08, M3-01 | PR #52 merged; README/evidence synchronized; wait for next task selection |
@@ -252,6 +252,8 @@ Resume M3-05 after M3-08 and execute exactly one ADR 0015 API 36 same-SHA/job/bo
 - 根 `README.md` 必须维护公开任务进度表；任务仅在合并后门禁完成时标记“已完成”，每个任务的收尾协调提交必须同步该表，不能以 README 替代 `HandOff.md` 的证据。
 
 ## Changes Since Previous Handoff
+
+- Pushed exact head `1c030334d607bc10054b876dd969ea8048725cb3` once. The branch-push KVM run `31931428130` scheduled only API 36; the PR merge-ref KVM was skipped, and no API 29 or ARM job ran. Both campaigns completed under run attempt `1` and boot hash prefix `a3cf719802bc`; the six target APK hashes were unchanged between A and B and cleanup passed. Campaigns A/B both failed fixed startup budgets and 25/90 repeatability rows failed, so the formal M3-08 validator correctly returned nonzero. Artifact `9260244215` is retained with digest `sha256:98c5cedce457775e4f4365226647b1bf1d49cb3f824d07ae5f9450c31803d5ae`. No rerun is allowed.
 
 - Resumed M3-05 PR #63 by merging verified `main@7f10a0b84d9680e4b9311e680d0508e7fde512cd` into `chore/m3-05-performance-benchmarks`. The bounded ADR 0015 orchestration now assigns the only branch-push API 36 job to campaigns A then B in one emulator boot, fixes fixture/mode order, reuses the same six target APK bytes, records exact execution identity plus immutable hashes, and validates the combined 90-row report through the formal M3-08 gate. Pull-request merge-ref KVM is skipped for this branch so the forthcoming single push cannot create a second A/B pair. No emulator, physical device or ARM command has run.
 
@@ -428,6 +430,18 @@ Resume M3-05 after M3-08 and execute exactly one ADR 0015 API 36 same-SHA/job/bo
 - artifact: `docs/evidence/M3-05/local-validation.md`; exact-head API 36 A/B artifacts pending
 - sha256: not_applicable
 - result: PASS for the bounded local orchestration freeze; exactly one branch-push API 36 same-SHA/job/boot A/B result remains required, and ARM is forbidden before that aggregate passes
+
+### M3-05 first and only API 36 A/B result
+
+- task_id: M3-05
+- git_commit: 1c030334d607bc10054b876dd969ea8048725cb3
+- command: exact-head Build `31931429739`; Governance `31931429726`; Host benchmark `31931429740`; sole branch-push API 36 A/B run `31931428130` job `95126754768`; formal M3-08 validator against downloaded artifact `9260244215`
+- exit_code: 1
+- environment: GitHub Ubuntu 24.04 image 20260810.271.1; API 36 r2 x86_64; one job/run attempt/emulator boot; no API 29, ARM or physical device
+- timestamp: 2026-08-16T15:42:53+08:00
+- artifact: `docs/evidence/M3-05/remote-validation.md`; ignored `build/m3-05/remote/31931428130/`; artifact `9260244215`
+- sha256: 81b0982e4c5b6ae5a34d71218df6602cd44706d879c3909400a2809e5e4f55d8
+- result: BLOCKED; both campaign budgets failed and 25/90 repeatability rows exceeded 10%, while exact identity, six APK byte hashes, two reports, 90 rows and cleanup were complete; no rerun is permitted and ARM/M4 remain blocked
 
 ### M3-08 local contract freeze
 
@@ -1727,13 +1741,13 @@ Resume M3-05 after M3-08 and execute exactly one ADR 0015 API 36 same-SHA/job/bo
 
 ## Blockers and Required Approvals
 
-None
+- M3-05 cannot proceed: its first and only ADR 0015 API 36 A/B pair failed unchanged startup budgets in both campaigns and failed 25/90 repeatability rows. ARM, PR #63 merge and M4 are prohibited. User authorization is required to start a separate Runtime startup-performance optimization ADR/task with independent security review; this task may not rerun the failed pair or weaken thresholds/security controls.
 
 ## Ordered Next Actions
 
-1. Complete the bounded local ADR 0015 orchestration gates, freeze one exact head and push it once; do not change production Runtime, budgets, sample counts or security controls.
-2. Accept exactly one API 36 same-SHA/job/boot A/B replacement result; no third campaign, rerun or result selection is permitted.
-3. Keep ARM blocked until the API 36 aggregate passes every budget and all 90 repeatability comparisons; on failure, stop M3-05 and open a separate Runtime optimization task instead of rerunning.
+1. Preserve PR #63 as draft and the failed API 36 artifact as final M3-05 evidence; do not rerun API 36 or run ARM.
+2. Await explicit authorization for a separate Runtime startup-performance optimization ADR/task and independent security review; do not weaken budgets, sample counts or security controls.
+3. Resume PR #63 only after that separate task merges and its contract authorizes a new exact-head acceptance; M4 remains blocked until M3-05 later completes.
 
 ## Relevant Files and Artifacts
 

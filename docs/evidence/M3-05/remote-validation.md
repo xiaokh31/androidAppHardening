@@ -1,51 +1,43 @@
-# M3-05 remote validation and blocker
+# M3-05 ADR 0015 remote validation and blocker
 
-- Timestamp: `2026-08-16T04:35:41+08:00`
+- Timestamp: `2026-08-16T15:42:53+08:00`
 - Branch: `chore/m3-05-performance-benchmarks`
 - PR: `#63` (draft), Issue: `#22` (open)
-- Final evaluated head: `61652979caea471a8dae058c08bf5b4620321fe5`
-- Environment: GitHub `ubuntu-24.04`, `windows-2025`, pinned API 29/36 x86_64 KVM images; no local emulator and no physical device run.
+- Exact evaluated head: `1c030334d607bc10054b876dd969ea8048725cb3`
+- Environment: GitHub `ubuntu-24.04`/image `20260810.271.1`, API 36 r2 x86_64, one KVM job and one emulator boot; no API 29 job and no ARM or physical-device run.
 
-## Passing gates
+## Exact-head gates
 
-- Build `31905067470`: Ubuntu job `95061480539` and Windows job `95061480729` passed.
-- Governance `31905066201`: Ubuntu and Windows passed.
-- Host benchmarks `31905067854`: Ubuntu and Windows passed two fixed runs, every Host budget, and the unchanged 10% within-platform repeatability gate.
-- API 29 KVM job `95061478402` passed and uploaded artifact `9252201610`, size `455269`, digest `sha256:122ff80c1007d6526d2e3b5e5e4ddd0dfc13752a0a9d735213d832a3e655ee69`.
-- API 36 KVM job `95061478417` generated a complete schema-valid report and proved cleanup before failing the release budget. Artifact `9252626411`, size `474382`, digest `sha256:5b65006aec2ab9f4a1362dfae69374a0afaabf5356fe52d97cd8c6ae18595ce9`.
-- `node tools/governance/verify-m3-07-high-benchmark-contract.mjs --report <api36-report>` passed on the downloaded API 36 report.
+- Build `31931429739`: Ubuntu job `95126758141` and Windows job `95126758071` passed.
+- Governance `31931429726`: Ubuntu job `95126757738` and Windows job `95126757806` passed.
+- Host benchmarks `31931429740`: Ubuntu job `95126757977` and Windows job `95126757973` passed both fixed runs, every Host budget and the unchanged within-platform repeatability gate.
+- Pull-request KVM `31931429715` was skipped by contract. The sole branch-push KVM run was `31931428130`, job `95126754768`, attempt `1`, containing only `API 36 x86_64`.
+- Out-of-scope Cross-platform equivalence `31931429701` and M3-02 Fuzz `31931429775` were cancelled.
 
-Host artifact metadata:
+## First and only ADR 0015 A/B pair
 
-| Platform | Artifact ID | Bytes | Artifact digest |
-|---|---:|---:|---|
-| Ubuntu | `9252173928` | 91783099 | `sha256:9eb50922fec2d398b7183d702baa095ad54197d6435c397e1300feb57f3d5b99` |
-| Windows | `9252216001` | 91787524 | `sha256:be0db6a2a8c8ee48fc3045446a25cbae2f38ea4442a2e3bd930c3c88de5de70e` |
+The one API 36 job used environment `api36-x86_64`, boot hash prefix `a3cf719802bc`, campaign A order `java-single-dex,kotlin-multidex,jni-four-abi` with `baseline_then_protected`, and campaign B with both axes reversed. Each mode retained five warmups and thirty measurements. The six target APK hashes before and after campaign B are byte-identical (`6/6` lines, zero differences). Both campaign reports, the six-APK canonical manifest and all ninety comparison rows were generated; cleanup is `true`.
 
-Exact-head Host report hashes:
+Artifact `9260244215` is `3316848` bytes with archive digest `sha256:98c5cedce457775e4f4365226647b1bf1d49cb3f824d07ae5f9450c31803d5ae`.
 
-| Report | Bytes | SHA-256 |
-|---|---:|---|
-| Linux run 1 | 7344 | `052fc77d81a726d9a4b3ac2300e3d2d3c7b7014b2b12eb3a6c962ed9fd514d8e` |
-| Linux run 2 | 7347 | `225be0c8058e632566cc72eddecc2dd9a32a52cfefdfa05bd79ef6da8830dbf7` |
-| Windows run 1 | 7432 | `3e0f3de1d3b5e9e7230ff27846bb111d2069ebc349667aab88ce5bb545bb8616` |
-| Windows run 2 | 7446 | `2b9c32d9ddef33affe0254ea75fb73210857c75ed6fdece39178649d912fe3b0` |
+| Evidence | SHA-256 |
+|---|---|
+| Campaign A report | `f7528353cb5a3b4c8114546d4dcd53ab1e3efd7420e210abe7eb51067a8ddd2b` |
+| Campaign B report | `6845d3c9d7eba0d84aefe0d05da485e87f754f5fe63e7a57ba6807159d9a0979` |
+| Canonical artifact manifest | `d2166e07f5e959a9868c0da4ddd05a19e40f961559bec4367c8e8c00fba56089` |
+| A/B repeatability aggregate | `81b0982e4c5b6ae5a34d71218df6602cd44706d879c3909400a2809e5e4f55d8` |
 
-## Blocking budget and repeatability result
+## Final failure result
 
-The exact-head API 36 report has `cleanupPassed=true` and `allBudgetsPass=false`. The failing row is:
+The reports are complete and structurally bound, but both campaigns fail unchanged release budgets and `25/90` repeatability rows exceed the unchanged `0.10` limit.
 
-- fixture: `kotlin-multidex`
-- metric: `processToApplicationOnCreateMs`
-- protected P50/P95: `460/635 ms`
-- baseline P50/P95: `129/549 ms`
-- delta P50/P95: `331/86 ms`
-- fixed budget P50/P95: `300/500 ms`
+- Campaign A: `java-single-dex/processToApplicationOnCreateMs` protected P50/P95 `489/657 ms`, baseline P50/P95 `158/647 ms`, delta P50/P95 `331/10 ms`; P50 exceeds the `300 ms` budget.
+- Campaign B: the same metric has protected `506/690 ms`, baseline `74/562 ms`, delta `432/128 ms`; P50 exceeds `300 ms`.
+- Campaign B: `java-single-dex/processToInteractiveMs` has protected `888/1089 ms`, baseline `512/942 ms`, delta `376/147 ms`; P50 exceeds `300 ms`.
+- The largest repeatability failure is `java-single-dex/processToInteractiveMs/deltaP95`: campaign A `3 ms`, campaign B `147 ms`, variation `48.0` against limit `0.10`.
 
-The report SHA-256 is `30852bf2c807db353327420f3a74ed82fec686fa3a98b9ff393a62041b4d36ef`.
-
-The prior complete API 36 report at `065f97b7413113420be7b12257469637cf69cb0b` passed all budgets, but comparing the two complete reports produces six Android P50/P95 summaries above the fixed 10% repeatability gate. The maximum is `21.30%` for `kotlin-multidex/processToInteractiveMs` P50. A third rerun would not close that deterministic acceptance failure.
+The formal M3-08 validator exits `1` only on the two campaign budget booleans, the twenty-five failed comparison rows and aggregate budget/repeatability booleans. Identity, order, sample counts, report hashes, artifact bytes, environment, run/job/attempt, boot binding and cleanup are accepted.
 
 ## Decision
 
-M3-05 remains `blocked`. No threshold, sample count, security control or product Runtime behavior was changed. The planned API 29 ARM64 physical run was not started because API 36 is not stable. PR #63 stays draft and M4 must not start. Recovery requires a separate bounded startup-performance optimization/measurement-stability ADR and task, followed by one API 36 replacement and exactly one ARM64 physical matrix only after the remote budget and repeatability gates pass.
+This is the first and only result permitted by ADR 0015, so it is final and must not be replaced by a rerun. M3-05 remains `blocked`; PR #63 remains draft, ARM stays forbidden, and M4 must not start. Recovery requires a separate Runtime startup-performance optimization ADR/task and independent review. That new task may not weaken budgets, sample counts, signer/AEAD/Guard/memory controls or reinterpret this failed evidence.

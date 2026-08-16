@@ -45,7 +45,7 @@ M3-05 PR #63 produced one complete, identity-bound A/B pair. The `java-single-de
 
 ## In Scope
 
-- Test-only attribution of signer/source, binding precheck, Native open, metadata/policy, loader/session and Factory stages.
+- Test-only attribution of the contiguous `signer_source`, `binding_precheck`, `payload_open`, `metadata_policy`, `session_commit` and `bootstrap_factory` stages on the real first protected startup transaction.
 - One production optimization inside the single stage that meets ADR 0016 eligibility.
 - Internal Java/JNI/C++ changes required by that optimization.
 - Targeted positive, tamper, failure, OOM, ownership, cleanup, zeroization and Release/R8 regressions.
@@ -63,12 +63,15 @@ M3-05 PR #63 produced one complete, identity-bound A/B pair. The `java-single-de
 ## Implementation Decisions
 
 - Branch is `fix/m2-10-runtime-startup-performance`; Issue #66 and one PR own the task.
-- The initial diagnostic is one bounded API 36 x86_64 campaign with five warmups and fifteen retained `java-single-dex` protected-start measurements. It is diagnostic only and cannot satisfy M3-05.
-- The diagnostic report uses monotonic durations, exact APK/head/environment identity, fixed ordered stage names and two fixed retained halves. No invalid sample is replaced.
-- Production changes begin only if one stage contributes at least 30 ms P50 in both halves. The evidence names that stage and the selected redundant work; otherwise the task becomes blocked.
+- The initial diagnostic is the first and only run for the frozen pre-optimization product head: one API 36 x86_64 GitHub run, one job, `runAttempt=1`, one emulator boot, five warmups and fifteen retained `java-single-dex` protected-start measurements. It is diagnostic only and cannot satisfy M3-05.
+- The report, artifact manifest and raw-sample file bind exact `headSha`, `runId`, `jobId`, `runAttempt=1`, `environmentId`, `bootIdHashPrefix`, baseline/profiling APK hashes, report hash, raw-sample hash and cleanup. Invalid/incomplete/timeout/no-eligible-stage results block M2-10 and cannot be replaced by another run, attempt, job, boot or cosmetic product-head change.
+- A dedicated test-only profiling variant records the real first `AppComponentFactory` startup transaction using one in-process `SystemClock.elapsedRealtimeNanos()` clock. It fixes `t0` before `RuntimeSignerVerifier.verify`, `t1` after signer/package hashing, `t2` after binding/pre-read signer verification, `t3` after `PayloadRuntime.openVerified`, `t4` after metadata/risk/memory controls, `t5` before successful Guard return after session construction and `t6` after committed `BootstrapResult.ready` before bootstrap return.
+- Stage durations are exactly the six adjacent differences: `signer_source=t1-t0`, `binding_precheck=t2-t1`, `payload_open=t3-t2`, `metadata_policy=t4-t3`, `session_commit=t5-t4`, and `bootstrap_factory=t6-t5`. They are non-negative, gap-free and non-overlapping, and their exact sum equals `t6-t0` for the same startup. Manual second opens, post-launch timing, Host/Native-only microbenchmarks and cross-process fragments are rejected.
+- Retained sample IDs are the acquisition order `1..15`. Partition `early` is `1..7`; partition `late` is `8..15`; no sample may be omitted, duplicated, reordered or reassigned. Each partition P50 uses nearest-rank one-based index `ceil(0.50*n)`, selecting the fourth sorted value for both partitions.
+- Production changes begin only if one stage contributes at least 30 ms P50 in both fixed partitions. The evidence names that stage and the selected redundant work; otherwise the task becomes blocked.
 - Only one stage is optimized. Removing duplicate parsing/allocation/copying/synchronization is permitted only when authenticated inputs, output bytes, failure categories and cleanup remain identical.
 - Every cold process performs full signer/source verification. No disk, preference, Binder, static-file or cross-process cache may turn a prior verification into current trust.
-- No observer is added to `src/main` product APIs, JNI exports, manifest, environment inputs or Runtime logs. Test source sets and ignored evidence directories own measurement controls.
+- No observer is added to `src/main` product APIs, JNI exports, manifest, environment inputs or Runtime logs. It cannot change production control flow or return values; test source sets and ignored evidence directories own measurement controls, and Release AAR/JAR/ELF/package scans prove complete absence.
 - API 29/36 KVM runs the existing Runtime/fixture/tamper/cleanup matrix once on the frozen implementation head. ARM and the M3-05 A/B job remain forbidden in this task.
 - README is updated at task completion as required by repository policy; during implementation it reports M2-10 as active and M3-05 as blocked.
 
@@ -98,7 +101,7 @@ M3-05 PR #63 produced one complete, identity-bound A/B pair. The `java-single-de
 ## Acceptance Criteria
 
 - ADR 0016, M2-10, M3-05, INDEX, ROADMAP and TEST_STRATEGY agree on scope and ordering.
-- The attribution validator accepts the canonical report and rejects identity, stage-order, sample-count, arithmetic, eligibility and sensitive-data mutations.
+- The attribution validator accepts exactly one canonical report and rejects run/job/attempt/boot, report/manifest/raw hash, stage-boundary/reconciliation, sample partition/P50, eligibility and sensitive-data mutations.
 - A measured eligible stage and exactly one corresponding production optimization are documented.
 - Protected output behavior, tamper rejection, stable failures, ownership, cleanup, zeroization and no-plaintext-on-disk checks remain unchanged.
 - Release AAR/JAR and four ABI ELF scans find no diagnostic API/control or new JNI export.
@@ -107,7 +110,7 @@ M3-05 PR #63 produced one complete, identity-bound A/B pair. The `java-single-de
 
 ## Required Tests
 
-- Diagnostic positive plus wrong head/environment/APK hash, missing/duplicate/reordered stage, 4/6 warmups, 14/16 measurements, negative/non-finite duration, wrong percentile/half and below-threshold eligibility negatives.
+- Diagnostic positive plus second report/run, historical job, different attempt/boot, wrong head/environment/APK/report/raw hash, missing/duplicate/reordered stage or sample ID, non-monotonic `t0..t6`, gap/overlap/incorrect sum, manual second-open/cross-process source, 4/6 warmups, 14/16 measurements, altered `1..7`/`8..15` partition, omitted/duplicated/reassigned sample, alternative P50 algorithm and below-threshold eligibility negatives.
 - Targeted unit/Native equivalence tests around the optimized stage.
 - Signer mismatch/rotation, authenticated-config/container tamper, AEAD/tag failure and package-binding negatives.
 - Failure injection and OOM at every changed ownership window, with no lookup/session publication and exactly-once cleanup.
@@ -117,7 +120,7 @@ M3-05 PR #63 produced one complete, identity-bound A/B pair. The `java-single-de
 ## Required Evidence
 
 - Exact commit, parent, changed-file list, commands, exit codes, OS/JDK/Node/NDK/CMake/Android image versions and timestamps.
-- Diagnostic report, raw retained samples, APK and report SHA-256 values and selected-stage rationale.
+- Diagnostic report, artifact manifest, raw retained samples, exact run/job/attempt/boot identity, APK/report/raw-sample SHA-256 values, fixed partition/P50 calculation and selected-stage rationale.
 - Unit/Native/Release/R8/four-ABI artifact hashes.
 - Exact-head Build/Governance and API 29/36 KVM run/job/artifact identities.
 - Independent review conclusion and final P0/P1/P2 counts.

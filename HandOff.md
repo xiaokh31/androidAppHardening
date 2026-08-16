@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260816-120133
-updated_at: 2026-08-16T12:01:33+08:00
+handoff_id: HO-20260816-120843
+updated_at: 2026-08-16T12:08:43+08:00
 updated_by: /root
 state: active
 source_branch: docs/m3-08-startup-performance-stability
@@ -411,6 +411,18 @@ Define and review the bounded M3-08 startup-performance and measurement-stabilit
 - M2-02 第三实现层已完成本地检查点：同一 `sourceDir` 只读文件映射、OS 只读 DEX commit、generation+slot 类型化 JNI handle、同 handle `AHMD` 认证 metadata、精确五 JNI 方法、Java primitive/finally 交接窗口、幂等 `LoadedPayload` owner，以及 M0-05 等价 Native 搜索路径和三参数 API 29 `InMemoryDexClassLoader` 已接通。Java 17 编译/lint、NDK 四 ABI warnings-as-errors 与离线根 `assembleRelease check` 284-task 均 PASS，四个 ELF 都含唯一 104-byte alloc/read-only `.ah_share_v1`，未启动设备或模拟器。证据更新于 `docs/evidence/M2-02/local-validation.md`；任务仍未完成或发布，下一步仅补 failure injection、Host sanitizer/fuzz/OOM 与已授权 KVM/arm64 验收，不启动 M2-03。
 
 ## Verification Evidence
+
+### M3-08 local contract freeze
+
+- task_id: M3-08
+- git_commit: c523c8d8826b24e4fd2595294e08119833d23464
+- command: node M3-08 contract/syntax/self-test/base-ref validators; project governance; strict HandOff; git diff check
+- exit_code: 0
+- environment: Windows 10.0.19045.0; Node.js v24.12.0
+- timestamp: 2026-08-16T12:08:43+08:00
+- artifact: docs/evidence/M3-08/local-validation.md
+- sha256: d00f81d711daa45eee73edea1603f421ddc18d8e17718fd368df02933c19c086
+- result: PASS; 1 forbidden-diff and 20 report mutations rejected, 33 task cards/11 core docs/15 ADRs valid, zero production/fixture/benchmark implementation diff, no Gradle/KVM/emulator/device/benchmark execution
 
 ### M3-07 test-only HIGH benchmark contract
 

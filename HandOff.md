@@ -1,13 +1,13 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260816-223337
-updated_at: 2026-08-16T22:33:37+08:00
+handoff_id: HO-20260816-223453
+updated_at: 2026-08-16T22:34:53+08:00
 updated_by: /root
 state: active
 source_branch: fix/m2-10-runtime-startup-performance
 base_commit: 7f10a0b84d9680e4b9311e680d0508e7fde512cd
-working_tree: dirty
+working_tree: clean
 current_milestone: M2
 active_task: M2-10
 next_owner: /root
@@ -254,7 +254,7 @@ Define and execute the bounded M2-10 Runtime startup critical-path optimization 
 
 ## Changes Since Previous Handoff
 
-- Started M2-10 from `main@7f10a0b84d9680e4b9311e680d0508e7fde512cd`, created Issue #66, branch `fix/m2-10-runtime-startup-performance`, proposed ADR 0016 and the M2-10 task card, and updated task dependencies, roadmap, test strategy, governance inventory and README. No production Runtime, Host, fixture, workflow, benchmark or device file has changed yet.
+- Started M2-10 from `main@7f10a0b84d9680e4b9311e680d0508e7fde512cd`, created Issue #66 and branch `fix/m2-10-runtime-startup-performance`. Contract freeze `6750a0dd533c2be2b616a22eb1f79e7debbd2d94` adds proposed ADR 0016, the M2-10 task card, task dependencies, roadmap, test strategy, governance inventory and README. No production Runtime, Host, fixture, workflow, benchmark or device file has changed yet.
 - Started independent M3-08 from `main@930b759c99f330218dc4404368e9844e80456c82`, created Issue #64 and added proposed ADR 0015, the task card, M3-05/TEST_STRATEGY/INDEX dependency changes, README state, a formal aggregate validator and Governance integration. No production, benchmark implementation, fixture, Runtime, Host, KVM or device surface is in scope.
 
 - Preserved and pushed the M3-04 blocked snapshot `a290a6f678f90783ed6f7488c0b7956e78e612f7`, then switched to verified `main@a65433ae0bda651fc1088d187913b2dbfa7b02d1`. Created Issue #59 and branch `fix/m2-09-component-relaunch-lifecycle`; added the bounded M2-09 task contract and ADR 0013 before changing Runtime production code.
@@ -416,6 +416,18 @@ Define and execute the bounded M2-10 Runtime startup critical-path optimization 
 - M2-02 第三实现层已完成本地检查点：同一 `sourceDir` 只读文件映射、OS 只读 DEX commit、generation+slot 类型化 JNI handle、同 handle `AHMD` 认证 metadata、精确五 JNI 方法、Java primitive/finally 交接窗口、幂等 `LoadedPayload` owner，以及 M0-05 等价 Native 搜索路径和三参数 API 29 `InMemoryDexClassLoader` 已接通。Java 17 编译/lint、NDK 四 ABI warnings-as-errors 与离线根 `assembleRelease check` 284-task 均 PASS，四个 ELF 都含唯一 104-byte alloc/read-only `.ah_share_v1`，未启动设备或模拟器。证据更新于 `docs/evidence/M2-02/local-validation.md`；任务仍未完成或发布，下一步仅补 failure injection、Host sanitizer/fuzz/OOM 与已授权 KVM/arm64 验收，不启动 M2-03。
 
 ## Verification Evidence
+
+### M2-10 contract launch validation
+
+- task_id: M2-10
+- git_commit: 6750a0dd533c2be2b616a22eb1f79e7debbd2d94
+- command: `node tools/governance/validate-project-package.mjs`; `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict`; `git diff --check`
+- exit_code: 0
+- environment: Windows 10.0.19045 amd64; Node.js v24.12.0
+- timestamp: 2026-08-16T22:34:53+08:00
+- artifact: `docs/adr/0016-runtime-startup-critical-path-optimization.md`; `docs/tasks/M2-10-runtime-startup-performance.md`; Issue #66
+- sha256: ca8fd854cdd47c35a111b2dc3530e5c675b44be52fc983bd201bc3590abb6ffa
+- result: PASS; task card SHA-256 `8505ff2d57fb7db26782b7cc1203612214a329905c5fbbb40df2650bdb639f07`; 34 task cards, 11 core docs and 16 ADRs validate; strict HandOff and diff checks pass; no production, benchmark, workflow, emulator, KVM or physical-device action occurred
 
 ### M3-08 local contract freeze
 

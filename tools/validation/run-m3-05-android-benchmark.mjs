@@ -23,7 +23,7 @@ if (process.argv.length === 3 && process.argv[2] === "--self-test") {
 
 const args = new Map();
 for (let index = 2; index < process.argv.length; index += 2) args.set(process.argv[index], process.argv[index + 1]);
-for (const key of ["--adb", "--benchmark-apk", "--test-apk", "--targets", "--output"]) {
+for (const key of ["--adb", "--benchmark-apk", "--test-apk", "--targets", "--output", "--campaign"]) {
   if (!args.has(key)) throw new Error(`missing ${key}`);
 }
 
@@ -35,6 +35,17 @@ const fixtures = [
   ["kotlin-multidex", "ah.fixtures.android.m301.kotlin_multidex"],
   ["jni-four-abi", "ah.fixtures.android.m301.jni_four"],
 ];
+const campaignId = args.get("--campaign");
+if (campaignId !== "A" && campaignId !== "B") throw new Error("--campaign must be A or B");
+const deferBudgetFailure = args.get("--defer-budget-failure") === "true";
+if (args.has("--defer-budget-failure")
+    && args.get("--defer-budget-failure") !== "true"
+    && args.get("--defer-budget-failure") !== "false") {
+  throw new Error("--defer-budget-failure must be true or false");
+}
+const campaignFixtures = campaignId === "A" ? fixtures : [...fixtures].reverse();
+const campaignModes = campaignId === "A" ? ["baseline", "protected"] : ["protected", "baseline"];
+const modeOrder = campaignId === "A" ? "baseline_then_protected" : "protected_then_baseline";
 const benchmarkPackage = "ah.benchmarks.android";
 const instrumentationComponent = `${benchmarkPackage}/androidx.test.runner.AndroidJUnitRunner`;
 const installed = new Set([benchmarkPackage]);
@@ -196,10 +207,10 @@ try {
   install(path.resolve(args.get("--test-apk")));
   const raw = {};
   const high = {};
-  for (const [fixtureId, packageName] of fixtures) {
+  for (const [fixtureId, packageName] of campaignFixtures) {
     raw[fixtureId] = {};
     high[fixtureId] = [];
-    for (const mode of ["baseline", "protected"]) {
+    for (const mode of campaignModes) {
       const apkName = mode === "baseline" ? "signed-input.apk" : "protected-signed.apk";
       const apk = path.resolve(args.get("--targets"), fixtureId, apkName);
       uninstall(packageName);
@@ -265,6 +276,9 @@ try {
   }
   report = {
     schemaVersion: 1,
+    campaignId,
+    fixtureOrder: campaignFixtures.map(([fixtureId]) => fixtureId),
+    modeOrder,
     environmentId,
     policyProfile: "LOW_observed_plus_isolated_HIGH_increment",
     warmups: 5,
@@ -308,5 +322,6 @@ const retained = readFileSync(reportPath, "utf8") + readFileSync(commandsPath, "
 if (/(?:[A-Za-z]:\\Users\\|\/(?:home|data|sdcard|storage)\/)|-----BEGIN|dex\n0|[0-9a-f]{64}/i.test(retained)) {
   throw new Error("retained M3-05 evidence contains sensitive material");
 }
-if (!report.allBudgetsPass || !report.cleanupPassed) throw new Error("M3-05 Android budget or cleanup failed");
-console.log(`M3-05 Android LOW benchmark PASS ${report.environmentId}`);
+if (!report.cleanupPassed) throw new Error("M3-05 Android cleanup failed");
+if (!report.allBudgetsPass && !deferBudgetFailure) throw new Error("M3-05 Android budget failed");
+console.log(`M3-05 Android campaign ${campaignId} COMPLETE ${report.environmentId} budgets=${report.allBudgetsPass}`);

@@ -76,6 +76,10 @@ val adb = androidHome.map { File(it, "platform-tools/${if (System.getProperty("o
 val benchmarkRunner = rootProject.layout.projectDirectory.dir("tools/validation").file(
     listOf("run", "m3", "05", "android", "benchmark.mjs").joinToString("-"),
 )
+val benchmarkCampaign = providers.gradleProperty("benchmarkCampaign").orElse("A")
+val benchmarkOutput = providers.gradleProperty("benchmarkOutput").orElse("reports/performance")
+val benchmarkReuseTargets = providers.gradleProperty("benchmarkReuseTargets").orElse("false")
+val benchmarkDeferBudgetFailure = providers.gradleProperty("benchmarkDeferBudgetFailure").orElse("false")
 
 tasks.register<Exec>("connectedBenchmarkAndroidTest") {
     group = "verification"
@@ -83,10 +87,18 @@ tasks.register<Exec>("connectedBenchmarkAndroidTest") {
     dependsOn(
         "assembleDebug",
         "assembleDebugAndroidTest",
-        ":integration-tests:prepareAndroidPerformanceBenchmark",
         ":runtime:policy:assembleRelease",
         ":host:cli:jar",
     )
+    require(benchmarkReuseTargets.get() == "true" || benchmarkReuseTargets.get() == "false") {
+        "benchmarkReuseTargets must be true or false"
+    }
+    require(benchmarkDeferBudgetFailure.get() == "true" || benchmarkDeferBudgetFailure.get() == "false") {
+        "benchmarkDeferBudgetFailure must be true or false"
+    }
+    if (benchmarkReuseTargets.get() == "false") {
+        dependsOn(":integration-tests:prepareAndroidPerformanceBenchmark")
+    }
     commandLine(
         "node",
         benchmarkRunner.asFile.absolutePath,
@@ -94,6 +106,8 @@ tasks.register<Exec>("connectedBenchmarkAndroidTest") {
         "--benchmark-apk", layout.buildDirectory.file("outputs/apk/debug/android-debug.apk").get().asFile.absolutePath,
         "--test-apk", layout.buildDirectory.file("outputs/apk/androidTest/debug/android-debug-androidTest.apk").get().asFile.absolutePath,
         "--targets", project(":integration-tests").layout.buildDirectory.dir(listOf("m3", "05-device-targets/cases").joinToString("-")).get().asFile.absolutePath,
-        "--output", layout.buildDirectory.dir("reports/performance").get().asFile.absolutePath,
+        "--output", layout.buildDirectory.dir(benchmarkOutput.get()).get().asFile.absolutePath,
+        "--campaign", benchmarkCampaign.get(),
+        "--defer-budget-failure", benchmarkDeferBudgetFailure.get(),
     )
 }

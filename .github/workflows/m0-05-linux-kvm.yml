@@ -46,18 +46,15 @@ concurrency:
 jobs:
   device:
     name: API ${{ matrix.api }} x86_64 (Linux/KVM)
+    # M3-05 acceptance is produced only by the exact branch-push SHA. The
+    # pull-request merge-ref run is skipped so it cannot create a second A/B pair.
+    if: github.event_name != 'pull_request' || github.head_ref != 'chore/m3-05-performance-benchmarks'
     runs-on: ubuntu-24.04
-    timeout-minutes: ${{ github.head_ref == 'chore/m3-05-performance-benchmarks' && 60 || 45 }}
+    timeout-minutes: ${{ (github.head_ref == 'chore/m3-05-performance-benchmarks' || github.ref_name == 'chore/m3-05-performance-benchmarks') && 90 || 45 }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - api: 29
-            revision: 8
-            package_index: 1
-          - api: 36
-            revision: 2
-            package_index: 2
+        include: ${{ (github.event_name == 'push' && github.ref_name == 'chore/m3-05-performance-benchmarks') && fromJSON('[{"api":36,"revision":2,"package_index":2}]') || fromJSON('[{"api":29,"revision":8,"package_index":1},{"api":36,"revision":2,"package_index":2}]') }}
     steps:
       - name: Check out repository
         # actions/checkout v7
@@ -666,10 +663,56 @@ jobs:
               printf '%s\n' 'M3-05 API 29 reference is ARM64 physical; x86_64 KVM cell intentionally skipped.'
               exit 0
             fi
-            ANDROID_SERIAL="$serial" timeout 2700s ./gradlew --no-daemon --console=plain \
+            test "$GITHUB_EVENT_NAME" = push
+            test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+            reports='benchmarks/android/build/reports/performance'
+            targets='integration-tests/build/m3-05-device-targets/cases'
+            ANDROID_SERIAL="$serial" timeout 2400s ./gradlew --no-daemon --console=plain \
+              -PbenchmarkCampaign=A -PbenchmarkOutput=reports/performance/campaign-a \
+              -PbenchmarkDeferBudgetFailure=true \
               :benchmarks:android:connectedBenchmarkAndroidTest
-            test -f benchmarks/android/build/reports/performance/benchmark-results.json
-            cat benchmarks/android/build/reports/performance/benchmark-results.json
+            test -f "$reports/campaign-a/benchmark-results.json"
+            find "$targets" -type f \( -name 'signed-input.apk' -o -name 'protected-signed.apk' \) -print0 \
+              | sort -z | xargs -0 sha256sum > "$reports/artifacts-before-campaign-b.sha256"
+            ANDROID_SERIAL="$serial" timeout 2400s ./gradlew --no-daemon --console=plain \
+              -PbenchmarkCampaign=B -PbenchmarkOutput=reports/performance/campaign-b \
+              -PbenchmarkReuseTargets=true \
+              -PbenchmarkDeferBudgetFailure=true \
+              :benchmarks:android:connectedBenchmarkAndroidTest
+            test -f "$reports/campaign-b/benchmark-results.json"
+            find "$targets" -type f \( -name 'signed-input.apk' -o -name 'protected-signed.apk' \) -print0 \
+              | sort -z | xargs -0 sha256sum > "$reports/artifacts-after-campaign-b.sha256"
+            cmp "$reports/artifacts-before-campaign-b.sha256" "$reports/artifacts-after-campaign-b.sha256"
+            environment_id="$(jq -r '.environmentId' "$reports/campaign-a/benchmark-results.json")"
+            test "$environment_id" = "$(jq -r '.environmentId' "$reports/campaign-b/benchmark-results.json")"
+            boot_id="$(adb -s "$serial" shell cat /proc/sys/kernel/random/boot_id | tr -d '\r\n')"
+            test -n "$boot_id"
+            boot_hash="$(printf '%s' "$boot_id" | sha256sum | cut -c1-12)"
+            node tools/validation/create-m3-05-ab-evidence.mjs \
+              --campaign-a "$reports/campaign-a/benchmark-results.json" \
+              --campaign-b "$reports/campaign-b/benchmark-results.json" \
+              --targets "$targets" \
+              --output "$reports" \
+              --head "$GITHUB_SHA" \
+              --run-id "$GITHUB_RUN_ID" \
+              --job-id "$GITHUB_JOB" \
+              --run-attempt "$GITHUB_RUN_ATTEMPT" \
+              --environment "$environment_id" \
+              --boot-hash "$boot_hash"
+            node tools/governance/verify-m3-08-startup-stability-contract.mjs \
+              --report "$reports/benchmark-repeatability.json" \
+              --campaign-a "$reports/campaign-a/benchmark-results.json" \
+              --campaign-b "$reports/campaign-b/benchmark-results.json" \
+              --expected-head "$GITHUB_SHA" \
+              --expected-run-id "$GITHUB_RUN_ID" \
+              --expected-job-id "$GITHUB_JOB" \
+              --expected-run-attempt "$GITHUB_RUN_ATTEMPT" \
+              --expected-environment "$environment_id" \
+              --expected-boot-hash "$boot_hash" \
+              --artifact-manifest "$reports/benchmark-artifact-manifest.json" \
+              --artifact-root "$reports/apks"
+            jq '{headSha,environmentId,runId,jobId,runAttempt,bootIdHashPrefix,allBudgetsPass,repeatabilityPass,cleanupPassed,comparisonCount:(.comparisons|length)}' \
+              "$reports/benchmark-repeatability.json"
             exit 0
           fi
 

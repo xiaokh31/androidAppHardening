@@ -82,7 +82,7 @@ security_sensitive: false
 - 环境文件 `benchmarks/environment.json` 与汇总 `build/reports/benchmark-summary.md`。
 - 失败时进程退出码固定为非零且列出超预算 metric。
 - 每个本地/CI `benchmark-results.json` 必须通过 `node tools/governance/verify-m3-07-high-benchmark-contract.mjs --report <file>`；缺字段、额外类型、非有限数值、错误样本数、LOW/DEGRADE 不一致或 mode/metric 专属字段漂移均 fail closed。
-- API 36 双 campaign 汇总 `benchmark-repeatability.json` 必须通过 `node tools/governance/verify-m3-08-startup-stability-contract.mjs --report <file>`；它绑定 exact head、environment、boot、artifact manifest、A/B 顺序、两个 report hash、90 行比较、预算、重复性和 cleanup。
+- API 36 双 campaign 汇总必须通过 M3-08 正式入口，并同时传入 `--report`、`--campaign-a`、`--campaign-b`、`--expected-head`、`--expected-run-id`、`--expected-job-id`、`--expected-run-attempt`、`--expected-environment`、`--expected-boot-hash` 与 `--artifact-manifest`。验证器从两份原始报告复算 percentile/delta/budget 和 90 行比较，并将实际文件哈希与执行 job 身份逐项绑定；不得信任自报摘要或布尔值。
 
 ## Security Constraints
 

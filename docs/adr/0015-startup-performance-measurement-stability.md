@@ -25,8 +25,20 @@ M3-05 must replace the ambiguous comparison with exactly two complementary campa
 The aggregate evidence file is `benchmark-repeatability.json`. It binds the exact head, environment fingerprint, boot identifier hash prefix, shared artifact-manifest SHA-256, campaign order, report hashes, warmup/sample counts, all ninety comparison rows, budget status, repeatability status and cleanup status. The formal validator is:
 
 ```text
-node tools/governance/verify-m3-08-startup-stability-contract.mjs --report <benchmark-repeatability.json>
+node tools/governance/verify-m3-08-startup-stability-contract.mjs \
+  --report <benchmark-repeatability.json> \
+  --campaign-a <campaign-a-benchmark-results.json> \
+  --campaign-b <campaign-b-benchmark-results.json> \
+  --expected-head <GITHUB_SHA> \
+  --expected-run-id <GITHUB_RUN_ID> \
+  --expected-job-id <GITHUB_JOB> \
+  --expected-run-attempt <GITHUB_RUN_ATTEMPT> \
+  --expected-environment <environment-id> \
+  --expected-boot-hash <boot-id-sha256-prefix> \
+  --artifact-manifest <sha256-manifest.txt>
 ```
+
+The validator reads both retained campaign reports, computes their SHA-256 values, invokes the M3-07 report validator, recomputes all baseline/protected P50/P95 and deltas from the raw samples, and applies the fixed budgets. It hashes the artifact manifest bytes and compares every declared head/run/job/attempt/environment/boot/artifact identity with explicit values supplied by the executing job. Self-reported booleans, hashes and summary values are never sufficient evidence.
 
 M3-08 is a governance-only prerequisite. It does not change Runtime, Host, fixture or benchmark implementation. After M3-08 merges, M3-05 may implement this measurement-only correction in PR #63 and run one replacement API 36 job. If that same-head A/B result is stable but still exceeds a fixed budget, the failure is eligible for a separate Runtime optimization task with its own ADR, implementation, regression tests and independent security review. M3-05 itself may not change production Runtime.
 
@@ -60,4 +72,5 @@ No wire format, API, ABI, minimum SDK, supported application class or compatibil
 - Governance requires ADR 0015, M3-08, M3-05, TEST_STRATEGY and the task dependency graph to agree on the two-campaign contract.
 - The M3-08 validator rejects production/runtime changes in this task diff.
 - Synthetic aggregate-report mutations reject wrong order, a third campaign, changed head/environment/artifacts/boot, changed warmups or sample counts, missing/duplicate comparisons, relaxed limits, incorrect arithmetic, failed budgets and failed cleanup.
+- Campaign-source mutations prove report SHA-256 binding, M3-07 validation, raw-sample percentile/delta/budget recomputation, positive and negative delta arithmetic, and the exact 10% boundary. Recursive string scanning rejects Windows drive, UNC, macOS and Unix absolute or user-home paths plus device-serial fields.
 - Independent read-only security review must return P0/P1/P2 all zero before M3-08 merges.

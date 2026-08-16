@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260816-120843
-updated_at: 2026-08-16T12:08:43+08:00
+handoff_id: HO-20260816-122513
+updated_at: 2026-08-16T12:25:13+08:00
 updated_by: /root
 state: active
 source_branch: docs/m3-08-startup-performance-stability
@@ -21,7 +21,7 @@ Define and review the bounded M3-08 startup-performance and measurement-stabilit
 
 ## Current State
 
-- M3-08 started from clean `main@930b759c99f330218dc4404368e9844e80456c82` on `docs/m3-08-startup-performance-stability`; Issue #64 is the unique tracker and no remote branch or PR existed at assignment. ADR 0015 fixes exactly two complementary same-head/same-job/same-boot API 36 campaigns, preserves 5 warmups, 30 samples, the 300/500 ms budgets and 10% limit, and forbids third-run result selection or any product/security-control change. This task is governance-only and must not run KVM, emulator or physical-device work.
+- M3-08 started from clean `main@930b759c99f330218dc4404368e9844e80456c82` on `docs/m3-08-startup-performance-stability`; Issue #64 is the unique tracker and no remote branch or PR existed at assignment. First independent review rejected freeze `409a73a6ee471da3d2f9ba56f4ac2c50f6e6b522` with `P0=0/P1=2/P2=2`: campaign source hashes/statistics and executing-job identities were self-declared, delta arithmetic was not closed, and sensitive path scanning was incomplete. The bounded remediation now requires both source reports, explicit head/run/job/attempt/environment/boot inputs, actual manifest/report hashing, M3-07 validation, raw-sample percentile/delta/budget recomputation and recursive path scanning. No product or benchmark implementation changes are authorized.
 - M3-07 is complete on `main`. Final implementation freeze `90f754ea185a8633acd585d181ee108db016209d` passed independent review with `P0=0/P1=0/P2=0`; exact published head `4e77aa38b508a99c60a576e41804ba2d08b6b9fd` passed Build `31891662932` and Governance `31891662909` on Ubuntu/Windows. PR #62 merged with expected-head protection as `859cfa217b2fc0726cc001519967cdde606d2146`, Issue #61 closed, and post-merge `main@930b759c99f330218dc4404368e9844e80456c82` passed Build `31892091205` and Governance `31892091344`. No device, emulator or KVM ran for M3-07.
 - M2-09 is merged and complete. Production implementation `9ba6ec28c7d1450c3ca51175f78e3aa2d292331f`, test remediation `dd78179f41c97aab7e3f38c0f571c4e6198f8939` and exact PR head `186dfd79ee4f32c749c4ccfdebf5bc82a3476637` passed independent `P0=0/P1=0/P2=0` review, Build `31862011459`, Governance `31862011393`, and API 29/36 KVM `31862011460`. PR #60 merged as `77b3aee7d88eaf4446ae780f20fe6988796609af`; final main coordination `e3a676ed2f4864d2b33077e1d00c300cf2a59817` passed Build `31863095498` and Governance `31863095500`.
 - M3-06 is complete. PR #57 merged with expected-head `8da49b52fc7c2ea65bf7f0a19b5804d9137130e6` as `a65433ae0bda651fc1088d187913b2dbfa7b02d1`; Issue #56 closed. Merger-ready and post-merge Ubuntu/Windows Build/Governance passed, while device/KVM/fuzz remained out of scope.
@@ -199,7 +199,7 @@ Define and review the bounded M3-08 startup-performance and measurement-stabilit
 | M3-06 | `/root` | `main` | done | M0-03, M2-04, M3-01, M3-02 | PR #57 merged as `a65433a`; claim-boundary contract is active |
 | M3-04 | `/root` | `main` | done | M0-03, M2-04, M2-09, M3-01, M3-02, M3-06 | PR #58 merged; mandatory real-process cells and final main gates passed |
 | M3-07 | `/root` | `main` | done | M2-05, M2-06, M3-01 | PR #62 merged; post-merge Build/Governance and README/evidence synchronization passed |
-| M3-08 | `/root` | `docs/m3-08-startup-performance-stability` | in_progress | M3-01, M3-07 | Freeze ADR 0015/task/validator, then obtain independent all-zero review before publishing Issue #64's sole draft PR |
+| M3-08 | `/root` | `docs/m3-08-startup-performance-stability` | in_progress | M3-01, M3-07 | Close review-1 P1=2/P2=2, freeze corrected validator and obtain an independent all-zero incremental review before publication |
 | M3-05 | `/root` | `chore/m3-05-performance-benchmarks` | blocked | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08 | Keep PR #63 draft; resume only after M3-08 merges, then run one API 36 A/B replacement job |
 | M3-03 | `/root` | `main` | done | M0-03, M1-05, M1-06, M2-06, M3-01 | PR #55 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | done | M2-02 | PR #54 merged; exact regression, ASan/UBSan, dual-platform Build/Governance and independent review passed |
@@ -423,6 +423,18 @@ Define and review the bounded M3-08 startup-performance and measurement-stabilit
 - artifact: docs/evidence/M3-08/local-validation.md
 - sha256: d00f81d711daa45eee73edea1603f421ddc18d8e17718fd368df02933c19c086
 - result: PASS; 1 forbidden-diff and 20 report mutations rejected, 33 task cards/11 core docs/15 ADRs valid, zero production/fixture/benchmark implementation diff, no Gradle/KVM/emulator/device/benchmark execution
+
+### M3-08 independent review 1
+
+- task_id: M3-08
+- git_commit: 409a73a6ee471da3d2f9ba56f4ac2c50f6e6b522
+- command: independent read-only audit of ADR/task/dependency/validator/mutations/base-diff boundary
+- exit_code: 1
+- environment: read-only repository inspection; no network, Gradle, KVM, emulator or device
+- timestamp: 2026-08-16T12:25:13+08:00
+- artifact: docs/evidence/M3-08/security-review-1.md
+- sha256: not_applicable
+- result: FAIL; P0=0/P1=2/P2=2; source report and execution identity binding, delta arithmetic and recursive sensitive-path rejection require remediation
 
 ### M3-07 test-only HIGH benchmark contract
 

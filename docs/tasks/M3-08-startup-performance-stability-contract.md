@@ -32,7 +32,7 @@ M3-05 PR #63 produced two complete API 36 reports around a validator-only change
 
 - Accepted ADR 0015.
 - Revised M3-05 and TEST_STRATEGY contracts plus task-index dependency.
-- Formal `benchmark-repeatability.json` schema semantics.
+- Formal `benchmark-repeatability.json` schema semantics bound to both retained campaign reports and the executing job identity.
 - A governance validator with positive and mutation self-tests.
 - Independent read-only review and exact-head Ubuntu/Windows Build/Governance evidence.
 
@@ -65,14 +65,16 @@ M3-05 PR #63 produced two complete API 36 reports around a validator-only change
 ## Public Interfaces
 
 - No product interface changes.
-- Formal aggregate entry: `node tools/governance/verify-m3-08-startup-stability-contract.mjs --report <benchmark-repeatability.json>`.
-- `benchmark-repeatability.json` includes `schemaVersion`, `headSha`, `environmentId`, two campaign objects, ninety comparisons, `allBudgetsPass`, `repeatabilityPass` and `cleanupPassed`.
-- Each campaign includes exact ID/order, `headSha`, `environmentFingerprint`, `bootIdHashPrefix`, `artifactManifestSha256`, `reportSha256`, `warmups=5`, `measurements=30`, `allBudgetsPass=true` and `cleanupPassed=true`.
+- Formal aggregate entry requires `--report`, `--campaign-a`, `--campaign-b`, `--expected-head`, `--expected-run-id`, `--expected-job-id`, `--expected-run-attempt`, `--expected-environment`, `--expected-boot-hash` and `--artifact-manifest`; omitting any input fails closed.
+- `benchmark-repeatability.json` includes `schemaVersion`, `headSha`, `environmentId`, `runId`, `jobId`, `runAttempt`, `bootIdHashPrefix`, `artifactManifestSha256`, two campaign objects, ninety comparisons, `allBudgetsPass`, `repeatabilityPass` and `cleanupPassed`.
+- Each campaign includes exact ID/order, `headSha`, `environmentFingerprint`, run/job/attempt identity, `bootIdHashPrefix`, `artifactManifestSha256`, `reportSha256`, `warmups=5`, `measurements=30`, `allBudgetsPass=true` and `cleanupPassed=true`.
+- The validator computes both campaign report hashes and the artifact-manifest hash, invokes the M3-07 validator on both source reports, and independently recomputes raw-sample percentiles, deltas, budgets and all ninety aggregate rows. Declared hashes, summaries and booleans are not trusted.
 
 ## Security Constraints
 
 - Signer, AEAD, authenticated metadata, Guard order, memory profiles, mapping protections, ABI behavior and cleanup remain enabled.
 - Reports contain no device serial, user path, key, certificate private material or plaintext DEX.
+- Sensitive scanning recursively inspects every report string/key and rejects device-serial fields, Windows drive/UNC paths, macOS user-home paths and Unix absolute/user paths.
 - No test control enters Runtime AARs, protected production APKs, CLI or distribution artifacts.
 - A production optimization is not authorized by this contract.
 
@@ -93,7 +95,8 @@ M3-05 PR #63 produced two complete API 36 reports around a validator-only change
 ## Required Tests
 
 - Positive contract and aggregate-report validation.
-- Negative mutations for a third campaign, wrong campaign/mode/fixture order, changed head/environment/boot/artifact identity, 4/6 warmups, 29/31 samples, missing or duplicate comparison, wrong statistic, relaxed 10% limit, incorrect variation/pass, failed budget and failed cleanup.
+- Negative mutations for a third campaign, wrong campaign/mode/fixture order, changed head/run/job/attempt/environment/boot/artifact/report identity, 4/6 warmups, 29/31 samples, missing or duplicate comparison, wrong statistic, relaxed 10% limit, incorrect variation/pass/delta/budget, failed cleanup, source-report tampering and Windows/UNC/macOS/Unix path leakage.
+- Positive arithmetic cases include a valid negative delta and the exact 10% boundary.
 - Base-diff mutation proving a production or benchmark implementation file is rejected.
 
 ## Required Evidence

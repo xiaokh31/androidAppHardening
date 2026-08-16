@@ -1,12 +1,12 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260816-131932
-updated_at: 2026-08-16T13:19:32+08:00
+handoff_id: HO-20260816-133540
+updated_at: 2026-08-16T13:35:40+08:00
 updated_by: /root
 state: active
-source_branch: docs/m3-08-startup-performance-stability
-base_commit: 930b759c99f330218dc4404368e9844e80456c82
+source_branch: main
+base_commit: 4c3efc1614158a0372eb877fc02fd1db27dcffb3
 working_tree: clean
 current_milestone: M3
 active_task: M3-08
@@ -17,11 +17,11 @@ next_owner: /root
 
 ## Objective
 
-Define and review the bounded M3-08 startup-performance and measurement-stability contract that must merge before M3-05 may run one replacement API 36 matrix.
+Complete post-merge M3-08 coordination and main-branch gates before releasing M3-05 to run its single replacement API 36 matrix.
 
 ## Current State
 
-- M3-08 is published as the unique draft PR #65 linked to Issue #64. Final implementation freeze `7e949e9d58ca0a0202790bff70e6199272c75c7f` has independent review `P0=0/P1=0/P2=0`; published head `add7a839440e24b52ba8cfb3c851212f7d344c7b` passed Build `31928514207` and Governance `31928516421` on Ubuntu/Windows. The evidence-only successor must receive replacement exact-head Build/Governance before ready/merge. Auto-triggered M3-02 Fuzz `31928515267` and Cross-platform equivalence `31928514532` were cancelled as out of M3-08 evidence scope; no KVM, emulator, physical device or benchmark ran.
+- M3-08 final implementation freeze `7e949e9d58ca0a0202790bff70e6199272c75c7f` passed independent review `P0=0/P1=0/P2=0`. Final PR head `a5d76806850ecc68cb92e87c4a06e29d9cfe0b1b` passed replacement Build `31928811438`, Governance `31928811435`, automatic Cross-platform equivalence `31928811426` and M3-02 Fuzz `31928811541`; PR #65 merged with expected-head protection as `4c3efc1614158a0372eb877fc02fd1db27dcffb3`, and Issue #64 closed. Local `main` is synchronized. This post-merge coordination commit must pass local strict/governance and remote main Build/Governance before M3-08 is marked done and M3-05 resumes. No KVM, emulator, physical device or benchmark ran.
 - M3-07 is complete on `main`. Final implementation freeze `90f754ea185a8633acd585d181ee108db016209d` passed independent review with `P0=0/P1=0/P2=0`; exact published head `4e77aa38b508a99c60a576e41804ba2d08b6b9fd` passed Build `31891662932` and Governance `31891662909` on Ubuntu/Windows. PR #62 merged with expected-head protection as `859cfa217b2fc0726cc001519967cdde606d2146`, Issue #61 closed, and post-merge `main@930b759c99f330218dc4404368e9844e80456c82` passed Build `31892091205` and Governance `31892091344`. No device, emulator or KVM ran for M3-07.
 - M2-09 is merged and complete. Production implementation `9ba6ec28c7d1450c3ca51175f78e3aa2d292331f`, test remediation `dd78179f41c97aab7e3f38c0f571c4e6198f8939` and exact PR head `186dfd79ee4f32c749c4ccfdebf5bc82a3476637` passed independent `P0=0/P1=0/P2=0` review, Build `31862011459`, Governance `31862011393`, and API 29/36 KVM `31862011460`. PR #60 merged as `77b3aee7d88eaf4446ae780f20fe6988796609af`; final main coordination `e3a676ed2f4864d2b33077e1d00c300cf2a59817` passed Build `31863095498` and Governance `31863095500`.
 - M3-06 is complete. PR #57 merged with expected-head `8da49b52fc7c2ea65bf7f0a19b5804d9137130e6` as `a65433ae0bda651fc1088d187913b2dbfa7b02d1`; Issue #56 closed. Merger-ready and post-merge Ubuntu/Windows Build/Governance passed, while device/KVM/fuzz remained out of scope.
@@ -199,8 +199,8 @@ Define and review the bounded M3-08 startup-performance and measurement-stabilit
 | M3-06 | `/root` | `main` | done | M0-03, M2-04, M3-01, M3-02 | PR #57 merged as `a65433a`; claim-boundary contract is active |
 | M3-04 | `/root` | `main` | done | M0-03, M2-04, M2-09, M3-01, M3-02, M3-06 | PR #58 merged; mandatory real-process cells and final main gates passed |
 | M3-07 | `/root` | `main` | done | M2-05, M2-06, M3-01 | PR #62 merged; post-merge Build/Governance and README/evidence synchronization passed |
-| M3-08 | `/root` | `docs/m3-08-startup-performance-stability` | review | M3-01, M3-07 | PR #65 draft; initial exact-head Build/Governance pass, replacement evidence-head checks pending before ready authorization |
-| M3-05 | `/root` | `chore/m3-05-performance-benchmarks` | blocked | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08 | Keep PR #63 draft; resume only after M3-08 merges, then run one API 36 A/B replacement job |
+| M3-08 | `/root` | `main` | in_progress | M3-01, M3-07 | PR #65 merged; post-merge main strict/Build/Governance pending |
+| M3-05 | `/root` | `chore/m3-05-performance-benchmarks` | blocked | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08 | Keep PR #63 draft; resume after M3-08 post-merge main gates pass, then run one API 36 A/B replacement job |
 | M3-03 | `/root` | `main` | done | M0-03, M1-05, M1-06, M2-06, M3-01 | PR #55 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | done | M2-02 | PR #54 merged; exact regression, ASan/UBSan, dual-platform Build/Governance and independent review passed |
 | M3-02 | `/root` | `main` | done | M1-03, M1-04, M1-06, M2-02, M2-03, M2-06, M2-08, M3-01 | PR #52 merged; README/evidence synchronized; wait for next task selection |
@@ -495,6 +495,18 @@ Define and review the bounded M3-08 startup-performance and measurement-stabilit
 - artifact: docs/evidence/M3-08/remote-validation.md
 - sha256: dd25d6ba3a03f4f71bae87c02d8551c6de54deb68c8eb9eabb034bbde3c0a703
 - result: PASS; Ubuntu/Windows Build and Governance four jobs passed exact head; out-of-scope auto-triggered M3-02 Fuzz and Cross-platform equivalence were cancelled and are not claimed
+
+### M3-08 merger-ready and merge
+
+- task_id: M3-08
+- git_commit: a5d76806850ecc68cb92e87c4a06e29d9cfe0b1b
+- command: GitHub Actions Build 31928811438, Governance 31928811435, automatic Cross-platform equivalence 31928811426 and M3-02 Fuzz 31928811541; expected-head merge of PR #65
+- exit_code: 0
+- environment: GitHub Ubuntu 24.04 and Windows 2025; no KVM, emulator, physical device or benchmark
+- timestamp: 2026-08-16T13:35:40+08:00
+- artifact: docs/evidence/M3-08/remote-validation.md ; https://github.com/xiaokh31/androidAppHardening/pull/65
+- sha256: 0af714303b8ece10fd8a71fabb6480553b6d10f78e5138aa6199166e1e1c3a22
+- result: PASS; all exact-head PR checks passed, PR #65 merged as 4c3efc1614158a0372eb877fc02fd1db27dcffb3 and Issue #64 closed
 
 ### M3-07 test-only HIGH benchmark contract
 
@@ -1686,13 +1698,13 @@ Define and review the bounded M3-08 startup-performance and measurement-stabilit
 
 ## Blockers and Required Approvals
 
-M3-05 remains blocked by its retained API 36 budget and repeatability failure until M3-08 independently reviews and merges. M3-08 itself has no implementation blocker; an independent read-only security review is required before publication and merge.
+M3-05 remains blocked only until the M3-08 post-merge `main` coordination commit passes local strict/governance and remote Ubuntu/Windows Build/Governance. No user approval is pending for M3-08.
 
 ## Ordered Next Actions
 
-1. Commit and push the M3-08 remote evidence/HandOff successor, then require replacement exact-head Ubuntu/Windows Build and Governance.
-2. Request ready/merge authorization only after the replacement head is green and PR #65 is CLEAN/MERGEABLE.
-3. After expected-head merge, resume PR #63 for one API 36 A/B replacement job; do not run ARM until it passes.
+1. Validate and commit the post-merge README/task/evidence/HandOff coordination on `main`, then push it.
+2. Require exact-head post-merge Ubuntu/Windows Build and Governance; do not run KVM, emulator, physical device or benchmark.
+3. After those gates pass, mark M3-08 done and resume PR #63 for its single API 36 A/B replacement job; do not run ARM until it passes.
 
 ## Relevant Files and Artifacts
 

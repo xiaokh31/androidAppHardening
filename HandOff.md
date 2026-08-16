@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260816-141025
-updated_at: 2026-08-16T14:10:25+08:00
+handoff_id: HO-20260816-142900
+updated_at: 2026-08-16T14:29:00+08:00
 updated_by: /root
 state: active
 source_branch: chore/m3-05-performance-benchmarks
@@ -22,6 +22,7 @@ Resume M3-05 after M3-08 and execute exactly one ADR 0015 API 36 same-SHA/job/bo
 ## Current State
 
 - M3-05 remains on `chore/m3-05-performance-benchmarks` with unique draft PR #63 linked to Issue #22. Stable head `193e124804d161b38ddf9c0fc82c2f15d5a84cdb` passed Governance `31895635883`, Ubuntu/Windows Build `31895635802`, and Host benchmark `31895635768`; both platforms passed two fixed runs, all budgets and the unchanged 10% repeatability gate. Subsequent bounded KVM corrections closed package visibility, self-instrumentation, copied pinned Kotlin stdlib, real RenderThread framing, explicit JUnit success handling, post-measurement observation ownership, and the isolated HIGH worker Native search path without changing thresholds or product Runtime. The final evaluated runs and current blocker are recorded in the next item. No local emulator was started, the ARM campaign remains gated on stable API 36 results, and `stash@{0}` remains a recovery backup until merge.
+- M3-05 resumed from verified `main@7f10a0b84d9680e4b9311e680d0508e7fde512cd`; implementation freeze `e41f9d2d5071525f92dc23a34cc25d1d89b06e47` supplies only the ADR 0015 A/B test orchestration and evidence generator. Local runner/generator/M3-07/M3-08 mutation checks, Governance, strict HandOff, diff check and pinned offline Gradle configuration pass. The forthcoming single push schedules only API 36, skips the PR merge-ref KVM duplicate, and must accept its first A/B pair without rerun or result selection. ARM remains blocked until that aggregate passes.
 - Exact-head `065f97b7413113420be7b12257469637cf69cb0b` and tool-only successor `61652979caea471a8dae058c08bf5b4620321fe5` retained the two historical complete API 36 reports. The latter recorded `kotlin-multidex/processToApplicationOnCreateMs` P50 delta `331 ms` against `300 ms`, while cross-job comparison found six summaries above 10%; these remain diagnostic failures and cannot be reused as ADR 0015 acceptance evidence.
 - M3-08 is complete. Final freeze `7e949e9d58ca0a0202790bff70e6199272c75c7f` passed independent review `P0=0/P1=0/P2=0`; final PR head `a5d76806850ecc68cb92e87c4a06e29d9cfe0b1b` passed all checks and merged as `4c3efc1614158a0372eb877fc02fd1db27dcffb3`; Issue #64 closed. Post-merge coordination head `e12542db48eac96f17c4a1f4306ec20c62dcfa1f` passed Build `31929454365` and Governance `31929454381` on Ubuntu/Windows plus local M3-08/governance/strict/diff gates. No KVM, emulator, physical device or benchmark ran. M3-05 PR #63 is now eligible to resume its single ADR 0015 API 36 A/B replacement job.
 - M3-07 is complete on `main`. Final implementation freeze `90f754ea185a8633acd585d181ee108db016209d` passed independent review with `P0=0/P1=0/P2=0`; exact published head `4e77aa38b508a99c60a576e41804ba2d08b6b9fd` passed Build `31891662932` and Governance `31891662909` on Ubuntu/Windows. PR #62 merged with expected-head protection as `859cfa217b2fc0726cc001519967cdde606d2146`, Issue #61 closed, and post-merge `main@930b759c99f330218dc4404368e9844e80456c82` passed Build `31892091205` and Governance `31892091344`. No device, emulator or KVM ran for M3-07.
@@ -252,6 +253,8 @@ Resume M3-05 after M3-08 and execute exactly one ADR 0015 API 36 same-SHA/job/bo
 
 ## Changes Since Previous Handoff
 
+- Resumed M3-05 PR #63 by merging verified `main@7f10a0b84d9680e4b9311e680d0508e7fde512cd` into `chore/m3-05-performance-benchmarks`. The bounded ADR 0015 orchestration now assigns the only branch-push API 36 job to campaigns A then B in one emulator boot, fixes fixture/mode order, reuses the same six target APK bytes, records exact execution identity plus immutable hashes, and validates the combined 90-row report through the formal M3-08 gate. Pull-request merge-ref KVM is skipped for this branch so the forthcoming single push cannot create a second A/B pair. No emulator, physical device or ARM command has run.
+
 - Started independent M3-08 from `main@930b759c99f330218dc4404368e9844e80456c82`, created Issue #64 and added proposed ADR 0015, the task card, M3-05/TEST_STRATEGY/INDEX dependency changes, README state, a formal aggregate validator and Governance integration. No production, benchmark implementation, fixture, Runtime, Host, KVM or device surface is in scope.
 
 - Preserved and pushed the M3-04 blocked snapshot `a290a6f678f90783ed6f7488c0b7956e78e612f7`, then switched to verified `main@a65433ae0bda651fc1088d187913b2dbfa7b02d1`. Created Issue #59 and branch `fix/m2-09-component-relaunch-lifecycle`; added the bounded M2-09 task contract and ADR 0013 before changing Runtime production code.
@@ -413,6 +416,18 @@ Resume M3-05 after M3-08 and execute exactly one ADR 0015 API 36 same-SHA/job/bo
 - M2-02 第三实现层已完成本地检查点：同一 `sourceDir` 只读文件映射、OS 只读 DEX commit、generation+slot 类型化 JNI handle、同 handle `AHMD` 认证 metadata、精确五 JNI 方法、Java primitive/finally 交接窗口、幂等 `LoadedPayload` owner，以及 M0-05 等价 Native 搜索路径和三参数 API 29 `InMemoryDexClassLoader` 已接通。Java 17 编译/lint、NDK 四 ABI warnings-as-errors 与离线根 `assembleRelease check` 284-task 均 PASS，四个 ELF 都含唯一 104-byte alloc/read-only `.ah_share_v1`，未启动设备或模拟器。证据更新于 `docs/evidence/M2-02/local-validation.md`；任务仍未完成或发布，下一步仅补 failure injection、Host sanitizer/fuzz/OOM 与已授权 KVM/arm64 验收，不启动 M2-03。
 
 ## Verification Evidence
+
+### M3-05 ADR 0015 orchestration freeze
+
+- task_id: M3-05
+- git_commit: e41f9d2d5071525f92dc23a34cc25d1d89b06e47
+- command: Node syntax plus runner/generator self-tests; M3-07 and M3-08 mutation self-tests; project Governance; strict HandOff; diff check; pinned offline Gradle benchmark task configuration
+- exit_code: 0
+- environment: Windows 10.0.19045.0; Eclipse Temurin 17.0.19+10; Gradle 9.5.0; Node.js v24.12.0; no emulator, KVM or physical device
+- timestamp: 2026-08-16T14:22:15+08:00
+- artifact: `docs/evidence/M3-05/local-validation.md`; exact-head API 36 A/B artifacts pending
+- sha256: not_applicable
+- result: PASS for the bounded local orchestration freeze; exactly one branch-push API 36 same-SHA/job/boot A/B result remains required, and ARM is forbidden before that aggregate passes
 
 ### M3-08 local contract freeze
 
@@ -1716,9 +1731,9 @@ None
 
 ## Ordered Next Actions
 
-1. Finish the conflict-free `main` integration and implement only ADR 0015 benchmark/test orchestration; do not change production Runtime, budgets, sample counts or security controls.
-2. Freeze and push one exact head, then run exactly one API 36 same-SHA/job/boot A/B replacement job; no third campaign, retry or result selection is permitted.
-3. Run ARM exactly once only if the API 36 aggregate passes every budget and all 90 repeatability comparisons; otherwise open a separate Runtime optimization task.
+1. Complete the bounded local ADR 0015 orchestration gates, freeze one exact head and push it once; do not change production Runtime, budgets, sample counts or security controls.
+2. Accept exactly one API 36 same-SHA/job/boot A/B replacement result; no third campaign, rerun or result selection is permitted.
+3. Keep ARM blocked until the API 36 aggregate passes every budget and all 90 repeatability comparisons; on failure, stop M3-05 and open a separate Runtime optimization task instead of rerunning.
 
 ## Relevant Files and Artifacts
 
@@ -1731,6 +1746,7 @@ None
 - `benchmarks/android/`
 - `benchmarks/environment.json`
 - `tools/validation/run-m3-05-android-benchmark.mjs`
+- `tools/validation/create-m3-05-ab-evidence.mjs`
 - `tools/validation/verify-m3-05-test-bridge-artifacts.mjs`
 - `tools/validation/compare-m3-05-benchmarks.mjs`
 - `.github/workflows/benchmarks.yml`

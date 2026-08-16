@@ -36,6 +36,29 @@ The formal contract mutation suite rejected all ten production-surface mutations
 
 These are local compile/artifact-boundary evidence only. Performance budgets, raw 10/30-sample reports, repeatability, package cleanup and the reference-device claims remain pending until the frozen exact-head batch.
 
+## ADR 0015 single-pair resume validation
+
+- Timestamp: `2026-08-16T14:22:15+08:00`
+- Implementation commit: `e41f9d2d5071525f92dc23a34cc25d1d89b06e47`
+- Integrated main base: `7f10a0b84d9680e4b9311e680d0508e7fde512cd`
+- Scope: benchmark/test orchestration only; no production Runtime, Host processing, fixture behavior, budget, threshold, warmup count, sample count or security-control change.
+- Device status: no local emulator, KVM job or physical device was started. API 29 is excluded at matrix scheduling time for the M3-05 branch push, and ARM remains blocked until the sole API 36 A/B aggregate passes.
+
+The resume checks all exited `0`:
+
+1. `node --check tools/validation/run-m3-05-android-benchmark.mjs`
+2. `node --check tools/validation/create-m3-05-ab-evidence.mjs`
+3. `node tools/validation/run-m3-05-android-benchmark.mjs --self-test`
+4. `node tools/validation/create-m3-05-ab-evidence.mjs --self-test`
+5. `node tools/governance/verify-m3-07-high-benchmark-contract.mjs --self-test`
+6. `node tools/governance/verify-m3-08-startup-stability-contract.mjs --self-test`
+7. `node tools/governance/validate-project-package.mjs`
+8. `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict`
+9. `git diff --check`
+10. `gradlew --offline --no-daemon --no-configuration-cache --console=plain -PbenchmarkCampaign=B -PbenchmarkOutput=reports/performance/campaign-b -PbenchmarkReuseTargets=true -PbenchmarkDeferBudgetFailure=true :benchmarks:android:tasks`
+
+The A/B generator self-test built campaign A/B reports with the fixed opposite fixture and mode orders, copied six canonical APK identities, recomputed all 90 rows from 30 raw samples, and passed the formal M3-08 validator. Its negative check retained a campaign budget failure in the aggregate. The workflow schedules exactly one API 36 job for the branch push, executes A then B in the same emulator process, proves the six prepared target APK bytes unchanged between campaigns, and fails the formal gate if either campaign budget, any repeatability row, cleanup, identity or artifact binding fails. Pull-request merge-ref KVM is skipped for this branch, so the one push cannot create a second pair.
+
 ## Bounded corrections before the passing snapshot
 
 - The first wrapper invocation inherited the machine's JDK 8; the passing commands explicitly used the repository-pinned JDK 17 and repository-local ignored Gradle user home.

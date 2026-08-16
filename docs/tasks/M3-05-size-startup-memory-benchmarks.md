@@ -82,7 +82,7 @@ security_sensitive: false
 - 环境文件 `benchmarks/environment.json` 与汇总 `build/reports/benchmark-summary.md`。
 - 失败时进程退出码固定为非零且列出超预算 metric。
 - 每个本地/CI `benchmark-results.json` 必须通过 `node tools/governance/verify-m3-07-high-benchmark-contract.mjs --report <file>`；缺字段、额外类型、非有限数值、错误样本数、LOW/DEGRADE 不一致或 mode/metric 专属字段漂移均 fail closed。
-- API 36 双 campaign 汇总必须通过 M3-08 正式入口，并同时传入 `--report`、`--campaign-a`、`--campaign-b`、`--expected-head`、`--expected-run-id`、`--expected-job-id`、`--expected-run-attempt`、`--expected-environment`、`--expected-boot-hash` 与 `--artifact-manifest`。验证器从两份原始报告复算 percentile/delta/budget 和 90 行比较，并将实际文件哈希与执行 job 身份逐项绑定；不得信任自报摘要或布尔值。
+- API 36 双 campaign 汇总必须通过 M3-08 正式入口，并同时传入 `--report`、`--campaign-a`、`--campaign-b`、`--expected-head`、`--expected-run-id`、`--expected-job-id`、`--expected-run-attempt`、`--expected-environment`、`--expected-boot-hash`、`--artifact-manifest` 与 `--artifact-root`。规范 JSON manifest 必须绑定执行 job/boot、A/B 身份与顺序、两份不同 report 的实际 SHA-256，以及三 fixture 的六份 baseline/protected APK 规范文件名和 SHA-256；验证器还必须直接哈希 `--artifact-root` 下六份 APK，再从两份原始报告复算 percentile/delta/budget 和 90 行比较。不得信任自报摘要或布尔值，不得复用同一或历史 job 报告。
 
 ## Security Constraints
 

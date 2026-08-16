@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260816-123019
-updated_at: 2026-08-16T12:30:19+08:00
+handoff_id: HO-20260816-123900
+updated_at: 2026-08-16T12:39:00+08:00
 updated_by: /root
 state: active
 source_branch: docs/m3-08-startup-performance-stability
@@ -21,7 +21,7 @@ Define and review the bounded M3-08 startup-performance and measurement-stabilit
 
 ## Current State
 
-- M3-08 started from clean `main@930b759c99f330218dc4404368e9844e80456c82` on `docs/m3-08-startup-performance-stability`; Issue #64 is the unique tracker and no remote branch or PR existed at assignment. First independent review rejected freeze `409a73a6ee471da3d2f9ba56f4ac2c50f6e6b522` with `P0=0/P1=2/P2=2`. Corrected implementation freeze `3db35f69a00e3a8804461b5aaba60717dc14da74` now binds both source reports and explicit head/run/job/attempt/environment/boot inputs, hashes actual manifest/report bytes, invokes M3-07 validation, recomputes raw-sample percentile/delta/budget and all 90 aggregate rows, and recursively scans paths, keys and manifest content. Local syntax, 1 diff + 37 package negatives + 2 arithmetic positives, project governance, strict HandOff and diff checks pass. No product or benchmark implementation changed; an incremental independent review is pending.
+- M3-08 started from clean `main@930b759c99f330218dc4404368e9844e80456c82` on `docs/m3-08-startup-performance-stability`; Issue #64 is the unique tracker and no remote branch or PR existed at assignment. Review 1 rejected `409a73a` with `P1=2/P2=2`; review 2 closed three findings but rejected `3db35f6` with one remaining P1 because the artifact manifest was arbitrary bytes and could not prove campaign source identity. The current bounded remediation parses a canonical JSON manifest binding exact head/run/job/attempt/environment/boot, A/B identities and order, two distinct report hashes, and six unique baseline/protected APK hashes; it adds historical-job, reused-report and missing/duplicate APK mutations. No product or benchmark implementation changes are authorized.
 - M3-07 is complete on `main`. Final implementation freeze `90f754ea185a8633acd585d181ee108db016209d` passed independent review with `P0=0/P1=0/P2=0`; exact published head `4e77aa38b508a99c60a576e41804ba2d08b6b9fd` passed Build `31891662932` and Governance `31891662909` on Ubuntu/Windows. PR #62 merged with expected-head protection as `859cfa217b2fc0726cc001519967cdde606d2146`, Issue #61 closed, and post-merge `main@930b759c99f330218dc4404368e9844e80456c82` passed Build `31892091205` and Governance `31892091344`. No device, emulator or KVM ran for M3-07.
 - M2-09 is merged and complete. Production implementation `9ba6ec28c7d1450c3ca51175f78e3aa2d292331f`, test remediation `dd78179f41c97aab7e3f38c0f571c4e6198f8939` and exact PR head `186dfd79ee4f32c749c4ccfdebf5bc82a3476637` passed independent `P0=0/P1=0/P2=0` review, Build `31862011459`, Governance `31862011393`, and API 29/36 KVM `31862011460`. PR #60 merged as `77b3aee7d88eaf4446ae780f20fe6988796609af`; final main coordination `e3a676ed2f4864d2b33077e1d00c300cf2a59817` passed Build `31863095498` and Governance `31863095500`.
 - M3-06 is complete. PR #57 merged with expected-head `8da49b52fc7c2ea65bf7f0a19b5804d9137130e6` as `a65433ae0bda651fc1088d187913b2dbfa7b02d1`; Issue #56 closed. Merger-ready and post-merge Ubuntu/Windows Build/Governance passed, while device/KVM/fuzz remained out of scope.
@@ -199,7 +199,7 @@ Define and review the bounded M3-08 startup-performance and measurement-stabilit
 | M3-06 | `/root` | `main` | done | M0-03, M2-04, M3-01, M3-02 | PR #57 merged as `a65433a`; claim-boundary contract is active |
 | M3-04 | `/root` | `main` | done | M0-03, M2-04, M2-09, M3-01, M3-02, M3-06 | PR #58 merged; mandatory real-process cells and final main gates passed |
 | M3-07 | `/root` | `main` | done | M2-05, M2-06, M3-01 | PR #62 merged; post-merge Build/Governance and README/evidence synchronization passed |
-| M3-08 | `/root` | `docs/m3-08-startup-performance-stability` | in_progress | M3-01, M3-07 | Corrected freeze `3db35f6` passed local gates; obtain independent all-zero incremental review before publication |
+| M3-08 | `/root` | `docs/m3-08-startup-performance-stability` | in_progress | M3-01, M3-07 | Close review-2's remaining campaign-source identity P1, freeze again and obtain final all-zero incremental review |
 | M3-05 | `/root` | `chore/m3-05-performance-benchmarks` | blocked | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08 | Keep PR #63 draft; resume only after M3-08 merges, then run one API 36 A/B replacement job |
 | M3-03 | `/root` | `main` | done | M0-03, M1-05, M1-06, M2-06, M3-01 | PR #55 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | done | M2-02 | PR #54 merged; exact regression, ASan/UBSan, dual-platform Build/Governance and independent review passed |
@@ -447,6 +447,18 @@ Define and review the bounded M3-08 startup-performance and measurement-stabilit
 - artifact: docs/evidence/M3-08/local-validation.md
 - sha256: bcb39018e2930ee5a494f43fe952841e06ab196fa3c7eea1eb8b7090fef677cb
 - result: PASS; both retained source reports and manifest bytes are hashed and validated, raw samples and all 90 comparisons are recomputed, execution identity is explicit, recursive sensitive scanning is active, 1 forbidden diff + 37 package negatives + 2 arithmetic positives pass, and no Gradle/KVM/emulator/device/benchmark ran
+
+### M3-08 independent review 2
+
+- task_id: M3-08
+- git_commit: 3db35f69a00e3a8804461b5aaba60717dc14da74
+- command: incremental independent read-only review of all review-1 findings and corrected evidence head 83929e4008b56e78510df85cd329462969110e01
+- exit_code: 1
+- environment: read-only repository inspection plus short Node/governance checks; no network, Gradle, KVM, emulator, device or benchmark
+- timestamp: 2026-08-16T12:39:00+08:00
+- artifact: docs/evidence/M3-08/security-review-2.md
+- sha256: not_applicable
+- result: FAIL; P0=0/P1=1/P2=0; source-byte recomputation, delta arithmetic and sensitive scanning closed, but canonical campaign/job/APK manifest binding remained required
 
 ### M3-07 test-only HIGH benchmark contract
 
@@ -1642,7 +1654,7 @@ M3-05 remains blocked by its retained API 36 budget and repeatability failure un
 
 ## Ordered Next Actions
 
-1. Obtain an incremental independent read-only review of corrected freeze `3db35f69a00e3a8804461b5aaba60717dc14da74`; all review-1 findings must close with P0/P1/P2 all zero.
+1. Freeze the canonical manifest remediation, record local 45-negative validation, and obtain a final limited incremental independent review with P0/P1/P2 all zero.
 2. After review, push `docs/m3-08-startup-performance-stability`, create Issue #64's sole draft PR, and run only Ubuntu/Windows Build/Governance.
 3. After expected-head merge, resume PR #63 for one API 36 A/B replacement job; do not run ARM until it passes.
 

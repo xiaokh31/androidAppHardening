@@ -40,23 +40,30 @@ const CAMPAIGN_FIELDS = [
 const COMPARISON_FIELDS = [
   "fixtureId", "metric", "statistic", "campaignA", "campaignB", "variation", "limit", "pass",
 ];
+const MANIFEST_FIELDS = [
+  "schemaVersion", "headSha", "environmentId", "runId", "jobId", "runAttempt",
+  "bootIdHashPrefix", "campaigns", "artifacts",
+];
+const MANIFEST_CAMPAIGN_FIELDS = ["id", "fixtureOrder", "modeOrder", "reportSha256"];
+const MANIFEST_ARTIFACT_FIELDS = ["artifactId", "fileName", "sha256"];
+const ARTIFACT_IDS = FIXTURES.flatMap(fixture => [`${fixture}-baseline`, `${fixture}-protected`]);
 const PACKAGE_ARGUMENTS = [
   "report", "campaignA", "campaignB", "expectedHead", "expectedRunId", "expectedJobId",
-  "expectedRunAttempt", "expectedEnvironment", "expectedBootHash", "artifactManifest",
+  "expectedRunAttempt", "expectedEnvironment", "expectedBootHash", "artifactManifest", "artifactRoot",
 ];
 
 function parseArguments(argv) {
   const options = {
     selfTest: false, baseRef: null, report: null, campaignA: null, campaignB: null,
     expectedHead: null, expectedRunId: null, expectedJobId: null, expectedRunAttempt: null,
-    expectedEnvironment: null, expectedBootHash: null, artifactManifest: null,
+    expectedEnvironment: null, expectedBootHash: null, artifactManifest: null, artifactRoot: null,
   };
   const mappings = new Map([
     ["--report", "report"], ["--campaign-a", "campaignA"], ["--campaign-b", "campaignB"],
     ["--expected-head", "expectedHead"], ["--expected-run-id", "expectedRunId"],
     ["--expected-job-id", "expectedJobId"], ["--expected-run-attempt", "expectedRunAttempt"],
     ["--expected-environment", "expectedEnvironment"], ["--expected-boot-hash", "expectedBootHash"],
-    ["--artifact-manifest", "artifactManifest"], ["--base-ref", "baseRef"],
+    ["--artifact-manifest", "artifactManifest"], ["--artifact-root", "artifactRoot"], ["--base-ref", "baseRef"],
   ]);
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -149,6 +156,59 @@ function readSecureJson(file, label) {
 
 function validateToken(value, label) {
   return typeof value === "string" && /^[a-z0-9_.:-]{1,128}$/i.test(value) ? [] : [`${label} invalid`];
+}
+
+function validateArtifactManifest(manifest, expected, reportHashes, actualArtifactHashes) {
+  const errors = exactFields(manifest, MANIFEST_FIELDS, "artifact manifest");
+  if (errors.length > 0) return errors;
+  if (manifest.schemaVersion !== 1) errors.push("artifact manifest schemaVersion must be 1");
+  if (manifest.headSha !== expected.head) errors.push("artifact manifest head mismatch");
+  if (manifest.environmentId !== expected.environment) errors.push("artifact manifest environment mismatch");
+  if (manifest.runId !== expected.runId || manifest.jobId !== expected.jobId
+      || manifest.runAttempt !== expected.runAttempt) errors.push("artifact manifest job identity mismatch");
+  if (manifest.bootIdHashPrefix !== expected.bootHash) errors.push("artifact manifest boot mismatch");
+  if (!Array.isArray(manifest.campaigns) || manifest.campaigns.length !== 2) {
+    errors.push("artifact manifest requires exactly two campaigns");
+  } else {
+    const wanted = [
+      { id: "A", fixtureOrder: FIXTURES, modeOrder: "baseline_then_protected", reportSha256: reportHashes[0] },
+      { id: "B", fixtureOrder: REVERSE_FIXTURES, modeOrder: "protected_then_baseline", reportSha256: reportHashes[1] },
+    ];
+    manifest.campaigns.forEach((campaign, index) => {
+      const label = `artifact manifest campaign ${wanted[index].id}`;
+      const fieldErrors = exactFields(campaign, MANIFEST_CAMPAIGN_FIELDS, label);
+      errors.push(...fieldErrors);
+      if (fieldErrors.length > 0) return;
+      if (campaign.id !== wanted[index].id) errors.push(`${label} id mismatch`);
+      if (!sameArray(campaign.fixtureOrder, wanted[index].fixtureOrder)) errors.push(`${label} fixture order mismatch`);
+      if (campaign.modeOrder !== wanted[index].modeOrder) errors.push(`${label} mode order mismatch`);
+      if (campaign.reportSha256 !== wanted[index].reportSha256) errors.push(`${label} report SHA-256 mismatch`);
+    });
+    if (manifest.campaigns[0]?.reportSha256 === manifest.campaigns[1]?.reportSha256) {
+      errors.push("artifact manifest campaigns must bind distinct report bytes");
+    }
+  }
+  if (!Array.isArray(manifest.artifacts) || manifest.artifacts.length !== ARTIFACT_IDS.length) {
+    errors.push(`artifact manifest requires exactly ${ARTIFACT_IDS.length} APK artifacts`);
+  } else {
+    const seenIds = new Set();
+    const seenHashes = new Set();
+    manifest.artifacts.forEach((artifact, index) => {
+      const label = `artifact manifest artifacts[${index}]`;
+      const fieldErrors = exactFields(artifact, MANIFEST_ARTIFACT_FIELDS, label);
+      errors.push(...fieldErrors);
+      if (fieldErrors.length > 0) return;
+      if (!ARTIFACT_IDS.includes(artifact.artifactId) || seenIds.has(artifact.artifactId)) errors.push(`${label} identity invalid or duplicate`);
+      if (artifact.fileName !== `${artifact.artifactId}.apk`) errors.push(`${label} canonical fileName mismatch`);
+      if (typeof artifact.sha256 !== "string" || !/^[0-9a-f]{64}$/i.test(artifact.sha256)
+          || seenHashes.has(artifact.sha256)) errors.push(`${label} SHA-256 invalid or duplicate`);
+      if (actualArtifactHashes.get(artifact.artifactId) !== artifact.sha256) errors.push(`${label} does not match APK bytes`);
+      seenIds.add(artifact.artifactId);
+      seenHashes.add(artifact.sha256);
+    });
+    for (const artifactId of ARTIFACT_IDS) if (!seenIds.has(artifactId)) errors.push(`artifact manifest missing ${artifactId}`);
+  }
+  return errors;
 }
 
 function validateAggregateMetadata(report, expected, actualManifestHash, actualReportHashes) {
@@ -324,18 +384,30 @@ function validatePackage(options) {
   for (const file of [options.report, options.campaignA, options.campaignB, options.artifactManifest]) {
     if (!fs.existsSync(path.resolve(file)) || !fs.statSync(path.resolve(file)).isFile()) errors.push(`required file missing: ${file}`);
   }
+  if (!fs.existsSync(path.resolve(options.artifactRoot)) || !fs.statSync(path.resolve(options.artifactRoot)).isDirectory()) {
+    errors.push(`artifact root missing: ${options.artifactRoot}`);
+  }
   if (path.resolve(options.campaignA) === path.resolve(options.campaignB)) errors.push("campaign A and B must be distinct retained file paths");
   if (errors.length > 0) return errors;
   const aggregate = readSecureJson(options.report, "aggregate");
+  const manifest = readSecureJson(options.artifactManifest, "artifact manifest");
   errors.push(...aggregate.errors);
-  if (!aggregate.data) return errors;
-  errors.push(...sensitiveStringErrors(fs.readFileSync(options.artifactManifest, "utf8"), "artifact manifest"));
+  errors.push(...manifest.errors);
+  if (!aggregate.data || !manifest.data) return errors;
   const manifestHash = hashFile(options.artifactManifest);
   const reportHashes = [hashFile(options.campaignA), hashFile(options.campaignB)];
+  const actualArtifactHashes = new Map();
+  for (const artifactId of ARTIFACT_IDS) {
+    const apk = path.join(path.resolve(options.artifactRoot), `${artifactId}.apk`);
+    if (!fs.existsSync(apk) || !fs.statSync(apk).isFile()) errors.push(`required APK missing: ${artifactId}`);
+    else actualArtifactHashes.set(artifactId, hashFile(apk));
+  }
+  if (errors.length > 0) return errors;
   const expected = {
     head: options.expectedHead, runId: options.expectedRunId, jobId: options.expectedJobId,
     runAttempt: expectedAttempt, environment: options.expectedEnvironment, bootHash: options.expectedBootHash,
   };
+  errors.push(...validateArtifactManifest(manifest.data, expected, reportHashes, actualArtifactHashes));
   errors.push(...validateAggregateMetadata(aggregate.data, expected, manifestHash, reportHashes));
   errors.push(...validateComparisonRows(aggregate.data));
   if (errors.length > 0) return errors;
@@ -361,11 +433,11 @@ function contractErrors() {
   errors.push(...requireText("docs/adr/0015-startup-performance-measurement-stability.md", [
     "exactly two complementary campaigns", "baseline_then_protected", "protected_then_baseline",
     "thirty measured cold starts", "all ninety comparison rows", "A third campaign",
-    "--campaign-a", "--expected-head", "--expected-run-id", "--expected-boot-hash",
+    "--campaign-a", "--expected-head", "--expected-run-id", "--expected-boot-hash", "--artifact-root",
   ]));
   errors.push(...requireText("docs/tasks/M3-08-startup-performance-stability-contract.md", [
     "Issue #64", "warmups=5", "measurements=30", "exactly ninety unique comparison rows",
-    "A production optimization is not authorized by this contract.", "--artifact-manifest",
+    "A production optimization is not authorized by this contract.", "--artifact-manifest", "--artifact-root",
   ]));
   errors.push(...requireText("docs/tasks/M3-05-size-startup-memory-benchmarks.md", [
     "  - M3-08", "ADR 0015", "baseline_then_protected", "protected_then_baseline",
@@ -449,7 +521,9 @@ function makeFixturePackage(root, settings = {}) {
   const reportAPath = path.join(root, "campaign-a.json");
   const reportBPath = path.join(root, "campaign-b.json");
   const aggregatePath = path.join(root, "aggregate.json");
-  const manifestPath = path.join(root, "artifact-manifest.txt");
+  const manifestPath = path.join(root, "artifact-manifest.json");
+  const artifactRoot = path.join(root, "apks");
+  fs.mkdirSync(artifactRoot, { recursive: true });
   const a = settings.a ?? { baseline: 100, protected: 110 };
   const b = settings.b ?? { baseline: 105, protected: 115 };
   const reportA = campaignReport(a.baseline, a.protected);
@@ -458,12 +532,29 @@ function makeFixturePackage(root, settings = {}) {
   settings.mutateCampaignB?.(reportB);
   fs.writeFileSync(reportAPath, `${JSON.stringify(reportA)}\n`, "utf8");
   fs.writeFileSync(reportBPath, `${JSON.stringify(reportB)}\n`, "utf8");
-  fs.writeFileSync(manifestPath, settings.manifestContent ?? "fixture-artifact-manifest\n", "utf8");
   const headSha = "1".repeat(40);
   const meta = {
     headSha, environmentId: "api36-x86_64", runId: "123456", jobId: "device-api36",
-    runAttempt: 1, bootIdHashPrefix: "1234567890ab", artifactManifestSha256: hashFile(manifestPath),
+    runAttempt: 1, bootIdHashPrefix: "1234567890ab",
   };
+  const reportHashes = [hashFile(reportAPath), hashFile(reportBPath)];
+  const manifest = {
+    schemaVersion: 1, headSha, environmentId: meta.environmentId, runId: meta.runId,
+    jobId: meta.jobId, runAttempt: meta.runAttempt, bootIdHashPrefix: meta.bootIdHashPrefix,
+    campaigns: [
+      { id: "A", fixtureOrder: FIXTURES, modeOrder: "baseline_then_protected", reportSha256: reportHashes[0] },
+      { id: "B", fixtureOrder: REVERSE_FIXTURES, modeOrder: "protected_then_baseline", reportSha256: reportHashes[1] },
+    ],
+    artifacts: ARTIFACT_IDS.map(artifactId => {
+      const fileName = `${artifactId}.apk`;
+      const apk = path.join(artifactRoot, fileName);
+      fs.writeFileSync(apk, `synthetic APK bytes for ${artifactId}\n`, "utf8");
+      return { artifactId, fileName, sha256: hashFile(apk) };
+    }),
+  };
+  settings.mutateManifest?.(manifest);
+  fs.writeFileSync(manifestPath, settings.manifestContent ?? `${JSON.stringify(manifest)}\n`, "utf8");
+  meta.artifactManifestSha256 = hashFile(manifestPath);
   const left = summaryValues(a.baseline, a.protected);
   const right = summaryValues(b.baseline, b.protected);
   const comparisons = FIXTURES.flatMap(fixtureId => METRICS.flatMap(metric => STATISTICS.map(statistic => ({
@@ -480,8 +571,8 @@ function makeFixturePackage(root, settings = {}) {
   const aggregate = {
     schemaVersion: 1, ...meta,
     campaigns: [
-      campaignMetadata("A", FIXTURES, "baseline_then_protected", hashFile(reportAPath)),
-      campaignMetadata("B", REVERSE_FIXTURES, "protected_then_baseline", hashFile(reportBPath)),
+      campaignMetadata("A", FIXTURES, "baseline_then_protected", reportHashes[0]),
+      campaignMetadata("B", REVERSE_FIXTURES, "protected_then_baseline", reportHashes[1]),
     ],
     comparisons, allBudgetsPass: true, repeatabilityPass: true, cleanupPassed: true,
   };
@@ -491,7 +582,7 @@ function makeFixturePackage(root, settings = {}) {
     report: aggregatePath, campaignA: reportAPath, campaignB: reportBPath, expectedHead: headSha,
     expectedRunId: meta.runId, expectedJobId: meta.jobId, expectedRunAttempt: String(meta.runAttempt),
     expectedEnvironment: meta.environmentId, expectedBootHash: meta.bootIdHashPrefix,
-    artifactManifest: manifestPath,
+    artifactManifest: manifestPath, artifactRoot,
   };
   settings.mutateExpected?.(options);
   return options;
@@ -547,6 +638,12 @@ function runSelfTest() {
       { expected: options => { options.expectedRunId = "other"; } },
       { expected: options => { options.expectedJobId = "other"; } },
       { manifest: "tampered-manifest\n", aggregate: report => { report.artifactManifestSha256 = "f".repeat(64); } },
+      { manifestObject: manifest => { manifest.runId = "old-run"; } },
+      { manifestObject: manifest => { manifest.campaigns[0].modeOrder = "protected_then_baseline"; } },
+      { manifestObject: manifest => { manifest.artifacts.pop(); } },
+      { manifestObject: manifest => { manifest.artifacts[1] = structuredClone(manifest.artifacts[0]); } },
+      { manifestObject: manifest => { manifest.artifacts[0].fileName = "other.apk"; } },
+      { manifestObject: manifest => { manifest.artifacts[0].sha256 = "a".repeat(64); } },
       { aggregate: report => { report.jobId = ["C:", "Users", "name", "job"].join("/"); } },
       { aggregate: report => { report.jobId = "D:\\secret\\job"; } },
       { aggregate: report => { report.jobId = "\\\\server\\share"; } },
@@ -557,14 +654,29 @@ function runSelfTest() {
       const options = makeFixturePackage(path.join(temp, `negative-${index}`), {
         mutateAggregate: mutation.aggregate, mutateCampaignA: mutation.campaignA,
         mutateCampaignB: mutation.campaignB, mutateExpected: mutation.expected,
-        manifestContent: mutation.manifest,
+        mutateManifest: mutation.manifestObject, manifestContent: mutation.manifest,
       });
       if (validatePackage(options).length === 0) throw new Error(`package mutation ${index} escaped`);
     });
     const samePath = makeFixturePackage(path.join(temp, "same-report-path"));
     samePath.campaignB = samePath.campaignA;
     if (validatePackage(samePath).length === 0) throw new Error("same campaign report path escaped");
-    console.log(`OK: M3-08 mutation self-test (1 diff + ${mutations.length + 1} package negatives + 2 arithmetic positives)`);
+    const reused = makeFixturePackage(path.join(temp, "same-report-bytes"));
+    fs.copyFileSync(reused.campaignA, reused.campaignB);
+    const reusedHash = hashFile(reused.campaignA);
+    const reusedManifest = JSON.parse(fs.readFileSync(reused.artifactManifest, "utf8"));
+    reusedManifest.campaigns[1].reportSha256 = reusedHash;
+    fs.writeFileSync(reused.artifactManifest, `${JSON.stringify(reusedManifest)}\n`, "utf8");
+    const reusedAggregate = JSON.parse(fs.readFileSync(reused.report, "utf8"));
+    reusedAggregate.artifactManifestSha256 = hashFile(reused.artifactManifest);
+    reusedAggregate.campaigns.forEach(campaign => { campaign.artifactManifestSha256 = reusedAggregate.artifactManifestSha256; });
+    reusedAggregate.campaigns[1].reportSha256 = reusedHash;
+    fs.writeFileSync(reused.report, `${JSON.stringify(reusedAggregate)}\n`, "utf8");
+    if (validatePackage(reused).length === 0) throw new Error("different paths with reused campaign bytes escaped");
+    const tamperedApk = makeFixturePackage(path.join(temp, "tampered-apk-bytes"));
+    fs.appendFileSync(path.join(tamperedApk.artifactRoot, `${ARTIFACT_IDS[0]}.apk`), "tamper", "utf8");
+    if (validatePackage(tamperedApk).length === 0) throw new Error("tampered APK bytes escaped manifest binding");
+    console.log(`OK: M3-08 mutation self-test (1 diff + ${mutations.length + 3} package negatives + 2 arithmetic positives)`);
   } finally {
     fs.rmSync(temp, { recursive: true, force: true });
   }

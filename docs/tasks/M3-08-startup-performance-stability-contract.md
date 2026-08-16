@@ -65,10 +65,11 @@ M3-05 PR #63 produced two complete API 36 reports around a validator-only change
 ## Public Interfaces
 
 - No product interface changes.
-- Formal aggregate entry requires `--report`, `--campaign-a`, `--campaign-b`, `--expected-head`, `--expected-run-id`, `--expected-job-id`, `--expected-run-attempt`, `--expected-environment`, `--expected-boot-hash` and `--artifact-manifest`; omitting any input fails closed.
+- Formal aggregate entry requires `--report`, `--campaign-a`, `--campaign-b`, `--expected-head`, `--expected-run-id`, `--expected-job-id`, `--expected-run-attempt`, `--expected-environment`, `--expected-boot-hash`, `--artifact-manifest` and `--artifact-root`; omitting any input fails closed.
 - `benchmark-repeatability.json` includes `schemaVersion`, `headSha`, `environmentId`, `runId`, `jobId`, `runAttempt`, `bootIdHashPrefix`, `artifactManifestSha256`, two campaign objects, ninety comparisons, `allBudgetsPass`, `repeatabilityPass` and `cleanupPassed`.
 - Each campaign includes exact ID/order, `headSha`, `environmentFingerprint`, run/job/attempt identity, `bootIdHashPrefix`, `artifactManifestSha256`, `reportSha256`, `warmups=5`, `measurements=30`, `allBudgetsPass=true` and `cleanupPassed=true`.
-- The validator computes both campaign report hashes and the artifact-manifest hash, invokes the M3-07 validator on both source reports, and independently recomputes raw-sample percentiles, deltas, budgets and all ninety aggregate rows. Declared hashes, summaries and booleans are not trusted.
+- `benchmark-artifact-manifest.json` has exact head/run/job/attempt/environment/boot fields, exact A/B campaign IDs/orders/report hashes and exactly six unique baseline/protected APK IDs, canonical file names and SHA-256 values. The validator hashes the six actual files under `--artifact-root`, and rejects mismatched APK bytes, identical report bytes even under different paths, and any manifest from another job or boot.
+- The validator computes both campaign report hashes, parses and validates the canonical artifact manifest before hashing it, invokes the M3-07 validator on both source reports, and independently recomputes raw-sample percentiles, deltas, budgets and all ninety aggregate rows. Declared aggregate hashes, summaries and booleans are not trusted.
 
 ## Security Constraints
 
@@ -95,7 +96,7 @@ M3-05 PR #63 produced two complete API 36 reports around a validator-only change
 ## Required Tests
 
 - Positive contract and aggregate-report validation.
-- Negative mutations for a third campaign, wrong campaign/mode/fixture order, changed head/run/job/attempt/environment/boot/artifact/report identity, 4/6 warmups, 29/31 samples, missing or duplicate comparison, wrong statistic, relaxed 10% limit, incorrect variation/pass/delta/budget, failed cleanup, source-report tampering and Windows/UNC/macOS/Unix path leakage.
+- Negative mutations for a third campaign, wrong campaign/mode/fixture order, changed head/run/job/attempt/environment/boot/artifact/report identity, a historical-job manifest, different paths containing identical campaign bytes, missing/duplicate/renamed APK bindings, tampered APK bytes, 4/6 warmups, 29/31 samples, missing or duplicate comparison, wrong statistic, relaxed 10% limit, incorrect variation/pass/delta/budget, failed cleanup, source-report tampering and Windows/UNC/macOS/Unix path leakage.
 - Positive arithmetic cases include a valid negative delta and the exact 10% boundary.
 - Base-diff mutation proving a production or benchmark implementation file is rejected.
 

@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260817-021853
-updated_at: 2026-08-17T02:18:53+08:00
+handoff_id: HO-20260817-022254
+updated_at: 2026-08-17T02:22:54+08:00
 updated_by: /root
 state: active
 source_branch: fix/m2-10-runtime-startup-performance
@@ -427,7 +427,7 @@ Define and execute the bounded M2-10 Runtime startup critical-path optimization 
 - environment: Windows 10.0.19045 amd64; Node.js v24.12.0
 - timestamp: 2026-08-16T22:58:27+08:00
 - artifact: `docs/evidence/M2-10/security-review-1.md`
-- sha256: ca8fd854cdd47c35a111b2dc3530e5c675b44be52fc983bd201bc3590abb6ffa
+- sha256: 70d3e1120015ad2bf250ea5d1bc59e05c6a0946739e779d3d4c788193e0e9a26
 - result: FAIL; P0=0, P1=3, P2=0; missing first-and-only run identity, contiguous stage boundaries and deterministic partitions/P50; reviewer changed no files and ran no Gradle/KVM/device/benchmark
 
 ### M2-10 contract launch validation

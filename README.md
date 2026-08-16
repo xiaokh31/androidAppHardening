@@ -37,7 +37,8 @@ M0 基础建设与可行性验证以及 M1 Host 处理链已经完成。M1-01 �
 | [M3-06](docs/tasks/M3-06-api-abi-validation-claim-contract.md) | 已完成 | ADR 0012 与逐格声明合同已固定；PR #57 exact-head Ubuntu/Windows Build/Governance 通过，设备/KVM/fuzz 按治理范围未运行 |
 | [M3-04](docs/tasks/M3-04-api-and-abi-matrix.md) | 已完成 | 完整 32 格清单、四个真实 `VERIFIED` 强制格子、28 个明确 `UNVERIFIED` 格子、JSON/Markdown 等价及清理均已通过；PR #58、Issue #21 已关闭 |
 | [M3-07](docs/tasks/M3-07-test-only-high-benchmark-contract.md) | 已完成 | ADR 0014、10 个产品面负例、20 个报告负例、独立全零复核及 Ubuntu/Windows Build/Governance 均已通过；PR #62、Issue #61 已关闭；未运行设备或 KVM |
-| [M3-05](docs/tasks/M3-05-size-startup-memory-benchmarks.md) | 恢复中 | M3-07 合同已合并；post-merge `main` 门禁通过后恢复已保存的 M3-05 工作区并一次性运行其合同矩阵 |
+| [M3-08](docs/tasks/M3-08-startup-performance-stability-contract.md) | 执行中 | Issue #64 与独立合同分支已启动；固定同 SHA/job/boot 的 A/B 反向顺序测量、原预算、原样本数、原 10% 门禁和无第三次结果选择 |
+| [M3-05](docs/tasks/M3-05-size-startup-memory-benchmarks.md) | 阻塞 | PR #63 的 API 36 证据暴露 331 ms P50 增量及跨报告波动；等待 M3-08 合并后执行唯一 A/B 替代矩阵，未运行 ARM 真机、未合并 PR #63 |
 | M4 | 未启动 | 发布阶段继续按任务依赖顺序执行 |
 
 任务按 [`docs/tasks/INDEX.md`](docs/tasks/INDEX.md) 的依赖顺序执行。每个任务只有在 PR 合并、合并后门禁与证据完成后才在本表标记“已完成”；每个任务的收尾协调提交必须同步本 README，避免公开进度长期滞后。

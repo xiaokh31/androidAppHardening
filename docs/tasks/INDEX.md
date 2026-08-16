@@ -64,7 +64,8 @@ M1-07 的 AHDC v2 合同必须先经独立安全复核并合并；随后 M1 与 
 | M3-06 | [#56](https://github.com/xiaokh31/androidAppHardening/issues/56) | [API/ABI validation-claim contract](M3-06-api-abi-validation-claim-contract.md) | `qa-governance-agent` | M0-03, M2-04, M3-01, M3-02 |
 | M3-04 | [#21](https://github.com/xiaokh31/androidAppHardening/issues/21) | [API and ABI matrix](M3-04-api-and-abi-matrix.md) | `qa-governance-agent` | M0-03, M2-04, M2-09, M3-01, M3-02, M3-06 |
 | M3-07 | [#61](https://github.com/xiaokh31/androidAppHardening/issues/61) | [Test-only HIGH benchmark contract](M3-07-test-only-high-benchmark-contract.md) | `qa-governance-agent` | M2-05, M2-06, M3-01 |
-| M3-05 | [#22](https://github.com/xiaokh31/androidAppHardening/issues/22) | [Size, startup, and memory benchmarks](M3-05-size-startup-memory-benchmarks.md) | `qa-governance-agent` | M1-06, M2-04, M2-06, M3-01, M3-07 |
+| M3-08 | [#64](https://github.com/xiaokh31/androidAppHardening/issues/64) | [Startup performance and measurement-stability contract](M3-08-startup-performance-stability-contract.md) | `qa-governance-agent` | M3-01, M3-07 |
+| M3-05 | [#22](https://github.com/xiaokh31/androidAppHardening/issues/22) | [Size, startup, and memory benchmarks](M3-05-size-startup-memory-benchmarks.md) | `qa-governance-agent` | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08 |
 
 ## M4 Release
 
@@ -87,7 +88,7 @@ M2-02 → M2-08 → M3-02
 M2-01 → M2-09 → M3-04
 M2-06 + M3-01 + M2-08 → M3-02 → M3-06 → M3-04
 M2-06 + M3-01 → M3-03
-M2-05 + M2-06 + M3-01 → M3-07 → M3-05
+M2-05 + M2-06 + M3-01 → M3-07 → M3-08 → M3-05
 M3-02 + M3-03 + M3-04 + M3-05 → M4-01 → M4-02 → M4-03
 ```
 

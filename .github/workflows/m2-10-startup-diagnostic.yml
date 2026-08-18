@@ -44,12 +44,18 @@ jobs:
             -H "Authorization: Bearer $GH_TOKEN" \
             -H 'X-GitHub-Api-Version: 2022-11-28' \
             "https://api.github.com/repos/$REPOSITORY/actions/runs?branch=fix%2Fm2-10-runtime-startup-performance&event=push&per_page=100")"
+          api_total_count="$(jq -r '.total_count' <<<"$runs")"
+          [[ "$api_total_count" =~ ^[0-9]+$ ]]
+          test "$api_total_count" -lt 100
           total_count="$(jq --arg name "$EXPECTED_WORKFLOW_NAME" \
             '[.workflow_runs[] | select(.name == $name)] | length' <<<"$runs")"
           exact_count="$(jq --arg name "$EXPECTED_WORKFLOW_NAME" --arg sha "$GITHUB_SHA" \
             '[.workflow_runs[] | select(.name == $name and .head_sha == $sha and .event == "push")] | length' <<<"$runs")"
+          current_count="$(jq --arg name "$EXPECTED_WORKFLOW_NAME" --arg sha "$GITHUB_SHA" --arg run_id "$GITHUB_RUN_ID" \
+            '[.workflow_runs[] | select(.name == $name and .head_sha == $sha and .event == "push" and (.id | tostring) == $run_id)] | length' <<<"$runs")"
           test "$total_count" = 1
           test "$exact_count" = 1
+          test "$current_count" = 1
           jobs="$(curl --fail --silent --show-error \
             -H 'Accept: application/vnd.github+json' \
             -H "Authorization: Bearer $GH_TOKEN" \

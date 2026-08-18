@@ -54,6 +54,7 @@ jobs:
           node --check tools/governance/test-handoff-validator.mjs
           node --check tools/governance/verify-m3-07-high-benchmark-contract.mjs
           node --check tools/governance/verify-m3-08-startup-stability-contract.mjs
+          node --check tools/governance/verify-m3-09-startup-attribution-contract.mjs
           node --check .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs
 
       - name: Validate project package
@@ -64,6 +65,8 @@ jobs:
           node tools/governance/verify-m3-07-high-benchmark-contract.mjs --self-test
           node tools/governance/verify-m3-08-startup-stability-contract.mjs
           node tools/governance/verify-m3-08-startup-stability-contract.mjs --self-test
+          node tools/governance/verify-m3-09-startup-attribution-contract.mjs
+          node tools/governance/verify-m3-09-startup-attribution-contract.mjs --self-test
 
       - name: Enforce M3-07 zero production diff
         if: github.event_name == 'pull_request' && github.head_ref == 'docs/m3-07-high-benchmark-contract'
@@ -78,6 +81,13 @@ jobs:
         env:
           M308_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: node tools/governance/verify-m3-08-startup-stability-contract.mjs --base-ref "$M308_BASE_SHA"
+
+      - name: Enforce M3-09 zero implementation diff
+        if: github.event_name == 'pull_request' && github.head_ref == 'docs/m3-09-startup-attribution-boundary'
+        shell: bash
+        env:
+          M309_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node tools/governance/verify-m3-09-startup-attribution-contract.mjs --base-ref "$M309_BASE_SHA"
 
       - name: Validate HandOff on pull request
         if: github.event_name == 'pull_request'

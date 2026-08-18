@@ -11,6 +11,7 @@ depends_on:
   - M3-01
   - M3-07
   - M3-08
+  - M3-09
 required_skills:
   - validate-protected-apk
 security_sensitive: false
@@ -32,6 +33,7 @@ security_sensitive: false
 - 锁定的 benchmark 环境与测试工具版本。
 - M3-07 与 ADR 0014 固定的真实冷启动/隔离 HIGH 增量测量边界。
 - M3-08 与 ADR 0015 固定的同 SHA、同 KVM job、同 emulator boot 双 campaign 测量稳定性边界。
+- M3-09 与 ADR 0016 固定的端到端归因边界；M2-10 的首轮且唯一内部诊断保留为有效但不足以定位端到端增量的证据。
 
 ## Expected Outputs
 
@@ -56,6 +58,7 @@ security_sensitive: false
 - 网络下载、外部签名耗时、安装耗时和应用业务网络性能。
 - 用 debug build 或开启 profiler 的数值作为发布门禁。
 - 为通过预算而关闭完整性、四 ABI 或内存保护。
+- 在独立归因实现任务完成前恢复 API 36 A/B、运行 ARM，或把未测平台/生命周期残差归因给 Runtime。
 
 ## Implementation Decisions
 
@@ -73,6 +76,7 @@ security_sensitive: false
 - API 36 release gate 必须在同一 exact-head KVM job 与同一 emulator boot 内运行恰好两个 campaign。`A` 使用正向 fixture 顺序与 `baseline_then_protected`；`B` 使用反向 fixture 顺序与 `protected_then_baseline`。每个 campaign/mode 均保留 5 次预热和 30 次测量，任何无效样本使整个 campaign 失败，不得补样、删异常值或启动第三个 campaign。
 - 两个 campaign 必须分别通过全部固定预算；三 fixture × 五 observed Android metric × `baselineP50`/`baselineP95`/`protectedP50`/`protectedP95`/`deltaP50`/`deltaP95` 共 90 行比较全部使用 `abs(A-B) / max(1, min(abs(A), abs(B))) <= 0.10`。不同 SHA、job、boot 或 artifact manifest 的报告仅可诊断，不得作为验收配对。
 - M3-05 只可修改 benchmark/test orchestration 以实现 ADR 0015。若稳定的双 campaign 仍超预算，必须另建 Runtime 优化任务与 ADR；不得在本任务修改生产 Runtime。
+- ADR 0016 生效后，PR #63 保持阻塞。只有另一个独立实现任务完成 `p0..p15` 与 protected `p0,h0,h1..h7,h8,p1` 归因、获得合格 owner 并完成相应复核后，协调者才能决定是否恢复本任务；M3-09 本身不等于该实现任务。
 
 ## Public Interfaces
 
@@ -137,7 +141,7 @@ security_sensitive: false
 
 ## Dependencies and Blockers
 
-M1-06、M2-04 或 M3-08 尚未形成已合并合同/Release 候选时不得建立发布基线。任一安全控制导致预算失败时任务保持 blocked，并提交可量化优化任务；不得删除安全控制或放宽预算而不经 ADR 与安全评审。
+M1-06、M2-04、M3-08 或 M3-09 尚未形成已合并合同/Release 候选时不得建立发布基线。M3-09 合并后，本任务仍等待另一个独立 ADR 0016 归因实现/owner remediation 任务，不得把治理合同本身当作动态验收。任一安全控制导致预算失败时任务保持 blocked，并提交可量化优化任务；不得删除安全控制或放宽预算而不经 ADR 与安全评审。
 
 ## Agent Handoff Requirements
 

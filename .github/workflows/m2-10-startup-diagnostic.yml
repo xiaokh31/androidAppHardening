@@ -1,7 +1,11 @@
 name: M2-10 First Startup Diagnostic
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - fix/m2-10-runtime-startup-performance
+    paths:
+      - .github/workflows/m2-10-startup-diagnostic.yml
 
 permissions:
   actions: read
@@ -28,19 +32,24 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
-          WORKFLOW_FILE: m2-10-startup-diagnostic.yml
+          EXPECTED_WORKFLOW_NAME: M2-10 First Startup Diagnostic
           EXPECTED_JOB_NAME: API 36 x86_64 first diagnostic
         run: |
           set -euo pipefail
+          test "$GITHUB_EVENT_NAME" = push
+          test "$GITHUB_REF" = refs/heads/fix/m2-10-runtime-startup-performance
           test "$GITHUB_RUN_ATTEMPT" = 1
           runs="$(curl --fail --silent --show-error \
             -H 'Accept: application/vnd.github+json' \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H 'X-GitHub-Api-Version: 2022-11-28' \
-            "https://api.github.com/repos/$REPOSITORY/actions/workflows/$WORKFLOW_FILE/runs?event=workflow_dispatch&per_page=100")"
-          count="$(jq --arg sha "$GITHUB_SHA" \
-            '[.workflow_runs[] | select(.head_sha == $sha)] | length' <<<"$runs")"
-          test "$count" = 1
+            "https://api.github.com/repos/$REPOSITORY/actions/runs?branch=fix%2Fm2-10-runtime-startup-performance&event=push&per_page=100")"
+          total_count="$(jq --arg name "$EXPECTED_WORKFLOW_NAME" \
+            '[.workflow_runs[] | select(.name == $name)] | length' <<<"$runs")"
+          exact_count="$(jq --arg name "$EXPECTED_WORKFLOW_NAME" --arg sha "$GITHUB_SHA" \
+            '[.workflow_runs[] | select(.name == $name and .head_sha == $sha and .event == "push")] | length' <<<"$runs")"
+          test "$total_count" = 1
+          test "$exact_count" = 1
           jobs="$(curl --fail --silent --show-error \
             -H 'Accept: application/vnd.github+json' \
             -H "Authorization: Bearer $GH_TOKEN" \

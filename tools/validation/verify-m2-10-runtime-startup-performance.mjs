@@ -200,7 +200,11 @@ export function validateEvidence(options) {
   for (const file of [reportFile, rawFile, manifestFile, baselineFile, profilingFile]) {
     if (!existsSync(file) || !statSync(file).isFile()) fail(`${path.basename(file)} is missing`);
   }
-  const actualNames = readdirSync(root).filter((name) => statSync(path.join(root, name)).isFile()).sort();
+  const entries = readdirSync(root, { withFileTypes: true });
+  if (entries.some((entry) => !entry.isFile())) {
+    fail("artifact root contains a directory, symbolic link, or non-regular entry");
+  }
+  const actualNames = entries.map((entry) => entry.name).sort();
   if (JSON.stringify(actualNames) !== JSON.stringify(REQUIRED_ARTIFACTS)) {
     fail(`artifact set differs: ${actualNames.join(",")}`);
   }
@@ -546,8 +550,17 @@ function selfTest() {
   } catch {
     rejected++;
   }
+  const nestedDuplicateDirectory = path.join(base, "nested-duplicate");
+  cpSync(canonical, nestedDuplicateDirectory, { recursive: true });
+  mkdirSync(path.join(nestedDuplicateDirectory, "nested"));
+  writeFileSync(path.join(nestedDuplicateDirectory, "nested", "runtime-startup-stages.json"), "{}\n");
+  try {
+    validateEvidence({ ...options, "artifact-root": nestedDuplicateDirectory });
+  } catch {
+    rejected++;
+  }
   rmSync(base, { recursive: true, force: true });
-  if (rejected !== cases.length + 2) fail(`self-test rejected ${rejected} mutations`);
+  if (rejected !== cases.length + 3) fail(`self-test rejected ${rejected} mutations`);
   return { canonical: 1, rejectedMutations: rejected };
 }
 

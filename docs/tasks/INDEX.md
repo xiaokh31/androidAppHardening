@@ -47,6 +47,7 @@ M0 门禁：API 29 公共加载链、原 Application/factory 代理、Provider�
 | M2-02 | [#13](https://github.com/xiaokh31/androidAppHardening/issues/13) | [Native decrypt and in-memory loader](M2-02-native-decrypt-and-inmemory-loader.md) | `runtime-security-agent` | M0-04, M1-04, M2-07 |
 | M2-08 | [#53](https://github.com/xiaokh31/androidAppHardening/issues/53) | [Native parser topology bounds hardening](M2-08-native-parser-topology-bounds.md) | `runtime-security-agent` | M2-02 |
 | M2-09 | [#59](https://github.com/xiaokh31/androidAppHardening/issues/59) | [Shell Factory configuration-relaunch lifecycle](M2-09-shell-factory-relaunch-lifecycle.md) | `runtime-security-agent` | M2-01 |
+| M2-10 | [#66](https://github.com/xiaokh31/androidAppHardening/issues/66) | [Runtime startup critical-path optimization](M2-10-runtime-startup-performance.md) | `runtime-security-agent` | M2-01, M2-02, M2-03, M2-05, M2-06, M3-08 |
 | M2-03 | [#14](https://github.com/xiaokh31/androidAppHardening/issues/14) | [Runtime signer and integrity](M2-03-runtime-signer-and-integrity.md) | `runtime-security-agent` | M1-02, M1-04, M2-02 |
 | M2-04 | [#15](https://github.com/xiaokh31/androidAppHardening/issues/15) | [Four-ABI runtime](M2-04-four-abi-runtime.md) | `runtime-security-agent` | M0-03, M1-01, M2-01, M2-02, M2-03 |
 | M2-05 | [#16](https://github.com/xiaokh31/androidAppHardening/issues/16) | [Environment risk engine](M2-05-environment-risk-engine.md) | `runtime-security-agent` | M2-01, M2-03, M2-04 |
@@ -65,7 +66,7 @@ M1-07 的 AHDC v2 合同必须先经独立安全复核并合并；随后 M1 与 
 | M3-04 | [#21](https://github.com/xiaokh31/androidAppHardening/issues/21) | [API and ABI matrix](M3-04-api-and-abi-matrix.md) | `qa-governance-agent` | M0-03, M2-04, M2-09, M3-01, M3-02, M3-06 |
 | M3-07 | [#61](https://github.com/xiaokh31/androidAppHardening/issues/61) | [Test-only HIGH benchmark contract](M3-07-test-only-high-benchmark-contract.md) | `qa-governance-agent` | M2-05, M2-06, M3-01 |
 | M3-08 | [#64](https://github.com/xiaokh31/androidAppHardening/issues/64) | [Startup performance and measurement-stability contract](M3-08-startup-performance-stability-contract.md) | `qa-governance-agent` | M3-01, M3-07 |
-| M3-05 | [#22](https://github.com/xiaokh31/androidAppHardening/issues/22) | [Size, startup, and memory benchmarks](M3-05-size-startup-memory-benchmarks.md) | `qa-governance-agent` | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08 |
+| M3-05 | [#22](https://github.com/xiaokh31/androidAppHardening/issues/22) | [Size, startup, and memory benchmarks](M3-05-size-startup-memory-benchmarks.md) | `qa-governance-agent` | M1-06, M2-04, M2-06, M2-10, M3-01, M3-07, M3-08 |
 
 ## M4 Release
 
@@ -88,7 +89,7 @@ M2-02 → M2-08 → M3-02
 M2-01 → M2-09 → M3-04
 M2-06 + M3-01 + M2-08 → M3-02 → M3-06 → M3-04
 M2-06 + M3-01 → M3-03
-M2-05 + M2-06 + M3-01 → M3-07 → M3-08 → M3-05
+M2-05 + M2-06 + M3-01 → M3-07 → M3-08 → M2-10 → M3-05
 M3-02 + M3-03 + M3-04 + M3-05 → M4-01 → M4-02 → M4-03
 ```
 

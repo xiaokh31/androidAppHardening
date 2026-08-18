@@ -701,6 +701,20 @@ android {
                 if (id == "kotlin-multidex") multiDexEnabled = true
             }
         }
+        create("m210JavaSingleProfile") {
+            dimension = "poc"
+            applicationIdSuffix = ".m301.java_single"
+            testInstrumentationRunner = "ah.runtime.profile.M210StartupProfileRunner"
+            ndk {
+                abiFilters += listOf("x86_64")
+            }
+            buildConfigField("String", "FIXTURE_ID", "\"java-single-dex\"")
+            buildConfigField("boolean", "M301_KOTLIN", "false")
+            buildConfigField("boolean", "M301_STARTUP_PROVIDER", "false")
+            buildConfigField("boolean", "M301_MULTI_PROCESS", "false")
+            buildConfigField("boolean", "M301_JNI", "false")
+            manifestPlaceholders["fixtureApplication"] = "android.app.Application"
+        }
     }
 
     androidResources {
@@ -812,6 +826,13 @@ android {
                 )
                 java.srcDir("src/m301Common/java")
             }
+        }
+        getByName("m210JavaSingleProfile") {
+            manifest.srcFile("src/m301Common/AndroidManifest.xml")
+            java.srcDir("src/m301Common/java")
+        }
+        getByName("androidTestM210JavaSingleProfile") {
+            java.srcDir("src/androidTestM210Profile/java")
         }
     }
 

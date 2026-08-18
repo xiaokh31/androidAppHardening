@@ -31,6 +31,7 @@ M0 基础建设与可行性验证以及 M1 Host 处理链已经完成。M1-01 �
 | [M2-06](docs/tasks/M2-06-memory-dump-cost-controls.md) | 已完成 | PR #48、Issue #17、P0/P1/P2 全零独立复核、Ubuntu/Windows、API 29/36 KVM、Release/R8、清零/只读/`DONTDUMP`/锁页/抖动、expected-head 合并与 post-merge strict HandOff 均已关闭 |
 | [M2-08](docs/tasks/M2-08-native-parser-topology-bounds.md) | 已完成 | PR #54、Issue #53、精确 399-byte 回归、Ubuntu ASan/UBSan、Ubuntu/Windows Build/Governance、P0/P1/P2 全零独立复核及 expected-head 合并均已关闭；无需设备或 KVM |
 | [M2-09](docs/tasks/M2-09-shell-factory-relaunch-lifecycle.md) | 已完成 | PR #60、Issue #59、P0/P1/P2 全零独立复核、Ubuntu/Windows Build/Governance、API 29/36 KVM、真实 `Activity.recreate()`、三种 M201 Release/R8 路径及 expected-head 合并均已关闭 |
+| [M2-10](docs/tasks/M2-10-runtime-startup-performance.md) | 阻塞 | 草稿 PR #67、Issue #66；唯一 API 36 诊断 run `32099991400` 的身份、20 个样本、哈希与清理有效，但没有阶段在前后两个固定分区均达到 30 ms；按 ADR 0016 禁止生产优化、替代 run、ARM 与 M3-05 A/B |
 | [M3-01](docs/tasks/M3-01-android-fixtures.md) | 已完成 | 九个公开 fixture、Host full-flow、Ubuntu/Windows、API 29/36 x86_64 KVM、API 29 arm64 真机与清理均已通过；PR #49、Issue #18 已关闭 |
 | [M3-02](docs/tasks/M3-02-tamper-and-fuzz-tests.md) | 已完成 | 69 项篡改 catalog、Jazzer APK/AXML、Native libFuzzer + ASan/UBSan、Ubuntu/Windows、API 29/36 KVM 与独立全零复核均已通过；PR #52、Issue #19 已关闭 |
 | [M3-03](docs/tasks/M3-03-windows-ubuntu-equivalence.md) | 已完成 | 九个 fixture 在 Windows/Ubuntu 各运行两轮；36 个输出的稳定语义等价、随机字段不复用、独立认证解密、稳定负例、输入只读与无绝对路径泄漏均通过；PR #55、Issue #20 已关闭 |
@@ -38,7 +39,7 @@ M0 基础建设与可行性验证以及 M1 Host 处理链已经完成。M1-01 �
 | [M3-04](docs/tasks/M3-04-api-and-abi-matrix.md) | 已完成 | 完整 32 格清单、四个真实 `VERIFIED` 强制格子、28 个明确 `UNVERIFIED` 格子、JSON/Markdown 等价及清理均已通过；PR #58、Issue #21 已关闭 |
 | [M3-07](docs/tasks/M3-07-test-only-high-benchmark-contract.md) | 已完成 | ADR 0014、10 个产品面负例、20 个报告负例、独立全零复核及 Ubuntu/Windows Build/Governance 均已通过；PR #62、Issue #61 已关闭；未运行设备或 KVM |
 | [M3-08](docs/tasks/M3-08-startup-performance-stability-contract.md) | 已完成 | PR #65、Issue #64、独立全零复核、45 个负例、expected-head 合并与 post-merge Ubuntu/Windows Build/Governance 均已关闭；未运行 KVM、设备或 benchmark |
-| [M3-05](docs/tasks/M3-05-size-startup-memory-benchmarks.md) | 待恢复 | PR #63 仅允许按 ADR 0015 运行一次同 SHA/job/boot 的 API 36 A/B 替代矩阵；通过前不运行 ARM 真机 |
+| [M3-05](docs/tasks/M3-05-size-startup-memory-benchmarks.md) | 阻塞 | PR #63 的最终 ADR 0015 A/B 在两个顺序均超过启动预算且 25/90 重复性行失败；M2-10 唯一诊断又未找到合同允许的热点，等待新的独立 ADR/任务决策，ARM 与 M4 保持禁止 |
 | M4 | 未启动 | 发布阶段继续按任务依赖顺序执行 |
 
 任务按 [`docs/tasks/INDEX.md`](docs/tasks/INDEX.md) 的依赖顺序执行。每个任务只有在 PR 合并、合并后门禁与证据完成后才在本表标记“已完成”；每个任务的收尾协调提交必须同步本 README，避免公开进度长期滞后。

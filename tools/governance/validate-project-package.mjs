@@ -46,6 +46,7 @@ const expectedTasks = [
   "M2-07-native-crypto-backend.md",
   "M2-08-native-parser-topology-bounds.md",
   "M2-09-shell-factory-relaunch-lifecycle.md",
+  "M2-10-runtime-startup-performance.md",
   "M3-06-api-abi-validation-claim-contract.md",
   "M3-07-test-only-high-benchmark-contract.md",
   "M3-08-startup-performance-stability-contract.md",
@@ -191,6 +192,8 @@ if (!fs.existsSync(indexFile)) {
           ? "53"
           : id === "M2-09"
             ? "59"
+          : id === "M2-10"
+            ? "66"
           : id === "M3-06"
             ? "56"
           : id === "M3-07"
@@ -417,6 +420,7 @@ const expectedAdrs = [
   "docs/adr/0013-shell-factory-relaunch-lifecycle.md",
   "docs/adr/0014-test-only-high-benchmark-boundary.md",
   "docs/adr/0015-startup-performance-measurement-stability.md",
+  "docs/adr/0016-runtime-startup-critical-path-optimization.md",
 ];
 const adrHeadings = [
   "## Status",

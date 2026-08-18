@@ -81,6 +81,7 @@
 | M2-02 | Native 解密与 InMemoryDexClassLoader | M0-04, M1-04, M2-07 |
 | M2-08 | Native parser topology bounds hardening | M2-02 |
 | M2-09 | Shell Factory configuration-relaunch lifecycle | M2-01 |
+| M2-10 | Runtime 启动关键路径优化 | M2-01, M2-02, M2-03, M2-05, M2-06, M3-08 |
 | M2-03 | 运行时 signer 和完整性校验 | M1-02, M1-04, M2-02 |
 | M2-04 | 四 ABI 构建与一致接口 | M0-03, M1-01, M2-01, M2-02, M2-03 |
 | M2-05 | 环境风险引擎 | M2-01, M2-03, M2-04 |
@@ -112,7 +113,7 @@
 | M3-04 | API/ABI/组件启动矩阵 | M0-03, M2-04, M2-09, M3-01, M3-02, M3-06 |
 | M3-07 | 测试专用 HIGH benchmark 合同 | M2-05, M2-06, M3-01 |
 | M3-08 | 启动性能与测量稳定性合同 | M3-01, M3-07 |
-| M3-05 | 大小、冷启动、内存基准与预算 | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08 |
+| M3-05 | 大小、冷启动、内存基准与预算 | M1-06, M2-04, M2-06, M2-10, M3-01, M3-07, M3-08 |
 
 ### 退出门禁
 

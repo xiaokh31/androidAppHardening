@@ -5,6 +5,10 @@
 - Governance run: `32150031013` — Ubuntu and Windows failed in `Validate project package`
 - Root cause: `tools/governance/verify-m3-08-startup-stability-contract.mjs` still required the superseded task-index chain `M3-07 → M3-08 → M3-05`, while M3-09 correctly inserted itself as a mandatory dependency.
 - Bounded fix: require `M3-07 → M3-08 → M3-09 → M3-05` in the retained M3-08 validator.
+- Replacement Governance `32191522604` passed project-package validation but rejected the retained M3-08 validator as outside the M3-09 governance allowlist.
+- Follow-up fix: explicitly list that retained governance validator in the M3-09 task and zero-implementation-diff allowlist; production, fixture, benchmark and diagnostic-workflow paths remain forbidden.
+- The bounded incremental read-only review of this follow-up passed with `P0=0/P1=0/P2=0` after HandOff blocker/actions were reconciled.
+- Build `32191522628` passed Ubuntu/Windows at the superseded intermediate head; final replacement Build/Governance remain required on the follow-up head.
 
 Local verification on Windows 10 with Node `24.12.0`:
 

@@ -552,6 +552,7 @@ function validateDiff(base) {
 function isAllowedGovernanceFile(file) {
   return file === "HandOff.md" || file === "README.md" || file === ".github/workflows/governance.yml"
     || file === "tools/governance/validate-project-package.mjs"
+    || file === "tools/governance/verify-m3-08-startup-stability-contract.mjs"
     || file === "tools/governance/verify-m3-09-startup-attribution-contract.mjs"
     || file.startsWith("docs/");
 }

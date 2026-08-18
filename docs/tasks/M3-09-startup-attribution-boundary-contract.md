@@ -119,6 +119,7 @@ M3-05 retained a stable protected-startup failure of 331 ms to `Application.onCr
 - `docs/ROADMAP.md`
 - `docs/PROJECT_PLAN.md`
 - `tools/governance/verify-m3-09-startup-attribution-contract.mjs`
+- `tools/governance/verify-m3-08-startup-stability-contract.mjs`
 - `tools/governance/validate-project-package.mjs`
 - `.github/workflows/governance.yml`
 - `HandOff.md`

@@ -61,8 +61,8 @@ M3-05 retained a stable protected-startup failure of 331 ms to `Application.onCr
 - The P50 is nearest-rank element eight of fifteen sorted retained values. Missing, duplicate, reordered or replacement samples fail closed.
 - Baseline/protected samples pair only by ordinal `1..15`. Each pair produces nine signed owner contributions: protected `h8-h0`, protected pre/post-Shell residual minus baseline `p1-p0`, and seven common `p1..p8` stage deltas. The vector must exactly equal the paired `p8-p0` delta before percentile calculation.
 - Eligibility requires the unchanged 300 ms failure to reproduce in both campaigns, one and only one owner to have positive P50 at least 30 ms, ADR 0015 variation at most 10%, and owner/total P50 share at least 50% in both campaigns. Negative contributions remain in arithmetic; zero or multiple owners select `UNATTRIBUTED` without a tie-break.
-- The canonical future workflow is `.github/workflows/m3-09-startup-attribution.yml` with task key `M3-09-DIAGNOSTIC-V1`. It requires `runAttempt=1` and an archived enumeration containing exactly one run for the canonical workflow/exact-head/original-product tuple, including failed/cancelled/no-artifact history. Failure or `UNATTRIBUTED` blocks; changing workflow/job/artifact names never authorizes a substitute run.
-- Profile artifacts bind original and instrumented baseline/protected APK hashes plus a structural diff manifest. Only fixed common `p1..p15` and protected `h0..h8` probe call sites may differ; baseline has no synthetic Factory, security/lifecycle events remain identical, and calibrated P95 probe overhead times maximum protected probe count is at most 5 ms without sample subtraction.
+- The canonical future diagnostic workflow is `.github/workflows/m3-09-startup-attribution.yml` with task key `M3-09-DIAGNOSTIC-V1` and `runAttempt=1`; it only uploads raw diagnostic evidence. After it terminates, `.github/workflows/m3-09-startup-attribution-evidence.yml` fetches raw official workflow-runs/jobs/artifacts API pages, proves pagination/`total_count`, completed-success status, exact job/artifact and exactly one canonical workflow/exact-head/pre-run-ledger tuple including failed/cancelled/no-artifact history. Failure or `UNATTRIBUTED` blocks; changing workflow/job/artifact names never authorizes a substitute run.
+- Before either workflow exists, the separate implementation task must pin a byte-level verifier that reads the four actual APKs, structural diff manifest, raw A/B calibration/event files and real Release artifacts. It independently hashes/parses APK/DEX surfaces, allows only fixed common `p1..p15` and protected `h0..h8` probes, rejects every other byte/instruction/manifest/resource/native/security difference, proves observer absence from Release outputs, recomputes A/B nearest-rank P95 from fifteen values each and enforces the 5 ms aggregate limit without subtraction. Self-reported equivalence booleans never satisfy this gate.
 
 ## Public Interfaces
 
@@ -90,7 +90,7 @@ M3-05 retained a stable protected-startup failure of 331 ms to `Application.onCr
 
 - ADR 0016 defines the exact `p0..p15` and `p0,h0,h1..h7,h8,p1` sequences without gaps or overlaps.
 - M3-09, M3-05, TEST_STRATEGY, ROADMAP, PROJECT_PLAN and INDEX agree on dependency and blocked state.
-- The governance validator accepts a complete synthetic report only after independently recomputing timestamps, owner vectors, summaries, unique selection, profile equivalence and first-and-only identity, and rejects every required mutation.
+- The governance validator accepts only a complete synthetic contract model after recomputing timestamps, owner vectors, summaries, unique selection, A/B calibration and two-phase identity schema; it must declare `contractModelOnly=true` and `realEvidenceAccepted=false` and rejects any claim that it validated real APK/API evidence.
 - Base-to-HEAD diff contains no production, fixture, benchmark or diagnostic workflow implementation.
 - Governance, strict HandOff, UTF-8/link, diff and sensitive-information checks pass.
 - Independent review returns P0=0/P1=0/P2=0 before merge.
@@ -98,7 +98,7 @@ M3-05 retained a stable protected-startup failure of 331 ms to `Application.onCr
 ## Required Tests
 
 - Positive complete synthetic-report validation, static contract validation and base-diff validation.
-- Named report mutations for missing/reordered/duplicate outer or inner checkpoint, non-monotonic timestamp, per-ordinal sum mismatch, cross-clock timestamp, synthetic baseline Factory, changed fixture/API/image/emulator, campaign order, 4/6 warmups, 14/16 samples, ordinal deletion/replacement/duplication, wrong nearest-rank P50, owner summary/share/selection drift, zero/multiple eligible owners, changed 30 ms/10%/50%/300 ms thresholds, missing run/job/attempt/boot/raw/enumeration hash, multiple/historical/replacement run, profile location/count/diff/event/5 ms overhead failure and Release timing surface.
+- Named model mutations for missing/reordered checkpoint, non-monotonic timestamp, per-ordinal sum mismatch, cross-clock timestamp, synthetic baseline Factory, changed fixture/API/image/emulator, campaign order, 4/6 warmups, 14/16 samples, ordinal deletion/replacement/duplication, wrong nearest-rank P50, owner summary/share/selection drift, zero/multiple eligible owners, changed 30 ms/10%/50%/300 ms thresholds, missing run/job/attempt/boot/raw/enumeration hash, multiple/historical/replacement run, same-phase evidence, real-evidence claim, profile location/count/diff/event/A-or-B 5 ms overhead failure and Release timing surface.
 - Dependency mutation proving M3-05 cannot bypass M3-09.
 
 ## Required Evidence

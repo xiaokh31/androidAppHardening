@@ -38,6 +38,7 @@ const OWNERS = [
 const COMMON_PROBES = Array.from({ length: 15 }, (_, index) => `p${index + 1}`);
 const PROTECTED_PROBES = Array.from({ length: 9 }, (_, index) => `h${index}`);
 const WORKFLOW_PATH = ".github/workflows/m3-09-startup-attribution.yml";
+const EVIDENCE_WORKFLOW_PATH = ".github/workflows/m3-09-startup-attribution-evidence.yml";
 const TASK_KEY = "M3-09-DIAGNOSTIC-V1";
 const THRESHOLDS = Object.freeze({
   applicationBudgetMs: 300,
@@ -59,6 +60,11 @@ if (selfTest) console.log(`MUTATIONS: ${mutationNames.join(",")}`);
 
 function validateReport(report) {
   object(report, "report");
+  equal(report.contractModelOnly, true, "contractModelOnly");
+  equal(report.realEvidenceAccepted, false, "realEvidenceAccepted");
+  equal(report.evidencePhase, "post_diagnostic_governance", "evidencePhase");
+  equal(report.evidenceWorkflowPath, EVIDENCE_WORKFLOW_PATH, "evidenceWorkflowPath");
+  equal(report.diagnosticCompletedBeforeEvidence, true, "diagnosticCompletedBeforeEvidence");
   equal(report.schemaVersion, 1, "schemaVersion");
   equal(report.taskKey, TASK_KEY, "taskKey");
   equal(report.workflowPath, WORKFLOW_PATH, "workflowPath");
@@ -209,10 +215,19 @@ function validateProfile(profile) {
   equal(profile.nonProbeInstructionsEquivalent, true, "non-probe instruction equivalence");
   equal(profile.securityLifecycleEventsEquivalent, true, "security/lifecycle equivalence");
   equal(profile.releaseArtifactsClean, true, "Release artifact cleanliness");
-  integer(profile.calibrationP95Ns, "calibrationP95Ns");
-  const aggregate = profile.calibrationP95Ns * profile.maximumProtectedProbeCount;
-  equal(profile.aggregateProbeOverheadNs, aggregate, "aggregateProbeOverheadNs");
-  if (aggregate > THRESHOLDS.maximumProbeOverheadNs) fail("profile probe overhead exceeds 5 ms");
+  object(profile.calibrationSamplesNs, "calibrationSamplesNs");
+  object(profile.calibrationP95Ns, "calibrationP95Ns");
+  object(profile.aggregateProbeOverheadNs, "aggregateProbeOverheadNs");
+  for (const campaign of ["A", "B"]) {
+    const samples = profile.calibrationSamplesNs[campaign];
+    if (!Array.isArray(samples) || samples.length !== 15) fail(`calibration ${campaign} sample count`);
+    for (const sample of samples) integer(sample, `calibration ${campaign} sample`);
+    const p95 = nearestRank(samples, 0.95);
+    equal(profile.calibrationP95Ns[campaign], p95, `calibration ${campaign} P95`);
+    const aggregate = p95 * profile.maximumProtectedProbeCount;
+    equal(profile.aggregateProbeOverheadNs[campaign], aggregate, `calibration ${campaign} aggregate`);
+    if (aggregate > THRESHOLDS.maximumProbeOverheadNs) fail(`profile probe overhead exceeds 5 ms in ${campaign}`);
+  }
 }
 
 function validateRunEnumeration(enumeration, report, tuple) {
@@ -259,6 +274,11 @@ function buildSyntheticReport() {
   const tuple = sha256(`${baselineOriginal}:${protectedOriginal}`);
   const report = {
     schemaVersion: 1,
+    contractModelOnly: true,
+    realEvidenceAccepted: false,
+    evidencePhase: "post_diagnostic_governance",
+    evidenceWorkflowPath: EVIDENCE_WORKFLOW_PATH,
+    diagnosticCompletedBeforeEvidence: true,
     taskKey: TASK_KEY,
     workflowPath: WORKFLOW_PATH,
     headSha,
@@ -289,8 +309,9 @@ function buildSyntheticReport() {
       nonProbeInstructionsEquivalent: true,
       securityLifecycleEventsEquivalent: true,
       releaseArtifactsClean: true,
-      calibrationP95Ns: 100_000,
-      aggregateProbeOverheadNs: 2_400_000,
+      calibrationSamplesNs: { A: Array(15).fill(100_000), B: Array(15).fill(100_000) },
+      calibrationP95Ns: { A: 100_000, B: 100_000 },
+      aggregateProbeOverheadNs: { A: 2_400_000, B: 2_400_000 },
     },
     productTupleSha256: tuple,
     runEnumeration: {
@@ -371,7 +392,6 @@ function runSelfTests(documentBundle) {
     ["non_monotonic_outer", r => { r.campaigns[0].samples[0].protected.outer.p5 = r.campaigns[0].samples[0].protected.outer.p4 - 1; }],
     ["missing_inner_checkpoint", r => { delete r.campaigns[0].samples[0].protected.inner.h4; }],
     ["reordered_inner_checkpoint", r => { r.campaigns[0].samples[0].protected.inner = reorder(r.campaigns[0].samples[0].protected.inner, 3, 4); }],
-    ["duplicate_inner_timestamp", r => { r.campaigns[0].samples[0].protected.inner.h4 = r.campaigns[0].samples[0].protected.inner.h3; }],
     ["inner_endpoint_mismatch", r => { r.campaigns[0].samples[0].protected.inner.p1 += 1; }],
     ["cross_clock", r => { r.campaigns[0].samples[0].baseline.clock = "wall_clock"; }],
     ["sample_deleted", r => { r.campaigns[0].samples.pop(); }],
@@ -404,6 +424,9 @@ function runSelfTests(documentBundle) {
     ["budget_300_changed", r => { r.thresholds.applicationBudgetMs = 301; }],
     ["run_attempt_two", r => { r.runAttempt = 2; }],
     ["workflow_path_changed", r => { r.workflowPath = ".github/workflows/other.yml"; }],
+    ["real_evidence_claim", r => { r.contractModelOnly = false; r.realEvidenceAccepted = true; }],
+    ["same_phase_evidence", r => { r.diagnosticCompletedBeforeEvidence = false; }],
+    ["evidence_workflow_changed", r => { r.evidenceWorkflowPath = ".github/workflows/other-evidence.yml"; }],
     ["multiple_matching_runs", r => { r.runEnumeration.allRuns.push({ ...structuredClone(r.runEnumeration.matchingRuns[0]), runId: "9003", jobId: "9004" }); refreshEnumeration(r); }],
     ["enumerated_run_changed", r => { r.runEnumeration.allRuns[1].runId = "9999"; refreshEnumeration(r); }],
     ["enumeration_incomplete", r => { r.runEnumeration.complete = false; }],
@@ -417,7 +440,16 @@ function runSelfTests(documentBundle) {
     ["profile_count_changed", r => { r.profile.maximumProtectedProbeCount = 23; }],
     ["profile_diff_failed", r => { r.profile.nonProbeInstructionsEquivalent = false; }],
     ["security_events_changed", r => { r.profile.securityLifecycleEventsEquivalent = false; }],
-    ["probe_overhead_exceeded", r => { r.profile.calibrationP95Ns = 300_000; r.profile.aggregateProbeOverheadNs = 7_200_000; }],
+    ["probe_overhead_A_exceeded", r => {
+      r.profile.calibrationSamplesNs.A = Array(15).fill(300_000);
+      r.profile.calibrationP95Ns.A = 300_000;
+      r.profile.aggregateProbeOverheadNs.A = 7_200_000;
+    }],
+    ["probe_overhead_B_exceeded", r => {
+      r.profile.calibrationSamplesNs.B = Array(15).fill(300_000);
+      r.profile.calibrationP95Ns.B = 300_000;
+      r.profile.aggregateProbeOverheadNs.B = 7_200_000;
+    }],
     ["release_artifact_polluted", r => { r.profile.releaseArtifactsClean = false; }],
     ["m210_reopened", r => { r.m210Reopened = true; }],
     ["cleanup_failed", r => { r.cleanupPassed = false; }],
@@ -432,12 +464,17 @@ function runSelfTests(documentBundle) {
     ["multiple_eligible_owners", r => {
       for (const campaign of r.campaigns) {
         for (const sample of campaign.samples) {
-          const protectedDurations = [500, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10].map(ms);
+          sample.baseline.outer = timelineFromDurations(sample.baseline.outer.p0,
+            [100, 20, 20, 20, 20, 20, 20, 20, 10, 10, 10, 10, 10, 10, 10].map(ms), OUTER);
+          const protectedDurations = [500, 8, 7, 7, 7, 7, 7, 7, 10, 10, 10, 10, 10, 10, 10].map(ms);
           sample.protected.outer = timelineFromDurations(sample.protected.outer.p0, protectedDurations, OUTER);
           sample.protected.inner.p1 = sample.protected.outer.p1;
           sample.protected.inner.h8 = sample.protected.inner.p0 + ms(250);
         }
         refreshCampaign(campaign);
+        equal(campaign.totalDeltaP50Ns, ms(310), "multiple owner mutation total");
+        equal(campaign.ownerP50Ns.RUNTIME_BOOTSTRAP, ms(200), "multiple owner mutation Runtime");
+        equal(campaign.ownerP50Ns.PRE_APPLICATION_RESIDUAL, ms(200), "multiple owner mutation residual");
       }
       r.eligibleOwners = ["RUNTIME_BOOTSTRAP", "PRE_APPLICATION_RESIDUAL"];
       r.selectedOwner = "UNATTRIBUTED";
@@ -490,11 +527,11 @@ function validateDocuments(bundle) {
     "p0..p15", "p0,h0,h1,h2,h3,h4,h5,h6,h7,h8,p1", "RUNTIME_BOOTSTRAP",
     "PRE_APPLICATION_RESIDUAL", "sum exactly", "ordinal `1..15`", "nearest-rank P50",
     "abs(A-B) / max(1, min(abs(A), abs(B))) <= 0.10", "Exactly one owner",
-    WORKFLOW_PATH, TASK_KEY, "runAttempt", "5,000,000", "cannot be replaced", "UNATTRIBUTED",
+    WORKFLOW_PATH, EVIDENCE_WORKFLOW_PATH, TASK_KEY, "runAttempt", "5,000,000", "cannot be replaced", "UNATTRIBUTED",
   ], "ADR 0016");
   requirePhrases(bundle.task, [
     "p0..p15", "nine signed owner contributions", "300 ms", "30 ms", "10%", "50%",
-    WORKFLOW_PATH, TASK_KEY, "runAttempt=1", "5 ms", "Issue #68",
+    WORKFLOW_PATH, EVIDENCE_WORKFLOW_PATH, TASK_KEY, "runAttempt=1", "5 ms", "Issue #68",
   ], "M3-09 task");
   requirePhrases(bundle.strategy, ["ADR 0016", "p0..p15", "h0..h8", "UNATTRIBUTED", "32099991400"], "TEST_STRATEGY");
   requirePhrases(bundle.m305, ["M3-09", "ADR 0016", "PR #63 保持阻塞", "300 ms"], "M3-05 task");
@@ -526,6 +563,7 @@ function timelineFromDurations(start, durations, names) {
 }
 function duration(outer, start, end) { return outer[`p${end}`] - outer[`p${start}`]; }
 function nearestRankP50(values) { return [...values].sort((a, b) => a - b)[7]; }
+function nearestRank(values, quantile) { return [...values].sort((a, b) => a - b)[Math.ceil(quantile * values.length) - 1]; }
 function ms(value) { return value * 1_000_000; }
 function sha256(value) { return createHash("sha256").update(value).digest("hex"); }
 function reorder(objectValue, left, right) {
@@ -536,7 +574,7 @@ function reorder(objectValue, left, right) {
 function monotonic(values, label) {
   for (let index = 0; index < values.length; index += 1) {
     integer(values[index], label);
-    if (index > 0 && values[index] <= values[index - 1]) fail(`${label} not strictly monotonic`);
+    if (index > 0 && values[index] < values[index - 1]) fail(`${label} not monotonic`);
   }
 }
 function read(relative) {

@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260818-223600
-updated_at: 2026-08-18T22:36:00+08:00
+handoff_id: HO-20260818-224003
+updated_at: 2026-08-18T22:40:03+08:00
 updated_by: /root
 state: active
 source_branch: docs/m3-09-startup-attribution-boundary
@@ -21,7 +21,7 @@ Freeze an independent ADR/task that replaces incomplete Runtime-only startup att
 
 ## Current State
 
-- M3-09 is active on `docs/m3-09-startup-attribution-boundary` from `main@7f10a0b84d9680e4b9311e680d0508e7fde512cd`; Issue #68 is the unique task Issue. Candidate `13fd21b621cd73961e17a131cd900861d3431dd7` failed review with `P0=0/P1=5/P2=0`; remediation `45ec1bac47b427a70752bcfba610371c6ad17c5b` closed the arithmetic/HandOff findings but the bounded second review returned `P0=0/P1=3/P2=1`. The current governance-only remediation removes the false claim that M3-09 validates real APK/API evidence: the local validator is now explicitly synthetic-only (`contractModelOnly=true`, `realEvidenceAccepted=false`), while the later implementation task must add a pinned byte-level APK/DEX/profile verifier and a post-diagnostic evidence workflow that parses official runs/jobs/artifacts API pages after the diagnostic terminates. A/B calibration is recomputed from raw model samples, the multi-owner mutation now proves two actual 200 ms owners against a 310 ms total with a negative common contribution, and nondecreasing timestamps retain zero-duration stages. The strengthened model rejects 58 named mutations. M3-05 PR #63 remains blocked. No Runtime, fixture, benchmark or diagnostic workflow implementation changed, and no Gradle, KVM, emulator, ARM, benchmark, M3-05 or M2-10 retry ran. Publication remains blocked on one bounded independent re-review.
+- M3-09 is active on `docs/m3-09-startup-attribution-boundary` from `main@7f10a0b84d9680e4b9311e680d0508e7fde512cd`; Issue #68 is the unique task Issue. Candidate `13fd21b621cd73961e17a131cd900861d3431dd7` failed review with `P0=0/P1=5/P2=0`; remediation `45ec1bac47b427a70752bcfba610371c6ad17c5b` closed the arithmetic/HandOff findings but the bounded second review returned `P0=0/P1=3/P2=1`. Second remediation `2d94c77d60c004b56c0b44ce7f82018d5cd51a62` explicitly limits the local validator to a synthetic contract model, requires a later pinned byte-level APK/DEX/profile verifier plus post-diagnostic official API evidence workflow, recomputes A/B model calibration, proves two real 200 ms owners against a 310 ms total with a negative common contribution, and retains zero-duration stages. The final bounded independent review is `PASS`, `P0=0/P1=0/P2=0`; the clean publication head records that evidence and all 58 named mutations plus local syntax/contract/base-diff/governance/strict/diff gates pass. M3-05 PR #63 remains blocked. No Runtime, fixture, benchmark or diagnostic workflow implementation changed, and no Gradle, KVM, emulator, ARM, benchmark, M3-05 or M2-10 retry ran. The user authorized publication; only push and the unique draft PR remain.
 - M3-08 is complete. Final freeze `7e949e9d58ca0a0202790bff70e6199272c75c7f` passed independent review `P0=0/P1=0/P2=0`; final PR head `a5d76806850ecc68cb92e87c4a06e29d9cfe0b1b` passed all checks and merged as `4c3efc1614158a0372eb877fc02fd1db27dcffb3`; Issue #64 closed. Post-merge coordination head `e12542db48eac96f17c4a1f4306ec20c62dcfa1f` passed Build `31929454365` and Governance `31929454381` on Ubuntu/Windows plus local M3-08/governance/strict/diff gates. No KVM, emulator, physical device or benchmark ran. Its historical authorization to resume M3-05 was superseded after the retained M2-10 diagnostic selected no eligible inner stage; current M3-09 and the later ADR 0016 implementation/remediation remain mandatory.
 - M3-07 is complete on `main`. Final implementation freeze `90f754ea185a8633acd585d181ee108db016209d` passed independent review with `P0=0/P1=0/P2=0`; exact published head `4e77aa38b508a99c60a576e41804ba2d08b6b9fd` passed Build `31891662932` and Governance `31891662909` on Ubuntu/Windows. PR #62 merged with expected-head protection as `859cfa217b2fc0726cc001519967cdde606d2146`, Issue #61 closed, and post-merge `main@930b759c99f330218dc4404368e9844e80456c82` passed Build `31892091205` and Governance `31892091344`. No device, emulator or KVM ran for M3-07.
 - M2-09 is merged and complete. Production implementation `9ba6ec28c7d1450c3ca51175f78e3aa2d292331f`, test remediation `dd78179f41c97aab7e3f38c0f571c4e6198f8939` and exact PR head `186dfd79ee4f32c749c4ccfdebf5bc82a3476637` passed independent `P0=0/P1=0/P2=0` review, Build `31862011459`, Governance `31862011393`, and API 29/36 KVM `31862011460`. PR #60 merged as `77b3aee7d88eaf4446ae780f20fe6988796609af`; final main coordination `e3a676ed2f4864d2b33077e1d00c300cf2a59817` passed Build `31863095498` and Governance `31863095500`.
@@ -201,7 +201,7 @@ Freeze an independent ADR/task that replaces incomplete Runtime-only startup att
 | M3-04 | `/root` | `main` | done | M0-03, M2-04, M2-09, M3-01, M3-02, M3-06 | PR #58 merged; mandatory real-process cells and final main gates passed |
 | M3-07 | `/root` | `main` | done | M2-05, M2-06, M3-01 | PR #62 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M3-08 | `/root` | `main` | done | M3-01, M3-07 | PR #65 merged; independent review and post-merge main Build/Governance complete |
-| M3-09 | `/root` | `docs/m3-09-startup-attribution-boundary` | in_progress | M3-08 | Freeze governance-only ADR/task, then independent read-only review; no dynamic Android execution |
+| M3-09 | `/root` | `docs/m3-09-startup-attribution-boundary` | in_progress | M3-08 | Independent review passed P0/P1/P2 all zero; publish unique draft PR and await exact-head Ubuntu/Windows gates |
 | M3-05 | `/root` | `chore/m3-05-performance-benchmarks` | planned | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08, M3-09 | Keep PR #63 blocked until M3-09 and a separate ADR 0016 implementation/remediation task complete |
 | M3-03 | `/root` | `main` | done | M0-03, M1-05, M1-06, M2-06, M3-01 | PR #55 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | done | M2-02 | PR #54 merged; exact regression, ASan/UBSan, dual-platform Build/Governance and independent review passed |
@@ -1714,13 +1714,13 @@ Freeze an independent ADR/task that replaces incomplete Runtime-only startup att
 
 ## Blockers and Required Approvals
 
-- M3-09 cannot publish as reviewed until the second-remediation frozen contract passes one bounded independent read-only security re-review with P0=0/P1=0/P2=0. The user authorized push and a unique draft PR after that gate; exact-head Ubuntu/Windows Build/Governance remain merge gates.
+- M3-09 has passed the independent read-only security review with P0=0/P1=0/P2=0. The user authorized push and a unique draft PR; exact-head Ubuntu/Windows Build/Governance remain merge gates, and ready/merge is not part of this publication step.
 
 ## Ordered Next Actions
 
-1. Run the 58-mutation model validator, governance, strict HandOff, syntax/base-diff/diff gates and freeze the second remediation.
-2. Ask the existing independent reviewer for one bounded re-review of the second-review findings and the synthetic-only/two-phase boundary; close any remaining finding before publication.
-3. After an all-zero review, record the review evidence, push the branch, create the unique Issue #68 draft PR and run exact-head Ubuntu/Windows Build/Governance only. Do not run KVM, emulator, ARM or benchmark.
+1. Record the all-zero independent review as an evidence-only successor and rerun the short local governance/strict/diff gates.
+2. Push `docs/m3-09-startup-attribution-boundary` and create the unique draft PR linked to Issue #68.
+3. Await exact-head Ubuntu/Windows Build/Governance only. Do not run KVM, emulator, ARM or benchmark; do not mark ready or merge without the later gate decision.
 4. After M3-09 merges, create a separate ADR 0016 diagnostic implementation task; M3-05 PR #63 remains blocked until that task and any selected owner remediation complete.
 
 ## Relevant Files and Artifacts

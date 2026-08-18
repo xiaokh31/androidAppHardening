@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260818-132010
-updated_at: 2026-08-18T13:20:10+08:00
+handoff_id: HO-20260818-222733
+updated_at: 2026-08-18T22:27:33+08:00
 updated_by: /root
 state: active
 source_branch: docs/m3-09-startup-attribution-boundary
@@ -21,8 +21,8 @@ Freeze an independent ADR/task that replaces incomplete Runtime-only startup att
 
 ## Current State
 
-- M3-09 is active on `docs/m3-09-startup-attribution-boundary` from `main@7f10a0b84d9680e4b9311e680d0508e7fde512cd`; Issue #68 is the unique task Issue. Proposed ADR 0016 keeps M2-10 run `32099991400` as final evidence for its old `t0..t6` inner boundary, defines common `p0..p15` and protected `p0,h0,h1..h7,h8,p1` timelines, assigns Runtime ownership only to `h0..h8`, and requires any other time to retain platform/lifecycle/rendering ownership or `UNATTRIBUTED`. The task is governance-only: no Runtime, fixture, benchmark or diagnostic workflow implementation changed, and no KVM, emulator, ARM, M3-05 or M2-10 retry ran. Local project-package, dedicated contract, 27 mutation, syntax, strict HandOff and diff checks passed; the clean candidate is ready for independent review.
-- M3-08 is complete. Final freeze `7e949e9d58ca0a0202790bff70e6199272c75c7f` passed independent review `P0=0/P1=0/P2=0`; final PR head `a5d76806850ecc68cb92e87c4a06e29d9cfe0b1b` passed all checks and merged as `4c3efc1614158a0372eb877fc02fd1db27dcffb3`; Issue #64 closed. Post-merge coordination head `e12542db48eac96f17c4a1f4306ec20c62dcfa1f` passed Build `31929454365` and Governance `31929454381` on Ubuntu/Windows plus local M3-08/governance/strict/diff gates. No KVM, emulator, physical device or benchmark ran. M3-05 PR #63 is now eligible to resume its single ADR 0015 API 36 A/B replacement job.
+- M3-09 is active on `docs/m3-09-startup-attribution-boundary` from `main@7f10a0b84d9680e4b9311e680d0508e7fde512cd`; Issue #68 is the unique task Issue. The first frozen candidate `13fd21b621cd73961e17a131cd900861d3431dd7` failed independent read-only review with `P0=0/P1=5/P2=0`: owner reconciliation/unique selection, executable semantic mutations, profile equivalence/overhead, first-and-only enforcement and stale M3-05 state were incomplete. The remediated candidate defines an exact nine-owner per-ordinal vector, unique owner selection, deterministic profile binding with a 5 ms aggregate overhead ceiling, canonical workflow/task/run identity and complete run enumeration; its validator recomputes a full synthetic report and rejects 55 named semantic/dependency mutations. Local syntax, contract, base-diff, project governance, strict HandOff and diff gates pass. M3-05 PR #63 remains blocked. No Runtime, fixture, benchmark or diagnostic workflow implementation changed, and no Gradle, KVM, emulator, ARM, benchmark, M3-05 or M2-10 retry ran. Publication remains blocked only on the bounded independent re-review.
+- M3-08 is complete. Final freeze `7e949e9d58ca0a0202790bff70e6199272c75c7f` passed independent review `P0=0/P1=0/P2=0`; final PR head `a5d76806850ecc68cb92e87c4a06e29d9cfe0b1b` passed all checks and merged as `4c3efc1614158a0372eb877fc02fd1db27dcffb3`; Issue #64 closed. Post-merge coordination head `e12542db48eac96f17c4a1f4306ec20c62dcfa1f` passed Build `31929454365` and Governance `31929454381` on Ubuntu/Windows plus local M3-08/governance/strict/diff gates. No KVM, emulator, physical device or benchmark ran. Its historical authorization to resume M3-05 was superseded after the retained M2-10 diagnostic selected no eligible inner stage; current M3-09 and the later ADR 0016 implementation/remediation remain mandatory.
 - M3-07 is complete on `main`. Final implementation freeze `90f754ea185a8633acd585d181ee108db016209d` passed independent review with `P0=0/P1=0/P2=0`; exact published head `4e77aa38b508a99c60a576e41804ba2d08b6b9fd` passed Build `31891662932` and Governance `31891662909` on Ubuntu/Windows. PR #62 merged with expected-head protection as `859cfa217b2fc0726cc001519967cdde606d2146`, Issue #61 closed, and post-merge `main@930b759c99f330218dc4404368e9844e80456c82` passed Build `31892091205` and Governance `31892091344`. No device, emulator or KVM ran for M3-07.
 - M2-09 is merged and complete. Production implementation `9ba6ec28c7d1450c3ca51175f78e3aa2d292331f`, test remediation `dd78179f41c97aab7e3f38c0f571c4e6198f8939` and exact PR head `186dfd79ee4f32c749c4ccfdebf5bc82a3476637` passed independent `P0=0/P1=0/P2=0` review, Build `31862011459`, Governance `31862011393`, and API 29/36 KVM `31862011460`. PR #60 merged as `77b3aee7d88eaf4446ae780f20fe6988796609af`; final main coordination `e3a676ed2f4864d2b33077e1d00c300cf2a59817` passed Build `31863095498` and Governance `31863095500`.
 - M3-06 is complete. PR #57 merged with expected-head `8da49b52fc7c2ea65bf7f0a19b5804d9137130e6` as `a65433ae0bda651fc1088d187913b2dbfa7b02d1`; Issue #56 closed. Merger-ready and post-merge Ubuntu/Windows Build/Governance passed, while device/KVM/fuzz remained out of scope.
@@ -33,7 +33,7 @@ Freeze an independent ADR/task that replaces incomplete Runtime-only startup att
 - The final exact implementation-head physical API 29 ARM campaign completed both ARM64 and ARM32 cells after the user accepted the OEM prompt. Both cells are `VERIFIED`; all nine fixture packages were independently confirmed absent afterward. No local emulator was started and no device rerun is required.
 - ADR 0012 and the revised M3-04 contract enumerate the full API 29-36 by four-ABI grid while reserving `VERIFIED` for real Android-reported process evidence, `FAILED` for executed regressions, and `UNVERIFIED` for unavailable combinations that carry no positive compatibility claim. The mandatory current M3-04 baseline is API 29 ARM32/ARM64 plus API 29/36 x86_64.
 - Read-only inventory provides an authorized API 29 `user` physical device capable of `arm64-v8a` and `armeabi-v7a` processes, plus pinned API 29 revision 8 and API 36 revision 2 x86_64 KVM images. API 30-35 and all other unavailable combinations will be emitted as `UNVERIFIED`; they will not trigger downloads or inferred claims.
-- M3-04 and M3-07 are complete on `main`. M3-05 PR #63 remains draft after its API 36 evidence exposed a 331 ms P50 delta against the 300 ms budget and six summaries above the 10% repeatability limit. M3-08 is the only active prerequisite; no M3-05 implementation is included in this branch.
+- M3-04, M3-07 and M3-08 are complete on `main`. M3-05 PR #63 remains draft after its API 36 evidence exposed a 331 ms P50 delta against the 300 ms budget and six summaries above the 10% repeatability limit. M3-09 is the active governance prerequisite, followed by a separate ADR 0016 diagnostic/remediation task; no M3-05 implementation is included in this branch.
 - Retained API 29 KVM runs `31858315765` and `31859364008` document the pre-M2-09 configuration-relaunch defect. They are historical only; final exact implementation-head KVM `31864724589` and the ARM campaign supersede them.
 - M3-03 final implementation `f53989e83b8a030139ec3e564ebfb41bdb81129a` passed Cross-platform equivalence `31847937221`, Build `31847937347` and Governance `31847937260` on the exact head. Windows and Ubuntu each produced 18 authenticated outputs; the final summary compared 36 outputs and proved stable semantics, random non-reuse, independent authentication/decryption, immutable inputs, unsigned outputs, equivalent negative errors and zero absolute-path findings. PR [#55](https://github.com/xiaokh31/androidAppHardening/pull/55) merged with expected-head protection as `af0fe5c5d0e9098d8cca86b3d5de3e09ed8412fb`, and Issue #20 closed. M3-03 is Host-only; out-of-scope KVM and M3-02 fuzz runs were cancelled.
 - M2-08 is complete. Final head `626a14c63c1b77f2552236659eb98d47bb027a12` passed Build `31820302813` on Ubuntu/Windows, including Ubuntu ASan/UBSan, and Governance `31820302849`; independent review was `P0=0/P1=0/P2=0`. PR #54 merged with expected-head protection as `ed0d0fb97c255a98c04628dc1746801985591c3c`, Issue #53 closed, and unrelated KVM run `31820302818` was cancelled by scope. M3-02 PR #52 may resume.
@@ -253,7 +253,7 @@ Freeze an independent ADR/task that replaces incomplete Runtime-only startup att
 
 ## Changes Since Previous Handoff
 
-- Created Issue #68 and independent branch `docs/m3-09-startup-attribution-boundary` from `main@7f10a0b84d9680e4b9311e680d0508e7fde512cd`. Added ADR 0016, M3-09, M3-05/INDEX/ROADMAP/PROJECT_PLAN/TEST_STRATEGY/README alignment, a dedicated 27-mutation governance validator and Governance workflow integration. No product, fixture, benchmark or diagnostic workflow implementation changed; no dynamic Android work ran.
+- Created Issue #68 and independent branch `docs/m3-09-startup-attribution-boundary` from `main@7f10a0b84d9680e4b9311e680d0508e7fde512cd`. Added ADR 0016, M3-09, M3-05/INDEX/ROADMAP/PROJECT_PLAN/TEST_STRATEGY/README alignment and Governance integration. The first frozen candidate `13fd21b621cd73961e17a131cd900861d3431dd7` failed independent review with five P1 findings. The remediation replaces the phrase-only validator with full report/identity/profile/owner arithmetic validation and named mutations, and reconciles stale HandOff statements. No product, fixture, benchmark or diagnostic workflow implementation changed; no dynamic Android work ran.
 - Started independent M3-08 from `main@930b759c99f330218dc4404368e9844e80456c82`, created Issue #64 and added proposed ADR 0015, the task card, M3-05/TEST_STRATEGY/INDEX dependency changes, README state, a formal aggregate validator and Governance integration. No production, benchmark implementation, fixture, Runtime, Host, KVM or device surface is in scope.
 
 - Preserved and pushed the M3-04 blocked snapshot `a290a6f678f90783ed6f7488c0b7956e78e612f7`, then switched to verified `main@a65433ae0bda651fc1088d187913b2dbfa7b02d1`. Created Issue #59 and branch `fix/m2-09-component-relaunch-lifecycle`; added the bounded M2-09 task contract and ADR 0013 before changing Runtime production code.
@@ -522,7 +522,7 @@ Freeze an independent ADR/task that replaces incomplete Runtime-only startup att
 - timestamp: 2026-08-16T13:44:39+08:00
 - artifact: docs/evidence/M3-08/remote-validation.md
 - sha256: ed7f0fe392b8ec30334de1b41337b3ebdd34a0eb4106bfe14f273241c02aaf67
-- result: PASS; post-merge main Build and Governance passed on both required platforms, M3-08 is complete, and M3-05 may resume only with its single ADR 0015 API 36 A/B replacement job
+- result: HISTORICAL_PASS; post-merge main Build and Governance passed on both required platforms and M3-08 completed, but its former M3-05 resume authorization was superseded by the retained M2-10 no-owner result and active M3-09 boundary work
 
 ### M3-07 test-only HIGH benchmark contract
 
@@ -1714,13 +1714,13 @@ Freeze an independent ADR/task that replaces incomplete Runtime-only startup att
 
 ## Blockers and Required Approvals
 
-- M3-09 cannot merge until the frozen contract passes an independent read-only security review with P0=0/P1=0/P2=0 and exact-head Ubuntu/Windows Build/Governance. Pushing or creating its unique PR has not yet been authorized in this task turn.
+- M3-09 cannot publish as reviewed until the remediated frozen contract passes the bounded independent read-only security re-review with P0=0/P1=0/P2=0. The user authorized push and a unique draft PR after that gate; exact-head Ubuntu/Windows Build/Governance remain merge gates.
 
 ## Ordered Next Actions
 
-1. Freeze the M3-09 governance-only commit after local contract/governance/strict/diff checks.
-2. Run one independent read-only M3-09 security review; close every finding before publication.
-3. After explicit publication authorization, push the branch, create the unique Issue #68 draft PR and run exact-head Ubuntu/Windows Build/Governance only. Do not run KVM, emulator, ARM or benchmark.
+1. Freeze the locally passing governance-only remediation commit.
+2. Ask the existing independent reviewer for one bounded re-review of the five closed findings and the remediation diff; close any remaining finding before publication.
+3. After an all-zero review, record the review evidence, push the branch, create the unique Issue #68 draft PR and run exact-head Ubuntu/Windows Build/Governance only. Do not run KVM, emulator, ARM or benchmark.
 4. After M3-09 merges, create a separate ADR 0016 diagnostic implementation task; M3-05 PR #63 remains blocked until that task and any selected owner remediation complete.
 
 ## Relevant Files and Artifacts

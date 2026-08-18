@@ -21,7 +21,7 @@ Define and execute the bounded M2-10 Runtime startup critical-path optimization 
 
 ## Current State
 
-- M2-10 diagnostic implementation freeze `07d03b083144516affe9fb64071631a7b880f45f` received independent review `P0=0/P1=1/P2=1`. Remediation `fa4dea00a8efc5bbd2c9f50738202131022a5f51` closed both original findings, but incremental review returned `P0=0/P1=1/P2=0` because the repository-runs query did not fail closed at the 100-entry pagination boundary or bind the unique match to `GITHUB_RUN_ID`. Final remediation `fea68243404424e8891e9f843db2c4e6dd897b39` requires API `total_count < 100` and exactly one same-name/event/head/current-run match. The validator still passes one canonical report and rejects 27 mutations. No GitHub diagnostic, KVM, local emulator, physical device, ARM or M3-05 A/B has run; the worktree is clean and `fea6824` must receive final incremental review before the single branch push.
+- M2-10 diagnostic implementation and launcher remediation are frozen through `fea68243404424e8891e9f843db2c4e6dd897b39`. Final independent incremental review at evidence head `2f97984c68b1a41bab65aafbb045f9c1cb4bddc5` passed `P0=0/P1=0/P2=0`: the repository-runs page is complete under the `<100` fail-closed bound and the unique same-name/push/exact-head entry must equal `GITHUB_RUN_ID`; the exact artifact set and 27 mutation negatives remain closed. No GitHub diagnostic, KVM, local emulator, physical device, ARM or M3-05 A/B has run. The worktree is clean and the branch may be published once to trigger the first and only API 36 diagnostic.
 - M2-10 is active on `fix/m2-10-runtime-startup-performance` from verified `main@7f10a0b84d9680e4b9311e680d0508e7fde512cd`; unique Issue #66 is open. Contract review 1 at `714947c628bd083ef3cdddd2c427edd90b1a6733` returned `P0=0/P1=3/P2=0`. Remediation `3064c2ee106236b229e2bd2a5624bafdae6100dc` closed first-and-only identity, contiguous `t0..t6` stage boundaries and deterministic partitions/P50; evidence-hash correction `4ab88c30f163d3089d0896842f753ba58df083aa` then passed final independent review with `P0=0/P1=0/P2=0`. M2-10 may now implement the first-and-only diagnostic, but no production optimization is selected until that final diagnostic proves an eligible stage; ARM and M3-05 A/B remain prohibited.
 - M3-05 PR #63 remains draft and blocked. Its first and only ADR 0015 pair on exact evaluated head `1c030334d607bc10054b876dd969ea8048725cb3`, run `31931428130`, completed both campaigns and all 90 rows with valid identity and cleanup, but failed the fixed startup budget in both campaign orders and failed 25/90 repeatability rows. That result is retained and is not eligible for a retry on unchanged product bytes.
 - M3-08 is complete. Final freeze `7e949e9d58ca0a0202790bff70e6199272c75c7f` passed independent review `P0=0/P1=0/P2=0`; final PR head `a5d76806850ecc68cb92e87c4a06e29d9cfe0b1b` passed all checks and merged as `4c3efc1614158a0372eb877fc02fd1db27dcffb3`; Issue #64 closed. Post-merge coordination head `e12542db48eac96f17c4a1f4306ec20c62dcfa1f` passed Build `31929454365` and Governance `31929454381` on Ubuntu/Windows plus local M3-08/governance/strict/diff gates. No KVM, emulator, physical device or benchmark ran. M3-05 PR #63 is now eligible to resume its single ADR 0015 API 36 A/B replacement job.
@@ -198,7 +198,7 @@ Define and execute the bounded M2-10 Runtime startup critical-path optimization 
 
 | Task | Owner | Branch | Status | Dependencies | Next checkpoint |
 |---|---|---|---|---|---|
-| M2-10 | `/root` | `fix/m2-10-runtime-startup-performance` | in_progress | M2-01, M2-02, M2-03, M2-05, M2-06, M3-08 | Final incremental review of `fea6824`; do not push before all-zero review |
+| M2-10 | `/root` | `fix/m2-10-runtime-startup-performance` | in_progress | M2-01, M2-02, M2-03, M2-05, M2-06, M3-08 | Freeze final review evidence, publish the branch once, and inspect the sole API 36 diagnostic |
 | M2-09 | `/root` | `main` | done | M2-01 | PR #60 merged; exact-head review, dual-platform CI and API 29/36 KVM passed; README/evidence synchronized |
 | M3-06 | `/root` | `main` | done | M0-03, M2-04, M3-01, M3-02 | PR #57 merged as `a65433a`; claim-boundary contract is active |
 | M3-04 | `/root` | `main` | done | M0-03, M2-04, M2-09, M3-01, M3-02, M3-06 | PR #58 merged; mandatory real-process cells and final main gates passed |
@@ -455,6 +455,18 @@ Define and execute the bounded M2-10 Runtime startup critical-path optimization 
 - artifact: `.github/workflows/m2-10-startup-diagnostic.yml`
 - sha256: 5080a3dd7493bb518f6d78da817d4bc730b8373d40f9d5f61f53445472598cd3
 - result: PASS; runs query fails closed before pagination and uniquely binds the same-name, push-event, exact-head match to `GITHUB_RUN_ID`; no diagnostic/KVM/emulator/device/ARM/M3-05 A/B ran
+
+### M2-10 diagnostic implementation security review 3
+
+- task_id: M2-10
+- git_commit: 2f97984c68b1a41bab65aafbb045f9c1cb4bddc5
+- command: independent read-only incremental review of final launcher binding `fea6824`
+- exit_code: 0
+- environment: read-only repository review; no network, Gradle, KVM, emulator, physical device or benchmark
+- timestamp: 2026-08-18T12:52:00+08:00
+- artifact: `docs/evidence/M2-10/implementation-security-review-3.md`
+- sha256: not_applicable
+- result: PASS; P0=0, P1=0, P2=0; all diagnostic implementation findings closed and one-time branch publication is authorized by the task sequence
 
 ### M2-10 diagnostic implementation review remediation
 
@@ -1818,8 +1830,8 @@ Define and execute the bounded M2-10 Runtime startup critical-path optimization 
 
 ## Ordered Next Actions
 
-1. Independently re-review final pagination/current-run binding `fea68243404424e8891e9f843db2c4e6dd897b39`. Do not push or trigger the diagnostic yet.
-2. Only after an all-zero review, publish the exact frozen head once; the workflow-file path filter then triggers its first and only API 36 run/job/attempt/boot for the frozen pre-optimization product bytes.
+1. Freeze the final all-zero review evidence and publish the exact branch head once; the workflow-file path filter then triggers its first and only API 36 run/job/attempt/boot for the frozen pre-optimization product bytes.
+2. Validate that sole diagnostic artifact. Do not replace an invalid or ineligible result on unchanged product bytes.
 3. If and only if one stage passes both fixed 30 ms partitions, optimize that single Runtime hotspot; otherwise mark M2-10 blocked without a replacement run.
 4. Freeze production implementation, complete independent all-zero implementation review, then run exact-head Ubuntu/Windows Build/Governance and API 29/36 x86_64 KVM once. Do not run ARM or M3-05 A/B in M2-10.
 
@@ -1831,6 +1843,7 @@ Define and execute the bounded M2-10 Runtime startup critical-path optimization 
 - `docs/evidence/M2-10/security-review-2.md`
 - `docs/evidence/M2-10/implementation-security-review-1.md`
 - `docs/evidence/M2-10/implementation-security-review-2.md`
+- `docs/evidence/M2-10/implementation-security-review-3.md`
 - `runtime/policy/src/m210Profile/java/ah/runtime/profile/M210StartupTimingObserver.java`
 - `fixtures/android/src/androidTestM210Profile/java/ah/runtime/profile/M210StartupProfileRunner.java`
 - `tools/validation/verify-m2-10-runtime-startup-performance.mjs`

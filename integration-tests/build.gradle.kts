@@ -32,11 +32,14 @@ dependencies {
 }
 
 val generatedRuntimeBundle = layout.buildDirectory.dir("generated/m3-01/runtime-bundle")
+val generatedM210RuntimeBundle = layout.buildDirectory.dir("generated/m2-10/runtime-bundle")
 val androidHome = providers.environmentVariable("ANDROID_HOME")
     .orElse(providers.environmentVariable("ANDROID_SDK_ROOT"))
 val bootstrapAar = project(":runtime:bootstrap").layout.buildDirectory.file("outputs/aar/bootstrap-release.aar")
 val policyAar = project(":runtime:policy").layout.buildDirectory.file("outputs/aar/policy-release.aar")
 val nativeAar = project(":runtime:native").layout.buildDirectory.file("outputs/aar/native-release.aar")
+val m210BootstrapAar = project(":runtime:bootstrap").layout.buildDirectory.file("outputs/aar/bootstrap-m210Profile.aar")
+val m210PolicyAar = project(":runtime:policy").layout.buildDirectory.file("outputs/aar/policy-m210Profile.aar")
 val stagedApksigDirectory = layout.buildDirectory.dir("intermediates/m3-01/apksig")
 val stagedApksig = stagedApksigDirectory.map { it.file("apksig-9.3.0.jar") }
 val stageM301Apksig by tasks.registering(Sync::class) {
@@ -69,6 +72,57 @@ val generateM301RuntimeBundle by tasks.registering(JavaExec::class) {
     systemProperty("m301.androidJar", androidJar.get().asFile.absolutePath)
     systemProperty("m301.runtimeTemplates", runtimeTemplates.get().asFile.absolutePath)
     systemProperty("m301.runtimeBundle", generatedRuntimeBundle.get().asFile.absolutePath)
+}
+
+val generateM210RuntimeBundle by tasks.registering(JavaExec::class) {
+    group = "verification"
+    description = "Builds the test-only M2-10 profile runtime bundle without changing Release artifacts."
+    dependsOn(
+        tasks.named("classes"),
+        stageM301Apksig,
+        ":runtime:bootstrap:assembleM210Profile",
+        ":runtime:policy:assembleM210Profile",
+        ":runtime:native:assembleRelease",
+        ":runtime:native:stageM204RuntimeTemplates",
+    )
+    inputs.files(m210BootstrapAar, m210PolicyAar, nativeAar, stagedApksig, d8Jar, androidJar)
+    inputs.dir(runtimeTemplates)
+    outputs.dir(generatedM210RuntimeBundle)
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("ah.integration.fixtures.RuntimeBundleGenerator")
+    systemProperty("m301.bootstrapAar", m210BootstrapAar.get().asFile.absolutePath)
+    systemProperty("m301.policyAar", m210PolicyAar.get().asFile.absolutePath)
+    systemProperty("m301.nativeAar", nativeAar.get().asFile.absolutePath)
+    systemProperty("m301.d8Jar", d8Jar.get().asFile.absolutePath)
+    systemProperty("m301.androidJar", androidJar.get().asFile.absolutePath)
+    systemProperty("m301.runtimeTemplates", runtimeTemplates.get().asFile.absolutePath)
+    systemProperty("m301.runtimeBundle", generatedM210RuntimeBundle.get().asFile.absolutePath)
+    systemProperty("m210.requireObserver", "true")
+}
+
+val m210ProfileWork = layout.buildDirectory.dir("m2-10/profile")
+val m210ProtectedUnsigned = m210ProfileWork.map { it.file("protected-unsigned.apk") }
+val m210ProtectReport = m210ProfileWork.map { it.file("protect-report.json") }
+val m210InputApk = providers.gradleProperty("m210InputApk")
+    .map { rootProject.layout.projectDirectory.file(it) }
+    .orElse(rootProject.layout.projectDirectory.file("build/m2-10/inputs/baseline.apk"))
+val runM210ProfileProtect by tasks.registering(JavaExec::class) {
+    group = "verification"
+    description = "Protects the signed java-single-dex Release/R8 fixture with the test-only M2-10 runtime."
+    dependsOn(
+        tasks.named("classes"),
+        generateM210RuntimeBundle,
+    )
+    classpath = sourceSets["main"].runtimeClasspath + files(generatedM210RuntimeBundle)
+    mainClass.set("ah.host.cli.CliMain")
+    args(
+        "protect",
+        "--input", m210InputApk.get().asFile.absolutePath,
+        "--output", m210ProtectedUnsigned.get().asFile.absolutePath,
+        "--report", m210ProtectReport.get().asFile.absolutePath,
+    )
+    inputs.file(m210InputApk)
+    outputs.files(m210ProtectedUnsigned, m210ProtectReport)
 }
 
 val fixtureContractTest by tasks.registering(JavaExec::class) {

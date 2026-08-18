@@ -1,6 +1,89 @@
+import com.android.build.api.instrumentation.AsmClassVisitorFactory
+import com.android.build.api.instrumentation.ClassContext
+import com.android.build.api.instrumentation.ClassData
+import com.android.build.api.instrumentation.FramesComputationMode
+import com.android.build.api.instrumentation.InstrumentationParameters
+import com.android.build.api.instrumentation.InstrumentationScope
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.gradle.api.tasks.testing.Test
+import org.objectweb.asm.ClassVisitor
+import org.objectweb.asm.MethodVisitor
+import org.objectweb.asm.Opcodes
+
+abstract class M210GuardTimingFactory :
+    AsmClassVisitorFactory<InstrumentationParameters.None> {
+    override fun isInstrumentable(classData: ClassData): Boolean =
+        classData.className == "ah.runtime.guard.RuntimeStartupGuard"
+
+    override fun createClassVisitor(
+        classContext: ClassContext,
+        nextClassVisitor: ClassVisitor,
+    ): ClassVisitor = object : ClassVisitor(Opcodes.ASM9, nextClassVisitor) {
+        override fun visitMethod(
+            access: Int,
+            name: String,
+            descriptor: String,
+            signature: String?,
+            exceptions: Array<out String>?,
+        ): MethodVisitor {
+            val delegate = super.visitMethod(access, name, descriptor, signature, exceptions)
+            if (name != "openVerifiedPayloadInternal") {
+                return delegate
+            }
+            return object : MethodVisitor(Opcodes.ASM9, delegate) {
+                private fun mark(index: Int) {
+                    super.visitLdcInsn(index)
+                    super.visitMethodInsn(
+                        Opcodes.INVOKESTATIC,
+                        "ah/runtime/profile/M210StartupTimingObserver",
+                        "mark",
+                        "(I)V",
+                        false,
+                    )
+                }
+
+                override fun visitMethodInsn(
+                    opcode: Int,
+                    owner: String,
+                    methodName: String,
+                    methodDescriptor: String,
+                    isInterface: Boolean,
+                ) {
+                    if (owner == "ah/runtime/guard/RuntimeSignerVerifier" &&
+                        methodName == "verify"
+                    ) {
+                        mark(0)
+                    }
+                    super.visitMethodInsn(
+                        opcode,
+                        owner,
+                        methodName,
+                        methodDescriptor,
+                        isInterface,
+                    )
+                    when {
+                        owner == "ah/runtime/guard/RuntimeStartupGuard" &&
+                            methodName == "sha256" -> mark(1)
+                        owner == "ah/runtime/guard/IntegrityChecks" &&
+                            methodName == "verifyPreReadSigner" -> mark(2)
+                        owner == "ah/runtime/loader/PayloadRuntime" &&
+                            methodName == "openVerified" -> mark(3)
+                        owner == "ah/runtime/MemoryControls" &&
+                            methodName == "apply" -> mark(4)
+                    }
+                }
+
+                override fun visitInsn(opcode: Int) {
+                    if (opcode == Opcodes.ARETURN) {
+                        mark(5)
+                    }
+                    super.visitInsn(opcode)
+                }
+            }
+        }
+    }
+}
 
 plugins {
     alias(libs.plugins.android.library)
@@ -16,6 +99,13 @@ android {
         testInstrumentationRunner = "ah.runtime.guard.PolicyConnectedRunner"
     }
 
+    buildTypes {
+        create("m210Profile") {
+            initWith(getByName("release"))
+            matchingFallbacks += listOf("release")
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -26,6 +116,18 @@ android {
         checkDependencies = true
         disable += "GradleDependency" // M0-03 intentionally pins compileSdk 36.
         warningsAsErrors = true
+    }
+}
+
+androidComponents {
+    onVariants(selector().withBuildType("m210Profile")) { variant ->
+        variant.instrumentation.transformClassesWith(
+            M210GuardTimingFactory::class.java,
+            InstrumentationScope.PROJECT,
+        ) {}
+        variant.instrumentation.setAsmFramesComputationMode(
+            FramesComputationMode.COMPUTE_FRAMES_FOR_INSTRUMENTED_METHODS,
+        )
     }
 }
 

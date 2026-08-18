@@ -49,6 +49,16 @@ object RuntimeBundleGenerator {
             ).forEach { descriptor ->
                 check(bootstrapText.contains(descriptor)) { "M3-01 runtime bootstrap is missing $descriptor" }
             }
+            val profileObserver = "Lah/runtime/profile/M210StartupTimingObserver;"
+            if (System.getProperty("m210.requireObserver") == "true") {
+                check(bootstrapText.contains(profileObserver)) {
+                    "M2-10 profile runtime bootstrap is missing its test-only observer"
+                }
+            } else {
+                check(!bootstrapText.contains(profileObserver)) {
+                    "Release runtime bootstrap contains the M2-10 test-only observer"
+                }
+            }
             check(!bootstrapText.contains("Lah/fixtures/android/")) { "M3-01 runtime bootstrap contains fixture classes" }
             Files.write(runtimeRoot.resolve("bootstrap.dex"), bootstrap)
 

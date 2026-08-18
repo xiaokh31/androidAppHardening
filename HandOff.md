@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260817-022438
-updated_at: 2026-08-17T02:24:38+08:00
+handoff_id: HO-20260818-122004
+updated_at: 2026-08-18T12:20:04+08:00
 updated_by: /root
 state: active
 source_branch: fix/m2-10-runtime-startup-performance
@@ -21,6 +21,7 @@ Define and execute the bounded M2-10 Runtime startup critical-path optimization 
 
 ## Current State
 
+- M2-10 diagnostic implementation is frozen at `07d03b083144516affe9fb64071631a7b880f45f`. AGP profile-only ASM instrumentation records the reviewed contiguous `t0..t6` boundaries, a same-process instrumentation runner reads the completed first `AppComponentFactory` transaction, and a dedicated manual-only workflow enforces one API 36 job/attempt/boot. The fail-closed validator accepts one canonical report and rejects 26 identity/hash/stage/sample/P50/eligibility/sensitive mutations. Local profile/Release AAR bytecode scans, profile RuntimeBundle generation, instrumentation compilation and one Host protection flow pass; Release contains no observer. No GitHub diagnostic, KVM, local emulator, physical device, ARM or M3-05 A/B has run. The worktree is clean; the frozen implementation must receive independent all-zero review before the workflow is dispatched.
 - M2-10 is active on `fix/m2-10-runtime-startup-performance` from verified `main@7f10a0b84d9680e4b9311e680d0508e7fde512cd`; unique Issue #66 is open. Contract review 1 at `714947c628bd083ef3cdddd2c427edd90b1a6733` returned `P0=0/P1=3/P2=0`. Remediation `3064c2ee106236b229e2bd2a5624bafdae6100dc` closed first-and-only identity, contiguous `t0..t6` stage boundaries and deterministic partitions/P50; evidence-hash correction `4ab88c30f163d3089d0896842f753ba58df083aa` then passed final independent review with `P0=0/P1=0/P2=0`. M2-10 may now implement the first-and-only diagnostic, but no production optimization is selected until that final diagnostic proves an eligible stage; ARM and M3-05 A/B remain prohibited.
 - M3-05 PR #63 remains draft and blocked. Its first and only ADR 0015 pair on exact evaluated head `1c030334d607bc10054b876dd969ea8048725cb3`, run `31931428130`, completed both campaigns and all 90 rows with valid identity and cleanup, but failed the fixed startup budget in both campaign orders and failed 25/90 repeatability rows. That result is retained and is not eligible for a retry on unchanged product bytes.
 - M3-08 is complete. Final freeze `7e949e9d58ca0a0202790bff70e6199272c75c7f` passed independent review `P0=0/P1=0/P2=0`; final PR head `a5d76806850ecc68cb92e87c4a06e29d9cfe0b1b` passed all checks and merged as `4c3efc1614158a0372eb877fc02fd1db27dcffb3`; Issue #64 closed. Post-merge coordination head `e12542db48eac96f17c4a1f4306ec20c62dcfa1f` passed Build `31929454365` and Governance `31929454381` on Ubuntu/Windows plus local M3-08/governance/strict/diff gates. No KVM, emulator, physical device or benchmark ran. M3-05 PR #63 is now eligible to resume its single ADR 0015 API 36 A/B replacement job.
@@ -197,7 +198,7 @@ Define and execute the bounded M2-10 Runtime startup critical-path optimization 
 
 | Task | Owner | Branch | Status | Dependencies | Next checkpoint |
 |---|---|---|---|---|---|
-| M2-10 | `/root` | `fix/m2-10-runtime-startup-performance` | in_progress | M2-01, M2-02, M2-03, M2-05, M2-06, M3-08 | Implement and freeze the first-and-only API 36 diagnostic without running it or changing production Runtime prematurely |
+| M2-10 | `/root` | `fix/m2-10-runtime-startup-performance` | in_progress | M2-01, M2-02, M2-03, M2-05, M2-06, M3-08 | Freeze and independently review the completed test-only diagnostic implementation; do not dispatch it before all-zero review |
 | M2-09 | `/root` | `main` | done | M2-01 | PR #60 merged; exact-head review, dual-platform CI and API 29/36 KVM passed; README/evidence synchronized |
 | M3-06 | `/root` | `main` | done | M0-03, M2-04, M3-01, M3-02 | PR #57 merged as `a65433a`; claim-boundary contract is active |
 | M3-04 | `/root` | `main` | done | M0-03, M2-04, M2-09, M3-01, M3-02, M3-06 | PR #58 merged; mandatory real-process cells and final main gates passed |
@@ -418,6 +419,18 @@ Define and execute the bounded M2-10 Runtime startup critical-path optimization 
 - M2-02 第三实现层已完成本地检查点：同一 `sourceDir` 只读文件映射、OS 只读 DEX commit、generation+slot 类型化 JNI handle、同 handle `AHMD` 认证 metadata、精确五 JNI 方法、Java primitive/finally 交接窗口、幂等 `LoadedPayload` owner，以及 M0-05 等价 Native 搜索路径和三参数 API 29 `InMemoryDexClassLoader` 已接通。Java 17 编译/lint、NDK 四 ABI warnings-as-errors 与离线根 `assembleRelease check` 284-task 均 PASS，四个 ELF 都含唯一 104-byte alloc/read-only `.ah_share_v1`，未启动设备或模拟器。证据更新于 `docs/evidence/M2-02/local-validation.md`；任务仍未完成或发布，下一步仅补 failure injection、Host sanitizer/fuzz/OOM 与已授权 KVM/arm64 验收，不启动 M2-03。
 
 ## Verification Evidence
+
+### M2-10 diagnostic implementation local validation
+
+- task_id: M2-10
+- git_commit: 07d03b083144516affe9fb64071631a7b880f45f
+- command: Node syntax, canonical plus 26-mutation diagnostic validator, source/AAR profile-vs-Release surface scan; Gradle profile/Release AAR assembly, profile RuntimeBundle generation, M2-10 instrumentation compilation, and one normalized signed-fixture Host protection flow
+- exit_code: 0
+- environment: Windows 10.0.19045 amd64; Eclipse Temurin 17.0.19+10; Gradle 9.5.0; Node.js v24.12.0; project-local D-drive Android/Gradle/JDK toolchains
+- timestamp: 2026-08-18T12:20:04+08:00
+- artifact: ignored `runtime/*/build`, `fixtures/android/build`, `integration-tests/build/m2-10`, `integration-tests/build/generated/m2-10`, and `build/m2-10`; four-AAR sorted SHA-256 manifest covers profile and Release bootstrap/policy AARs
+- sha256: 895e5dd7004f703af766cee74a5c482ace1d80b7aea39cdf17193cb27737bdbe
+- result: PASS; profile bytecode has Guard/bootstrap marks `6+1`, Release bytecode has zero observer references, D8 retains the profile observer, the real Host protection flow succeeds, and no diagnostic/KVM/emulator/device/ARM/M3-05 A/B ran
 
 ### M2-10 final contract security review
 
@@ -1757,8 +1770,8 @@ Define and execute the bounded M2-10 Runtime startup critical-path optimization 
 
 ## Ordered Next Actions
 
-1. Implement the test-only first-start `t0..t6` observer, report/manifest/raw-sample validator and mutation negatives; statically prove it is absent from Release surfaces. Do not trigger the diagnostic yet.
-2. Freeze and review diagnostic implementation, then trigger its first and only API 36 run/job/attempt/boot for the frozen pre-optimization product bytes.
+1. Obtain an independent all-zero read-only review of frozen diagnostic implementation `07d03b083144516affe9fb64071631a7b880f45f`. Do not trigger the diagnostic yet.
+2. Only after that review, publish the exact frozen head and trigger its first and only API 36 run/job/attempt/boot for the frozen pre-optimization product bytes.
 3. If and only if one stage passes both fixed 30 ms partitions, optimize that single Runtime hotspot; otherwise mark M2-10 blocked without a replacement run.
 4. Freeze production implementation, complete independent all-zero implementation review, then run exact-head Ubuntu/Windows Build/Governance and API 29/36 x86_64 KVM once. Do not run ARM or M3-05 A/B in M2-10.
 
@@ -1768,6 +1781,11 @@ Define and execute the bounded M2-10 Runtime startup critical-path optimization 
 - `docs/tasks/M2-10-runtime-startup-performance.md`
 - `docs/evidence/M2-10/security-review-1.md`
 - `docs/evidence/M2-10/security-review-2.md`
+- `runtime/policy/src/m210Profile/java/ah/runtime/profile/M210StartupTimingObserver.java`
+- `fixtures/android/src/androidTestM210Profile/java/ah/runtime/profile/M210StartupProfileRunner.java`
+- `tools/validation/verify-m2-10-runtime-startup-performance.mjs`
+- `tools/validation/run-m2-10-startup-diagnostic.mjs`
+- `.github/workflows/m2-10-startup-diagnostic.yml`
 - Issue #66
 - retained M3-05 run `31931428130` and draft PR #63
 - `docs/adr/0015-startup-performance-measurement-stability.md`

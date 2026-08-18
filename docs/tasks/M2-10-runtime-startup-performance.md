@@ -77,7 +77,7 @@ M3-05 PR #63 produced one complete, identity-bound A/B pair. The `java-single-de
 
 ## Outcome
 
-The first and only diagnostic ran on exact head `977b0585b5a0b3c5f1270ffb39be8e4e1ef6a03f` as GitHub run `32099991400`, job `95598521722`, attempt `1`, on one API 36 x86_64 boot. All 5 warmups and 15 retained samples, identity fields, hashes and cleanup were valid, but `eligibleStages` was empty: no stage reached the fixed 30 ms P50 threshold in both the `1..7` and `8..15` partitions. M2-10 is therefore blocked by its accepted contract. No production Runtime optimization, replacement diagnostic, ARM run or M3-05 A/B run is permitted without a new independently reviewed decision.
+The first and only diagnostic ran on exact head `977b0585b5a0b3c5f1270ffb39be8e4e1ef6a03f` as GitHub run `32099991400`, job `95598521722`, attempt `1`, on one API 36 x86_64 boot. All 5 warmups and 15 retained samples, identity fields, hashes and cleanup were valid, but `eligibleStages` was empty: no stage reached the fixed 30 ms P50 threshold in both the `1..7` and `8..15` partitions. M2-10 and draft PR #67 are therefore blocked by the accepted contract. No production Runtime optimization, replacement diagnostic, ARM run or M3-05 A/B run is permitted without a new independently reviewed decision.
 
 Immutable results are archived in `docs/evidence/M2-10/remote-diagnostic.md`.
 

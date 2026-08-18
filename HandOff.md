@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260818-125800
-updated_at: 2026-08-18T12:58:00+08:00
+handoff_id: HO-20260818-130300
+updated_at: 2026-08-18T13:03:00+08:00
 updated_by: /root
 state: blocked
 source_branch: fix/m2-10-runtime-startup-performance
@@ -21,7 +21,7 @@ Define and execute the bounded M2-10 Runtime startup critical-path optimization 
 
 ## Current State
 
-- M2-10 is blocked by its first and only diagnostic. Exact head `977b0585b5a0b3c5f1270ffb39be8e4e1ef6a03f`, run `32099991400`, job `95598521722`, attempt `1` and boot prefix `c851d1f78221` produced a structurally valid, cleanup-complete artifact, but `eligibleStages=[]`: `signer_source` measured 30.41 ms / 17.53 ms across the two fixed partitions and every other stage was below 30 ms in both. ADR 0016 therefore forbids selecting or implementing a production optimization and forbids a replacement run on unchanged product bytes. No ARM or M3-05 A/B ran. The worktree is clean after freezing the immutable remote evidence and blocked-state documentation.
+- M2-10 is blocked by its first and only diagnostic. Exact head `977b0585b5a0b3c5f1270ffb39be8e4e1ef6a03f`, run `32099991400`, job `95598521722`, attempt `1` and boot prefix `c851d1f78221` produced a structurally valid, cleanup-complete artifact, but `eligibleStages=[]`: `signer_source` measured 30.41 ms / 17.53 ms across the two fixed partitions and every other stage was below 30 ms in both. ADR 0016 therefore forbids selecting or implementing a production optimization and forbids a replacement run on unchanged product bytes. Draft PR #67 records the outcome and must not become ready or merge without a new independently reviewed decision. No ARM or M3-05 A/B ran. The worktree is clean.
 - M2-10 is active on `fix/m2-10-runtime-startup-performance` from verified `main@7f10a0b84d9680e4b9311e680d0508e7fde512cd`; unique Issue #66 is open. Contract review 1 at `714947c628bd083ef3cdddd2c427edd90b1a6733` returned `P0=0/P1=3/P2=0`. Remediation `3064c2ee106236b229e2bd2a5624bafdae6100dc` closed first-and-only identity, contiguous `t0..t6` stage boundaries and deterministic partitions/P50; evidence-hash correction `4ab88c30f163d3089d0896842f753ba58df083aa` then passed final independent review with `P0=0/P1=0/P2=0`. M2-10 may now implement the first-and-only diagnostic, but no production optimization is selected until that final diagnostic proves an eligible stage; ARM and M3-05 A/B remain prohibited.
 - M3-05 PR #63 remains draft and blocked. Its first and only ADR 0015 pair on exact evaluated head `1c030334d607bc10054b876dd969ea8048725cb3`, run `31931428130`, completed both campaigns and all 90 rows with valid identity and cleanup, but failed the fixed startup budget in both campaign orders and failed 25/90 repeatability rows. That result is retained and is not eligible for a retry on unchanged product bytes.
 - M3-08 is complete. Final freeze `7e949e9d58ca0a0202790bff70e6199272c75c7f` passed independent review `P0=0/P1=0/P2=0`; final PR head `a5d76806850ecc68cb92e87c4a06e29d9cfe0b1b` passed all checks and merged as `4c3efc1614158a0372eb877fc02fd1db27dcffb3`; Issue #64 closed. Post-merge coordination head `e12542db48eac96f17c4a1f4306ec20c62dcfa1f` passed Build `31929454365` and Governance `31929454381` on Ubuntu/Windows plus local M3-08/governance/strict/diff gates. No KVM, emulator, physical device or benchmark ran. M3-05 PR #63 is now eligible to resume its single ADR 0015 API 36 A/B replacement job.
@@ -1861,6 +1861,7 @@ Define and execute the bounded M2-10 Runtime startup critical-path optimization 
 - `tools/validation/verify-m2-10-runtime-startup-performance.mjs`
 - `tools/validation/run-m2-10-startup-diagnostic.mjs`
 - `.github/workflows/m2-10-startup-diagnostic.yml`
+- draft PR #67
 - Issue #66
 - retained M3-05 run `31931428130` and draft PR #63
 - `docs/adr/0015-startup-performance-measurement-stability.md`

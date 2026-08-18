@@ -31,7 +31,7 @@ M0 基础建设与可行性验证以及 M1 Host 处理链已经完成。M1-01 �
 | [M2-06](docs/tasks/M2-06-memory-dump-cost-controls.md) | 已完成 | PR #48、Issue #17、P0/P1/P2 全零独立复核、Ubuntu/Windows、API 29/36 KVM、Release/R8、清零/只读/`DONTDUMP`/锁页/抖动、expected-head 合并与 post-merge strict HandOff 均已关闭 |
 | [M2-08](docs/tasks/M2-08-native-parser-topology-bounds.md) | 已完成 | PR #54、Issue #53、精确 399-byte 回归、Ubuntu ASan/UBSan、Ubuntu/Windows Build/Governance、P0/P1/P2 全零独立复核及 expected-head 合并均已关闭；无需设备或 KVM |
 | [M2-09](docs/tasks/M2-09-shell-factory-relaunch-lifecycle.md) | 已完成 | PR #60、Issue #59、P0/P1/P2 全零独立复核、Ubuntu/Windows Build/Governance、API 29/36 KVM、真实 `Activity.recreate()`、三种 M201 Release/R8 路径及 expected-head 合并均已关闭 |
-| [M2-10](docs/tasks/M2-10-runtime-startup-performance.md) | 阻塞 | Issue #66；唯一 API 36 诊断 run `32099991400` 的身份、20 个样本、哈希与清理有效，但没有阶段在前后两个固定分区均达到 30 ms；按 ADR 0016 禁止生产优化、替代 run、ARM 与 M3-05 A/B |
+| [M2-10](docs/tasks/M2-10-runtime-startup-performance.md) | 阻塞 | 草稿 PR #67、Issue #66；唯一 API 36 诊断 run `32099991400` 的身份、20 个样本、哈希与清理有效，但没有阶段在前后两个固定分区均达到 30 ms；按 ADR 0016 禁止生产优化、替代 run、ARM 与 M3-05 A/B |
 | [M3-01](docs/tasks/M3-01-android-fixtures.md) | 已完成 | 九个公开 fixture、Host full-flow、Ubuntu/Windows、API 29/36 x86_64 KVM、API 29 arm64 真机与清理均已通过；PR #49、Issue #18 已关闭 |
 | [M3-02](docs/tasks/M3-02-tamper-and-fuzz-tests.md) | 已完成 | 69 项篡改 catalog、Jazzer APK/AXML、Native libFuzzer + ASan/UBSan、Ubuntu/Windows、API 29/36 KVM 与独立全零复核均已通过；PR #52、Issue #19 已关闭 |
 | [M3-03](docs/tasks/M3-03-windows-ubuntu-equivalence.md) | 已完成 | 九个 fixture 在 Windows/Ubuntu 各运行两轮；36 个输出的稳定语义等价、随机字段不复用、独立认证解密、稳定负例、输入只读与无绝对路径泄漏均通过；PR #55、Issue #20 已关闭 |

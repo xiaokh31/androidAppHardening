@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260818-224223
-updated_at: 2026-08-18T22:42:23+08:00
+handoff_id: HO-20260819-061003
+updated_at: 2026-08-19T06:10:03+08:00
 updated_by: /root
 state: active
 source_branch: docs/m3-09-startup-attribution-boundary
@@ -21,7 +21,7 @@ Freeze an independent ADR/task that replaces incomplete Runtime-only startup att
 
 ## Current State
 
-- M3-09 is active on `docs/m3-09-startup-attribution-boundary` from `main@7f10a0b84d9680e4b9311e680d0508e7fde512cd`; Issue #68 is the unique task Issue. Candidate `13fd21b621cd73961e17a131cd900861d3431dd7` failed review with `P0=0/P1=5/P2=0`; remediation `45ec1bac47b427a70752bcfba610371c6ad17c5b` closed the arithmetic/HandOff findings but the bounded second review returned `P0=0/P1=3/P2=1`. Second remediation `2d94c77d60c004b56c0b44ce7f82018d5cd51a62` explicitly limits the local validator to a synthetic contract model, requires a later pinned byte-level APK/DEX/profile verifier plus post-diagnostic official API evidence workflow, recomputes A/B model calibration, proves two real 200 ms owners against a 310 ms total with a negative common contribution, and retains zero-duration stages. The final bounded independent review is `PASS`, `P0=0/P1=0/P2=0`; publication head `a450838af1f2d6762124ad22eaebfcdce5b75ec2` records that evidence and all 58 named mutations plus local syntax/contract/base-diff/governance/strict/diff gates pass. The branch is pushed and unique draft PR #69 correctly closes Issue #68. Initial exact-head Build `32149839223` and Governance `32149839286` started; automatically triggered out-of-scope Fuzz `32149839009` and Cross-platform equivalence `32149839166` were cancelled. M3-05 PR #63 remains blocked. No Runtime, fixture, benchmark or diagnostic workflow implementation changed, and no Gradle, KVM, emulator, ARM, benchmark, M3-05 or M2-10 retry ran.
+- M3-09 is active on `docs/m3-09-startup-attribution-boundary` from `main@7f10a0b84d9680e4b9311e680d0508e7fde512cd`; Issue #68 is the unique task Issue. Candidate `13fd21b621cd73961e17a131cd900861d3431dd7` failed review with `P0=0/P1=5/P2=0`; remediation `45ec1bac47b427a70752bcfba610371c6ad17c5b` closed the arithmetic/HandOff findings but the bounded second review returned `P0=0/P1=3/P2=1`. Second remediation `2d94c77d60c004b56c0b44ce7f82018d5cd51a62` explicitly limits the local validator to a synthetic contract model, requires a later pinned byte-level APK/DEX/profile verifier plus post-diagnostic official API evidence workflow, recomputes A/B model calibration, proves two real 200 ms owners against a 310 ms total with a negative common contribution, and retains zero-duration stages. The final bounded independent review is `PASS`, `P0=0/P1=0/P2=0`; publication head `2175322f7a66b62032323b2a84a4f0277e40c896` records that evidence and all 58 named mutations plus local syntax/contract/base-diff/governance/strict/diff gates pass. Draft PR #69 correctly closes Issue #68. Build `32150031076` passed Ubuntu/Windows; Governance `32150031013` failed on both platforms only because the retained M3-08 validator still required the superseded dependency text `M3-07 → M3-08 → M3-05`. The bounded CI remediation changes that governance token to the current `M3-07 → M3-08 → M3-09 → M3-05`; M3-08 default/self-test, M3-09 58 mutations, project governance and diff checks pass locally. Automatically triggered out-of-scope Fuzz/equivalence runs and the stale-head Build were cancelled. M3-05 PR #63 remains blocked. No Runtime, fixture, benchmark or diagnostic workflow implementation changed, and no Gradle, KVM, emulator, ARM, benchmark, M3-05 or M2-10 retry ran.
 - M3-08 is complete. Final freeze `7e949e9d58ca0a0202790bff70e6199272c75c7f` passed independent review `P0=0/P1=0/P2=0`; final PR head `a5d76806850ecc68cb92e87c4a06e29d9cfe0b1b` passed all checks and merged as `4c3efc1614158a0372eb877fc02fd1db27dcffb3`; Issue #64 closed. Post-merge coordination head `e12542db48eac96f17c4a1f4306ec20c62dcfa1f` passed Build `31929454365` and Governance `31929454381` on Ubuntu/Windows plus local M3-08/governance/strict/diff gates. No KVM, emulator, physical device or benchmark ran. Its historical authorization to resume M3-05 was superseded after the retained M2-10 diagnostic selected no eligible inner stage; current M3-09 and the later ADR 0016 implementation/remediation remain mandatory.
 - M3-07 is complete on `main`. Final implementation freeze `90f754ea185a8633acd585d181ee108db016209d` passed independent review with `P0=0/P1=0/P2=0`; exact published head `4e77aa38b508a99c60a576e41804ba2d08b6b9fd` passed Build `31891662932` and Governance `31891662909` on Ubuntu/Windows. PR #62 merged with expected-head protection as `859cfa217b2fc0726cc001519967cdde606d2146`, Issue #61 closed, and post-merge `main@930b759c99f330218dc4404368e9844e80456c82` passed Build `31892091205` and Governance `31892091344`. No device, emulator or KVM ran for M3-07.
 - M2-09 is merged and complete. Production implementation `9ba6ec28c7d1450c3ca51175f78e3aa2d292331f`, test remediation `dd78179f41c97aab7e3f38c0f571c4e6198f8939` and exact PR head `186dfd79ee4f32c749c4ccfdebf5bc82a3476637` passed independent `P0=0/P1=0/P2=0` review, Build `31862011459`, Governance `31862011393`, and API 29/36 KVM `31862011460`. PR #60 merged as `77b3aee7d88eaf4446ae780f20fe6988796609af`; final main coordination `e3a676ed2f4864d2b33077e1d00c300cf2a59817` passed Build `31863095498` and Governance `31863095500`.
@@ -201,7 +201,7 @@ Freeze an independent ADR/task that replaces incomplete Runtime-only startup att
 | M3-04 | `/root` | `main` | done | M0-03, M2-04, M2-09, M3-01, M3-02, M3-06 | PR #58 merged; mandatory real-process cells and final main gates passed |
 | M3-07 | `/root` | `main` | done | M2-05, M2-06, M3-01 | PR #62 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M3-08 | `/root` | `main` | done | M3-01, M3-07 | PR #65 merged; independent review and post-merge main Build/Governance complete |
-| M3-09 | `/root` | `docs/m3-09-startup-attribution-boundary` | in_progress | M3-08 | Draft PR #69 open; independent review all zero; await exact-head Ubuntu/Windows Build/Governance only |
+| M3-09 | `/root` | `docs/m3-09-startup-attribution-boundary` | in_progress | M3-08 | Draft PR #69; bounded CI remediation is committed and ready to push for replacement Build/Governance |
 | M3-05 | `/root` | `chore/m3-05-performance-benchmarks` | planned | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08, M3-09 | Keep PR #63 blocked until M3-09 and a separate ADR 0016 implementation/remediation task complete |
 | M3-03 | `/root` | `main` | done | M0-03, M1-05, M1-06, M2-06, M3-01 | PR #55 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | done | M2-02 | PR #54 merged; exact regression, ASan/UBSan, dual-platform Build/Governance and independent review passed |
@@ -1714,12 +1714,12 @@ Freeze an independent ADR/task that replaces incomplete Runtime-only startup att
 
 ## Blockers and Required Approvals
 
-- M3-09 draft PR #69 has passed independent review with P0=0/P1=0/P2=0. Exact-head Ubuntu/Windows Build/Governance remain merge gates; ready/merge is not authorized by this publication step.
+- M3-09 draft PR #69 has passed independent review with P0=0/P1=0/P2=0. The bounded Governance dependency-token remediation must pass replacement Ubuntu/Windows Build/Governance; ready/merge is not authorized.
 
 ## Ordered Next Actions
 
-1. Push the publication-status evidence successor to draft PR #69.
-2. Await exact-head Ubuntu/Windows Build/Governance only; cancel automatically triggered Fuzz/equivalence/KVM work as out of scope.
+1. Commit and push the one-token M3-08 governance validator dependency update plus CI evidence.
+2. Await replacement exact-head Ubuntu/Windows Build/Governance only; cancel automatically triggered Fuzz/equivalence/KVM work as out of scope.
 3. Do not mark ready or merge without the later gate decision; do not run KVM, emulator, ARM or benchmark.
 4. After M3-09 merges, create a separate ADR 0016 diagnostic implementation task; M3-05 PR #63 remains blocked until that task and any selected owner remediation complete.
 

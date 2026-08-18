@@ -443,7 +443,7 @@ function contractErrors() {
     "  - M3-08", "ADR 0015", "baseline_then_protected", "protected_then_baseline",
     "90 行比较", "不得补样", "不得在本任务修改生产 Runtime", "--campaign-a",
   ]));
-  errors.push(...requireText("docs/tasks/INDEX.md", ["| M3-08 |", "M3-07 → M3-08 → M3-05"]));
+  errors.push(...requireText("docs/tasks/INDEX.md", ["| M3-08 |", "M3-07 → M3-08 → M3-09 → M3-05"]));
   errors.push(...requireText("docs/TEST_STRATEGY.md", ["ADR 0015", "恰好两个 campaign", "禁止第三 campaign"]));
   return errors;
 }

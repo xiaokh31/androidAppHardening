@@ -538,7 +538,7 @@ function validateDocuments(bundle) {
   requirePhrases(bundle.index, ["| M3-09 | [#68]", "M3-08 → M3-09 → M3-05", ", M3-09 |"], "task index");
   requirePhrases(bundle.roadmap, ["| M3-09 |", "M3-08, M3-09"], "roadmap");
   requirePhrases(bundle.plan, ["M3-09：端到端启动性能归因边界合同"], "project plan");
-  requirePhrases(bundle.handoff, ["M3-09 is the active governance prerequisite", "M3-05 PR #63 remains blocked"], "HandOff");
+  requirePhrases(bundle.handoff, ["M3-09 is complete on `main`", "M3-05 PR #63 remains blocked"], "HandOff");
 }
 
 function validateDiff(base) {

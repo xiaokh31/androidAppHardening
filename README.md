@@ -38,7 +38,7 @@ M0 基础建设与可行性验证以及 M1 Host 处理链已经完成。M1-01 �
 | [M3-04](docs/tasks/M3-04-api-and-abi-matrix.md) | 已完成 | 完整 32 格清单、四个真实 `VERIFIED` 强制格子、28 个明确 `UNVERIFIED` 格子、JSON/Markdown 等价及清理均已通过；PR #58、Issue #21 已关闭 |
 | [M3-07](docs/tasks/M3-07-test-only-high-benchmark-contract.md) | 已完成 | ADR 0014、10 个产品面负例、20 个报告负例、独立全零复核及 Ubuntu/Windows Build/Governance 均已通过；PR #62、Issue #61 已关闭；未运行设备或 KVM |
 | [M3-08](docs/tasks/M3-08-startup-performance-stability-contract.md) | 已完成 | PR #65、Issue #64、独立全零复核、45 个负例、expected-head 合并与 post-merge Ubuntu/Windows Build/Governance 均已关闭；未运行 KVM、设备或 benchmark |
-| [M3-09](docs/tasks/M3-09-startup-attribution-boundary-contract.md) | 草稿 PR #69，CI 修复中 | Build 双平台已通过；Governance 仅因旧 M3-08 依赖 token 未包含 M3-09 而失败，限定修复待 replacement CI；不运行 benchmark、KVM 或 ARM |
+| [M3-09](docs/tasks/M3-09-startup-attribution-boundary-contract.md) | 已完成 | PR #69 以 expected-head `613e61a` 合并为 `886b49f`；独立复核 P0/P1/P2 全零，最终 Ubuntu/Windows Build `32192033540` 与 Governance `32192033589` 通过；未运行 benchmark、KVM 或 ARM |
 | [M3-05](docs/tasks/M3-05-size-startup-memory-benchmarks.md) | 已阻塞 | PR #63 暂不运行 API 36 A/B 或 ARM；等待 M3-09 及后续独立归因实现/owner remediation 任务完成 |
 | M4 | 未启动 | 发布阶段继续按任务依赖顺序执行 |
 

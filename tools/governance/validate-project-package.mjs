@@ -362,11 +362,17 @@ for (const [text, label] of [
   [m311LockText, "docs/evidence/M3-11/canonical-artifact-lock.json"],
 ]) {
   for (const phrase of [
-    "f666ea37d4f5dcc96fb994066ab97659a11119a33d637606b5cc0636efdf4c36",
-    "f265688bd8eea4f85def8c4edf50aae14e287688523e2ccafdf9ca04e891b658",
-    "a7131f59ab69769c3ebe3dcc4d7295b3e11ae84c823701f6985c953803068c4a",
+    "4607d3289e1fc3bd95282ab47791ec810a5d2d3ac0a69fc0f91388901e412dcf",
+    "1eb159d7f0149a943fb2e1c4d8467f283d1cfbbfad670628402cfb0cd23390d9",
+    "883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd",
   ]) requirePhrase(text, phrase, label);
 }
+for (const phrase of [
+  "d2166e07f5e959a9868c0da4ddd05a19e40f961559bec4367c8e8c00fba56089",
+  "81b0982e4c5b6ae5a34d71218df6602cd44706d879c3909400a2809e5e4f55d8",
+  "f7528353cb5a3b4c8114546d4dcd53ab1e3efd7420e210abe7eb51067a8ddd2b",
+  "6845d3c9d7eba0d84aefe0d05da485e87f754f5fe63e7a57ba6807159d9a0979",
+]) requirePhrase(m311LockText, phrase, "docs/evidence/M3-11/canonical-artifact-lock.json");
 for (const phrase of ["M3-10", "M3-11", "artifact `9260244215`"]) {
   requirePhrase(m305Text, phrase, "docs/tasks/M3-05-size-startup-memory-benchmarks.md");
 }

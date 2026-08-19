@@ -18,7 +18,7 @@ Fix the immutable origin, byte sizes, SHA-256 values and product tuple of the ba
 
 ## Background
 
-The first M3-10 candidate rebuilt a new `m310Base` fixture and called it the original. Independent review rejected that substitution because it changed the APK size, manifest and lifecycle surface relative to the bytes that produced the retained M3-05 failure. PR #63 already archived the six APKs actually installed by its first-and-only API 36 A/B run. This task selects only its `kotlin-multidex` pair and fixes their provenance before M3-10 resumes.
+The first M3-10 candidate rebuilt a new `m310Base` fixture and called it the original. Independent review rejected that substitution because it changed the APK size, manifest and lifecycle surface relative to the bytes that produced the retained M3-05 failure. PR #63 already archived the six APKs actually installed by its first-and-only API 36 A/B run. The artifact reports prove that `java-single-dex`, not `kotlin-multidex`, produced the two campaign application P50 budget failures. This task fixes that exact pair and its failure mapping before M3-10 resumes.
 
 ## Inputs
 
@@ -26,7 +26,7 @@ The first M3-10 candidate rebuilt a new `m310Base` fixture and called it the ori
 - PR #63 exact head `1c030334d607bc10054b876dd969ea8048725cb3`.
 - Run `31931428130`, attempt `1`, job `95126754768`, artifact `9260244215`.
 - Artifact `m0-05-api-36-x86_64-evidence`, official size `3316848` and SHA-256 `98c5cedce457775e4f4365226647b1bf1d49cb3f824d07ae5f9450c31803d5ae`.
-- The two signed `kotlin-multidex` APK files inside that artifact.
+- The two signed `java-single-dex` APK files, artifact manifest, campaign A/B reports and repeatability aggregate inside that artifact.
 
 ## Expected Outputs
 
@@ -52,9 +52,10 @@ The first M3-10 candidate rebuilt a new `m310Base` fixture and called it the ori
 
 ## Implementation Decisions
 
-- The canonical baseline is exactly SHA-256 `f666ea37d4f5dcc96fb994066ab97659a11119a33d637606b5cc0636efdf4c36`, size `30022`.
-- The canonical protected APK is exactly SHA-256 `f265688bd8eea4f85def8c4edf50aae14e287688523e2ccafdf9ca04e891b658`, size `1287876`.
-- The product tuple is SHA-256 `a7131f59ab69769c3ebe3dcc4d7295b3e11ae84c823701f6985c953803068c4a` over the exact 218-byte UTF-8 JSON fixed in the lock, with no BOM or trailing newline.
+- The canonical baseline is exactly SHA-256 `4607d3289e1fc3bd95282ab47791ec810a5d2d3ac0a69fc0f91388901e412dcf`, size `29962`.
+- The canonical protected APK is exactly SHA-256 `1eb159d7f0149a943fb2e1c4d8467f283d1cfbbfad670628402cfb0cd23390d9`, size `1287876`.
+- The product tuple is SHA-256 `883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd` over the exact 218-byte UTF-8 JSON stored verbatim in the lock, with no BOM or trailing newline.
+- The verifier must parse actual artifact evidence and prove `java-single-dex/processToApplicationOnCreateMs/deltaP50` equals `331/432 ms` for campaigns A/B, with variation `0.30513595166163143 > 0.1` and `pass=false`. These two over-budget values are not called stable.
 - Both originals are the signed v3 installation bytes from the retained failure. Their synthetic private key is not retained and no same-signer derivative claim is made.
 - A file with identical semantics but different bytes is not the canonical original. Rebuild, ZIP normalization, re-signing, container regeneration or manifest rewriting changes the tuple.
 - Official-artifact expiration or loss of every exact-hash retained copy blocks M3-10. It never authorizes regeneration.

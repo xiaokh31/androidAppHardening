@@ -74,7 +74,7 @@ function validateReport(report) {
   equal(report.runAttempt, 1, "runAttempt");
   hex(report.bootIdHashPrefix, 12, "bootIdHashPrefix");
   equal(report.clock, "CLOCK_BOOTTIME", "clock");
-  equal(report.fixtureId, "kotlin-multidex", "fixtureId");
+  equal(report.fixtureId, "java-single-dex", "fixtureId");
   equal(report.androidApi, 36, "androidApi");
   equal(report.imageRevision, 2, "imageRevision");
   equal(report.emulatorVersion, "37.1.11", "emulatorVersion");
@@ -287,7 +287,7 @@ function buildSyntheticReport() {
     runAttempt: 1,
     bootIdHashPrefix: "abcdef123456",
     clock: "CLOCK_BOOTTIME",
-    fixtureId: "kotlin-multidex",
+    fixtureId: "java-single-dex",
     androidApi: 36,
     imageRevision: 2,
     emulatorVersion: "37.1.11",

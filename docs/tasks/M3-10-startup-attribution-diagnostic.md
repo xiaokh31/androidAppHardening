@@ -17,7 +17,7 @@ security_sensitive: true
 
 ## Goal
 
-Implement the real bounded ADR 0016 end-to-end startup attribution diagnostic for the retained failing `kotlin-multidex` bytes. It must identify exactly one eligible owner or return `UNATTRIBUTED`; it may not substitute a rebuilt fixture, repeat an invalid run, weaken a budget or change production security behavior.
+Implement the real bounded ADR 0016 end-to-end startup attribution diagnostic for the retained failing `java-single-dex` bytes. It must identify exactly one eligible owner or return `UNATTRIBUTED`; it may not substitute a rebuilt fixture, repeat an invalid run, weaken a budget or change production security behavior.
 
 ## Background
 
@@ -28,9 +28,10 @@ M3-09 accepted the attribution model. M3-11 then fixed the canonical originals t
 - Accepted ADR 0016, completed M3-09 and merged M3-11 provenance contract.
 - `docs/evidence/M3-11/canonical-artifact-lock.json`.
 - PR #63 exact head `1c030334d607bc10054b876dd969ea8048725cb3`, run `31931428130`, job `95126754768`, artifact `9260244215`.
-- Canonical baseline `f666ea37d4f5dcc96fb994066ab97659a11119a33d637606b5cc0636efdf4c36`, `30022` bytes.
-- Canonical protected `f265688bd8eea4f85def8c4edf50aae14e287688523e2ccafdf9ca04e891b658`, `1287876` bytes.
-- Product tuple `a7131f59ab69769c3ebe3dcc4d7295b3e11ae84c823701f6985c953803068c4a`.
+- Canonical baseline `4607d3289e1fc3bd95282ab47791ec810a5d2d3ac0a69fc0f91388901e412dcf`, `29962` bytes.
+- Canonical protected `1eb159d7f0149a943fb2e1c4d8467f283d1cfbbfad670628402cfb0cd23390d9`, `1287876` bytes.
+- Product tuple `883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd`.
+- Artifact-bound failure mapping: application delta P50 `331/432 ms` for campaigns A/B, variation `0.30513595166163143`, repeatability `false`.
 - Pinned API 36 revision 2 x86_64 image and Emulator 37.1.11.
 
 ## Expected Outputs

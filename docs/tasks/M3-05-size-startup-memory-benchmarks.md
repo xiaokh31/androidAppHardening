@@ -35,7 +35,7 @@ security_sensitive: false
 - M3-07 与 ADR 0014 固定的真实冷启动/隔离 HIGH 增量测量边界。
 - M3-08 与 ADR 0015 固定的同 SHA、同 KVM job、同 emulator boot 双 campaign 测量稳定性边界。
 - M3-09 与 ADR 0016 固定的端到端归因边界、M3-11 固定的 PR #63 canonical APK 字节，以及完成后的 M3-10 归因结果；M2-10 的首轮且唯一内部诊断保留为有效但不足以定位端到端增量的证据。
-- M3-11 锁定 artifact `9260244215` 的实际 `kotlin-multidex` pair；任何 rebuilt fixture 均不能替换该失败来源。
+- M3-11 锁定 artifact `9260244215` 中产生 application delta P50 `331/432 ms` 的实际 `java-single-dex` pair；其约 `30.5%` variation 仍是 repeatability 失败，任何 rebuilt fixture 均不能替换该诊断来源。
 
 ## Expected Outputs
 

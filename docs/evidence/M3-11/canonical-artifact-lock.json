@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "taskId": "M3-11",
-  "fixtureId": "kotlin-multidex",
+  "fixtureId": "java-single-dex",
   "source": {
     "repository": "xiaokh31/androidAppHardening",
     "pullRequest": 63,
@@ -17,21 +17,38 @@
     "artifactArchiveSha256": "98c5cedce457775e4f4365226647b1bf1d49cb3f824d07ae5f9450c31803d5ae",
     "bootIdHashPrefix": "a3cf719802bc"
   },
+  "failureEvidence": {
+    "artifactManifestPath": "benchmarks/android/build/reports/performance/benchmark-artifact-manifest.json",
+    "artifactManifestSha256": "d2166e07f5e959a9868c0da4ddd05a19e40f961559bec4367c8e8c00fba56089",
+    "repeatabilityPath": "benchmarks/android/build/reports/performance/benchmark-repeatability.json",
+    "repeatabilitySha256": "81b0982e4c5b6ae5a34d71218df6602cd44706d879c3909400a2809e5e4f55d8",
+    "campaignAReportPath": "benchmarks/android/build/reports/performance/campaign-a/benchmark-results.json",
+    "campaignAReportSha256": "f7528353cb5a3b4c8114546d4dcd53ab1e3efd7420e210abe7eb51067a8ddd2b",
+    "campaignBReportPath": "benchmarks/android/build/reports/performance/campaign-b/benchmark-results.json",
+    "campaignBReportSha256": "6845d3c9d7eba0d84aefe0d05da485e87f754f5fe63e7a57ba6807159d9a0979",
+    "metric": "processToApplicationOnCreateMs",
+    "statistic": "deltaP50",
+    "campaignAValueMs": 331,
+    "campaignBValueMs": 432,
+    "variation": 0.30513595166163143,
+    "repeatabilityLimit": 0.1,
+    "repeatabilityPass": false
+  },
   "canonicalPair": {
-    "tupleSerialization": "UTF-8 JSON without BOM or trailing newline: {\"schemaVersion\":1,\"fixtureId\":\"kotlin-multidex\",\"baselineSha256\":\"<baseline sha256>\",\"protectedSha256\":\"<protected sha256>\"}",
-    "productTupleSha256": "a7131f59ab69769c3ebe3dcc4d7295b3e11ae84c823701f6985c953803068c4a",
+    "tupleSerialization": "{\"schemaVersion\":1,\"fixtureId\":\"java-single-dex\",\"baselineSha256\":\"4607d3289e1fc3bd95282ab47791ec810a5d2d3ac0a69fc0f91388901e412dcf\",\"protectedSha256\":\"1eb159d7f0149a943fb2e1c4d8467f283d1cfbbfad670628402cfb0cd23390d9\"}",
+    "productTupleSha256": "883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd",
     "baseline": {
-      "relativePath": "benchmarks/android/build/reports/performance/apks/kotlin-multidex-baseline.apk",
-      "sizeBytes": 30022,
-      "sha256": "f666ea37d4f5dcc96fb994066ab97659a11119a33d637606b5cc0636efdf4c36",
+      "relativePath": "benchmarks/android/build/reports/performance/apks/java-single-dex-baseline.apk",
+      "sizeBytes": 29962,
+      "sha256": "4607d3289e1fc3bd95282ab47791ec810a5d2d3ac0a69fc0f91388901e412dcf",
       "signatureScheme": "v3",
       "signerCount": 1,
       "signerCertificateSha256Prefix": "0696de7d3f22"
     },
     "protected": {
-      "relativePath": "benchmarks/android/build/reports/performance/apks/kotlin-multidex-protected.apk",
+      "relativePath": "benchmarks/android/build/reports/performance/apks/java-single-dex-protected.apk",
       "sizeBytes": 1287876,
-      "sha256": "f265688bd8eea4f85def8c4edf50aae14e287688523e2ccafdf9ca04e891b658",
+      "sha256": "1eb159d7f0149a943fb2e1c4d8467f283d1cfbbfad670628402cfb0cd23390d9",
       "signatureScheme": "v3",
       "signerCount": 1,
       "signerCertificateSha256Prefix": "0696de7d3f22"

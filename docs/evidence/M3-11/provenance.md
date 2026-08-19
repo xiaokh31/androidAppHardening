@@ -5,6 +5,7 @@
 - Base: `main@3458338e7886ac3fba8383bac47a0b655ca44533`
 - Rejected initial freeze/evidence: `baaabb6f35b022b5d02bf1d2d17650e2b07ae84b` / `8f7a5f5e4cc006bc565ab0e69c2c917d9b87d41c`
 - Replacement implementation freeze: `f16f7d4808925030f0cd7c74df89d91ae3b713df`
+- Final independently reviewed implementation head: `a5397888ff7eeb9571f64d06dfc10e8edef7f37c`
 - Evidence timestamp: `2026-08-19T03:55:35Z`
 - Dynamic execution: none; no Gradle build, benchmark, KVM, emulator, ARM or canonical diagnostic workflow ran
 
@@ -87,4 +88,4 @@ The initial governance-only base diff contained 17 files and no Runtime, Host, f
 | `tools/governance/verify-m3-11-canonical-artifact-contract.mjs` | `829fc3203300f4b383e2acc264ee7e3bf5c3d408bf3c2d9f5e9663ee901bea0d` |
 | `docs/adr/0016-end-to-end-startup-attribution-boundary.md` | `cd12665446fde02ab110391c809283e81247f2cdc31eaa34763f40a6dfc2bad9` |
 
-This provenance record fixes inputs only. It does not approve the rejected M3-10 candidate, create either canonical workflow, consume the unique API 36 diagnostic, resume M3-05, or authorize ARM. The replacement freeze closes the first-review findings locally; publication remains forbidden until its independent review reaches `P0=0/P1=0/P2=0`.
+This provenance record fixes inputs only. It does not approve the rejected M3-10 candidate, create either canonical workflow, consume the unique API 36 diagnostic, resume M3-05, or authorize ARM. Final implementation head `a5397888ff7eeb9571f64d06dfc10e8edef7f37c` passed independent review with `P0=0/P1=0/P2=0`; branch publication and draft PR #72 therefore satisfy the user's all-zero condition.

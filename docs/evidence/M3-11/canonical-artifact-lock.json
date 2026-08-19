@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M3-11",
+  "fixtureId": "kotlin-multidex",
+  "source": {
+    "repository": "xiaokh31/androidAppHardening",
+    "pullRequest": 63,
+    "headSha": "1c030334d607bc10054b876dd969ea8048725cb3",
+    "workflowName": "M0-05 Linux KVM",
+    "runId": "31931428130",
+    "runAttempt": 1,
+    "jobId": "95126754768",
+    "jobName": "API 36 x86_64 (Linux/KVM)",
+    "artifactId": "9260244215",
+    "artifactName": "m0-05-api-36-x86_64-evidence",
+    "artifactSizeBytes": 3316848,
+    "artifactArchiveSha256": "98c5cedce457775e4f4365226647b1bf1d49cb3f824d07ae5f9450c31803d5ae",
+    "bootIdHashPrefix": "a3cf719802bc"
+  },
+  "canonicalPair": {
+    "tupleSerialization": "UTF-8 JSON without BOM or trailing newline: {\"schemaVersion\":1,\"fixtureId\":\"kotlin-multidex\",\"baselineSha256\":\"<baseline sha256>\",\"protectedSha256\":\"<protected sha256>\"}",
+    "productTupleSha256": "a7131f59ab69769c3ebe3dcc4d7295b3e11ae84c823701f6985c953803068c4a",
+    "baseline": {
+      "relativePath": "benchmarks/android/build/reports/performance/apks/kotlin-multidex-baseline.apk",
+      "sizeBytes": 30022,
+      "sha256": "f666ea37d4f5dcc96fb994066ab97659a11119a33d637606b5cc0636efdf4c36",
+      "signatureScheme": "v3",
+      "signerCount": 1,
+      "signerCertificateSha256Prefix": "0696de7d3f22"
+    },
+    "protected": {
+      "relativePath": "benchmarks/android/build/reports/performance/apks/kotlin-multidex-protected.apk",
+      "sizeBytes": 1287876,
+      "sha256": "f265688bd8eea4f85def8c4edf50aae14e287688523e2ccafdf9ca04e891b658",
+      "signatureScheme": "v3",
+      "signerCount": 1,
+      "signerCertificateSha256Prefix": "0696de7d3f22"
+    }
+  },
+  "retention": {
+    "trackedInRepository": false,
+    "ignoredArtifactRoot": "build/m3-11/provenance-artifact",
+    "regenerationPermitted": false,
+    "failClosedIfExactBytesUnavailable": true
+  }
+}

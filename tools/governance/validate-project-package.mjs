@@ -50,6 +50,8 @@ const expectedTasks = [
   "M3-07-test-only-high-benchmark-contract.md",
   "M3-08-startup-performance-stability-contract.md",
   "M3-09-startup-attribution-boundary-contract.md",
+  "M3-10-startup-attribution-diagnostic.md",
+  "M3-11-canonical-startup-artifact-contract.md",
 ];
 
 const taskHeadings = [
@@ -200,6 +202,10 @@ if (!fs.existsSync(indexFile)) {
             ? "64"
           : id === "M3-09"
             ? "68"
+          : id === "M3-10"
+            ? "70"
+          : id === "M3-11"
+            ? "71"
           : String(expectedTasks.indexOf(expectedFile) + 1);
     if (!issueMatch || issueMatch[1] !== issueMatch[2] || issueMatch[1] !== expectedIssue) {
       errors.push(`docs/tasks/INDEX.md: ${id} must link its GitHub Issue`);
@@ -341,6 +347,30 @@ for (const phrase of [
   requirePhrase(m305Text, phrase, "docs/tasks/M3-05-size-startup-memory-benchmarks.md");
 }
 
+const m310Text = readUtf8(
+  path.join(root, "docs", "tasks", "M3-10-startup-attribution-diagnostic.md"),
+);
+const m311Text = readUtf8(
+  path.join(root, "docs", "tasks", "M3-11-canonical-startup-artifact-contract.md"),
+);
+const m311LockText = readUtf8(
+  path.join(root, "docs", "evidence", "M3-11", "canonical-artifact-lock.json"),
+);
+for (const [text, label] of [
+  [m310Text, "docs/tasks/M3-10-startup-attribution-diagnostic.md"],
+  [m311Text, "docs/tasks/M3-11-canonical-startup-artifact-contract.md"],
+  [m311LockText, "docs/evidence/M3-11/canonical-artifact-lock.json"],
+]) {
+  for (const phrase of [
+    "f666ea37d4f5dcc96fb994066ab97659a11119a33d637606b5cc0636efdf4c36",
+    "f265688bd8eea4f85def8c4edf50aae14e287688523e2ccafdf9ca04e891b658",
+    "a7131f59ab69769c3ebe3dcc4d7295b3e11ae84c823701f6985c953803068c4a",
+  ]) requirePhrase(text, phrase, label);
+}
+for (const phrase of ["M3-10", "M3-11", "artifact `9260244215`"]) {
+  requirePhrase(m305Text, phrase, "docs/tasks/M3-05-size-startup-memory-benchmarks.md");
+}
+
 const m401Text = readUtf8(
   path.join(root, "docs", "tasks", "M4-01-security-and-supply-chain-review.md"),
 );
@@ -384,6 +414,7 @@ for (const tool of [
   "tools/governance/verify-m3-07-high-benchmark-contract.mjs",
   "tools/governance/verify-m3-08-startup-stability-contract.mjs",
   "tools/governance/verify-m3-09-startup-attribution-contract.mjs",
+  "tools/governance/verify-m3-11-canonical-artifact-contract.mjs",
 ]) {
   if (!fs.existsSync(path.join(root, tool))) errors.push(`Missing governance tool: ${tool}`);
 }

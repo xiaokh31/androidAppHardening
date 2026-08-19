@@ -84,7 +84,11 @@ function validateReport(report) {
   deepEqual(report.thresholds, THRESHOLDS, "thresholds");
 
   validateProfile(report.profile);
-  const expectedTuple = sha256(`${report.profile.baselineOriginalApkSha256}:${report.profile.protectedOriginalApkSha256}`);
+  const expectedTuple = canonicalProductTuple(
+    report.fixtureId,
+    report.profile.baselineOriginalApkSha256,
+    report.profile.protectedOriginalApkSha256,
+  );
   equal(report.productTupleSha256, expectedTuple, "productTupleSha256");
   validateRunEnumeration(report.runEnumeration, report, expectedTuple);
 
@@ -271,7 +275,7 @@ function buildSyntheticReport() {
   const headSha = "1".repeat(40);
   const baselineOriginal = "2".repeat(64);
   const protectedOriginal = "3".repeat(64);
-  const tuple = sha256(`${baselineOriginal}:${protectedOriginal}`);
+  const tuple = canonicalProductTuple("java-single-dex", baselineOriginal, protectedOriginal);
   const report = {
     schemaVersion: 1,
     contractModelOnly: true,
@@ -567,6 +571,15 @@ function nearestRankP50(values) { return [...values].sort((a, b) => a - b)[7]; }
 function nearestRank(values, quantile) { return [...values].sort((a, b) => a - b)[Math.ceil(quantile * values.length) - 1]; }
 function ms(value) { return value * 1_000_000; }
 function sha256(value) { return createHash("sha256").update(value).digest("hex"); }
+
+function canonicalProductTuple(fixtureId, baselineSha256, protectedSha256) {
+  return sha256(JSON.stringify({
+    schemaVersion: 1,
+    fixtureId,
+    baselineSha256,
+    protectedSha256,
+  }));
+}
 function reorder(objectValue, left, right) {
   const entries = Object.entries(objectValue);
   [entries[left], entries[right]] = [entries[right], entries[left]];

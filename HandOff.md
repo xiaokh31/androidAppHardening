@@ -1,15 +1,15 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260816-134439
-updated_at: 2026-08-16T13:44:39+08:00
+handoff_id: HO-20260819-061706
+updated_at: 2026-08-19T06:17:06+08:00
 updated_by: /root
-state: ready
-source_branch: main
-base_commit: e12542db48eac96f17c4a1f4306ec20c62dcfa1f
+state: active
+source_branch: docs/m3-09-startup-attribution-boundary
+base_commit: 7f10a0b84d9680e4b9311e680d0508e7fde512cd
 working_tree: clean
 current_milestone: M3
-active_task: NONE
+active_task: M3-09
 next_owner: /root
 ---
 
@@ -17,11 +17,13 @@ next_owner: /root
 
 ## Objective
 
-Record completed M3-08 and hand the repository back to M3-05 for its single ADR 0015 API 36 replacement matrix.
+Freeze an independent ADR/task that replaces incomplete Runtime-only startup attribution with a reconcilable end-to-end boundary, without rerunning M2-10 or resuming M3-05.
 
 ## Current State
 
-- M3-08 is complete. Final freeze `7e949e9d58ca0a0202790bff70e6199272c75c7f` passed independent review `P0=0/P1=0/P2=0`; final PR head `a5d76806850ecc68cb92e87c4a06e29d9cfe0b1b` passed all checks and merged as `4c3efc1614158a0372eb877fc02fd1db27dcffb3`; Issue #64 closed. Post-merge coordination head `e12542db48eac96f17c4a1f4306ec20c62dcfa1f` passed Build `31929454365` and Governance `31929454381` on Ubuntu/Windows plus local M3-08/governance/strict/diff gates. No KVM, emulator, physical device or benchmark ran. M3-05 PR #63 is now eligible to resume its single ADR 0015 API 36 A/B replacement job.
+- Replacement Governance `32191522604` confirmed the original stale M3-08 dependency token was fixed: project-package validation passed on both platforms. Its next step rejected the changed retained M3-08 governance validator because M3-09's governance-only allowlist did not enumerate that file. The bounded follow-up adds only that validator to the task's Relevant Files and the exact governance allowlist; production, fixture, benchmark and diagnostic-workflow paths remain forbidden. Its bounded incremental read-only review passed with `P0=0/P1=0/P2=0`. Build `32191522628` passed Ubuntu/Windows at the superseded intermediate head; final exact-head replacement Build/Governance remain required. No Android or performance matrix ran.
+- M3-09 is active on `docs/m3-09-startup-attribution-boundary` from `main@7f10a0b84d9680e4b9311e680d0508e7fde512cd`; Issue #68 is the unique task Issue. Candidate `13fd21b621cd73961e17a131cd900861d3431dd7` failed review with `P0=0/P1=5/P2=0`; remediation `45ec1bac47b427a70752bcfba610371c6ad17c5b` closed the arithmetic/HandOff findings but the bounded second review returned `P0=0/P1=3/P2=1`. Second remediation `2d94c77d60c004b56c0b44ce7f82018d5cd51a62` explicitly limits the local validator to a synthetic contract model, requires a later pinned byte-level APK/DEX/profile verifier plus post-diagnostic official API evidence workflow, recomputes A/B model calibration, proves two real 200 ms owners against a 310 ms total with a negative common contribution, and retains zero-duration stages. The final bounded independent review is `PASS`, `P0=0/P1=0/P2=0`; publication head `2175322f7a66b62032323b2a84a4f0277e40c896` records that evidence and all 58 named mutations plus local syntax/contract/base-diff/governance/strict/diff gates pass. Draft PR #69 correctly closes Issue #68. Build `32150031076` passed Ubuntu/Windows; Governance `32150031013` failed on both platforms only because the retained M3-08 validator still required the superseded dependency text `M3-07 → M3-08 → M3-05`. The bounded CI remediation changes that governance token to the current `M3-07 → M3-08 → M3-09 → M3-05`; M3-08 default/self-test, M3-09 58 mutations, project governance and diff checks pass locally. Automatically triggered out-of-scope Fuzz/equivalence runs and the stale-head Build were cancelled. M3-05 PR #63 remains blocked. No Runtime, fixture, benchmark or diagnostic workflow implementation changed, and no Gradle, KVM, emulator, ARM, benchmark, M3-05 or M2-10 retry ran.
+- M3-08 is complete. Final freeze `7e949e9d58ca0a0202790bff70e6199272c75c7f` passed independent review `P0=0/P1=0/P2=0`; final PR head `a5d76806850ecc68cb92e87c4a06e29d9cfe0b1b` passed all checks and merged as `4c3efc1614158a0372eb877fc02fd1db27dcffb3`; Issue #64 closed. Post-merge coordination head `e12542db48eac96f17c4a1f4306ec20c62dcfa1f` passed Build `31929454365` and Governance `31929454381` on Ubuntu/Windows plus local M3-08/governance/strict/diff gates. No KVM, emulator, physical device or benchmark ran. Its historical authorization to resume M3-05 was superseded after the retained M2-10 diagnostic selected no eligible inner stage; current M3-09 and the later ADR 0016 implementation/remediation remain mandatory.
 - M3-07 is complete on `main`. Final implementation freeze `90f754ea185a8633acd585d181ee108db016209d` passed independent review with `P0=0/P1=0/P2=0`; exact published head `4e77aa38b508a99c60a576e41804ba2d08b6b9fd` passed Build `31891662932` and Governance `31891662909` on Ubuntu/Windows. PR #62 merged with expected-head protection as `859cfa217b2fc0726cc001519967cdde606d2146`, Issue #61 closed, and post-merge `main@930b759c99f330218dc4404368e9844e80456c82` passed Build `31892091205` and Governance `31892091344`. No device, emulator or KVM ran for M3-07.
 - M2-09 is merged and complete. Production implementation `9ba6ec28c7d1450c3ca51175f78e3aa2d292331f`, test remediation `dd78179f41c97aab7e3f38c0f571c4e6198f8939` and exact PR head `186dfd79ee4f32c749c4ccfdebf5bc82a3476637` passed independent `P0=0/P1=0/P2=0` review, Build `31862011459`, Governance `31862011393`, and API 29/36 KVM `31862011460`. PR #60 merged as `77b3aee7d88eaf4446ae780f20fe6988796609af`; final main coordination `e3a676ed2f4864d2b33077e1d00c300cf2a59817` passed Build `31863095498` and Governance `31863095500`.
 - M3-06 is complete. PR #57 merged with expected-head `8da49b52fc7c2ea65bf7f0a19b5804d9137130e6` as `a65433ae0bda651fc1088d187913b2dbfa7b02d1`; Issue #56 closed. Merger-ready and post-merge Ubuntu/Windows Build/Governance passed, while device/KVM/fuzz remained out of scope.
@@ -32,7 +34,7 @@ Record completed M3-08 and hand the repository back to M3-05 for its single ADR 
 - The final exact implementation-head physical API 29 ARM campaign completed both ARM64 and ARM32 cells after the user accepted the OEM prompt. Both cells are `VERIFIED`; all nine fixture packages were independently confirmed absent afterward. No local emulator was started and no device rerun is required.
 - ADR 0012 and the revised M3-04 contract enumerate the full API 29-36 by four-ABI grid while reserving `VERIFIED` for real Android-reported process evidence, `FAILED` for executed regressions, and `UNVERIFIED` for unavailable combinations that carry no positive compatibility claim. The mandatory current M3-04 baseline is API 29 ARM32/ARM64 plus API 29/36 x86_64.
 - Read-only inventory provides an authorized API 29 `user` physical device capable of `arm64-v8a` and `armeabi-v7a` processes, plus pinned API 29 revision 8 and API 36 revision 2 x86_64 KVM images. API 30-35 and all other unavailable combinations will be emitted as `UNVERIFIED`; they will not trigger downloads or inferred claims.
-- M3-04 and M3-07 are complete on `main`. M3-05 PR #63 remains draft after its API 36 evidence exposed a 331 ms P50 delta against the 300 ms budget and six summaries above the 10% repeatability limit. M3-08 is the only active prerequisite; no M3-05 implementation is included in this branch.
+- M3-04, M3-07 and M3-08 are complete on `main`. M3-05 PR #63 remains draft after its API 36 evidence exposed a 331 ms P50 delta against the 300 ms budget and six summaries above the 10% repeatability limit. M3-09 is the active governance prerequisite, followed by a separate ADR 0016 diagnostic/remediation task; no M3-05 implementation is included in this branch.
 - Retained API 29 KVM runs `31858315765` and `31859364008` document the pre-M2-09 configuration-relaunch defect. They are historical only; final exact implementation-head KVM `31864724589` and the ARM campaign supersede them.
 - M3-03 final implementation `f53989e83b8a030139ec3e564ebfb41bdb81129a` passed Cross-platform equivalence `31847937221`, Build `31847937347` and Governance `31847937260` on the exact head. Windows and Ubuntu each produced 18 authenticated outputs; the final summary compared 36 outputs and proved stable semantics, random non-reuse, independent authentication/decryption, immutable inputs, unsigned outputs, equivalent negative errors and zero absolute-path findings. PR [#55](https://github.com/xiaokh31/androidAppHardening/pull/55) merged with expected-head protection as `af0fe5c5d0e9098d8cca86b3d5de3e09ed8412fb`, and Issue #20 closed. M3-03 is Host-only; out-of-scope KVM and M3-02 fuzz runs were cancelled.
 - M2-08 is complete. Final head `626a14c63c1b77f2552236659eb98d47bb027a12` passed Build `31820302813` on Ubuntu/Windows, including Ubuntu ASan/UBSan, and Governance `31820302849`; independent review was `P0=0/P1=0/P2=0`. PR #54 merged with expected-head protection as `ed0d0fb97c255a98c04628dc1746801985591c3c`, Issue #53 closed, and unrelated KVM run `31820302818` was cancelled by scope. M3-02 PR #52 may resume.
@@ -200,7 +202,8 @@ Record completed M3-08 and hand the repository back to M3-05 for its single ADR 
 | M3-04 | `/root` | `main` | done | M0-03, M2-04, M2-09, M3-01, M3-02, M3-06 | PR #58 merged; mandatory real-process cells and final main gates passed |
 | M3-07 | `/root` | `main` | done | M2-05, M2-06, M3-01 | PR #62 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M3-08 | `/root` | `main` | done | M3-01, M3-07 | PR #65 merged; independent review and post-merge main Build/Governance complete |
-| M3-05 | `/root` | `chore/m3-05-performance-benchmarks` | planned | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08 | Resume PR #63 and run exactly one ADR 0015 API 36 A/B replacement job before any ARM run |
+| M3-09 | `/root` | `docs/m3-09-startup-attribution-boundary` | in_progress | M3-08 | Draft PR #69; bounded governance-only allowlist fix passed incremental review and awaits final exact-head Build/Governance |
+| M3-05 | `/root` | `chore/m3-05-performance-benchmarks` | planned | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08, M3-09 | Keep PR #63 blocked until M3-09 and a separate ADR 0016 implementation/remediation task complete |
 | M3-03 | `/root` | `main` | done | M0-03, M1-05, M1-06, M2-06, M3-01 | PR #55 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | done | M2-02 | PR #54 merged; exact regression, ASan/UBSan, dual-platform Build/Governance and independent review passed |
 | M3-02 | `/root` | `main` | done | M1-03, M1-04, M1-06, M2-02, M2-03, M2-06, M2-08, M3-01 | PR #52 merged; README/evidence synchronized; wait for next task selection |
@@ -227,6 +230,7 @@ Record completed M3-08 and hand the repository back to M3-05 for its single ADR 
 
 ## Decisions and Invariants
 
+- ADR 0016 replaces the unmerged M2-10 attribution proposal without erasing or retrying its first-and-only run. M2-10 proved only that no `t0..t6` inner stage met the old threshold; it did not measure the full process-to-Application or process-to-interactive interval. Future attribution must reconcile adjacent `p0..p15` stages on one boot clock and may call only `h0..h8` Runtime-owned.
 - ADR 0013 permits a later same-process Shell wrapper to read only an already committed `READY` terminal result and only when the Framework loader is the identical frozen final loader. It cannot reopen Guard, replace ownership, attach to partial/failed state or share across processes.
 - ADR 0012 separates four-ABI build capability from device compatibility claims. The complete M3-04 grid may contain `UNVERIFIED` cells, but only exact real-process `VERIFIED` cells may appear as release-validated; any `FAILED` cell blocks completion and release.
 - M2-07 Windows runner maintenance adds only exact mapping `20260810.198.2` -> `win25-vs2026/20260810.198`; all prior mappings and exact compiler/SDK assertions remain, and every unknown future image remains fail-closed. No retry against an older hosted image is accepted as evidence.
@@ -250,6 +254,7 @@ Record completed M3-08 and hand the repository back to M3-05 for its single ADR 
 
 ## Changes Since Previous Handoff
 
+- Created Issue #68 and independent branch `docs/m3-09-startup-attribution-boundary` from `main@7f10a0b84d9680e4b9311e680d0508e7fde512cd`. Added ADR 0016, M3-09, dependency alignment and Governance integration. Reviews of `13fd21b` and `45ec1ba` failed with five P1, then three P1 plus one P2. The current remediation preserves the exact owner arithmetic, makes the governance validator synthetic-only, requires a later real byte/API verifier and two-phase diagnostic/evidence workflows, reconstructs the multi-owner mutation with two real eligible owners and restores zero-duration compatibility. No product, fixture, benchmark or diagnostic workflow implementation changed; no dynamic Android work ran.
 - Started independent M3-08 from `main@930b759c99f330218dc4404368e9844e80456c82`, created Issue #64 and added proposed ADR 0015, the task card, M3-05/TEST_STRATEGY/INDEX dependency changes, README state, a formal aggregate validator and Governance integration. No production, benchmark implementation, fixture, Runtime, Host, KVM or device surface is in scope.
 
 - Preserved and pushed the M3-04 blocked snapshot `a290a6f678f90783ed6f7488c0b7956e78e612f7`, then switched to verified `main@a65433ae0bda651fc1088d187913b2dbfa7b02d1`. Created Issue #59 and branch `fix/m2-09-component-relaunch-lifecycle`; added the bounded M2-09 task contract and ADR 0013 before changing Runtime production code.
@@ -518,7 +523,7 @@ Record completed M3-08 and hand the repository back to M3-05 for its single ADR 
 - timestamp: 2026-08-16T13:44:39+08:00
 - artifact: docs/evidence/M3-08/remote-validation.md
 - sha256: ed7f0fe392b8ec30334de1b41337b3ebdd34a0eb4106bfe14f273241c02aaf67
-- result: PASS; post-merge main Build and Governance passed on both required platforms, M3-08 is complete, and M3-05 may resume only with its single ADR 0015 API 36 A/B replacement job
+- result: HISTORICAL_PASS; post-merge main Build and Governance passed on both required platforms and M3-08 completed, but its former M3-05 resume authorization was superseded by the retained M2-10 no-owner result and active M3-09 boundary work
 
 ### M3-07 test-only HIGH benchmark contract
 
@@ -1710,16 +1715,21 @@ Record completed M3-08 and hand the repository back to M3-05 for its single ADR 
 
 ## Blockers and Required Approvals
 
-None
+- M3-09 draft PR #69 passed its implementation review with P0=0/P1=0/P2=0. The first CI remediation fixed the stale dependency token; replacement Governance `32191522604` then exposed the missing retained-validator allowlist entry. The bounded governance-only allowlist follow-up must pass final incremental review and replacement Ubuntu/Windows Build/Governance; ready/merge is not authorized.
 
 ## Ordered Next Actions
 
-1. Resume `chore/m3-05-performance-benchmarks` and PR #63 from current `main` without changing fixed budgets, sample counts or security controls.
-2. Implement and run exactly one same-SHA/job/boot API 36 A/B replacement job under ADR 0015; no third campaign or result selection is permitted.
-3. Run ARM only after the API 36 replacement passes; a stable remaining budget failure requires a separate Runtime optimization task.
+1. Push the reviewed retained-validator allowlist follow-up and clean HandOff snapshot.
+2. Await replacement exact-head Ubuntu/Windows Build/Governance only; cancel automatically triggered Fuzz/equivalence/KVM work as out of scope.
+3. Do not mark ready or merge without the later gate decision; do not run KVM, emulator, ARM or benchmark.
+4. After M3-09 merges, create a separate ADR 0016 diagnostic implementation task; M3-05 PR #63 remains blocked until that task and any selected owner remediation complete.
 
 ## Relevant Files and Artifacts
 
+- `docs/adr/0016-end-to-end-startup-attribution-boundary.md`
+- `docs/tasks/M3-09-startup-attribution-boundary-contract.md`
+- `tools/governance/verify-m3-09-startup-attribution-contract.mjs`
+- Issue #68
 - `docs/adr/0015-startup-performance-measurement-stability.md`
 - `docs/tasks/M3-08-startup-performance-stability-contract.md`
 - `tools/governance/verify-m3-08-startup-stability-contract.mjs`

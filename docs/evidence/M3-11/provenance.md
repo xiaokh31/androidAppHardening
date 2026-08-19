@@ -78,6 +78,8 @@ The actual artifact files bind the selected pair to the retained rejection:
 | `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict` | 0 | strict active-task handoff PASS |
 | `git diff --check` | 0 | PASS |
 
+Published reviewed head `14bf68a0b2d80b7086bb060141f81224b2d4aca4` passed Build run `32214654539` on Ubuntu job `95953827223` and Windows job `95953827229`, plus Governance run `32214654687` on Ubuntu job `95953782107` and Windows job `95953782046`. The automatically triggered equivalence/fuzz workflows were cancelled as out of scope and are not M3-11 evidence.
+
 The initial governance-only base diff contained 17 files and no Runtime, Host, fixture, benchmark or canonical diagnostic workflow implementation, but independent review rejected its semantic selection with `P0=0/P1=2/P2=2`. The replacement freeze contains 19 governance/evidence files and still contains no Runtime, Host, fixture, benchmark or canonical diagnostic workflow implementation. Its current hashes are:
 
 | File | SHA-256 |

@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260819-120553
-updated_at: 2026-08-19T12:05:53+08:00
+handoff_id: HO-20260819-222058
+updated_at: 2026-08-19T22:20:58+08:00
 updated_by: /root
 state: active
 source_branch: docs/m3-11-canonical-startup-artifacts
@@ -21,7 +21,7 @@ Remediate the first M3-11 independent-review findings and pin ADR 0016/M3-10 to 
 
 ## Current State
 
-- M3-11 is active on `docs/m3-11-canonical-startup-artifacts` from `main@3458338e7886ac3fba8383bac47a0b655ca44533`, with Issue #71. First independent review rejected evidence head `8f7a5f5e4cc006bc565ab0e69c2c917d9b87d41c` with `P0=0/P1=2/P2=2`. Replacement freeze `f16f7d4808925030f0cd7c74df89d91ae3b713df` closed those findings; a second full review found only one M3-09 synthetic tuple P2, and exact implementation head `a5397888ff7eeb9571f64d06dfc10e8edef7f37c` closed it. Final independent review is `P0=0/P1=0/P2=0`. The exact reviewed head was pushed and draft PR #72 created for Issue #71. Automatic equivalence/fuzz runs were cancelled as out of scope; only Ubuntu/Windows Build/Governance are retained. No benchmark, KVM, emulator, ARM or canonical workflow ran. M3-10 and M3-05 remain blocked.
+- M3-11 is active on `docs/m3-11-canonical-startup-artifacts` from `main@3458338e7886ac3fba8383bac47a0b655ca44533`, with Issue #71 and draft PR #72. First independent review rejected evidence head `8f7a5f5e4cc006bc565ab0e69c2c917d9b87d41c` with `P0=0/P1=2/P2=2`. Replacement freeze `f16f7d4808925030f0cd7c74df89d91ae3b713df` closed those findings; a second full review found only one M3-09 synthetic tuple P2, and implementation head `a5397888ff7eeb9571f64d06dfc10e8edef7f37c` closed it. Final independent review and the evidence-only successor are `P0=0/P1=0/P2=0`. Published head `14bf68a0b2d80b7086bb060141f81224b2d4aca4` passed Ubuntu/Windows Build `32214654539` and Governance `32214654687`; automatic equivalence/fuzz were cancelled as out of scope. No benchmark, KVM, emulator, ARM or canonical workflow ran. M3-10 and M3-05 remain blocked.
 - M3-09 is complete on `main`. Final PR head `613e61ac8d3e74f60219ee0d462fae635c3a663d` passed independent bounded review with `P0=0/P1=0/P2=0`, exact-head Ubuntu/Windows Build `32192033540`, and Governance `32192033589`. PR #69 was made ready and merged with expected-head protection as `886b49f001936edc5d1a090e14e626d6e8e3f3ab`; Issue #68 closed. ADR 0016 is accepted and the M3-09 validator remains synthetic-contract-only. No Runtime, Host, fixture, benchmark or diagnostic workflow implementation changed; no Gradle, KVM, emulator, ARM, benchmark, M3-05 or M2-10 retry ran. M3-05 PR #63 remains blocked until a separate ADR 0016 implementation task and any selected owner remediation complete.
 - M3-08 is complete. Final freeze `7e949e9d58ca0a0202790bff70e6199272c75c7f` passed independent review `P0=0/P1=0/P2=0`; final PR head `a5d76806850ecc68cb92e87c4a06e29d9cfe0b1b` passed all checks and merged as `4c3efc1614158a0372eb877fc02fd1db27dcffb3`; Issue #64 closed. Post-merge coordination head `e12542db48eac96f17c4a1f4306ec20c62dcfa1f` passed Build `31929454365` and Governance `31929454381` on Ubuntu/Windows plus local M3-08/governance/strict/diff gates. No KVM, emulator, physical device or benchmark ran. Its historical authorization to resume M3-05 was superseded after the retained M2-10 diagnostic selected no eligible inner stage; current M3-09 and the later ADR 0016 implementation/remediation remain mandatory.
 - M3-07 is complete on `main`. Final implementation freeze `90f754ea185a8633acd585d181ee108db016209d` passed independent review with `P0=0/P1=0/P2=0`; exact published head `4e77aa38b508a99c60a576e41804ba2d08b6b9fd` passed Build `31891662932` and Governance `31891662909` on Ubuntu/Windows. PR #62 merged with expected-head protection as `859cfa217b2fc0726cc001519967cdde606d2146`, Issue #61 closed, and post-merge `main@930b759c99f330218dc4404368e9844e80456c82` passed Build `31892091205` and Governance `31892091344`. No device, emulator or KVM ran for M3-07.
@@ -258,6 +258,7 @@ Remediate the first M3-11 independent-review findings and pin ADR 0016/M3-10 to 
 
 ## Changes Since Previous Handoff
 
+- Verified published head `14bf68a0b2d80b7086bb060141f81224b2d4aca4`: Build `32214654539` and Governance `32214654687` passed on Ubuntu/Windows. Recorded exact job IDs and the explicit scope exclusion for cancelled equivalence/fuzz; no dynamic Android or diagnostic work ran.
 - Closed the second-review-only tuple-algorithm P2 in `a5397888ff7eeb9571f64d06dfc10e8edef7f37c`; bounded independent review returned final `P0=0/P1=0/P2=0`. Pushed the exact reviewed head and created unique draft PR #72 for Issue #71. Cancelled automatically triggered equivalence/fuzz runs because they are outside this governance-only task; Build/Governance continue.
 - Frozen remediation implementation `f16f7d4808925030f0cd7c74df89d91ae3b713df`: the lock now names the exact `java-single-dex` pair, embeds the exact tuple, binds all four evidence-file hashes, parses/recomputes the actual manifest/repeatability/A/B report semantics, and rejects project-root, realpath, link, lock and report drift. Actual-byte validation rejects 26 named mutations and the committed 19-file base diff remains governance/evidence-only.
 - Archived the first independent M3-11 review as FAIL (`P0=0/P1=2/P2=2`) without publication. Remediation changes the lock from the unrelated Kotlin pair to the actual `java-single-dex` failure pair, corrects 331/432 as campaign A/B Application deltas with 30.5% repeatability failure, requires direct manifest/report/repeatability parsing, stores the exact tuple string and adds realpath/link containment plus new mutations. The original frozen commits remain rejected history.
@@ -425,6 +426,18 @@ Remediate the first M3-11 independent-review findings and pin ADR 0016/M3-10 to 
 - M2-02 第三实现层已完成本地检查点：同一 `sourceDir` 只读文件映射、OS 只读 DEX commit、generation+slot 类型化 JNI handle、同 handle `AHMD` 认证 metadata、精确五 JNI 方法、Java primitive/finally 交接窗口、幂等 `LoadedPayload` owner，以及 M0-05 等价 Native 搜索路径和三参数 API 29 `InMemoryDexClassLoader` 已接通。Java 17 编译/lint、NDK 四 ABI warnings-as-errors 与离线根 `assembleRelease check` 284-task 均 PASS，四个 ELF 都含唯一 104-byte alloc/read-only `.ah_share_v1`，未启动设备或模拟器。证据更新于 `docs/evidence/M2-02/local-validation.md`；任务仍未完成或发布，下一步仅补 failure injection、Host sanitizer/fuzz/OOM 与已授权 KVM/arm64 验收，不启动 M2-03。
 
 ## Verification Evidence
+
+### M3-11 published-head CI
+
+- task_id: M3-11
+- git_commit: 14bf68a0b2d80b7086bb060141f81224b2d4aca4
+- command: gh pr checks 72 --required; gh run view 32214654539; gh run view 32214654687
+- exit_code: 0
+- environment: GitHub ubuntu-24.04 and windows-2025; pinned repository toolchain
+- timestamp: 2026-08-19T22:20:58+08:00
+- artifact: `docs/evidence/M3-11/remote-validation.md`; Build `32214654539`; Governance `32214654687`; draft PR #72
+- sha256: not_applicable
+- result: PASS; Ubuntu/Windows Build and Governance all passed on exact head; equivalence/fuzz cancelled as out of scope and no dynamic M3-11 validation ran
 
 ### M3-11 final independent review and draft publication
 
@@ -1784,14 +1797,14 @@ Remediate the first M3-11 independent-review findings and pin ADR 0016/M3-10 to 
 
 ## Blockers and Required Approvals
 
-- Final independent review is `P0=0/P1=0/P2=0`; the publication condition is satisfied and draft PR #72 exists. M3-11 cannot become ready or merge until the final evidence-only head passes exact-head Ubuntu/Windows Build/Governance.
+- Final independent review is `P0=0/P1=0/P2=0`; draft PR #72 exists and published head `14bf68a0b2d80b7086bb060141f81224b2d4aca4` passed Ubuntu/Windows Build/Governance. The final evidence-only successor must pass the same exact-head gates before ready/merge.
 - M3-10 is technically blocked on merged M3-11 plus an independently reviewed installable-profile derivation for the exact signed originals; the deleted ephemeral key cannot be reconstructed.
 
 ## Ordered Next Actions
 
-1. Push this evidence-only review/PR successor, then perform one bounded read-only consistency check on that exact head.
-2. Wait only for exact-head Ubuntu/Windows Build/Governance; keep equivalence/fuzz cancelled and do not run benchmark, KVM, emulator, ARM or canonical diagnostic.
-3. If those four required jobs pass, prepare merger-ready evidence; do not merge without a separate user instruction.
+1. Push this remote-evidence successor, then perform one bounded read-only consistency check on its exact head.
+2. Wait only for successor exact-head Ubuntu/Windows Build/Governance; keep equivalence/fuzz cancelled and do not run benchmark, KVM, emulator, ARM or canonical diagnostic.
+3. If those four jobs pass, PR #72 is merger-ready; do not transition or merge without a separate user instruction.
 4. Keep M3-10, PR #63, API 36 diagnostic, ARM and M3-05 blocked; do not build or regenerate canonical APKs.
 
 ## Relevant Files and Artifacts

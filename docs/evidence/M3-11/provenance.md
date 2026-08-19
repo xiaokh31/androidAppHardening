@@ -3,6 +3,7 @@
 - Task: `M3-11`, Issue `#71`
 - Branch: `docs/m3-11-canonical-startup-artifacts`
 - Base: `main@3458338e7886ac3fba8383bac47a0b655ca44533`
+- Implementation freeze: `baaabb6f35b022b5d02bf1d2d17650e2b07ae84b`
 - Evidence timestamp: `2026-08-19T03:23:01Z`
 - Dynamic execution: none; no Gradle build, benchmark, KVM, emulator, ARM or canonical diagnostic workflow ran
 
@@ -62,5 +63,15 @@ Its SHA-256 product tuple is `a7131f59ab69769c3ebe3dcc4d7295b3e11ae84c823701f698
 | `node tools/governance/validate-project-package.mjs` | 0 | 36 task cards, 11 core docs and 16 ADRs |
 | `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict` | 0 | strict active-task handoff PASS |
 | `git diff --check` | 0 | PASS |
+
+The committed governance-only base diff contains 17 files and no Runtime, Host, fixture, benchmark or canonical diagnostic workflow implementation. Key frozen file hashes are:
+
+| File | SHA-256 |
+|---|---|
+| `docs/evidence/M3-11/canonical-artifact-lock.json` | `0af157ca7c08123d303ec337a81cb9b6b76971ad09746c97faa6b4f4fa03249a` |
+| `docs/tasks/M3-11-canonical-startup-artifact-contract.md` | `804e28415102fc4cc2d874a37238958b04857ec3248165f63914728c41c88336` |
+| `docs/tasks/M3-10-startup-attribution-diagnostic.md` | `d22ad9fed3ceb219c889517cfe51ee19bfc014a6204123df0eb0b361c8d57f60` |
+| `tools/governance/verify-m3-11-canonical-artifact-contract.mjs` | `853a9f8523bbdd5e89ef65ecc76fcd61624eb22eb13b6ec1cffd6b71f0721f6e` |
+| `docs/adr/0016-end-to-end-startup-attribution-boundary.md` | `377b1c48f0572f2b519f002aa80c271b6fdd3a7dcc51f3ae2c0f57c7f44987c5` |
 
 This provenance record fixes inputs only. It does not approve the rejected M3-10 candidate, create either canonical workflow, consume the unique API 36 diagnostic, resume M3-05, or authorize ARM.

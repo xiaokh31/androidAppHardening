@@ -1,13 +1,13 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260819-112301
-updated_at: 2026-08-19T11:23:01+08:00
+handoff_id: HO-20260819-113223
+updated_at: 2026-08-19T11:32:23+08:00
 updated_by: /root
 state: active
 source_branch: docs/m3-11-canonical-startup-artifacts
 base_commit: 3458338e7886ac3fba8383bac47a0b655ca44533
-working_tree: dirty
+working_tree: clean
 current_milestone: M3
 active_task: M3-11
 next_owner: /root
@@ -426,14 +426,14 @@ Complete the independent M3-11 governance contract that pins ADR 0016/M3-10 to t
 ### M3-11 canonical artifact provenance and local contract gates
 
 - task_id: M3-11
-- git_commit: 3458338e7886ac3fba8383bac47a0b655ca44533
+- git_commit: baaabb6f35b022b5d02bf1d2d17650e2b07ae84b
 - command: official `gh run view`/artifact API/download; direct SHA-256 and pinned apksigner verification; M3-11 validator normal/self-test/actual-byte/base-ref; project governance; diff check
 - exit_code: 0
 - environment: Windows 10 x64; Node.js v24.12.0; pinned Android build-tools 36.1.0; no Gradle/device execution
 - timestamp: 2026-08-19T11:23:01+08:00
 - artifact: `docs/evidence/M3-11/canonical-artifact-lock.json`; `docs/evidence/M3-11/provenance.md`; ignored `build/m3-11/provenance-artifact/`; GitHub artifact `9260244215`
 - sha256: a7131f59ab69769c3ebe3dcc4d7295b3e11ae84c823701f6985c953803068c4a
-- result: PASS for provenance, 12/12 lock mutations, actual-byte hashing, project governance and diff check; independent review and publication remain pending
+- result: PASS for provenance, 12/12 lock mutations, actual-byte hashing, 17-file governance-only base diff, project governance and diff check; independent review and publication remain pending
 
 ### M3-09 expected-head merge
 

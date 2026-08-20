@@ -1,26 +1,27 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260819-080858
-updated_at: 2026-08-19T08:08:58+08:00
+handoff_id: HO-20260819-222058
+updated_at: 2026-08-19T22:20:58+08:00
 updated_by: /root
-state: ready
-source_branch: main
-base_commit: 886b49f001936edc5d1a090e14e626d6e8e3f3ab
+state: active
+source_branch: docs/m3-11-canonical-startup-artifacts
+base_commit: 3458338e7886ac3fba8383bac47a0b655ca44533
 working_tree: clean
 current_milestone: M3
-active_task: NONE
-next_owner: unassigned
+active_task: M3-11
+next_owner: /root
 ---
 
 # Project HandOff
 
 ## Objective
 
-Keep M3-09's accepted end-to-end startup attribution boundary as the prerequisite for a separately scoped implementation task; do not resume M3-05 until that task and any selected owner remediation complete.
+Remediate the first M3-11 independent-review findings and pin ADR 0016/M3-10 to the exact PR #63 `java-single-dex` pair that actually produced the retained application P50 budget failures; do not rebuild a substitute fixture, create a diagnostic workflow, or resume M3-05.
 
 ## Current State
 
+- M3-11 is active on `docs/m3-11-canonical-startup-artifacts` from `main@3458338e7886ac3fba8383bac47a0b655ca44533`, with Issue #71 and draft PR #72. First independent review rejected evidence head `8f7a5f5e4cc006bc565ab0e69c2c917d9b87d41c` with `P0=0/P1=2/P2=2`. Replacement freeze `f16f7d4808925030f0cd7c74df89d91ae3b713df` closed those findings; a second full review found only one M3-09 synthetic tuple P2, and implementation head `a5397888ff7eeb9571f64d06dfc10e8edef7f37c` closed it. Final independent review and the evidence-only successor are `P0=0/P1=0/P2=0`. Published head `14bf68a0b2d80b7086bb060141f81224b2d4aca4` passed Ubuntu/Windows Build `32214654539` and Governance `32214654687`; automatic equivalence/fuzz were cancelled as out of scope. No benchmark, KVM, emulator, ARM or canonical workflow ran. M3-10 and M3-05 remain blocked.
 - M3-09 is complete on `main`. Final PR head `613e61ac8d3e74f60219ee0d462fae635c3a663d` passed independent bounded review with `P0=0/P1=0/P2=0`, exact-head Ubuntu/Windows Build `32192033540`, and Governance `32192033589`. PR #69 was made ready and merged with expected-head protection as `886b49f001936edc5d1a090e14e626d6e8e3f3ab`; Issue #68 closed. ADR 0016 is accepted and the M3-09 validator remains synthetic-contract-only. No Runtime, Host, fixture, benchmark or diagnostic workflow implementation changed; no Gradle, KVM, emulator, ARM, benchmark, M3-05 or M2-10 retry ran. M3-05 PR #63 remains blocked until a separate ADR 0016 implementation task and any selected owner remediation complete.
 - M3-08 is complete. Final freeze `7e949e9d58ca0a0202790bff70e6199272c75c7f` passed independent review `P0=0/P1=0/P2=0`; final PR head `a5d76806850ecc68cb92e87c4a06e29d9cfe0b1b` passed all checks and merged as `4c3efc1614158a0372eb877fc02fd1db27dcffb3`; Issue #64 closed. Post-merge coordination head `e12542db48eac96f17c4a1f4306ec20c62dcfa1f` passed Build `31929454365` and Governance `31929454381` on Ubuntu/Windows plus local M3-08/governance/strict/diff gates. No KVM, emulator, physical device or benchmark ran. Its historical authorization to resume M3-05 was superseded after the retained M2-10 diagnostic selected no eligible inner stage; current M3-09 and the later ADR 0016 implementation/remediation remain mandatory.
 - M3-07 is complete on `main`. Final implementation freeze `90f754ea185a8633acd585d181ee108db016209d` passed independent review with `P0=0/P1=0/P2=0`; exact published head `4e77aa38b508a99c60a576e41804ba2d08b6b9fd` passed Build `31891662932` and Governance `31891662909` on Ubuntu/Windows. PR #62 merged with expected-head protection as `859cfa217b2fc0726cc001519967cdde606d2146`, Issue #61 closed, and post-merge `main@930b759c99f330218dc4404368e9844e80456c82` passed Build `31892091205` and Governance `31892091344`. No device, emulator or KVM ran for M3-07.
@@ -202,7 +203,9 @@ Keep M3-09's accepted end-to-end startup attribution boundary as the prerequisit
 | M3-07 | `/root` | `main` | done | M2-05, M2-06, M3-01 | PR #62 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M3-08 | `/root` | `main` | done | M3-01, M3-07 | PR #65 merged; independent review and post-merge main Build/Governance complete |
 | M3-09 | `/root` | `main` | done | M3-08 | PR #69 merged as `886b49f`; Issue #68 closed; independent review and exact-head Ubuntu/Windows Build/Governance passed |
-| M3-05 | `/root` | `chore/m3-05-performance-benchmarks` | planned | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08, M3-09 | Keep PR #63 blocked until a separate ADR 0016 implementation task and any selected owner remediation complete |
+| M3-11 | `/root` | `docs/m3-11-canonical-startup-artifacts` | in_progress | M3-09 | Freeze exact PR #63 source/bytes/tuple, pass local governance, then obtain independent read-only review before publication |
+| M3-10 | `runtime-security-agent` | `feat/m3-10-startup-attribution-diagnostic` | blocked | M3-09, M3-11 | Discard rebuilt-original claim; resume only from merged M3-11 exact pair with independently reviewed installable-profile design |
+| M3-05 | `/root` | `chore/m3-05-performance-benchmarks` | blocked | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08, M3-09, M3-10 | Keep PR #63 blocked until M3-10 attribution and any selected owner remediation complete |
 | M3-03 | `/root` | `main` | done | M0-03, M1-05, M1-06, M2-06, M3-01 | PR #55 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | done | M2-02 | PR #54 merged; exact regression, ASan/UBSan, dual-platform Build/Governance and independent review passed |
 | M3-02 | `/root` | `main` | done | M1-03, M1-04, M1-06, M2-02, M2-03, M2-06, M2-08, M3-01 | PR #52 merged; README/evidence synchronized; wait for next task selection |
@@ -229,6 +232,8 @@ Keep M3-09's accepted end-to-end startup attribution boundary as the prerequisit
 
 ## Decisions and Invariants
 
+- M3-11 fixes the original diagnostic objects to PR #63 run `31931428130` artifact `9260244215`; exact bytes, not source equivalence, define identity. The selected pair must also be proven from the artifact manifest, both campaign reports and repeatability aggregate. Rebuild, ZIP normalization, re-signing, manifest/container regeneration or another artifact cannot reuse tuple `883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd`.
+- The locked APKs are signed v3 install bytes and their ephemeral private key is intentionally unavailable. M3-11 does not authorize recovery of signing material or claim profile derivation is solved. M3-10 must fail closed if it cannot produce an independently reviewed installable profile without substituting originals or weakening signer/Guard/container semantics.
 - ADR 0016 replaces the unmerged M2-10 attribution proposal without erasing or retrying its first-and-only run. M2-10 proved only that no `t0..t6` inner stage met the old threshold; it did not measure the full process-to-Application or process-to-interactive interval. Future attribution must reconcile adjacent `p0..p15` stages on one boot clock and may call only `h0..h8` Runtime-owned.
 - ADR 0013 permits a later same-process Shell wrapper to read only an already committed `READY` terminal result and only when the Framework loader is the identical frozen final loader. It cannot reopen Guard, replace ownership, attach to partial/failed state or share across processes.
 - ADR 0012 separates four-ABI build capability from device compatibility claims. The complete M3-04 grid may contain `UNVERIFIED` cells, but only exact real-process `VERIFIED` cells may appear as release-validated; any `FAILED` cell blocks completion and release.
@@ -253,6 +258,11 @@ Keep M3-09's accepted end-to-end startup attribution boundary as the prerequisit
 
 ## Changes Since Previous Handoff
 
+- Verified published head `14bf68a0b2d80b7086bb060141f81224b2d4aca4`: Build `32214654539` and Governance `32214654687` passed on Ubuntu/Windows. Recorded exact job IDs and the explicit scope exclusion for cancelled equivalence/fuzz; no dynamic Android or diagnostic work ran.
+- Closed the second-review-only tuple-algorithm P2 in `a5397888ff7eeb9571f64d06dfc10e8edef7f37c`; bounded independent review returned final `P0=0/P1=0/P2=0`. Pushed the exact reviewed head and created unique draft PR #72 for Issue #71. Cancelled automatically triggered equivalence/fuzz runs because they are outside this governance-only task; Build/Governance continue.
+- Frozen remediation implementation `f16f7d4808925030f0cd7c74df89d91ae3b713df`: the lock now names the exact `java-single-dex` pair, embeds the exact tuple, binds all four evidence-file hashes, parses/recomputes the actual manifest/repeatability/A/B report semantics, and rejects project-root, realpath, link, lock and report drift. Actual-byte validation rejects 26 named mutations and the committed 19-file base diff remains governance/evidence-only.
+- Archived the first independent M3-11 review as FAIL (`P0=0/P1=2/P2=2`) without publication. Remediation changes the lock from the unrelated Kotlin pair to the actual `java-single-dex` failure pair, corrects 331/432 as campaign A/B Application deltas with 30.5% repeatability failure, requires direct manifest/report/repeatability parsing, stores the exact tuple string and adds realpath/link containment plus new mutations. The original frozen commits remain rejected history.
+- Created Issue #71 and branch `docs/m3-11-canonical-startup-artifacts` from clean `main@3458338e7886ac3fba8383bac47a0b655ca44533`. Read official PR #63 run/job/artifact metadata, downloaded only artifact `9260244215` into ignored `build/m3-11/`, directly hashed the canonical pair and verified both signatures with pinned build-tools 36.1.0. The initial Kotlin lock and 12-mutation verifier were rejected and remain historical only. No product or dynamic Android surface changed.
 - PR #69 was transitioned to ready and merged with expected-head `613e61ac8d3e74f60219ee0d462fae635c3a663d` as `886b49f001936edc5d1a090e14e626d6e8e3f3ab`; Issue #68 closed. M3-09 and ADR 0016 are accepted on `main`, while M3-05 remains blocked behind the separate implementation task required by ADR 0016.
 - Created Issue #68 and independent branch `docs/m3-09-startup-attribution-boundary` from `main@7f10a0b84d9680e4b9311e680d0508e7fde512cd`. Added ADR 0016, M3-09, dependency alignment and Governance integration. Reviews of `13fd21b` and `45ec1ba` failed with five P1, then three P1 plus one P2. The current remediation preserves the exact owner arithmetic, makes the governance validator synthetic-only, requires a later real byte/API verifier and two-phase diagnostic/evidence workflows, reconstructs the multi-owner mutation with two real eligible owners and restores zero-duration compatibility. No product, fixture, benchmark or diagnostic workflow implementation changed; no dynamic Android work ran.
 - Started independent M3-08 from `main@930b759c99f330218dc4404368e9844e80456c82`, created Issue #64 and added proposed ADR 0015, the task card, M3-05/TEST_STRATEGY/INDEX dependency changes, README state, a formal aggregate validator and Governance integration. No production, benchmark implementation, fixture, Runtime, Host, KVM or device surface is in scope.
@@ -416,6 +426,66 @@ Keep M3-09's accepted end-to-end startup attribution boundary as the prerequisit
 - M2-02 第三实现层已完成本地检查点：同一 `sourceDir` 只读文件映射、OS 只读 DEX commit、generation+slot 类型化 JNI handle、同 handle `AHMD` 认证 metadata、精确五 JNI 方法、Java primitive/finally 交接窗口、幂等 `LoadedPayload` owner，以及 M0-05 等价 Native 搜索路径和三参数 API 29 `InMemoryDexClassLoader` 已接通。Java 17 编译/lint、NDK 四 ABI warnings-as-errors 与离线根 `assembleRelease check` 284-task 均 PASS，四个 ELF 都含唯一 104-byte alloc/read-only `.ah_share_v1`，未启动设备或模拟器。证据更新于 `docs/evidence/M2-02/local-validation.md`；任务仍未完成或发布，下一步仅补 failure injection、Host sanitizer/fuzz/OOM 与已授权 KVM/arm64 验收，不启动 M2-03。
 
 ## Verification Evidence
+
+### M3-11 published-head CI
+
+- task_id: M3-11
+- git_commit: 14bf68a0b2d80b7086bb060141f81224b2d4aca4
+- command: gh pr checks 72 --required; gh run view 32214654539; gh run view 32214654687
+- exit_code: 0
+- environment: GitHub ubuntu-24.04 and windows-2025; pinned repository toolchain
+- timestamp: 2026-08-19T22:20:58+08:00
+- artifact: `docs/evidence/M3-11/remote-validation.md`; Build `32214654539`; Governance `32214654687`; draft PR #72
+- sha256: not_applicable
+- result: PASS; Ubuntu/Windows Build and Governance all passed on exact head; equivalence/fuzz cancelled as out of scope and no dynamic M3-11 validation ran
+
+### M3-11 final independent review and draft publication
+
+- task_id: M3-11
+- git_commit: a5397888ff7eeb9571f64d06dfc10e8edef7f37c
+- command: independent full review of ecad46e plus bounded tuple-algorithm remediation review; git push -u origin docs/m3-11-canonical-startup-artifacts; gh pr create --draft for Issue #71
+- exit_code: 0
+- environment: Windows 10.0.19045 x64; Node.js v24.12.0; GitHub CLI 2.96.0; independent review performed without network or dynamic Android execution
+- timestamp: 2026-08-19T12:05:53+08:00
+- artifact: `docs/evidence/M3-11/read-only-review-2.md`; draft PR #72; Issue #71
+- sha256: 883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd
+- result: PASS; final P0=0/P1=0/P2=0, exact reviewed head published, PR MERGEABLE/draft, out-of-scope equivalence/fuzz cancelled and Ubuntu/Windows Build/Governance pending
+
+### M3-11 replacement implementation freeze
+
+- task_id: M3-11
+- git_commit: f16f7d4808925030f0cd7c74df89d91ae3b713df
+- command: node tools/governance/verify-m3-11-canonical-artifact-contract.mjs --self-test --artifact-root build/m3-11/provenance-artifact --base-ref 3458338e7886ac3fba8383bac47a0b655ca44533; M3-07/M3-08/M3-09 self-tests; project governance; strict HandOff; diff check
+- exit_code: 0
+- environment: Windows 10.0.19045 x64; Node.js v24.12.0; pinned Android build-tools 36.1.0 used only for the retained signature check; no Gradle/device execution
+- timestamp: 2026-08-19T11:55:35+08:00
+- artifact: `docs/evidence/M3-11/canonical-artifact-lock.json`; `docs/evidence/M3-11/provenance.md`; ignored `build/m3-11/provenance-artifact/`; GitHub artifact `9260244215`
+- sha256: 883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd
+- result: PASS locally; actual two APKs and four evidence files matched, raw P50/delta/variation semantics recomputed, 26 named mutations rejected and 19-file governance-only diff accepted; replacement independent review remains mandatory before publication
+
+### M3-11 first independent review
+
+- task_id: M3-11
+- git_commit: 8f7a5f5e4cc006bc565ab0e69c2c917d9b87d41c
+- command: independent bounded read-only review of official artifact, lock semantics, actual-byte verifier, dependency documents, sensitive boundary and governance-only diff
+- exit_code: 1
+- environment: Windows PowerShell; Node.js 24.x; Android build-tools 36.1.0; no Gradle/device execution
+- timestamp: 2026-08-19T11:45:33+08:00
+- artifact: independent worker handoff; no file modification
+- sha256: a7131f59ab69769c3ebe3dcc4d7295b3e11ae84c823701f6985c953803068c4a
+- result: FAIL; P0=0/P1=2/P2=2; wrong fixture/failure mapping, no report-semantic binding, placeholder tuple serialization and link/realpath escape must be closed before publication
+
+### M3-11 rejected initial canonical artifact candidate
+
+- task_id: M3-11
+- git_commit: baaabb6f35b022b5d02bf1d2d17650e2b07ae84b
+- command: official `gh run view`/artifact API/download; direct SHA-256 and pinned apksigner verification; M3-11 validator normal/self-test/actual-byte/base-ref; project governance; diff check
+- exit_code: 0
+- environment: Windows 10 x64; Node.js v24.12.0; pinned Android build-tools 36.1.0; no Gradle/device execution
+- timestamp: 2026-08-19T11:23:01+08:00
+- artifact: `docs/evidence/M3-11/canonical-artifact-lock.json`; `docs/evidence/M3-11/provenance.md`; ignored `build/m3-11/provenance-artifact/`; GitHub artifact `9260244215`
+- sha256: a7131f59ab69769c3ebe3dcc4d7295b3e11ae84c823701f6985c953803068c4a
+- result: REJECTED by independent review; local PASS checks did not prove the selected fixture caused the retained failure
 
 ### M3-09 expected-head merge
 
@@ -1727,17 +1797,25 @@ Keep M3-09's accepted end-to-end startup attribution boundary as the prerequisit
 
 ## Blockers and Required Approvals
 
-None
+- Final independent review is `P0=0/P1=0/P2=0`; draft PR #72 exists and published head `14bf68a0b2d80b7086bb060141f81224b2d4aca4` passed Ubuntu/Windows Build/Governance. The final evidence-only successor must pass the same exact-head gates before ready/merge.
+- M3-10 is technically blocked on merged M3-11 plus an independently reviewed installable-profile derivation for the exact signed originals; the deleted ephemeral key cannot be reconstructed.
 
 ## Ordered Next Actions
 
-1. Commit and push the post-merge M3-09 README/task/ADR/HandOff coordination snapshot to `main`.
-2. Require exact-head `main` Ubuntu/Windows Build and Governance; cancel automatically triggered Fuzz/equivalence/KVM work as out of scope.
-3. Create a separate ADR 0016 diagnostic implementation task before any M3-05 work; M3-05 PR #63 remains blocked until that task and any selected owner remediation complete.
-4. Do not run KVM, emulator, ARM, benchmark or another M2-10 diagnostic as part of this coordination step.
+1. Push this remote-evidence successor, then perform one bounded read-only consistency check on its exact head.
+2. Wait only for successor exact-head Ubuntu/Windows Build/Governance; keep equivalence/fuzz cancelled and do not run benchmark, KVM, emulator, ARM or canonical diagnostic.
+3. If those four jobs pass, PR #72 is merger-ready; do not transition or merge without a separate user instruction.
+4. Keep M3-10, PR #63, API 36 diagnostic, ARM and M3-05 blocked; do not build or regenerate canonical APKs.
 
 ## Relevant Files and Artifacts
 
+- `docs/tasks/M3-11-canonical-startup-artifact-contract.md`
+- `docs/tasks/M3-10-startup-attribution-diagnostic.md`
+- `docs/evidence/M3-11/canonical-artifact-lock.json`
+- `docs/evidence/M3-11/provenance.md`
+- `tools/governance/verify-m3-11-canonical-artifact-contract.mjs`
+- ignored `build/m3-11/provenance-artifact/`
+- Issue #71; PR #63 run `31931428130`, job `95126754768`, artifact `9260244215`
 - `docs/adr/0016-end-to-end-startup-attribution-boundary.md`
 - `docs/tasks/M3-09-startup-attribution-boundary-contract.md`
 - `tools/governance/verify-m3-09-startup-attribution-contract.mjs`

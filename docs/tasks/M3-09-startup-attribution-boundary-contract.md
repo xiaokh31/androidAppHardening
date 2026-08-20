@@ -18,14 +18,14 @@ Replace the incomplete Runtime-only performance attribution boundary with a reco
 
 ## Background
 
-M3-05 retained a stable protected-startup failure of 331 ms to `Application.onCreate` and 432 ms to interactivity. M2-10 run `32099991400` validly measured only the nested signer-to-bootstrap `t0..t6` interval and selected no eligible stage. The missing time was never measured by that contract, so neither the old result nor another identical run can decide the owner of the end-to-end delta. ADR 0016 defines the replacement attribution boundary.
+M3-05 retained a final A/B rejection for `java-single-dex`: `processToApplicationOnCreateMs` delta P50 was `331/432 ms` in campaigns A/B, both over budget, but its approximately `30.5%` variation failed the `10%` repeatability limit. The evidence is not called stable, and `432 ms` is not an interactive endpoint. M2-10 run `32099991400` validly measured only the nested signer-to-bootstrap `t0..t6` interval and selected no eligible stage. The missing time was never measured by that contract, so neither the old result nor another identical run can decide the owner of the end-to-end delta. ADR 0016 defines the replacement attribution boundary.
 
 ## Inputs
 
 - M3-05 PR #63 retained API 36 failure evidence and unchanged 300/500 ms budgets.
 - M2-10 PR #67, its first-and-only run `32099991400`, and its no-eligible-stage conclusion.
 - ADR 0014/0015 and M3-07/M3-08 test-only and stability boundaries.
-- Production Shell/Guard lifecycle ordering and the existing `kotlin-multidex` Release/R8 fixture.
+- Production Shell/Guard lifecycle ordering and the retained `java-single-dex` Release/R8 fixture later pinned by M3-11.
 - Fixed API 36 revision 2 x86_64 image and Emulator 37.1.11 as future diagnostic inputs only.
 
 ## Expected Outputs
@@ -57,7 +57,7 @@ M3-05 retained a stable protected-startup failure of 331 ms to `Application.onCr
 - The protected `p0..p1` interval is exactly decomposed by `p0,h0,h1..h7,h8,p1`; `h1..h7` are the existing M2-10 `t0..t6` timestamps.
 - Runtime owns only `h0..h8`. `p0..h0` and `h8..p1` remain explicit platform residuals.
 - Baseline retains its real default startup path; no synthetic or no-op `AppComponentFactory` may be inserted.
-- A future diagnostic uses only `kotlin-multidex`, campaigns A/B with reversed mode order, five warmups and fifteen retained samples per mode, in one exact-head API 36 job and boot.
+- A future diagnostic uses only the exact retained `java-single-dex` pair, campaigns A/B with reversed mode order, five warmups and fifteen retained samples per mode, in one exact-head API 36 job and boot.
 - The P50 is nearest-rank element eight of fifteen sorted retained values. Missing, duplicate, reordered or replacement samples fail closed.
 - Baseline/protected samples pair only by ordinal `1..15`. Each pair produces nine signed owner contributions: protected `h8-h0`, protected pre/post-Shell residual minus baseline `p1-p0`, and seven common `p1..p8` stage deltas. The vector must exactly equal the paired `p8-p0` delta before percentile calculation.
 - Eligibility requires the unchanged 300 ms failure to reproduce in both campaigns, one and only one owner to have positive P50 at least 30 ms, ADR 0015 variation at most 10%, and owner/total P50 share at least 50% in both campaigns. Negative contributions remain in arithmetic; zero or multiple owners select `UNATTRIBUTED` without a tie-break.

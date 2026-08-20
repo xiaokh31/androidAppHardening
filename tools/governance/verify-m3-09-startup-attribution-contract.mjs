@@ -74,7 +74,7 @@ function validateReport(report) {
   equal(report.runAttempt, 1, "runAttempt");
   hex(report.bootIdHashPrefix, 12, "bootIdHashPrefix");
   equal(report.clock, "CLOCK_BOOTTIME", "clock");
-  equal(report.fixtureId, "kotlin-multidex", "fixtureId");
+  equal(report.fixtureId, "java-single-dex", "fixtureId");
   equal(report.androidApi, 36, "androidApi");
   equal(report.imageRevision, 2, "imageRevision");
   equal(report.emulatorVersion, "37.1.11", "emulatorVersion");
@@ -84,7 +84,11 @@ function validateReport(report) {
   deepEqual(report.thresholds, THRESHOLDS, "thresholds");
 
   validateProfile(report.profile);
-  const expectedTuple = sha256(`${report.profile.baselineOriginalApkSha256}:${report.profile.protectedOriginalApkSha256}`);
+  const expectedTuple = canonicalProductTuple(
+    report.fixtureId,
+    report.profile.baselineOriginalApkSha256,
+    report.profile.protectedOriginalApkSha256,
+  );
   equal(report.productTupleSha256, expectedTuple, "productTupleSha256");
   validateRunEnumeration(report.runEnumeration, report, expectedTuple);
 
@@ -271,7 +275,7 @@ function buildSyntheticReport() {
   const headSha = "1".repeat(40);
   const baselineOriginal = "2".repeat(64);
   const protectedOriginal = "3".repeat(64);
-  const tuple = sha256(`${baselineOriginal}:${protectedOriginal}`);
+  const tuple = canonicalProductTuple("java-single-dex", baselineOriginal, protectedOriginal);
   const report = {
     schemaVersion: 1,
     contractModelOnly: true,
@@ -287,7 +291,7 @@ function buildSyntheticReport() {
     runAttempt: 1,
     bootIdHashPrefix: "abcdef123456",
     clock: "CLOCK_BOOTTIME",
-    fixtureId: "kotlin-multidex",
+    fixtureId: "java-single-dex",
     androidApi: 36,
     imageRevision: 2,
     emulatorVersion: "37.1.11",
@@ -494,7 +498,7 @@ function runSelfTests(documentBundle) {
   }
 
   const documentMutations = [
-    ["m305_dependency_removed", bundle => { bundle.index = bundle.index.replace(", M3-09 |", " |"); }],
+    ["m305_dependency_removed", bundle => { bundle.index = bundle.index.replace(", M3-09, M3-10 |", ", M3-10 |"); }],
     ["m305_budget_weakened", bundle => { bundle.m305 = bundle.m305.replaceAll("300 ms", "301 ms"); }],
     ["old_run_retry_wording", bundle => { bundle.adr = bundle.adr.replace("cannot be replaced", "may be replaced"); }],
   ];
@@ -535,7 +539,7 @@ function validateDocuments(bundle) {
   ], "M3-09 task");
   requirePhrases(bundle.strategy, ["ADR 0016", "p0..p15", "h0..h8", "UNATTRIBUTED", "32099991400"], "TEST_STRATEGY");
   requirePhrases(bundle.m305, ["M3-09", "ADR 0016", "PR #63 保持阻塞", "300 ms"], "M3-05 task");
-  requirePhrases(bundle.index, ["| M3-09 | [#68]", "M3-08 → M3-09 → M3-05", ", M3-09 |"], "task index");
+  requirePhrases(bundle.index, ["| M3-09 | [#68]", "M3-08 → M3-09 → M3-11 → M3-10 → M3-05", ", M3-09, M3-10 |"], "task index");
   requirePhrases(bundle.roadmap, ["| M3-09 |", "M3-08, M3-09"], "roadmap");
   requirePhrases(bundle.plan, ["M3-09：端到端启动性能归因边界合同"], "project plan");
   requirePhrases(bundle.handoff, ["M3-09 is complete on `main`", "M3-05 PR #63 remains blocked"], "HandOff");
@@ -567,6 +571,15 @@ function nearestRankP50(values) { return [...values].sort((a, b) => a - b)[7]; }
 function nearestRank(values, quantile) { return [...values].sort((a, b) => a - b)[Math.ceil(quantile * values.length) - 1]; }
 function ms(value) { return value * 1_000_000; }
 function sha256(value) { return createHash("sha256").update(value).digest("hex"); }
+
+function canonicalProductTuple(fixtureId, baselineSha256, protectedSha256) {
+  return sha256(JSON.stringify({
+    schemaVersion: 1,
+    fixtureId,
+    baselineSha256,
+    protectedSha256,
+  }));
+}
 function reorder(objectValue, left, right) {
   const entries = Object.entries(objectValue);
   [entries[left], entries[right]] = [entries[right], entries[left]];

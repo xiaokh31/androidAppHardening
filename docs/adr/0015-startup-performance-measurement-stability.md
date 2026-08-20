@@ -6,7 +6,7 @@ Proposed
 
 ## Context
 
-M3-05 produced two complete API 36 x86_64 reports around a tool-only validator correction. The first report passed the fixed startup budgets. The second report recorded a `kotlin-multidex` `processToApplicationOnCreateMs` P50 delta of 331 ms against the fixed 300 ms budget, and six P50/P95 summaries differed by more than the fixed 10% repeatability limit. Both reports completed the production Guard, authenticated container, Release/R8 startup, LOW observation, isolated HIGH evidence and cleanup.
+M3-05 produced two complete API 36 x86_64 reports around a tool-only validator correction. The first report passed the fixed startup budgets. The second retained A/B result recorded `java-single-dex` `processToApplicationOnCreateMs` P50 deltas of `331/432 ms`, both above the fixed `300 ms` budget, while their approximately `30.5%` variation and other summaries failed the fixed `10%` repeatability limit. This is a final rejection and diagnostic input, not a stable release baseline. Both reports completed the production Guard, authenticated container, Release/R8 startup, LOW observation, isolated HIGH evidence and cleanup.
 
 The current orchestration measures every baseline launch as one full batch and then every protected launch as a second full batch. Its repeatability tool compares protected absolute summaries from separate runs. This makes execution order, hosted-runner drift and emulator age indistinguishable from protected-startup cost. The two retained reports are therefore valid failure evidence, but they do not locate the cost inside production Runtime and do not authorize weakening a security control or opportunistically optimizing an unproven stage.
 

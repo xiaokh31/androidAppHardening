@@ -50,6 +50,8 @@ const expectedTasks = [
   "M3-07-test-only-high-benchmark-contract.md",
   "M3-08-startup-performance-stability-contract.md",
   "M3-09-startup-attribution-boundary-contract.md",
+  "M3-10-startup-attribution-diagnostic.md",
+  "M3-11-canonical-startup-artifact-contract.md",
 ];
 
 const taskHeadings = [
@@ -200,6 +202,10 @@ if (!fs.existsSync(indexFile)) {
             ? "64"
           : id === "M3-09"
             ? "68"
+          : id === "M3-10"
+            ? "70"
+          : id === "M3-11"
+            ? "71"
           : String(expectedTasks.indexOf(expectedFile) + 1);
     if (!issueMatch || issueMatch[1] !== issueMatch[2] || issueMatch[1] !== expectedIssue) {
       errors.push(`docs/tasks/INDEX.md: ${id} must link its GitHub Issue`);
@@ -341,6 +347,36 @@ for (const phrase of [
   requirePhrase(m305Text, phrase, "docs/tasks/M3-05-size-startup-memory-benchmarks.md");
 }
 
+const m310Text = readUtf8(
+  path.join(root, "docs", "tasks", "M3-10-startup-attribution-diagnostic.md"),
+);
+const m311Text = readUtf8(
+  path.join(root, "docs", "tasks", "M3-11-canonical-startup-artifact-contract.md"),
+);
+const m311LockText = readUtf8(
+  path.join(root, "docs", "evidence", "M3-11", "canonical-artifact-lock.json"),
+);
+for (const [text, label] of [
+  [m310Text, "docs/tasks/M3-10-startup-attribution-diagnostic.md"],
+  [m311Text, "docs/tasks/M3-11-canonical-startup-artifact-contract.md"],
+  [m311LockText, "docs/evidence/M3-11/canonical-artifact-lock.json"],
+]) {
+  for (const phrase of [
+    "4607d3289e1fc3bd95282ab47791ec810a5d2d3ac0a69fc0f91388901e412dcf",
+    "1eb159d7f0149a943fb2e1c4d8467f283d1cfbbfad670628402cfb0cd23390d9",
+    "883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd",
+  ]) requirePhrase(text, phrase, label);
+}
+for (const phrase of [
+  "d2166e07f5e959a9868c0da4ddd05a19e40f961559bec4367c8e8c00fba56089",
+  "81b0982e4c5b6ae5a34d71218df6602cd44706d879c3909400a2809e5e4f55d8",
+  "f7528353cb5a3b4c8114546d4dcd53ab1e3efd7420e210abe7eb51067a8ddd2b",
+  "6845d3c9d7eba0d84aefe0d05da485e87f754f5fe63e7a57ba6807159d9a0979",
+]) requirePhrase(m311LockText, phrase, "docs/evidence/M3-11/canonical-artifact-lock.json");
+for (const phrase of ["M3-10", "M3-11", "artifact `9260244215`"]) {
+  requirePhrase(m305Text, phrase, "docs/tasks/M3-05-size-startup-memory-benchmarks.md");
+}
+
 const m401Text = readUtf8(
   path.join(root, "docs", "tasks", "M4-01-security-and-supply-chain-review.md"),
 );
@@ -384,6 +420,7 @@ for (const tool of [
   "tools/governance/verify-m3-07-high-benchmark-contract.mjs",
   "tools/governance/verify-m3-08-startup-stability-contract.mjs",
   "tools/governance/verify-m3-09-startup-attribution-contract.mjs",
+  "tools/governance/verify-m3-11-canonical-artifact-contract.mjs",
 ]) {
   if (!fs.existsSync(path.join(root, tool))) errors.push(`Missing governance tool: ${tool}`);
 }

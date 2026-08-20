@@ -104,6 +104,8 @@ Ubuntu 24.04 KVM runner 还固定安装 `libpulse0=1:16.1+dfsg1-2ubuntu10.1`，�
 
 M3-02 的持续 fuzz 机器锁位于 `tools/validation/m3-02-fuzz-toolchain.json`。JVM 引擎固定为 Jazzer/Jazzer API `0.29.1`，来源仅为 Maven Central；四个 JAR/POM 的 SHA-256 同时写入该机器锁和 `gradle/verification-metadata.xml`。Native 引擎固定使用 Ubuntu runner 随镜像提供的 Clang `18.1.3`、libFuzzer、ASan 与 UBSan。PR 每个 target 固定 `600` 秒，nightly 每个 target 固定 `3600` 秒；子进程 RSS 上限 `2048 MiB`、单输入超时 `5` 秒、最大输入 `4 MiB`。Ubuntu/Windows runner 只接受锁中列出的精确 `ImageOS`/`ImageVersion`，未知镜像失败关闭；语料与变异副本仅写入忽略的 `build/fuzz-work/`。
 
+M2-07 的 2026-08-20 Ubuntu runner 锁维护新增且只新增 runtime `ImageVersion=20260816.277.1` 到受控 allowlist，对应官方不可变 ref [`ubuntu24/20260816.277`](https://github.com/actions/runner-images/blob/ubuntu24/20260816.277/images/ubuntu/Ubuntu2404-Readme.md)。该轻量 tag 指向 commit `3b5f596ffecb076aa5f3c3ded95b145f6daeb016`、tree `121399991e96a26a7786143484d7f71c79a189b5`；manifest `images/ubuntu/Ubuntu2404-Readme.md` 的 blob 为 `0023ec0741a8c708f9ba2e2bcfc1ee0d9fcb219c`，长度 `15740` bytes，SHA-256 `50384bd5268bb03ae44ab93d621d9d9f20b30f8f0c8155ed49333a57c31a7d88`。清单明确提供 GNU C/C++ `13.3.0`、Clang `18.1.3`、CMake `4.1.2` 与 NDK `29.0.14206865`；Build、KVM 与跨平台等价 workflow 仍逐字断言精确 runtime 并保留 GCC/G++ `13.3.0` 门禁，M3-02 fuzz 锁也使用同一精确 runtime/ref。未知镜像、范围、顺序变化、`latest` 或额外第五个 Ubuntu 镜像继续失败关闭。
+
 ## 6. GitHub Actions
 
 - 第三方 Action 使用完整 commit SHA 固定，不使用浮动 tag。

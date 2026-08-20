@@ -1,6 +1,6 @@
 {
   "schema": "m3-02-fuzz-toolchain-v1",
-  "reviewed_at": "2026-08-14",
+  "reviewed_at": "2026-08-20",
   "jazzer": {
     "version": "0.29.1",
     "repository": "https://repo.maven.apache.org/maven2",
@@ -31,7 +31,8 @@
       "reviewed_images": [
         {"image_version": "20260720.247.2", "manifest_ref": "ubuntu24/20260720.247"},
         {"image_version": "20260804.265.1", "manifest_ref": "ubuntu24/20260804.265"},
-        {"image_version": "20260810.271.1", "manifest_ref": "ubuntu24/20260810.271"}
+        {"image_version": "20260810.271.1", "manifest_ref": "ubuntu24/20260810.271"},
+        {"image_version": "20260816.277.1", "manifest_ref": "ubuntu24/20260816.277"}
       ]
     },
     "windows": {

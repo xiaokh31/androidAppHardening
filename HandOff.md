@@ -1,15 +1,15 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260820-102103
-updated_at: 2026-08-20T10:21:03+08:00
+handoff_id: HO-20260820-111806
+updated_at: 2026-08-20T11:18:06+08:00
 updated_by: /root
-state: blocked
-source_branch: main
-base_commit: 445ea066cc3514b62ceede7beff87721bd9ab2c5
+state: active
+source_branch: chore/m2-07-ubuntu-runner-20260816
+base_commit: b51bba625a71489845e77847edf42d135a36afe6
 working_tree: clean
 current_milestone: M3
-active_task: NONE
+active_task: M2-07
 next_owner: /root
 ---
 
@@ -17,10 +17,11 @@ next_owner: /root
 
 ## Objective
 
-Keep the merged M3-11 canonical artifact contract synchronized on `main`, record the fail-closed Ubuntu hosted-runner image drift, and await explicit authorization for a separate toolchain-lock maintenance task; do not change the allowlist, resume M3-10/M3-05, or run the canonical diagnostic early.
+Review and pin only the exact GitHub Ubuntu hosted-runner image `20260816.277.1` under M2-07 Issue #73, preserving fail-closed Build/KVM/fuzz locks and avoiding any Runtime, Host, APK, benchmark, device or M3-10/M3-05 implementation change.
 
 ## Current State
 
+- M2-07 Ubuntu runner-lock maintenance is active on `chore/m2-07-ubuntu-runner-20260816` from `main@b51bba625a71489845e77847edf42d135a36afe6`, with Issue #73. Official immutable ref `ubuntu24/20260816.277` is a lightweight tag to commit `3b5f596ffecb076aa5f3c3ded95b145f6daeb016` and manifest blob `0023ec0741a8c708f9ba2e2bcfc1ee0d9fcb219c`; the `15740`-byte manifest hashes to `50384bd5268bb03ae44ab93d621d9d9f20b30f8f0c8155ed49333a57c31a7d88` and preserves GCC/G++ `13.3.0`, Clang `18.1.3`, CMake `4.1.2` and NDK `29.0.14206865`. The local candidate adds only the exact runtime/ref to Build/KVM/equivalence and M2-07/M3-02 machine locks, strengthens exact M3-02 image/order validation, and records provenance. The candidate is prepared for the authorized local freeze; independent review remains pending, and no publication is authorized yet.
 - M3-11 is complete on `main`. Final PR head `b29c8c50a99ae1b4ea35926bd12337563c0dfe49` retained the all-zero independent review and passed required Ubuntu/Windows Build and Governance. PR #72 was converted to ready and merged with expected-head protection as `98e652b3017df0255ba8be4869513698c18c9ce6`; Issue #71 closed. Post-merge coordination head `445ea066cc3514b62ceede7beff87721bd9ab2c5` passed Windows Build and Ubuntu/Windows Governance, while Ubuntu Build `32323762679` failed closed before project build because GitHub supplied unreviewed image `ubuntu24/20260816.277.1` instead of an allowlisted image. This is a new toolchain provenance blocker, not an M3-11 regression, and must not be bypassed or retried. No benchmark, KVM, emulator, ARM or canonical diagnostic ran. M3-10 and M3-05 remain blocked.
 - M3-09 is complete on `main`. Final PR head `613e61ac8d3e74f60219ee0d462fae635c3a663d` passed independent bounded review with `P0=0/P1=0/P2=0`, exact-head Ubuntu/Windows Build `32192033540`, and Governance `32192033589`. PR #69 was made ready and merged with expected-head protection as `886b49f001936edc5d1a090e14e626d6e8e3f3ab`; Issue #68 closed. ADR 0016 is accepted and the M3-09 validator remains synthetic-contract-only. No Runtime, Host, fixture, benchmark or diagnostic workflow implementation changed; no Gradle, KVM, emulator, ARM, benchmark, M3-05 or M2-10 retry ran. M3-05 PR #63 remains blocked until a separate ADR 0016 implementation task and any selected owner remediation complete.
 - M3-08 is complete. Final freeze `7e949e9d58ca0a0202790bff70e6199272c75c7f` passed independent review `P0=0/P1=0/P2=0`; final PR head `a5d76806850ecc68cb92e87c4a06e29d9cfe0b1b` passed all checks and merged as `4c3efc1614158a0372eb877fc02fd1db27dcffb3`; Issue #64 closed. Post-merge coordination head `e12542db48eac96f17c4a1f4306ec20c62dcfa1f` passed Build `31929454365` and Governance `31929454381` on Ubuntu/Windows plus local M3-08/governance/strict/diff gates. No KVM, emulator, physical device or benchmark ran. Its historical authorization to resume M3-05 was superseded after the retained M2-10 diagnostic selected no eligible inner stage; current M3-09 and the later ADR 0016 implementation/remediation remain mandatory.
@@ -219,7 +220,7 @@ Keep the merged M3-11 canonical artifact contract synchronized on `main`, record
 | M1-04 | `/root` | `feat/m1-04-encrypted-dex-container` | done | M1-01, M1-02, M1-07 | PR #38、Issue #9、独立复核、merger-ready 六项 CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-05 | `/root` | `feat/m1-05-apk-repacker-and-alignment` | done | M1-02, M1-03, M1-04 | PR #39、Issue #10、独立复核、merger-ready CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-06 | `/root` | `feat/m1-06-cli-and-json-report` | done | M1-01, M1-02, M1-03, M1-04, M1-05 | PR #40、Issue #11、独立复核、merger-ready 与 post-merge main 双平台 CI、README 和 strict HandOff 均已关闭 |
-| M2-07 | `/root` | `main` | done | M0-03, M1-04 | PR #51 已 expected-head 合并为 `09345a9`，Issue #50 已关闭；独立复核、双平台 Build/Governance、README 与 strict HandOff 已关闭 |
+| M2-07 | `/root` | `chore/m2-07-ubuntu-runner-20260816` | in_progress | M0-03, M1-04 | Issue #73；固定 Ubuntu `20260816.277.1` 的官方不可变 manifest，完成本地门禁与独立只读复核后才可发布 |
 | M2-02 | `/root` | `main` | done | M0-04, M1-04, M2-07 | PR #43、Issue #13、全零复核、双平台 CI、API 29/36 KVM、arm64 真机、README 与 strict HandOff 已关闭 |
 
 | M2-03 | `/root` | `main` | done | M1-02, M1-04, M2-02 | PR #44、Issue #14、全零复核、双平台 CI、API 29/36 KVM、arm64 真机、README 与 strict HandOff 已关闭 |
@@ -426,6 +427,18 @@ Keep the merged M3-11 canonical artifact contract synchronized on `main`, record
 - M2-02 第三实现层已完成本地检查点：同一 `sourceDir` 只读文件映射、OS 只读 DEX commit、generation+slot 类型化 JNI handle、同 handle `AHMD` 认证 metadata、精确五 JNI 方法、Java primitive/finally 交接窗口、幂等 `LoadedPayload` owner，以及 M0-05 等价 Native 搜索路径和三参数 API 29 `InMemoryDexClassLoader` 已接通。Java 17 编译/lint、NDK 四 ABI warnings-as-errors 与离线根 `assembleRelease check` 284-task 均 PASS，四个 ELF 都含唯一 104-byte alloc/read-only `.ah_share_v1`，未启动设备或模拟器。证据更新于 `docs/evidence/M2-02/local-validation.md`；任务仍未完成或发布，下一步仅补 failure injection、Host sanitizer/fuzz/OOM 与已授权 KVM/arm64 验收，不启动 M2-03。
 
 ## Verification Evidence
+
+### M2-07 Ubuntu runner-lock local candidate
+
+- task_id: M2-07
+- git_commit: b51bba625a71489845e77847edf42d135a36afe6
+- command: official `actions/runner-images` ref/commit/blob inspection and manifest SHA-256; Node syntax; M2-07 `--self-test`; M3-02 fuzz-toolchain validator; project Governance; strict HandOff; diff check
+- exit_code: 0
+- environment: Windows 10.0.19045 x64; Node.js v24.12.0; existing ignored Mbed TLS archive/source; no download, Gradle, fuzz, KVM, emulator, device or benchmark
+- timestamp: 2026-08-20T11:20:57+08:00
+- artifact: `docs/evidence/M2-07/ubuntu-runner-20260816-maintenance.md`; official manifest blob `0023ec0741a8c708f9ba2e2bcfc1ee0d9fcb219c`
+- sha256: 7e5dc0d9c166ed4b2c285af581479f42b3978c69e3874c64726823bf322084a6
+- result: PASS locally; exact fourth Ubuntu image/ref and existing third mapping are locked, machine-lock mutations and Governance pass, while commit, independent review and publication remain pending
 
 ### M3-11 post-merge coordination and runner drift
 
@@ -1821,16 +1834,28 @@ Keep the merged M3-11 canonical artifact contract synchronized on `main`, record
 
 ## Blockers and Required Approvals
 
-- GitHub `ubuntu-24.04` now resolves to unreviewed image `20260816.277.1`; the pinned Build gate correctly rejects it. A separate ADR/task must verify the immutable official runner manifest, compiler/tool inventory, provenance and negative behavior before adding this image. User authorization is required to start that maintenance task; rerunning Build cannot close this blocker.
+None
 
 ## Ordered Next Actions
 
-1. Await explicit authorization for an independent Ubuntu runner-lock maintenance ADR/task; do not edit the image allowlist or rerun Build beforehand.
-2. After that task independently verifies and merges the new image lock, rerun only the final Ubuntu/Windows Build and Governance required to restore clean `main`.
-3. Keep M3-10, PR #63, the API 36 canonical diagnostic, ARM and M3-05 blocked until both the runner lock and M3-10's own review gates are closed.
+1. Run only the bounded M2-07/M3-02 lock validators, project Governance, strict HandOff, syntax and diff checks; do not run Gradle, fuzz, KVM, emulator, device or benchmark.
+2. Freeze the local candidate only after all bounded gates pass, then obtain an independent read-only security/supply-chain review with `P0=0/P1=0/P2=0`.
+3. Do not stage, commit, push or create the unique draft PR for Issue #73 without the separately required user authorization for each publication action.
+4. Keep M3-10, PR #63, the API 36 canonical diagnostic, ARM and M3-05 blocked until this maintenance merges and the final main Build/Governance pass.
 
 ## Relevant Files and Artifacts
 
+- `docs/evidence/M2-07/ubuntu-runner-20260816-maintenance.md`
+- `docs/adr/0009-native-cryptography-backend.md`
+- `docs/TOOLCHAIN_AND_PROVENANCE.md`
+- `tools/validation/m2-07-native-crypto.json`
+- `tools/validation/verify-m2-07-native-crypto.mjs`
+- `tools/validation/m3-02-fuzz-toolchain.json`
+- `tools/validation/verify-m3-02-fuzz-toolchain.mjs`
+- `.github/workflows/build.yml`
+- `.github/workflows/m0-05-linux-kvm.yml`
+- `.github/workflows/cross-platform-equivalence.yml`
+- Issue #73; triggering Build `32323762679`, Ubuntu job `96290837554`
 - `docs/tasks/M3-11-canonical-startup-artifact-contract.md`
 - `docs/tasks/M3-10-startup-attribution-diagnostic.md`
 - `docs/evidence/M3-11/canonical-artifact-lock.json`

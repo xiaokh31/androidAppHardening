@@ -33,7 +33,7 @@ jobs:
           set -euo pipefail
           test "${ImageOS:-}" = ubuntu24
           case "${ImageVersion:-}" in
-            20260720.247.2|20260804.265.1|20260810.271.1) ;;
+            20260720.247.2|20260804.265.1|20260810.271.1|20260816.277.1) ;;
             *) echo "unexpected mutable Ubuntu image" >&2; exit 1 ;;
           esac
           test "$(gcc -dumpfullversion -dumpversion)" = 13.3.0
@@ -121,7 +121,7 @@ jobs:
         shell: pwsh
         run: |
           if ($env:RUNNER_OS -eq 'Linux') {
-            if ($env:ImageOS -cne 'ubuntu24' -or $env:ImageVersion -cnotin @('20260720.247.2','20260804.265.1','20260810.271.1')) { throw 'unexpected Ubuntu image' }
+            if ($env:ImageOS -cne 'ubuntu24' -or $env:ImageVersion -cnotin @('20260720.247.2','20260804.265.1','20260810.271.1','20260816.277.1')) { throw 'unexpected Ubuntu image' }
           } else {
             $lock = (Get-Content -Raw -LiteralPath tools/validation/m2-07-native-crypto.json | ConvertFrom-Json).ci_toolchains.windows
             $reviewed = @($lock.reviewed_images | ForEach-Object { $_.image_version })

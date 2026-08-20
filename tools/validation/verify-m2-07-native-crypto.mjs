@@ -16,6 +16,11 @@ const sourceRootOverride = sourceRootArgument === undefined
   : path.resolve(root, sourceRootArgument.slice("--source-root=".length));
 const verifiedStampName = ".aah-m2-07-verified";
 const verifiedStamp = "archive_sha256=3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c\nsource_tree_sha256=7c4ba6554fed6eb67c201054bc75b124fcdc0649e2f56cd762746e01a25d2140\n";
+const ubuntuWorkflowPaths = [
+  ".github/workflows/build.yml",
+  ".github/workflows/m0-05-linux-kvm.yml",
+  ".github/workflows/cross-platform-equivalence.yml",
+];
 
 const expectedLock = {
   schema_version: 1,
@@ -88,7 +93,7 @@ const expectedLock = {
   },
   android_abis: ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"],
   ci_toolchains: {
-    reviewed_at: "2026-08-14",
+    reviewed_at: "2026-08-20",
     ubuntu: {
       runs_on: "ubuntu-24.04",
       image_os: "ubuntu24",
@@ -100,6 +105,14 @@ const expectedLock = {
         {
           image_version: "20260804.265.1",
           manifest_ref: "ubuntu24/20260804.265",
+        },
+        {
+          image_version: "20260810.271.1",
+          manifest_ref: "ubuntu24/20260810.271",
+        },
+        {
+          image_version: "20260816.277.1",
+          manifest_ref: "ubuntu24/20260816.277",
         },
       ],
       c_compiler: "gcc",
@@ -154,6 +167,39 @@ function verifyNativeProfileBytes(candidate, bytes) {
 function verifyLockContract(candidate) {
   if (!isDeepStrictEqual(candidate, expectedLock)) {
     fail("lock does not exactly match the reviewed immutable identity");
+  }
+}
+
+function extractUbuntuWorkflowMappings(text) {
+  const mappings = [];
+  for (const match of text.matchAll(/^\s*(\d{8}\.\d+\.\d+)\)\s+reviewed_manifest='(ubuntu24\/[^']+)'\s+;;\s*$/gm)) {
+    mappings.push({ image_version: match[1], manifest_ref: match[2] });
+  }
+  for (const match of text.matchAll(/^\s*'(\d{8}\.\d+\.\d+)'\s*=\s*'(ubuntu24\/[^']+)'\s*$/gm)) {
+    mappings.push({ image_version: match[1], manifest_ref: match[2] });
+  }
+  return mappings;
+}
+
+function countExact(text, needle) {
+  return text.split(needle).length - 1;
+}
+
+function verifyUbuntuWorkflowBindings(workflows) {
+  const expected = expectedLock.ci_toolchains.ubuntu.reviewed_images;
+  for (const workflowPath of ubuntuWorkflowPaths) {
+    const actual = extractUbuntuWorkflowMappings(workflows[workflowPath]);
+    const wanted = workflowPath.endsWith("cross-platform-equivalence.yml")
+      ? [...expected, ...expected]
+      : expected;
+    if (!isDeepStrictEqual(actual, wanted)) {
+      fail(`Ubuntu workflow mapping/order mismatch: ${workflowPath}`);
+    }
+  }
+  const equivalence = workflows[".github/workflows/cross-platform-equivalence.yml"];
+  if (countExact(equivalence, "runner_manifest_ref=%s\\n") !== 1 ||
+      countExact(equivalence, "runner_manifest_ref=$($reviewedUbuntuImages[$env:ImageVersion])") !== 1) {
+    fail("cross-platform equivalence does not emit both reviewed manifest refs exactly once");
   }
 }
 
@@ -274,6 +320,11 @@ async function expectRejected(action, label) {
 }
 
 verifyLockContract(lock);
+const ubuntuWorkflows = Object.fromEntries(await Promise.all(ubuntuWorkflowPaths.map(async (workflowPath) => [
+  workflowPath,
+  await readFile(path.join(root, ...workflowPath.split("/")), "utf8"),
+])));
+verifyUbuntuWorkflowBindings(ubuntuWorkflows);
 const archivePath = path.join(root, ...lock.local_paths.archive.split("/"));
 const archiveBytes = await readFile(archivePath).catch(() => null);
 if (archiveBytes === null) {
@@ -370,6 +421,8 @@ if (selfTest) {
     ["Ubuntu image OS", (candidate) => { candidate.ci_toolchains.ubuntu.image_os = "changed"; }],
     ["Ubuntu reviewed image", (candidate) => { candidate.ci_toolchains.ubuntu.reviewed_images[0].image_version += ".changed"; }],
     ["Ubuntu manifest ref", (candidate) => { candidate.ci_toolchains.ubuntu.reviewed_images[1].manifest_ref += ".changed"; }],
+    ["Ubuntu reviewed image removal", (candidate) => { candidate.ci_toolchains.ubuntu.reviewed_images.pop(); }],
+    ["Ubuntu unreviewed image addition", (candidate) => { candidate.ci_toolchains.ubuntu.reviewed_images.push({ image_version: "20990101.1.1", manifest_ref: "ubuntu24/20990101.1" }); }],
     ["Ubuntu reviewed image order", (candidate) => { candidate.ci_toolchains.ubuntu.reviewed_images.reverse(); }],
     ["Ubuntu C compiler", (candidate) => { candidate.ci_toolchains.ubuntu.c_compiler = "clang"; }],
     ["Ubuntu CXX compiler", (candidate) => { candidate.ci_toolchains.ubuntu.cxx_compiler = "clang++"; }],
@@ -390,6 +443,38 @@ if (selfTest) {
     const candidate = structuredClone(lock);
     mutate(candidate);
     await expectRejected(() => Promise.resolve(verifyLockContract(candidate)), label);
+  }
+
+  const workflowMutations = [
+    ["Ubuntu workflow mapping removal", (candidate) => {
+      candidate[ubuntuWorkflowPaths[2]] = candidate[ubuntuWorkflowPaths[2]].replace(
+        "            20260816.277.1) reviewed_manifest='ubuntu24/20260816.277' ;;\n",
+        "",
+      );
+    }],
+    ["Ubuntu workflow mapping addition", (candidate) => {
+      candidate[ubuntuWorkflowPaths[2]] = candidate[ubuntuWorkflowPaths[2]].replace(
+        "            20260816.277.1) reviewed_manifest='ubuntu24/20260816.277' ;;\n",
+        "            20260816.277.1) reviewed_manifest='ubuntu24/20260816.277' ;;\n            20990101.1.1) reviewed_manifest='ubuntu24/20990101.1' ;;\n",
+      );
+    }],
+    ["Ubuntu workflow mapping order", (candidate) => {
+      candidate[ubuntuWorkflowPaths[2]] = candidate[ubuntuWorkflowPaths[2]].replace(
+        "            20260720.247.2) reviewed_manifest='ubuntu24/20260720.247' ;;\n            20260804.265.1) reviewed_manifest='ubuntu24/20260804.265' ;;\n",
+        "            20260804.265.1) reviewed_manifest='ubuntu24/20260804.265' ;;\n            20260720.247.2) reviewed_manifest='ubuntu24/20260720.247' ;;\n",
+      );
+    }],
+    ["Ubuntu workflow manifest drift", (candidate) => {
+      candidate[ubuntuWorkflowPaths[0]] = candidate[ubuntuWorkflowPaths[0]].replace(
+        "ubuntu24/20260816.277' ;;",
+        "ubuntu24/changed' ;;",
+      );
+    }],
+  ];
+  for (const [label, mutate] of workflowMutations) {
+    const candidate = structuredClone(ubuntuWorkflows);
+    mutate(candidate);
+    await expectRejected(() => Promise.resolve(verifyUbuntuWorkflowBindings(candidate)), label);
   }
 }
 

@@ -11,7 +11,7 @@ const check = (condition, message) => { if (!condition) failures.push(message); 
 const hex64 = (value) => typeof value === "string" && /^[0-9a-f]{64}$/u.test(value);
 
 check(lock.schema === "m3-02-fuzz-toolchain-v1", "schema");
-check(lock.reviewed_at === "2026-08-14", "review date");
+check(lock.reviewed_at === "2026-08-20", "review date");
 check(lock.jazzer?.version === "0.29.1", "Jazzer version");
 check(lock.jazzer?.repository === "https://repo.maven.apache.org/maven2", "Maven repository");
 check(lock.jazzer?.source === "https://github.com/CodeIntelligenceTesting/jazzer", "Jazzer source");
@@ -30,8 +30,21 @@ check(JSON.stringify(lock.limits) === JSON.stringify({
 }), "resource limits");
 check(lock.runners?.ubuntu?.label === "ubuntu-24.04" && lock.runners?.ubuntu?.image_os === "ubuntu24", "Ubuntu runner");
 check(lock.runners?.windows?.label === "windows-2025" && lock.runners?.windows?.image_os === "win25-vs2026", "Windows runner");
-check(lock.runners?.ubuntu?.reviewed_images?.length === 3, "Ubuntu image count");
-check(lock.runners?.windows?.reviewed_images?.length === 3, "Windows image count");
+const expectedUbuntuImages = [
+  {image_version: "20260720.247.2", manifest_ref: "ubuntu24/20260720.247"},
+  {image_version: "20260804.265.1", manifest_ref: "ubuntu24/20260804.265"},
+  {image_version: "20260810.271.1", manifest_ref: "ubuntu24/20260810.271"},
+  {image_version: "20260816.277.1", manifest_ref: "ubuntu24/20260816.277"},
+];
+const expectedWindowsImages = [
+  {image_version: "20260728.188.1", manifest_ref: "win25-vs2026/20260728.188"},
+  {image_version: "20260803.193.1", manifest_ref: "win25-vs2026/20260803.193"},
+  {image_version: "20260810.198.2", manifest_ref: "win25-vs2026/20260810.198"},
+];
+check(JSON.stringify(lock.runners?.ubuntu?.reviewed_images) === JSON.stringify(expectedUbuntuImages),
+  "Ubuntu image lock/order");
+check(JSON.stringify(lock.runners?.windows?.reviewed_images) === JSON.stringify(expectedWindowsImages),
+  "Windows image lock/order");
 for (const family of ["ubuntu", "windows"]) {
   const images = lock.runners[family].reviewed_images;
   check(new Set(images.map((entry) => entry.image_version)).size === images.length, `${family} duplicate image`);
@@ -159,6 +172,7 @@ const mutations = [
   (value) => { value.native.compiler_version = "changed"; },
   (value) => { value.limits.input_timeout_seconds = 0; },
   (value) => { value.runners.ubuntu.label = "ubuntu-latest"; },
+  (value) => { value.runners.ubuntu.reviewed_images[3].manifest_ref = "ubuntu24/changed"; },
   (value) => { value.runners.windows.reviewed_images.push({image_version: "20990101.1.1", manifest_ref: "changed"}); },
 ];
 for (const mutate of mutations) {
@@ -167,7 +181,9 @@ for (const mutate of mutations) {
   const accepted = candidate.jazzer.version === "0.29.1" &&
     candidate.jazzer.artifacts["jazzer-0.29.1.jar"] === lock.jazzer.artifacts["jazzer-0.29.1.jar"] &&
     candidate.native.compiler_version === "18.1.3" && candidate.limits.input_timeout_seconds === 5 &&
-    candidate.runners.ubuntu.label === "ubuntu-24.04" && candidate.runners.windows.reviewed_images.length === 3;
+    candidate.runners.ubuntu.label === "ubuntu-24.04" &&
+    JSON.stringify(candidate.runners.ubuntu.reviewed_images) === JSON.stringify(expectedUbuntuImages) &&
+    JSON.stringify(candidate.runners.windows.reviewed_images) === JSON.stringify(expectedWindowsImages);
   check(!accepted, "lock mutation accepted");
 }
 

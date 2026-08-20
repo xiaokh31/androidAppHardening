@@ -33,9 +33,13 @@ jobs:
           set -euo pipefail
           test "${ImageOS:-}" = ubuntu24
           case "${ImageVersion:-}" in
-            20260720.247.2|20260804.265.1|20260810.271.1|20260816.277.1) ;;
+            20260720.247.2) reviewed_manifest='ubuntu24/20260720.247' ;;
+            20260804.265.1) reviewed_manifest='ubuntu24/20260804.265' ;;
+            20260810.271.1) reviewed_manifest='ubuntu24/20260810.271' ;;
+            20260816.277.1) reviewed_manifest='ubuntu24/20260816.277' ;;
             *) echo "unexpected mutable Ubuntu image" >&2; exit 1 ;;
           esac
+          printf 'runner_manifest_ref=%s\n' "${reviewed_manifest}"
           test "$(gcc -dumpfullversion -dumpversion)" = 13.3.0
       - name: Set up Temurin JDK
         uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95
@@ -121,7 +125,14 @@ jobs:
         shell: pwsh
         run: |
           if ($env:RUNNER_OS -eq 'Linux') {
-            if ($env:ImageOS -cne 'ubuntu24' -or $env:ImageVersion -cnotin @('20260720.247.2','20260804.265.1','20260810.271.1','20260816.277.1')) { throw 'unexpected Ubuntu image' }
+            $reviewedUbuntuImages = [ordered]@{
+              '20260720.247.2' = 'ubuntu24/20260720.247'
+              '20260804.265.1' = 'ubuntu24/20260804.265'
+              '20260810.271.1' = 'ubuntu24/20260810.271'
+              '20260816.277.1' = 'ubuntu24/20260816.277'
+            }
+            if ($env:ImageOS -cne 'ubuntu24' -or -not $reviewedUbuntuImages.Contains($env:ImageVersion)) { throw 'unexpected Ubuntu image' }
+            Write-Output "runner_manifest_ref=$($reviewedUbuntuImages[$env:ImageVersion])"
           } else {
             $lock = (Get-Content -Raw -LiteralPath tools/validation/m2-07-native-crypto.json | ConvertFrom-Json).ci_toolchains.windows
             $reviewed = @($lock.reviewed_images | ForEach-Object { $_.image_version })

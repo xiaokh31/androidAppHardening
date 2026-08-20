@@ -56,8 +56,17 @@ Candidate hashes:
 | File | SHA-256 |
 |---|---|
 | `tools/validation/m2-07-native-crypto.json` | `7e5dc0d9c166ed4b2c285af581479f42b3978c69e3874c64726823bf322084a6` |
-| `tools/validation/verify-m2-07-native-crypto.mjs` | `0503dadb671cd95fc3bfdefe5141ac0e64761191ef70c00258166f5d09949cb0` |
+| `tools/validation/verify-m2-07-native-crypto.mjs` | `0968b1aad6550ed552b04f622532efa998e3fc37227405653bb433b9b666ab5e` |
 | `tools/validation/m3-02-fuzz-toolchain.json` | `42c2e3572783dba138459df6786f2ce1bb75e79d6d152d36b20a5fd0a4c14628` |
 | `tools/validation/verify-m3-02-fuzz-toolchain.mjs` | `88acda559da830b3fbea09aac7262c4bd44f7b2e873769a237482eaabb04dd7a` |
 
-The frozen candidate must remain unpublished until the independent read-only review reports P0=0/P1=0/P2=0. Exact-head Ubuntu/Windows Build/Governance remain mandatory before merge.
+## Independent review 1 and bounded remediation
+
+Initial freeze `e8ed50a89c52fb8e66516ab6c4a4775c6fac1124` was rejected with `P0=0/P1=2/P2=0`:
+
+1. Cross-platform equivalence accepted a version list without binding each runtime to its reviewed manifest ref.
+2. The authoritative provenance text still described a two-image contract that contradicted the four-image locks.
+
+The bounded remediation closes only those findings. Both equivalence Ubuntu gates now contain the same ordered four-entry runtime/ref mapping and emit the selected ref. The M2-07 validator parses Build, KVM and both equivalence mappings, requires their exact order, checks both equivalence ref outputs, and rejects mapping removal, addition, reordering and ref drift. The provenance text now contains one unambiguous four-image current contract and rejects a fifth image.
+
+The remediated frozen candidate must remain unpublished until a fresh complete independent read-only review reports P0=0/P1=0/P2=0. Exact-head Ubuntu/Windows Build/Governance remain mandatory before merge.

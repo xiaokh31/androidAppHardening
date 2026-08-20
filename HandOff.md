@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260820-114418
-updated_at: 2026-08-20T11:44:18+08:00
+handoff_id: HO-20260820-120721
+updated_at: 2026-08-20T12:07:21+08:00
 updated_by: /root
 state: active
 source_branch: chore/m2-07-ubuntu-runner-20260816
@@ -21,7 +21,7 @@ Review and pin only the exact GitHub Ubuntu hosted-runner image `20260816.277.1`
 
 ## Current State
 
-- M2-07 Ubuntu runner-lock maintenance is active on `chore/m2-07-ubuntu-runner-20260816` from `main@b51bba625a71489845e77847edf42d135a36afe6`, with Issue #73. Official immutable ref `ubuntu24/20260816.277` is a lightweight tag to commit `3b5f596ffecb076aa5f3c3ded95b145f6daeb016` and manifest blob `0023ec0741a8c708f9ba2e2bcfc1ee0d9fcb219c`; the `15740`-byte manifest hashes to `50384bd5268bb03ae44ab93d621d9d9f20b30f8f0c8155ed49333a57c31a7d88` and preserves GCC/G++ `13.3.0`, Clang `18.1.3`, CMake `4.1.2` and NDK `29.0.14206865`. Initial freeze `e8ed50a89c52fb8e66516ab6c4a4775c6fac1124` was rejected by independent review with `P0=0/P1=2/P2=0`. Remediation freeze `da37f47958522986fd25086368dc5598193e4906` closes exact equivalence runtime/ref binding and the contradictory provenance text; a second complete independent review passed with `P0=0/P1=0/P2=0` and no findings. No publication is authorized yet; exact-head Ubuntu/Windows Build/Governance remain PR-stage gates.
+- M2-07 Ubuntu runner-lock maintenance is active on draft PR #74 from `chore/m2-07-ubuntu-runner-20260816`, based on `main@b51bba625a71489845e77847edf42d135a36afe6` and linked to Issue #73. Official immutable ref `ubuntu24/20260816.277` is a lightweight tag to commit `3b5f596ffecb076aa5f3c3ded95b145f6daeb016`; the reviewed manifest blob `0023ec0741a8c708f9ba2e2bcfc1ee0d9fcb219c` is `15740` bytes with SHA-256 `50384bd5268bb03ae44ab93d621d9d9f20b30f8f0c8155ed49333a57c31a7d88`. Initial freeze `e8ed50a89c52fb8e66516ab6c4a4775c6fac1124` was rejected with `P0=0/P1=2/P2=0`; remediation freeze `da37f47958522986fd25086368dc5598193e4906` and evidence successor `81a1e5b6f9467d4ec1ae6b880c4be27024dde488` passed complete and incremental independent review with `P0=0/P1=0/P2=0`. On exact published head `81a1e5b`, Build `32329949789` and Governance `32329949870` passed Ubuntu/Windows; automatically triggered KVM `32329949743`, equivalence `32329949714` and fuzz `32329949699` were intentionally cancelled as out of scope. The user authorized this CI/HandOff evidence commit and push; ready/merge remains separately unauthorized.
 - M3-11 is complete on `main`. Final PR head `b29c8c50a99ae1b4ea35926bd12337563c0dfe49` retained the all-zero independent review and passed required Ubuntu/Windows Build and Governance. PR #72 was converted to ready and merged with expected-head protection as `98e652b3017df0255ba8be4869513698c18c9ce6`; Issue #71 closed. Post-merge coordination head `445ea066cc3514b62ceede7beff87721bd9ab2c5` passed Windows Build and Ubuntu/Windows Governance, while Ubuntu Build `32323762679` failed closed before project build because GitHub supplied unreviewed image `ubuntu24/20260816.277.1` instead of an allowlisted image. This is a new toolchain provenance blocker, not an M3-11 regression, and must not be bypassed or retried. No benchmark, KVM, emulator, ARM or canonical diagnostic ran. M3-10 and M3-05 remain blocked.
 - M3-09 is complete on `main`. Final PR head `613e61ac8d3e74f60219ee0d462fae635c3a663d` passed independent bounded review with `P0=0/P1=0/P2=0`, exact-head Ubuntu/Windows Build `32192033540`, and Governance `32192033589`. PR #69 was made ready and merged with expected-head protection as `886b49f001936edc5d1a090e14e626d6e8e3f3ab`; Issue #68 closed. ADR 0016 is accepted and the M3-09 validator remains synthetic-contract-only. No Runtime, Host, fixture, benchmark or diagnostic workflow implementation changed; no Gradle, KVM, emulator, ARM, benchmark, M3-05 or M2-10 retry ran. M3-05 PR #63 remains blocked until a separate ADR 0016 implementation task and any selected owner remediation complete.
 - M3-08 is complete. Final freeze `7e949e9d58ca0a0202790bff70e6199272c75c7f` passed independent review `P0=0/P1=0/P2=0`; final PR head `a5d76806850ecc68cb92e87c4a06e29d9cfe0b1b` passed all checks and merged as `4c3efc1614158a0372eb877fc02fd1db27dcffb3`; Issue #64 closed. Post-merge coordination head `e12542db48eac96f17c4a1f4306ec20c62dcfa1f` passed Build `31929454365` and Governance `31929454381` on Ubuntu/Windows plus local M3-08/governance/strict/diff gates. No KVM, emulator, physical device or benchmark ran. Its historical authorization to resume M3-05 was superseded after the retained M2-10 diagnostic selected no eligible inner stage; current M3-09 and the later ADR 0016 implementation/remediation remain mandatory.
@@ -463,6 +463,18 @@ Review and pin only the exact GitHub Ubuntu hosted-runner image `20260816.277.1`
 - artifact: `docs/evidence/M2-07/ubuntu-runner-20260816-maintenance.md`
 - sha256: 0968b1aad6550ed552b04f622532efa998e3fc37227405653bb433b9b666ab5e
 - result: PASS; P0=0/P1=0/P2=0, both first-review findings are closed, no new finding exists, and publication remains blocked pending separate user authorization
+
+### M2-07 Ubuntu runner-lock PR #74 initial exact-head CI
+
+- task_id: M2-07
+- git_commit: 81a1e5b6f9467d4ec1ae6b880c4be27024dde488
+- command: publish `chore/m2-07-ubuntu-runner-20260816`; create draft PR #74 linked to Issue #73; wait for Build `32329949789` and Governance `32329949870`; cancel out-of-scope KVM `32329949743`, equivalence `32329949714` and fuzz `32329949699`
+- exit_code: 0
+- environment: GitHub `ubuntu-24.04` and `windows-2025`; exact PR head `81a1e5b6f9467d4ec1ae6b880c4be27024dde488`; no local Gradle, KVM, emulator, device, fuzz or benchmark
+- timestamp: 2026-08-20T12:07:21+08:00
+- artifact: Build jobs `96308543192` / `96308543113`; Governance jobs `96308543316` / `96308543265`; PR `https://github.com/xiaokh31/androidAppHardening/pull/74`
+- sha256: not_applicable
+- result: PASS; Ubuntu/Windows Build and Governance all succeeded on the exact reviewed head, while KVM/equivalence/fuzz terminated as intentional out-of-scope cancellations
 
 ### M3-11 post-merge coordination and runner drift
 
@@ -1862,9 +1874,9 @@ None
 
 ## Ordered Next Actions
 
-1. Preserve frozen implementation `da37f47958522986fd25086368dc5598193e4906` and its all-zero independent review; do not run Gradle, fuzz, KVM, emulator, device or benchmark before publication.
-2. Await separate user authorization to push `chore/m2-07-ubuntu-runner-20260816` and create the unique Issue #73 draft PR.
-3. After authorized publication, require exact-head Ubuntu/Windows Build and Governance; cancel KVM/equivalence/fuzz as out of scope.
+1. Commit and push only this authorized CI/HandOff evidence successor; preserve implementation freeze `da37f47958522986fd25086368dc5598193e4906` and its all-zero review.
+2. On the evidence-only successor, cancel automatically triggered KVM/equivalence/fuzz and require exact-head Ubuntu/Windows Build plus Governance.
+3. After those required checks pass, request separate ready/merge authorization for PR #74; merge only with expected-head protection.
 4. Keep M3-10, PR #63, the API 36 canonical diagnostic, ARM and M3-05 blocked until this maintenance merges and the final main Build/Governance pass.
 
 ## Relevant Files and Artifacts

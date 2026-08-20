@@ -81,4 +81,17 @@ The complete second read-only review of frozen remediation `da37f47958522986fd25
 
 Both validator syntax checks, M2-07 `--self-test`, M3-02 validation, Governance, strict HandOff, base-to-HEAD diff check and a bounded PowerShell positive/unknown mapping probe passed. The reviewer did not modify files, use the network, download anything, or run Gradle, fuzz, KVM, emulator, device or benchmark.
 
-The reviewed branch remains unpublished pending separate user authorization. Exact-head Ubuntu/Windows Build/Governance remain mandatory before merge.
+## PR #74 initial exact-head validation
+
+The user authorized publication of `chore/m2-07-ubuntu-runner-20260816` and creation of the unique Issue #73 draft PR. PR [#74](https://github.com/xiaokh31/androidAppHardening/pull/74) was created with exact head `81a1e5b6f9467d4ec1ae6b880c4be27024dde488`.
+
+Required workflows:
+
+| Workflow | Run | Ubuntu job | Windows job | Result |
+|---|---:|---:|---:|---|
+| Build | `32329949789` | `96308543192` | `96308543113` | PASS / PASS |
+| Governance | `32329949870` | `96308543316` | `96308543265` | PASS / PASS |
+
+Automatically triggered runs outside this maintenance scope were cancelled without retry: M0-05 Linux KVM `32329949743`, Cross-platform equivalence `32329949714`, and M3-02 Fuzz `32329949699`. Their cancellation is not acceptance evidence and does not replace either required workflow. No local Gradle, KVM, emulator, device, fuzz or benchmark ran.
+
+The evidence-only successor requires its own exact-head Ubuntu/Windows Build and Governance after push. PR #74 must remain draft until those checks pass and the user separately authorizes ready/merge.

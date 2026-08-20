@@ -69,4 +69,16 @@ Initial freeze `e8ed50a89c52fb8e66516ab6c4a4775c6fac1124` was rejected with `P0=
 
 The bounded remediation closes only those findings. Both equivalence Ubuntu gates now contain the same ordered four-entry runtime/ref mapping and emit the selected ref. The M2-07 validator parses Build, KVM and both equivalence mappings, requires their exact order, checks both equivalence ref outputs, and rejects mapping removal, addition, reordering and ref drift. The provenance text now contains one unambiguous four-image current contract and rejects a fifth image.
 
-The remediated frozen candidate must remain unpublished until a fresh complete independent read-only review reports P0=0/P1=0/P2=0. Exact-head Ubuntu/Windows Build/Governance remain mandatory before merge.
+## Independent review 2
+
+The complete second read-only review of frozen remediation `da37f47958522986fd25086368dc5598193e4906` passed with `P0=0/P1=0/P2=0` and no findings. It independently confirmed:
+
+- both equivalence Ubuntu gates use the same ordered four-entry runtime/ref mapping and emit the selected ref;
+- the M2-07 validator binds the exact Build/KVM/equivalence mappings and rejects removal, addition, reordering and ref drift;
+- the authoritative provenance contract is unambiguous and consistent with ADR 0009 plus both machine locks;
+- official commit/tree/blob/size/SHA evidence is internally consistent;
+- base-to-HEAD remains limited to the 11 M2-07 maintenance files with no product, dependency, dynamic-download or sensitive-information expansion.
+
+Both validator syntax checks, M2-07 `--self-test`, M3-02 validation, Governance, strict HandOff, base-to-HEAD diff check and a bounded PowerShell positive/unknown mapping probe passed. The reviewer did not modify files, use the network, download anything, or run Gradle, fuzz, KVM, emulator, device or benchmark.
+
+The reviewed branch remains unpublished pending separate user authorization. Exact-head Ubuntu/Windows Build/Governance remain mandatory before merge.

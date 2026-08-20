@@ -22,3 +22,7 @@ Both workflow API responses bind directly to head `b29c8c50a99ae1b4ea35926bd1233
 Cross-platform equivalence run `32263748356` and M3-02 fuzz run `32263748332` were automatically triggered by the pull request but are outside M3-11. Cancellation was requested immediately. The equivalence run completed as cancelled. The fuzz run contains one cancellation-race failure and otherwise cancelled jobs; it is not a required check and is not used as M3-11 evidence. No rerun is authorized or needed.
 
 No benchmark, KVM, emulator, physical device, ARM campaign or canonical ADR 0016 diagnostic ran. M3-11 is merged, but M3-10 still requires a separately reviewed installable-profile strategy for the exact locked pair; M3-05 remains blocked.
+
+## Post-merge main status
+
+Post-merge coordination commit `445ea066cc3514b62ceede7beff87721bd9ab2c5` passed Governance `32323762714` on Ubuntu and Windows and passed the Windows job in Build `32323762679`. The Ubuntu Build job `96290837554` stopped before any project build at the pinned hosted-runner gate: GitHub supplied `ImageOS=ubuntu24`, `ImageVersion=20260816.277.1`, while the repository only permits independently reviewed images through `20260810.271.1`. This is a fail-closed toolchain provenance blocker, not an M3-11 implementation failure. No rerun or allowlist modification is authorized; a separate reviewed runner-lock maintenance task is required.

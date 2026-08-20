@@ -1,27 +1,27 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260820-100741
-updated_at: 2026-08-20T10:07:41+08:00
+handoff_id: HO-20260820-102103
+updated_at: 2026-08-20T10:21:03+08:00
 updated_by: /root
-state: ready
+state: blocked
 source_branch: main
-base_commit: 98e652b3017df0255ba8be4869513698c18c9ce6
+base_commit: 445ea066cc3514b62ceede7beff87721bd9ab2c5
 working_tree: clean
 current_milestone: M3
 active_task: NONE
-next_owner: unassigned
+next_owner: /root
 ---
 
 # Project HandOff
 
 ## Objective
 
-Keep the merged M3-11 canonical artifact contract synchronized on `main`; await an explicit task start before implementing the separately reviewed installable-profile strategy required by M3-10, and do not resume M3-05 or run the canonical diagnostic early.
+Keep the merged M3-11 canonical artifact contract synchronized on `main`, record the fail-closed Ubuntu hosted-runner image drift, and await explicit authorization for a separate toolchain-lock maintenance task; do not change the allowlist, resume M3-10/M3-05, or run the canonical diagnostic early.
 
 ## Current State
 
-- M3-11 is complete on `main`. Final PR head `b29c8c50a99ae1b4ea35926bd12337563c0dfe49` retained the all-zero independent review and passed required Ubuntu/Windows Build and Governance. PR #72 was converted to ready and merged with expected-head protection as `98e652b3017df0255ba8be4869513698c18c9ce6`; Issue #71 closed. The exact PR #63 `java-single-dex` pair, source artifact and tuple remain immutable. No benchmark, KVM, emulator, ARM or canonical diagnostic ran. M3-10 is not started and still requires a separately reviewed installable-profile strategy for those exact bytes; M3-05 remains blocked.
+- M3-11 is complete on `main`. Final PR head `b29c8c50a99ae1b4ea35926bd12337563c0dfe49` retained the all-zero independent review and passed required Ubuntu/Windows Build and Governance. PR #72 was converted to ready and merged with expected-head protection as `98e652b3017df0255ba8be4869513698c18c9ce6`; Issue #71 closed. Post-merge coordination head `445ea066cc3514b62ceede7beff87721bd9ab2c5` passed Windows Build and Ubuntu/Windows Governance, while Ubuntu Build `32323762679` failed closed before project build because GitHub supplied unreviewed image `ubuntu24/20260816.277.1` instead of an allowlisted image. This is a new toolchain provenance blocker, not an M3-11 regression, and must not be bypassed or retried. No benchmark, KVM, emulator, ARM or canonical diagnostic ran. M3-10 and M3-05 remain blocked.
 - M3-09 is complete on `main`. Final PR head `613e61ac8d3e74f60219ee0d462fae635c3a663d` passed independent bounded review with `P0=0/P1=0/P2=0`, exact-head Ubuntu/Windows Build `32192033540`, and Governance `32192033589`. PR #69 was made ready and merged with expected-head protection as `886b49f001936edc5d1a090e14e626d6e8e3f3ab`; Issue #68 closed. ADR 0016 is accepted and the M3-09 validator remains synthetic-contract-only. No Runtime, Host, fixture, benchmark or diagnostic workflow implementation changed; no Gradle, KVM, emulator, ARM, benchmark, M3-05 or M2-10 retry ran. M3-05 PR #63 remains blocked until a separate ADR 0016 implementation task and any selected owner remediation complete.
 - M3-08 is complete. Final freeze `7e949e9d58ca0a0202790bff70e6199272c75c7f` passed independent review `P0=0/P1=0/P2=0`; final PR head `a5d76806850ecc68cb92e87c4a06e29d9cfe0b1b` passed all checks and merged as `4c3efc1614158a0372eb877fc02fd1db27dcffb3`; Issue #64 closed. Post-merge coordination head `e12542db48eac96f17c4a1f4306ec20c62dcfa1f` passed Build `31929454365` and Governance `31929454381` on Ubuntu/Windows plus local M3-08/governance/strict/diff gates. No KVM, emulator, physical device or benchmark ran. Its historical authorization to resume M3-05 was superseded after the retained M2-10 diagnostic selected no eligible inner stage; current M3-09 and the later ADR 0016 implementation/remediation remain mandatory.
 - M3-07 is complete on `main`. Final implementation freeze `90f754ea185a8633acd585d181ee108db016209d` passed independent review with `P0=0/P1=0/P2=0`; exact published head `4e77aa38b508a99c60a576e41804ba2d08b6b9fd` passed Build `31891662932` and Governance `31891662909` on Ubuntu/Windows. PR #62 merged with expected-head protection as `859cfa217b2fc0726cc001519967cdde606d2146`, Issue #61 closed, and post-merge `main@930b759c99f330218dc4404368e9844e80456c82` passed Build `31892091205` and Governance `31892091344`. No device, emulator or KVM ran for M3-07.
@@ -426,6 +426,18 @@ Keep the merged M3-11 canonical artifact contract synchronized on `main`; await 
 - M2-02 第三实现层已完成本地检查点：同一 `sourceDir` 只读文件映射、OS 只读 DEX commit、generation+slot 类型化 JNI handle、同 handle `AHMD` 认证 metadata、精确五 JNI 方法、Java primitive/finally 交接窗口、幂等 `LoadedPayload` owner，以及 M0-05 等价 Native 搜索路径和三参数 API 29 `InMemoryDexClassLoader` 已接通。Java 17 编译/lint、NDK 四 ABI warnings-as-errors 与离线根 `assembleRelease check` 284-task 均 PASS，四个 ELF 都含唯一 104-byte alloc/read-only `.ah_share_v1`，未启动设备或模拟器。证据更新于 `docs/evidence/M2-02/local-validation.md`；任务仍未完成或发布，下一步仅补 failure injection、Host sanitizer/fuzz/OOM 与已授权 KVM/arm64 验收，不启动 M2-03。
 
 ## Verification Evidence
+
+### M3-11 post-merge coordination and runner drift
+
+- task_id: M3-11
+- git_commit: 445ea066cc3514b62ceede7beff87721bd9ab2c5
+- command: local M3-11 self-test, project Governance, strict HandOff and diff check; `git push origin main`; GitHub Build `32323762679`; Governance `32323762714`; bounded failed-log inspection
+- exit_code: 1
+- environment: Windows 10.0.19045 x64 coordinator; GitHub windows-2025; GitHub ubuntu-24.04 image `20260816.277.1`; no Gradle, benchmark, KVM, emulator or physical device run locally
+- timestamp: 2026-08-20T10:21:03+08:00
+- artifact: Build `https://github.com/xiaokh31/androidAppHardening/actions/runs/32323762679`; Governance `https://github.com/xiaokh31/androidAppHardening/actions/runs/32323762714`
+- sha256: not_applicable
+- result: BLOCKED; Windows Build and both Governance jobs passed, but Ubuntu failed at the intentional runner-image allowlist before project build because `20260816.277.1` is not reviewed; no rerun or allowlist change is authorized
 
 ### M3-11 expected-head merge
 
@@ -1809,13 +1821,13 @@ Keep the merged M3-11 canonical artifact contract synchronized on `main`; await 
 
 ## Blockers and Required Approvals
 
-None
+- GitHub `ubuntu-24.04` now resolves to unreviewed image `20260816.277.1`; the pinned Build gate correctly rejects it. A separate ADR/task must verify the immutable official runner manifest, compiler/tool inventory, provenance and negative behavior before adding this image. User authorization is required to start that maintenance task; rerunning Build cannot close this blocker.
 
 ## Ordered Next Actions
 
-1. Keep the repository idle until the user explicitly starts the next task; no active task is assigned.
-2. If M3-10 is authorized, begin from merged M3-11 and first freeze an independently reviewed installable-profile strategy for the exact locked APK bytes; do not reconstruct or substitute the canonical pair.
-3. Keep PR #63, the API 36 canonical diagnostic, ARM and M3-05 blocked until M3-10 reaches its own required review and execution gates.
+1. Await explicit authorization for an independent Ubuntu runner-lock maintenance ADR/task; do not edit the image allowlist or rerun Build beforehand.
+2. After that task independently verifies and merges the new image lock, rerun only the final Ubuntu/Windows Build and Governance required to restore clean `main`.
+3. Keep M3-10, PR #63, the API 36 canonical diagnostic, ARM and M3-05 blocked until both the runner lock and M3-10's own review gates are closed.
 
 ## Relevant Files and Artifacts
 

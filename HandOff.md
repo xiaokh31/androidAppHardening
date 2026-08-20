@@ -1,28 +1,28 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260820-120721
-updated_at: 2026-08-20T12:07:21+08:00
+handoff_id: HO-20260820-221729
+updated_at: 2026-08-20T22:17:29+08:00
 updated_by: /root
-state: active
-source_branch: chore/m2-07-ubuntu-runner-20260816
-base_commit: b51bba625a71489845e77847edf42d135a36afe6
+state: ready
+source_branch: main
+base_commit: 77e5148c5aa035fd450adffe9a09111d6b67f973
 working_tree: clean
 current_milestone: M3
-active_task: M2-07
-next_owner: /root
+active_task: NONE
+next_owner: unassigned
 ---
 
 # Project HandOff
 
 ## Objective
 
-Review and pin only the exact GitHub Ubuntu hosted-runner image `20260816.277.1` under M2-07 Issue #73, preserving fail-closed Build/KVM/fuzz locks and avoiding any Runtime, Host, APK, benchmark, device or M3-10/M3-05 implementation change.
+Record the completed M2-07 Ubuntu hosted-runner lock maintenance, synchronize public status, and close the final `main` gates without running KVM, emulator, physical-device, benchmark, M3-10 or M3-05 work.
 
 ## Current State
 
-- M2-07 Ubuntu runner-lock maintenance is active on draft PR #74 from `chore/m2-07-ubuntu-runner-20260816`, based on `main@b51bba625a71489845e77847edf42d135a36afe6` and linked to Issue #73. Official immutable ref `ubuntu24/20260816.277` is a lightweight tag to commit `3b5f596ffecb076aa5f3c3ded95b145f6daeb016`; the reviewed manifest blob `0023ec0741a8c708f9ba2e2bcfc1ee0d9fcb219c` is `15740` bytes with SHA-256 `50384bd5268bb03ae44ab93d621d9d9f20b30f8f0c8155ed49333a57c31a7d88`. Initial freeze `e8ed50a89c52fb8e66516ab6c4a4775c6fac1124` was rejected with `P0=0/P1=2/P2=0`; remediation freeze `da37f47958522986fd25086368dc5598193e4906` and evidence successor `81a1e5b6f9467d4ec1ae6b880c4be27024dde488` passed complete and incremental independent review with `P0=0/P1=0/P2=0`. On exact published head `81a1e5b`, Build `32329949789` and Governance `32329949870` passed Ubuntu/Windows; automatically triggered KVM `32329949743`, equivalence `32329949714` and fuzz `32329949699` were intentionally cancelled as out of scope. The user authorized this CI/HandOff evidence commit and push; ready/merge remains separately unauthorized.
-- M3-11 is complete on `main`. Final PR head `b29c8c50a99ae1b4ea35926bd12337563c0dfe49` retained the all-zero independent review and passed required Ubuntu/Windows Build and Governance. PR #72 was converted to ready and merged with expected-head protection as `98e652b3017df0255ba8be4869513698c18c9ce6`; Issue #71 closed. Post-merge coordination head `445ea066cc3514b62ceede7beff87721bd9ab2c5` passed Windows Build and Ubuntu/Windows Governance, while Ubuntu Build `32323762679` failed closed before project build because GitHub supplied unreviewed image `ubuntu24/20260816.277.1` instead of an allowlisted image. This is a new toolchain provenance blocker, not an M3-11 regression, and must not be bypassed or retried. No benchmark, KVM, emulator, ARM or canonical diagnostic ran. M3-10 and M3-05 remain blocked.
+- M2-07 Ubuntu runner-lock maintenance is merged and complete. Official immutable ref `ubuntu24/20260816.277` remains fixed to commit `3b5f596ffecb076aa5f3c3ded95b145f6daeb016`; manifest blob `0023ec0741a8c708f9ba2e2bcfc1ee0d9fcb219c` is `15740` bytes with SHA-256 `50384bd5268bb03ae44ab93d621d9d9f20b30f8f0c8155ed49333a57c31a7d88`. Initial freeze `e8ed50a89c52fb8e66516ab6c4a4775c6fac1124` was rejected with `P0=0/P1=2/P2=0`; remediation freeze `da37f47958522986fd25086368dc5598193e4906` and evidence successor `81a1e5b6f9467d4ec1ae6b880c4be27024dde488` passed complete and incremental independent review with `P0=0/P1=0/P2=0`. Final PR head `2f48d5eae74dc753ff8b3370852ee23f2989e402` passed Ubuntu/Windows Build `32330793427` and Governance `32330793521`; PR #74 was made ready and merged with expected-head protection as `77e5148c5aa035fd450adffe9a09111d6b67f973`, and Issue #73 closed. Post-merge Build `32333998709` passed both platforms. Initial main Governance `32333998706` failed only because the merged HandOff still named the source branch; this coordination snapshot corrects it to `main`. Out-of-scope KVM/equivalence/fuzz were cancelled; no Runtime, Host, APK, benchmark, emulator or physical-device input changed.
+- M3-11 is complete on `main`. Final PR head `b29c8c50a99ae1b4ea35926bd12337563c0dfe49` retained the all-zero independent review and passed required Ubuntu/Windows Build and Governance. PR #72 was converted to ready and merged with expected-head protection as `98e652b3017df0255ba8be4869513698c18c9ce6`; Issue #71 closed. Post-merge coordination head `445ea066cc3514b62ceede7beff87721bd9ab2c5` passed Windows Build and Ubuntu/Windows Governance, while Ubuntu Build `32323762679` correctly failed closed before project build on then-unreviewed image `ubuntu24/20260816.277.1`. M2-07 PR #74 has now independently reviewed and fixed that exact image, closing the toolchain provenance blocker without rerunning M3-11. No benchmark, KVM, emulator, ARM or canonical diagnostic ran. M3-10 and M3-05 remain blocked by their own contracts.
 - M3-09 is complete on `main`. Final PR head `613e61ac8d3e74f60219ee0d462fae635c3a663d` passed independent bounded review with `P0=0/P1=0/P2=0`, exact-head Ubuntu/Windows Build `32192033540`, and Governance `32192033589`. PR #69 was made ready and merged with expected-head protection as `886b49f001936edc5d1a090e14e626d6e8e3f3ab`; Issue #68 closed. ADR 0016 is accepted and the M3-09 validator remains synthetic-contract-only. No Runtime, Host, fixture, benchmark or diagnostic workflow implementation changed; no Gradle, KVM, emulator, ARM, benchmark, M3-05 or M2-10 retry ran. M3-05 PR #63 remains blocked until a separate ADR 0016 implementation task and any selected owner remediation complete.
 - M3-08 is complete. Final freeze `7e949e9d58ca0a0202790bff70e6199272c75c7f` passed independent review `P0=0/P1=0/P2=0`; final PR head `a5d76806850ecc68cb92e87c4a06e29d9cfe0b1b` passed all checks and merged as `4c3efc1614158a0372eb877fc02fd1db27dcffb3`; Issue #64 closed. Post-merge coordination head `e12542db48eac96f17c4a1f4306ec20c62dcfa1f` passed Build `31929454365` and Governance `31929454381` on Ubuntu/Windows plus local M3-08/governance/strict/diff gates. No KVM, emulator, physical device or benchmark ran. Its historical authorization to resume M3-05 was superseded after the retained M2-10 diagnostic selected no eligible inner stage; current M3-09 and the later ADR 0016 implementation/remediation remain mandatory.
 - M3-07 is complete on `main`. Final implementation freeze `90f754ea185a8633acd585d181ee108db016209d` passed independent review with `P0=0/P1=0/P2=0`; exact published head `4e77aa38b508a99c60a576e41804ba2d08b6b9fd` passed Build `31891662932` and Governance `31891662909` on Ubuntu/Windows. PR #62 merged with expected-head protection as `859cfa217b2fc0726cc001519967cdde606d2146`, Issue #61 closed, and post-merge `main@930b759c99f330218dc4404368e9844e80456c82` passed Build `31892091205` and Governance `31892091344`. No device, emulator or KVM ran for M3-07.
@@ -220,7 +220,7 @@ Review and pin only the exact GitHub Ubuntu hosted-runner image `20260816.277.1`
 | M1-04 | `/root` | `feat/m1-04-encrypted-dex-container` | done | M1-01, M1-02, M1-07 | PR #38、Issue #9、独立复核、merger-ready 六项 CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-05 | `/root` | `feat/m1-05-apk-repacker-and-alignment` | done | M1-02, M1-03, M1-04 | PR #39、Issue #10、独立复核、merger-ready CI、post-merge 双平台 CI、README 与 main strict HandOff 均已关闭 |
 | M1-06 | `/root` | `feat/m1-06-cli-and-json-report` | done | M1-01, M1-02, M1-03, M1-04, M1-05 | PR #40、Issue #11、独立复核、merger-ready 与 post-merge main 双平台 CI、README 和 strict HandOff 均已关闭 |
-| M2-07 | `/root` | `chore/m2-07-ubuntu-runner-20260816` | in_progress | M0-03, M1-04 | Issue #73；固定 Ubuntu `20260816.277.1` 的官方不可变 manifest，完成本地门禁与独立只读复核后才可发布 |
+| M2-07 | `/root` | `main` | done | M0-03, M1-04 | PR #74 已以 expected-head 保护合并为 `77e5148`，Issue #73 已关闭；Ubuntu `20260816.277.1` 精确锁、独立全零复核、双平台 Build/Governance、README 与 strict HandOff 已关闭 |
 | M2-02 | `/root` | `main` | done | M0-04, M1-04, M2-07 | PR #43、Issue #13、全零复核、双平台 CI、API 29/36 KVM、arm64 真机、README 与 strict HandOff 已关闭 |
 
 | M2-03 | `/root` | `main` | done | M1-02, M1-04, M2-02 | PR #44、Issue #14、全零复核、双平台 CI、API 29/36 KVM、arm64 真机、README 与 strict HandOff 已关闭 |
@@ -259,6 +259,7 @@ Review and pin only the exact GitHub Ubuntu hosted-runner image `20260816.277.1`
 
 ## Changes Since Previous Handoff
 
+- Final PR head `2f48d5eae74dc753ff8b3370852ee23f2989e402` passed Ubuntu/Windows Build `32330793427` and Governance `32330793521`. After explicit authorization, PR #74 was made ready and merged with expected-head protection as `77e5148c5aa035fd450adffe9a09111d6b67f973`; Issue #73 closed and local `main` synchronized. Post-merge Build `32333998709` passed both platforms. Main Governance `32333998706` failed only on the stale merged `source_branch`; this documentation-only snapshot corrects it and records public completion. Out-of-scope Fuzz `32333998695` was cancelled; no KVM, emulator, physical device or benchmark ran.
 - Verified published head `14bf68a0b2d80b7086bb060141f81224b2d4aca4`: Build `32214654539` and Governance `32214654687` passed on Ubuntu/Windows. Recorded exact job IDs and the explicit scope exclusion for cancelled equivalence/fuzz; no dynamic Android or diagnostic work ran.
 - Closed the second-review-only tuple-algorithm P2 in `a5397888ff7eeb9571f64d06dfc10e8edef7f37c`; bounded independent review returned final `P0=0/P1=0/P2=0`. Pushed the exact reviewed head and created unique draft PR #72 for Issue #71. Cancelled automatically triggered equivalence/fuzz runs because they are outside this governance-only task; Build/Governance continue.
 - Frozen remediation implementation `f16f7d4808925030f0cd7c74df89d91ae3b713df`: the lock now names the exact `java-single-dex` pair, embeds the exact tuple, binds all four evidence-file hashes, parses/recomputes the actual manifest/repeatability/A/B report semantics, and rejects project-root, realpath, link, lock and report drift. Actual-byte validation rejects 26 named mutations and the committed 19-file base diff remains governance/evidence-only.
@@ -475,6 +476,30 @@ Review and pin only the exact GitHub Ubuntu hosted-runner image `20260816.277.1`
 - artifact: Build jobs `96308543192` / `96308543113`; Governance jobs `96308543316` / `96308543265`; PR `https://github.com/xiaokh31/androidAppHardening/pull/74`
 - sha256: not_applicable
 - result: PASS; Ubuntu/Windows Build and Governance all succeeded on the exact reviewed head, while KVM/equivalence/fuzz terminated as intentional out-of-scope cancellations
+
+### M2-07 Ubuntu runner-lock merger-ready and merge
+
+- task_id: M2-07
+- git_commit: 77e5148c5aa035fd450adffe9a09111d6b67f973
+- command: verify final exact-head PR #74 Build/Governance; `gh pr ready 74`; `gh pr merge 74 --merge --match-head-commit 2f48d5eae74dc753ff8b3370852ee23f2989e402`; verify Issue #73 closure; `git switch main`; `git pull --ff-only origin main`
+- exit_code: 0
+- environment: Windows 10 x64 coordinator; GitHub ubuntu-24.04 and windows-2025; no Gradle, KVM, emulator, physical device, fuzz or benchmark
+- timestamp: 2026-08-20T13:00:58+08:00
+- artifact: PR `https://github.com/xiaokh31/androidAppHardening/pull/74`; Issue `https://github.com/xiaokh31/androidAppHardening/issues/73`; Build `32330793427`; Governance `32330793521`; merge commit `77e5148c5aa035fd450adffe9a09111d6b67f973`
+- sha256: not_applicable
+- result: PASS; final PR head passed all four required jobs, PR merged with expected-head protection, Issue closed and local `main` synchronized; KVM/equivalence/fuzz remained excluded
+
+### M2-07 Ubuntu runner-lock first post-merge main gates
+
+- task_id: M2-07
+- git_commit: 77e5148c5aa035fd450adffe9a09111d6b67f973
+- command: GitHub Build `32333998709`; Governance `32333998706`; inspect failed Governance logs; cancel out-of-scope M3-02 Fuzz `32333998695`; local project Governance and strict HandOff diagnosis
+- exit_code: 1
+- environment: Windows 10 x64 coordinator; GitHub ubuntu-24.04 and windows-2025; no Gradle, KVM, emulator, physical device, fuzz or benchmark
+- timestamp: 2026-08-20T13:06:11+08:00
+- artifact: Build `https://github.com/xiaokh31/androidAppHardening/actions/runs/32333998709`; Governance `https://github.com/xiaokh31/androidAppHardening/actions/runs/32333998706`
+- sha256: not_applicable
+- result: PARTIAL; Ubuntu/Windows Build passed, and both Governance jobs failed only because the merged HandOff declared the old source branch instead of `main`; this coordination-only successor corrects that exact mismatch
 
 ### M3-11 post-merge coordination and runner drift
 
@@ -1874,10 +1899,9 @@ None
 
 ## Ordered Next Actions
 
-1. Commit and push only this authorized CI/HandOff evidence successor; preserve implementation freeze `da37f47958522986fd25086368dc5598193e4906` and its all-zero review.
-2. On the evidence-only successor, cancel automatically triggered KVM/equivalence/fuzz and require exact-head Ubuntu/Windows Build plus Governance.
-3. After those required checks pass, request separate ready/merge authorization for PR #74; merge only with expected-head protection.
-4. Keep M3-10, PR #63, the API 36 canonical diagnostic, ARM and M3-05 blocked until this maintenance merges and the final main Build/Governance pass.
+1. Commit and push this README/HandOff/evidence post-merge reconciliation on `main`.
+2. Require final `main` Ubuntu/Windows Build and Governance success; cancel any automatically triggered KVM/equivalence/fuzz because executable and acceptance inputs are unchanged.
+3. After those final gates pass, leave M3-10, PR #63, the API 36 canonical diagnostic, ARM and M3-05 blocked until separately authorized under their existing contracts.
 
 ## Relevant Files and Artifacts
 
@@ -1891,7 +1915,8 @@ None
 - `.github/workflows/build.yml`
 - `.github/workflows/m0-05-linux-kvm.yml`
 - `.github/workflows/cross-platform-equivalence.yml`
-- Issue #73; triggering Build `32323762679`, Ubuntu job `96290837554`
+- Issue #73; PR #74; merge commit `77e5148c5aa035fd450adffe9a09111d6b67f973`; final PR Build `32330793427`; final PR Governance `32330793521`; post-merge Build `32333998709`; first post-merge Governance `32333998706`
+- `README.md`
 - `docs/tasks/M3-11-canonical-startup-artifact-contract.md`
 - `docs/tasks/M3-10-startup-attribution-diagnostic.md`
 - `docs/evidence/M3-11/canonical-artifact-lock.json`
@@ -2084,6 +2109,14 @@ None
 
 ## Resume Checklist
 
+- [x] Review and pin official Ubuntu image `20260816.277.1`, exact manifest ref/blob/hash and unchanged compiler/Android inventory.
+- [x] Close the first independent review findings and obtain complete plus incremental `P0=0/P1=0/P2=0` review conclusions.
+- [x] Push the bounded branch, create unique Issue #73 draft PR #74, and pass exact-head Ubuntu/Windows Build/Governance.
+- [x] Merge PR #74 with expected-head `2f48d5e` as `77e5148`; close Issue #73 and synchronize local `main`.
+- [x] Confirm post-merge Build `32333998709` passes both platforms and isolate the first Governance failure to the stale merged HandOff branch field.
+- [ ] Commit/push this post-merge README/HandOff/evidence reconciliation and verify final `main` Build/Governance.
+- [x] Keep KVM, equivalence, fuzz, emulator, physical device and benchmark execution out of scope.
+
 - [x] M3-02 Issue #19, dependency closure, branch/base and full-flow scope are fixed; no adjacent task has started.
 - [x] Implement the generated 69-case catalog, isolated corpus/regressions, pinned Jazzer/Clang targets, resource limits, parallel CI and API 29/36 KVM mutation wiring.
 - [x] Pass bounded local Host regression/tamper, script/toolchain locks, one-second Jazzer smoke and Native syntax checks without starting a device/emulator.
@@ -2224,6 +2257,8 @@ None
 - [x] 对当前 clean 冻结提交完成新的独立 parser/security 复核；P0/P1/P2 全零。
 
 ## Handoff Sign-off
+
+- `/root` verified final M2-07 Ubuntu runner-lock head `2f48d5eae74dc753ff8b3370852ee23f2989e402`, complete and incremental independent `P0=0/P1=0/P2=0` reviews, exact-head Ubuntu/Windows Build `32330793427` and Governance `32330793521`, and the user's ready/merge authorization. PR #74 merged with expected-head protection as `77e5148c5aa035fd450adffe9a09111d6b67f973`, Issue #73 closed, local `main` synchronized, and post-merge Build `32333998709` passed both platforms. This coordination-only successor corrects the sole stale HandOff branch mismatch; no KVM, equivalence, fuzz, emulator, physical device, benchmark, M3-10 or M3-05 work ran.
 
 - `/root` verified final M3-11 PR head `b29c8c50a99ae1b4ea35926bd12337563c0dfe49`, all-zero independent review, required Ubuntu/Windows Build/Governance and the user's merge authorization. PR #72 merged with expected-head protection as `98e652b3017df0255ba8be4869513698c18c9ce6`, Issue #71 closed, local `main` synchronized, and no adjacent task or dynamic diagnostic started.
 

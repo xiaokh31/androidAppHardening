@@ -94,4 +94,19 @@ Required workflows:
 
 Automatically triggered runs outside this maintenance scope were cancelled without retry: M0-05 Linux KVM `32329949743`, Cross-platform equivalence `32329949714`, and M3-02 Fuzz `32329949699`. Their cancellation is not acceptance evidence and does not replace either required workflow. No local Gradle, KVM, emulator, device, fuzz or benchmark ran.
 
-The evidence-only successor requires its own exact-head Ubuntu/Windows Build and Governance after push. PR #74 must remain draft until those checks pass and the user separately authorizes ready/merge.
+## PR #74 final exact-head validation and merge
+
+The authorized CI/HandOff successor `2f48d5eae74dc753ff8b3370852ee23f2989e402` preserved the reviewed implementation and passed the required exact-head workflows:
+
+| Workflow | Run | Ubuntu job | Windows job | Result |
+|---|---:|---:|---:|---|
+| Build | `32330793427` | `96310880045` | `96310879906` | PASS / PASS |
+| Governance | `32330793521` | `96310880206` | `96310880007` | PASS / PASS |
+
+Automatically triggered KVM `32330793407`, equivalence `32330793430`, and fuzz `32330793461` were cancelled as out of scope. After those required checks passed, the user separately authorized ready/merge. PR #74 was converted to ready and merged with expected-head protection as `77e5148c5aa035fd450adffe9a09111d6b67f973`; Issue #73 closed.
+
+## Post-merge main validation
+
+Local `main` was fast-forwarded to merge commit `77e5148c5aa035fd450adffe9a09111d6b67f973`. Build run [`32333998709`](https://github.com/xiaokh31/androidAppHardening/actions/runs/32333998709) passed Ubuntu job `96319873758` and Windows job `96319873408`. The automatically triggered M3-02 Fuzz run `32333998695` was cancelled because it remains outside this maintenance scope.
+
+The first main Governance run [`32333998706`](https://github.com/xiaokh31/androidAppHardening/actions/runs/32333998706) failed only because the merged HandOff still declared source branch `chore/m2-07-ubuntu-runner-20260816`; both jobs reported the same strict-validation mismatch before any product or toolchain finding. This post-merge documentation-only coordination commit changes that declaration to `main`, records the merge and public completion state, and does not alter any reviewed lock, workflow, validator, Runtime, Host, APK, benchmark or device input.

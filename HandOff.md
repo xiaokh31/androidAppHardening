@@ -2081,6 +2081,12 @@ Implement the sole ADR 0018 successor diagnostic as M3-14, freeze it without can
 - PR #76 final head `95a42b556374c92191d2511894fb2613afc187b9`; Build `32552469351`; Governance `32552469492`; merge commit `c1d81fe6c4257efecf8cbb0b23aa724034f6b3a1`; Issue #75 closed
 - `docs/tasks/M3-11-canonical-startup-artifact-contract.md`
 - `docs/tasks/M3-10-startup-attribution-diagnostic.md`
+- `host/container/src/test/kotlin/ah/host/container/M310DexProfileTool.kt`
+- `host/container/src/test/kotlin/ah/host/container/M310CanonicalProfileDeriver.kt`
+- `host/container/src/test/kotlin/ah/host/container/M310CanonicalProfileVerifier.kt`
+- `tools/validation/m3-10/profile-src/ah/runtime/profile/M310StartupTimingObserver.java`
+- `tools/governance/verify-m3-10-profile-freeze.mjs`
+- ignored `build/m3-10/` derived APKs and verification reports; temporary signing material deleted
 - `docs/evidence/M3-11/canonical-artifact-lock.json`
 - `docs/evidence/M3-11/provenance.md`
 - `tools/governance/verify-m3-11-canonical-artifact-contract.mjs`

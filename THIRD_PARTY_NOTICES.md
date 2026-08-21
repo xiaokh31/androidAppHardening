@@ -13,6 +13,7 @@
 | Android apksig | `9.3.0` | Google Maven，`com.android.tools.build:apksig` | Apache-2.0 | M1-02 Host 输入签名验证；随 Host 产品分发但产品不调用其签名 API |
 | Java Native Access (JNA/JNA Platform) | `5.19.1` | Maven Central；`java-native-access/jna` tag `5.19.1` (`1a91122853f6ab6f1fb2a4a284a6cf2ed8af0a4d`) | LGPL-2.1-or-later or Apache-2.0 | M1-05 Host 在 Windows 调用 `MoveFileExW`/文件 ID、在 Linux 调用 `renameat2(RENAME_NOREPLACE)`，保证原子且不覆盖发布；随 Host 产品分发 |
 | Jazzer / Jazzer API | `0.29.1` | Maven Central；`CodeIntelligenceTesting/jazzer` 官方仓库 | Apache-2.0 | M3-02 JVM APK/AXML fuzz 引擎与测试 API；仅用于验证，不进入 Host、Runtime 或发行包；四个 JAR/POM SHA-256 固定于 dependency verification metadata，Issue #19 |
+| dexlib2 | `2.5.2` | Maven Central `org.smali:dexlib2`; upstream `JesusFreke/smali` archived read-only repository | BSD-3-Clause | M3-10 only parses and rewrites the two authorized canonical fixture DEX files in `host:container` test source; it does not enter Host, Runtime, CLI or distribution artifacts; Issue #70 |
 | Android SDK Platform | `platforms;android-36` | Android SDK Manager | Android SDK License | 编译 API；不随产品分发 |
 | Android SDK Build Tools | `build-tools;36.1.0` | Android SDK Manager | Android SDK License | Android 构建和后续对齐验证；不随产品分发 |
 | Android NDK | `ndk;29.0.14206865` | Android SDK Manager | Apache-2.0 and bundled third-party notices | 四 ABI 空库构建；M0-03 产物不发布 |

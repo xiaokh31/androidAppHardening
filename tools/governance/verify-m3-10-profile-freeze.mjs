@@ -1,0 +1,141 @@
+#!/usr/bin/env node
+
+import fs from "node:fs";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+
+const root = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/(?:[A-Za-z]:)/u, (value) => value.slice(1))), "..", "..");
+const args = new Set(process.argv.slice(2));
+const baseIndex = process.argv.indexOf("--base-ref");
+const baseRef = baseIndex >= 0 ? process.argv[baseIndex + 1] : undefined;
+
+function fail(message) {
+  throw new Error(`M3-10 profile freeze: ${message}`);
+}
+
+function read(relative) {
+  const file = path.join(root, relative);
+  if (!fs.statSync(file, { throwIfNoEntry: false })?.isFile()) fail(`missing ${relative}`);
+  return fs.readFileSync(file, "utf8");
+}
+
+function listFiles(directory) {
+  if (!fs.existsSync(directory)) return [];
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const absolute = path.join(directory, entry.name);
+    return entry.isDirectory() ? listFiles(absolute) : entry.isFile() ? [absolute] : [];
+  });
+}
+
+function surfaceViolations(relative, text) {
+  const hits = [];
+  const patterns = [
+    /M310StartupTimingObserver/u,
+    /m3_10_profile/u,
+    /Lah\/runtime\/profile\/M310/u,
+    /AAH-M3-10/u,
+  ];
+  for (const pattern of patterns) if (pattern.test(text)) hits.push(`${relative}:${pattern.source}`);
+  return hits;
+}
+
+function verifyProductionSurface() {
+  const roots = ["runtime", "host", "fixtures", "benchmarks", "distribution"];
+  const violations = [];
+  for (const relativeRoot of roots) {
+    for (const file of listFiles(path.join(root, relativeRoot))) {
+      const relative = path.relative(root, file).replaceAll("\\", "/");
+      if (!/\/src\/(?:main|release)\//u.test(`/${relative}`) &&
+          !relative.startsWith("distribution/")) continue;
+      const bytes = fs.readFileSync(file);
+      if (bytes.includes(0)) continue;
+      violations.push(...surfaceViolations(relative, bytes.toString("utf8")));
+    }
+  }
+  if (violations.length) fail(`production observer surface detected: ${violations.join(", ")}`);
+}
+
+function verifyTrackedDesign() {
+  const observer = read("tools/validation/m3-10/profile-src/ah/runtime/profile/M310StartupTimingObserver.java");
+  for (const phrase of [
+    "Process.getStartElapsedRealtime()",
+    "SystemClock.elapsedRealtimeNanos()",
+    "public static void p15(boolean focused)",
+    "private static synchronized void calibrationPoint(int index)",
+  ]) if (!observer.includes(phrase)) fail(`observer missing ${phrase}`);
+  for (const forbidden of ["System.getenv", "getIntent(", "System.getProperty", "new File(", "SharedPreferences"]) {
+    if (observer.includes(forbidden)) fail(`observer contains activation surface ${forbidden}`);
+  }
+
+  const deriver = read("host/container/src/test/kotlin/ah/host/container/M310CanonicalProfileDeriver.kt");
+  const verifier = read("host/container/src/test/kotlin/ah/host/container/M310CanonicalProfileVerifier.kt");
+  const transformer = read("host/container/src/test/kotlin/ah/host/container/M310DexProfileTool.kt");
+  for (const phrase of [
+    "requireExactOriginal(baseline, BASELINE_SIZE, BASELINE_SHA256",
+    "SeededContainerRandom(seed)",
+    "DexContainerBuilder(",
+    "patchRuntimeSlot(",
+    "profileSignerSha256Prefix",
+  ]) if (!deriver.includes(phrase)) fail(`deriver missing ${phrase}`);
+  for (const phrase of [
+    "manifestBytesEqual",
+    "authenticatedContainerVerified",
+    "runtimeShareSlotsOnly",
+    "requireProbeCalls",
+    "VerifiedScheme.V3",
+  ]) if (!verifier.includes(phrase)) fail(`verifier missing ${phrase}`);
+  for (const phrase of ["payload-baseline", "payload-protected", "shell", "h0", "h8", "p15"]) {
+    if (!transformer.includes(phrase)) fail(`transformer missing ${phrase}`);
+  }
+
+  const catalog = read("gradle/libs.versions.toml");
+  const lock = read("host/container/gradle.lockfile");
+  const metadata = read("gradle/verification-metadata.xml");
+  for (const [text, phrase, label] of [
+    [catalog, "dexlib2 = \"2.5.2\"", "version catalog"],
+    [lock, "org.smali:dexlib2:2.5.2", "dependency lock"],
+    [metadata, "org.smali\" name=\"dexlib2\" version=\"2.5.2\"", "verification metadata"],
+  ]) if (!text.includes(phrase)) fail(`${label} missing pinned dexlib2`);
+
+  for (const workflow of [
+    ".github/workflows/m3-09-startup-attribution.yml",
+    ".github/workflows/m3-09-startup-attribution-evidence.yml",
+  ]) if (fs.existsSync(path.join(root, workflow))) fail(`canonical workflow exists before independent review: ${workflow}`);
+}
+
+function verifyDiff() {
+  if (!baseRef) return;
+  const result = spawnSync("git", ["diff", "--name-only", `${baseRef}...HEAD`], {
+    cwd: root,
+    encoding: "utf8",
+    timeout: 30_000,
+  });
+  if (result.status !== 0) fail(`git diff failed: ${result.stderr.trim()}`);
+  const forbidden = result.stdout.split(/\r?\n/u).filter(Boolean).filter((file) =>
+    /^(?:runtime|host|fixtures|benchmarks)\/.*\/src\/(?:main|release)\//u.test(file) ||
+    file === ".github/workflows/m3-09-startup-attribution.yml" ||
+    file === ".github/workflows/m3-09-startup-attribution-evidence.yml",
+  );
+  if (forbidden.length) fail(`production/workflow diff detected: ${forbidden.join(", ")}`);
+}
+
+function selfTest() {
+  const mutations = [
+    ["runtime/native/src/main/java/X.java", "M310StartupTimingObserver.p1();"],
+    ["runtime/bootstrap/src/release/java/X.java", "m3_10_profile=true"],
+    ["host/cli/src/main/kotlin/X.kt", "AAH-M3-10"],
+    ["fixtures/android/src/main/java/X.java", "Lah/runtime/profile/M310;"],
+    ["benchmarks/android/src/release/java/X.java", "M310StartupTimingObserver"],
+    ["distribution/readme.txt", "m3_10_profile"],
+  ];
+  for (const [name, text] of mutations) {
+    if (surfaceViolations(name, text).length === 0) fail(`self-test mutation was accepted: ${name}`);
+  }
+  console.log(`M3-10 profile freeze self-test PASS mutations=${mutations.length}`);
+}
+
+verifyProductionSurface();
+verifyTrackedDesign();
+verifyDiff();
+if (args.has("--self-test")) selfTest();
+console.log("M3-10 profile freeze PASS workflows=absent productionObserver=absent");

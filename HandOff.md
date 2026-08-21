@@ -1,26 +1,27 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260820-221729
-updated_at: 2026-08-20T22:17:29+08:00
+handoff_id: HO-20260821-101610
+updated_at: 2026-08-21T10:16:10+08:00
 updated_by: /root
-state: ready
-source_branch: main
-base_commit: 77e5148c5aa035fd450adffe9a09111d6b67f973
-working_tree: clean
+state: active
+source_branch: feat/m3-10-startup-attribution-diagnostic
+base_commit: 9d3fc3a4ae17d14f84d223b9dbb5f92016814f1a
+working_tree: dirty
 current_milestone: M3
-active_task: NONE
-next_owner: unassigned
+active_task: M3-10
+next_owner: /root
 ---
 
 # Project HandOff
 
 ## Objective
 
-Record the completed M2-07 Ubuntu hosted-runner lock maintenance, synchronize public status, and close the final `main` gates without running KVM, emulator, physical-device, benchmark, M3-10 or M3-05 work.
+Implement the bounded M3-10 ADR 0016 startup-attribution diagnostic from the exact M3-11 canonical APK pair, prove deterministic profile derivation/signing/security-semantic equivalence, and freeze the implementation for independent review before creating or running either canonical workflow.
 
 ## Current State
 
+- M3-10 restarted from clean `main@9d3fc3a4ae17d14f84d223b9dbb5f92016814f1a` on `feat/m3-10-startup-attribution-diagnostic`; the rejected candidate remains historical only on `spike/m3-10-rejected-candidate`. The exact ignored M3-11 canonical pair was hashed before derivation. The current candidate now implements deterministic post-build DEX probes, a separate ephemeral test-only v3 signer, transactional protected ConfigV2/AHDC/four-ABI share-slot rebinding, exact call-graph and four-APK byte verification, and a fail-closed production-surface gate. Two independent derivations from the same inputs produced byte-identical unsigned, aligned and signed APKs; the actual-byte verifier authenticated the rebuilt container and decrypted its payload to the exact reviewed DEX. Host/container regression, governance, strict HandOff and diff checks pass. All temporary keystores, passwords, private keys and deterministic container seeds have been deleted. This is still an uncommitted local implementation candidate: it is not eligible for a workflow, API 36 diagnostic, KVM, emulator, ARM or M3-05 until frozen and independently reviewed with `P0=0/P1=0/P2=0`.
 - M2-07 Ubuntu runner-lock maintenance is merged and complete. Official immutable ref `ubuntu24/20260816.277` remains fixed to commit `3b5f596ffecb076aa5f3c3ded95b145f6daeb016`; manifest blob `0023ec0741a8c708f9ba2e2bcfc1ee0d9fcb219c` is `15740` bytes with SHA-256 `50384bd5268bb03ae44ab93d621d9d9f20b30f8f0c8155ed49333a57c31a7d88`. Initial freeze `e8ed50a89c52fb8e66516ab6c4a4775c6fac1124` was rejected with `P0=0/P1=2/P2=0`; remediation freeze `da37f47958522986fd25086368dc5598193e4906` and evidence successor `81a1e5b6f9467d4ec1ae6b880c4be27024dde488` passed complete and incremental independent review with `P0=0/P1=0/P2=0`. Final PR head `2f48d5eae74dc753ff8b3370852ee23f2989e402` passed Ubuntu/Windows Build `32330793427` and Governance `32330793521`; PR #74 was made ready and merged with expected-head protection as `77e5148c5aa035fd450adffe9a09111d6b67f973`, and Issue #73 closed. Post-merge Build `32333998709` passed both platforms. Initial main Governance `32333998706` failed only because the merged HandOff still named the source branch; this coordination snapshot corrects it to `main`. Out-of-scope KVM/equivalence/fuzz were cancelled; no Runtime, Host, APK, benchmark, emulator or physical-device input changed.
 - M3-11 is complete on `main`. Final PR head `b29c8c50a99ae1b4ea35926bd12337563c0dfe49` retained the all-zero independent review and passed required Ubuntu/Windows Build and Governance. PR #72 was converted to ready and merged with expected-head protection as `98e652b3017df0255ba8be4869513698c18c9ce6`; Issue #71 closed. Post-merge coordination head `445ea066cc3514b62ceede7beff87721bd9ab2c5` passed Windows Build and Ubuntu/Windows Governance, while Ubuntu Build `32323762679` correctly failed closed before project build on then-unreviewed image `ubuntu24/20260816.277.1`. M2-07 PR #74 has now independently reviewed and fixed that exact image, closing the toolchain provenance blocker without rerunning M3-11. No benchmark, KVM, emulator, ARM or canonical diagnostic ran. M3-10 and M3-05 remain blocked by their own contracts.
 - M3-09 is complete on `main`. Final PR head `613e61ac8d3e74f60219ee0d462fae635c3a663d` passed independent bounded review with `P0=0/P1=0/P2=0`, exact-head Ubuntu/Windows Build `32192033540`, and Governance `32192033589`. PR #69 was made ready and merged with expected-head protection as `886b49f001936edc5d1a090e14e626d6e8e3f3ab`; Issue #68 closed. ADR 0016 is accepted and the M3-09 validator remains synthetic-contract-only. No Runtime, Host, fixture, benchmark or diagnostic workflow implementation changed; no Gradle, KVM, emulator, ARM, benchmark, M3-05 or M2-10 retry ran. M3-05 PR #63 remains blocked until a separate ADR 0016 implementation task and any selected owner remediation complete.
@@ -205,7 +206,7 @@ Record the completed M2-07 Ubuntu hosted-runner lock maintenance, synchronize pu
 | M3-08 | `/root` | `main` | done | M3-01, M3-07 | PR #65 merged; independent review and post-merge main Build/Governance complete |
 | M3-09 | `/root` | `main` | done | M3-08 | PR #69 merged as `886b49f`; Issue #68 closed; independent review and exact-head Ubuntu/Windows Build/Governance passed |
 | M3-11 | `/root` | `main` | done | M3-09 | PR #72 merged with expected-head protection as `98e652b3017df0255ba8be4869513698c18c9ce6`; Issue #71 closed |
-| M3-10 | `runtime-security-agent` | `feat/m3-10-startup-attribution-diagnostic` | blocked | M3-09, M3-11 | Discard rebuilt-original claim; resume only from merged M3-11 exact pair with independently reviewed installable-profile design |
+| M3-10 | `/root` | `feat/m3-10-startup-attribution-diagnostic` | in_progress | M3-09, M3-11 | Implement exact-pair profile derivation/signing/equivalence; freeze and obtain all-zero independent review before either workflow exists |
 | M3-05 | `/root` | `chore/m3-05-performance-benchmarks` | blocked | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08, M3-09, M3-10 | Keep PR #63 blocked until M3-10 attribution and any selected owner remediation complete |
 | M3-03 | `/root` | `main` | done | M0-03, M1-05, M1-06, M2-06, M3-01 | PR #55 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | done | M2-02 | PR #54 merged; exact regression, ASan/UBSan, dual-platform Build/Governance and independent review passed |
@@ -1899,9 +1900,9 @@ None
 
 ## Ordered Next Actions
 
-1. Commit and push this README/HandOff/evidence post-merge reconciliation on `main`.
-2. Require final `main` Ubuntu/Windows Build and Governance success; cancel any automatically triggered KVM/equivalence/fuzz because executable and acceptance inputs are unchanged.
-3. After those final gates pass, leave M3-10, PR #63, the API 36 canonical diagnostic, ARM and M3-05 blocked until separately authorized under their existing contracts.
+1. Freeze the deterministic profile derivation/signing/equivalence implementation and record the local actual-byte/hash/cleanup evidence; no workflow is part of the freeze.
+2. Start one independent read-only review of the exact freeze and close every P0/P1/P2 finding without running Gradle, a device or a benchmark in the reviewer.
+3. Only after an all-zero review may a separately authorized successor add the one-time raw diagnostic and terminal-evidence workflows. API 36, ARM and M3-05 remain unexecuted in the current phase.
 
 ## Relevant Files and Artifacts
 
@@ -1919,6 +1920,12 @@ None
 - `README.md`
 - `docs/tasks/M3-11-canonical-startup-artifact-contract.md`
 - `docs/tasks/M3-10-startup-attribution-diagnostic.md`
+- `host/container/src/test/kotlin/ah/host/container/M310DexProfileTool.kt`
+- `host/container/src/test/kotlin/ah/host/container/M310CanonicalProfileDeriver.kt`
+- `host/container/src/test/kotlin/ah/host/container/M310CanonicalProfileVerifier.kt`
+- `tools/validation/m3-10/profile-src/ah/runtime/profile/M310StartupTimingObserver.java`
+- `tools/governance/verify-m3-10-profile-freeze.mjs`
+- ignored `build/m3-10/` derived APKs and verification reports; temporary signing material deleted
 - `docs/evidence/M3-11/canonical-artifact-lock.json`
 - `docs/evidence/M3-11/provenance.md`
 - `tools/governance/verify-m3-11-canonical-artifact-contract.mjs`

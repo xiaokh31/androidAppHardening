@@ -193,6 +193,15 @@ val m310VerifyProfiles by tasks.registering(JavaExec::class) {
     )
 }
 
+val m310MetadataSelfTest by tasks.registering(JavaExec::class) {
+    group = "verification"
+    description = "Rejects M3-10 try-handler and debug-position/value metadata mutations."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets["test"].runtimeClasspath
+    mainClass.set("ah.host.container.M310CanonicalProfileVerifier")
+    args("--metadata-self-test")
+}
+
 tasks.named<Test>("test") {
     dependsOn(containerTest)
     failOnNoDiscoveredTests = false

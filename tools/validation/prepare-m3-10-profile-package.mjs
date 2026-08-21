@@ -62,6 +62,11 @@ function regularLocked(file, expected, label) {
   }
 }
 
+function toolLocked(file, expected, label) {
+  if (!existsSync(file) || !statSync(file).isFile() || statSync(file).size !== expected.sizeBytes ||
+      sha256File(file) !== expected.sha256) fail(`${label} does not match the tracked Android tool lock`);
+}
+
 function sign(toolchain, input, output, keystore, alias, env) {
   run(toolchain.java, ["-jar", toolchain.apksignerJar, "sign", "--v1-signing-enabled", "false",
     "--v2-signing-enabled", "false", "--v3-signing-enabled", "true", "--v4-signing-enabled", "false",
@@ -112,6 +117,15 @@ function main(options) {
   const toolchain = tools();
   const requiredTools = Object.values(toolchain);
   if (requiredTools.some((file) => !existsSync(file))) fail("a pinned Java/Android/Gradle tool is missing");
+  const releaseLockFile = path.resolve(required(options, "release-lock"));
+  const releaseLock = JSON.parse(readFileSync(releaseLockFile, "utf8"));
+  if (releaseLock.schemaVersion !== 1 || releaseLock.taskId !== "M3-10" ||
+      releaseLock.androidTools?.buildToolsRevision !== "36.1.0") fail("Android tool lock identity differs");
+  toolLocked(toolchain.d8Jar, releaseLock.androidTools.d8Jar, "d8.jar");
+  toolLocked(toolchain.apksignerJar, releaseLock.androidTools.apksignerJar, "apksigner.jar");
+  toolLocked(toolchain.zipalign, releaseLock.androidTools.zipalign, "zipalign");
+  toolLocked(path.join(path.dirname(toolchain.zipalign), "source.properties"),
+    releaseLock.androidTools.sourceProperties, "Build Tools source.properties");
   mkdirSync(output, { recursive: true });
   const secretRoot = path.join(output, ".signing-secret");
   mkdirSync(secretRoot);

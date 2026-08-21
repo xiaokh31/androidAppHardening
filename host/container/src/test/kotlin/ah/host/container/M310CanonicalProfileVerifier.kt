@@ -11,8 +11,22 @@ import org.jf.dexlib2.Opcodes
 import org.jf.dexlib2.Opcode
 import org.jf.dexlib2.dexbacked.DexBackedDexFile
 import org.jf.dexlib2.iface.Method
+import org.jf.dexlib2.iface.debug.EndLocal
+import org.jf.dexlib2.iface.debug.EpilogueBegin
+import org.jf.dexlib2.iface.debug.LineNumber
+import org.jf.dexlib2.iface.debug.PrologueEnd
+import org.jf.dexlib2.iface.debug.RestartLocal
+import org.jf.dexlib2.iface.debug.SetSourceFile
+import org.jf.dexlib2.iface.debug.StartLocal
 import org.jf.dexlib2.iface.instruction.ReferenceInstruction
 import org.jf.dexlib2.iface.reference.MethodReference
+import org.jf.dexlib2.immutable.ImmutableExceptionHandler
+import org.jf.dexlib2.immutable.ImmutableMethod
+import org.jf.dexlib2.immutable.ImmutableMethodImplementation
+import org.jf.dexlib2.immutable.ImmutableTryBlock
+import org.jf.dexlib2.immutable.debug.ImmutableLineNumber
+import org.jf.dexlib2.immutable.debug.ImmutableStartLocal
+import org.jf.dexlib2.immutable.instruction.ImmutableInstruction10x
 import java.io.BufferedInputStream
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
@@ -28,6 +42,10 @@ object M310CanonicalProfileVerifier {
 
     @JvmStatic
     fun main(arguments: Array<String>) {
+        if (arguments.contentEquals(arrayOf("--metadata-self-test"))) {
+            metadataSelfTest()
+            return
+        }
         require(arguments.size == 8) {
             "usage: original-baseline.apk original-protected.apk profile-baseline.apk profile-protected.apk observer.dex derivation-manifest.json canonical-profile-lock.json report.json"
         }
@@ -57,6 +75,36 @@ object M310CanonicalProfileVerifier {
         } finally {
             M310CanonicalProfileDeriver.deleteTree(scratch)
         }
+    }
+
+    private fun metadataSelfTest() {
+        fun method(
+            handlerAddress: Int = 0,
+            lineAddress: Int = 0,
+            lineNumber: Int = 7,
+            localName: String = "value",
+        ): Method = ImmutableMethod(
+            "Ltest/M310;", "sample", emptyList(), "V", 0x8, emptySet(), emptySet(),
+            ImmutableMethodImplementation(
+                1,
+                listOf(ImmutableInstruction10x(Opcode.RETURN_VOID)),
+                listOf(ImmutableTryBlock(0, 1, listOf(ImmutableExceptionHandler("Ljava/lang/Exception;", handlerAddress)))),
+                listOf(ImmutableLineNumber(lineAddress, lineNumber), ImmutableStartLocal(0, 0, localName, "I", null)),
+            ),
+        )
+        val baseline = method()
+        val mutations = linkedMapOf(
+            "try-handler-target" to method(handlerAddress = 1),
+            "debug-address" to method(lineAddress = 1),
+            "debug-line" to method(lineNumber = 8),
+            "debug-local-name" to method(localName = "changed"),
+        )
+        for ((name, candidate) in mutations) {
+            val unchanged = trySignature(baseline, false) == trySignature(candidate, false) &&
+                debugSignature(baseline, false) == debugSignature(candidate, false)
+            require(!unchanged) { "metadata mutation was accepted: $name" }
+        }
+        println("M3-10 metadata self-test PASS mutations=${mutations.keys.joinToString(",")}")
     }
 
     private fun verify(
@@ -293,16 +341,68 @@ object M310CanonicalProfileVerifier {
         for (classDef in dex.classes) {
             if (classDef.type == OBSERVER) continue
             for (method in classDef.methods) {
+                val methodKey = "${classDef.type}->${method.key()}"
                 for (instruction in method.implementation?.instructions ?: emptyList()) {
                     val reference = (instruction as? ReferenceInstruction)?.reference as? MethodReference ?: continue
                     if (reference.definingClass == OBSERVER) {
-                        actual.getOrPut("${classDef.type}->${method.key()}") { mutableListOf() } += reference.name
+                        actual.getOrPut(methodKey) { mutableListOf() } += reference.name
                     }
                 }
+                expected[methodKey]?.let { requireProbeAdjacency(method, it, methodKey) }
             }
         }
         require(actual == expected.mapValues { it.value.toMutableList() }) {
             "observer callsite graph differs: $actual"
+        }
+    }
+
+    private fun requireProbeAdjacency(method: Method, expectedPoints: List<String>, label: String) {
+        val instructions = requireNotNull(method.implementation).instructions.toList()
+        fun reference(index: Int): MethodReference? =
+            (instructions.getOrNull(index) as? ReferenceInstruction)?.reference as? MethodReference
+        fun observer(index: Int): String? = reference(index)?.takeIf { it.definingClass == OBSERVER }?.name
+        val positions = instructions.indices.filter { observer(it) != null }
+        require(positions.mapNotNull(::observer) == expectedPoints) { "$label probe order differs" }
+        when {
+            expectedPoints.singleOrNull() == "p15" -> require(positions.single() == 0) { "$label p15 is not the entry boundary" }
+            expectedPoints == listOf("h7") -> {
+                val previous = instructions.getOrNull(positions.single() - 1)
+                val field = (previous as? ReferenceInstruction)?.reference as? org.jf.dexlib2.iface.reference.FieldReference
+                require(previous?.opcode == Opcode.IPUT_OBJECT && field?.name == "state") { "$label h7 is not adjacent to READY publication" }
+            }
+            expectedPoints.first() in setOf("h1", "h2", "h3", "h4", "h5", "h6") -> {
+                val targets = mapOf(
+                    "h1" to ("Lah/runtime/guard/RuntimeSignerVerifier;" to "verify"),
+                    "h2" to ("Lah/runtime/guard/RuntimeStartupGuard;" to "sha256"),
+                    "h3" to ("Lah/runtime/guard/IntegrityChecks;" to "verifyPreReadSigner"),
+                    "h4" to ("Lah/runtime/loader/PayloadRuntime;" to "openVerified"),
+                    "h5" to ("Lah/runtime/MemoryControls;" to "apply"),
+                )
+                for ((point, target) in targets) {
+                    val position = positions.single { observer(it) == point }
+                    if (point == "h1") {
+                        require(reference(position + 1)?.let { it.definingClass == target.first && it.name == target.second } == true) {
+                            "$label $point is not immediately before its target"
+                        }
+                    } else {
+                        val priorReferences = (maxOf(0, position - 2) until position).mapNotNull(::reference)
+                        require(priorReferences.lastOrNull()?.let { it.definingClass == target.first && it.name == target.second } == true) {
+                            "$label $point is not immediately after its target/result"
+                        }
+                    }
+                }
+                val h6 = positions.single { observer(it) == "h6" }
+                require(instructions.getOrNull(h6 + 1)?.opcode == Opcode.RETURN_OBJECT) { "$label h6 is not the success return boundary" }
+            }
+            else -> {
+                require(positions.first() == 0) { "$label entry probe is not first" }
+                val exitPoint = expectedPoints.last()
+                val returnOpcodes = setOf(Opcode.RETURN, Opcode.RETURN_OBJECT, Opcode.RETURN_VOID)
+                val returns = instructions.indices.filter { instructions[it].opcode in returnOpcodes }
+                require(returns.isNotEmpty() && returns.all { index -> observer(index - 1) == exitPoint }) {
+                    "$label exit probe is not adjacent to every return"
+                }
+            }
         }
     }
 
@@ -337,15 +437,29 @@ object M310CanonicalProfileVerifier {
             }
             for ((key, leftMethod) in leftMethods) {
                 val rightMethod = rightMethods.getValue(key)
-                require(leftMethod.accessFlags == rightMethod.accessFlags &&
-                    annotationSignature(leftMethod.annotations) == annotationSignature(rightMethod.annotations) &&
-                    leftMethod.parameters.map { it.type to annotationSignature(it.annotations) } ==
-                        rightMethod.parameters.map { it.type to annotationSignature(it.annotations) } &&
-                    leftMethod.hiddenApiRestrictions == rightMethod.hiddenApiRestrictions &&
-                    leftMethod.implementation?.registerCount == rightMethod.implementation?.registerCount &&
-                    trySignature(leftMethod) == trySignature(rightMethod) &&
-                    debugSignature(leftMethod) == debugSignature(rightMethod)
-                ) { "$label method metadata differs: $type->$key" }
+                val methodLabel = "$label method metadata: $type->$key"
+                require(leftMethod.accessFlags == rightMethod.accessFlags) { "$methodLabel access flags differ" }
+                require(annotationSignature(leftMethod.annotations) == annotationSignature(rightMethod.annotations)) {
+                    "$methodLabel annotations differ"
+                }
+                require(leftMethod.parameters.map { Triple(it.type, it.name, annotationSignature(it.annotations)) } ==
+                    rightMethod.parameters.map { Triple(it.type, it.name, annotationSignature(it.annotations)) }) {
+                    "$methodLabel parameter metadata differs"
+                }
+                require(leftMethod.hiddenApiRestrictions == rightMethod.hiddenApiRestrictions) {
+                    "$methodLabel hidden API restrictions differ"
+                }
+                require(leftMethod.implementation?.registerCount == rightMethod.implementation?.registerCount) {
+                    "$methodLabel register count differs"
+                }
+                require(trySignature(leftMethod, stripObserver = false) == trySignature(rightMethod, stripObserver = true)) {
+                    "$methodLabel try topology differs"
+                }
+                val leftDebug = debugSignature(leftMethod, stripObserver = false)
+                val rightDebug = debugSignature(rightMethod, stripObserver = true)
+                require(leftDebug == rightDebug) {
+                    "$methodLabel debug metadata differs: original=$leftDebug profile=$rightDebug"
+                }
             }
         }
     }
@@ -400,13 +514,51 @@ object M310CanonicalProfileVerifier {
         hiddenApiRestrictions.map { it.toString() }.sorted().joinToString("|"),
     ).joinToString(";")
 
-    private fun trySignature(method: Method): List<String> = method.implementation?.tryBlocks?.map { block ->
-        block.exceptionHandlers.joinToString(",") { (it.exceptionType ?: "*") }
-    } ?: emptyList()
+    private fun trySignature(method: Method, stripObserver: Boolean): List<String> =
+        method.implementation?.tryBlocks?.map { block ->
+            val start = normalizedAddress(method, block.startCodeAddress, stripObserver)
+            val end = normalizedAddress(method, block.startCodeAddress + block.codeUnitCount, stripObserver)
+            "$start..$end:" + block.exceptionHandlers.joinToString(",") { handler ->
+                "${handler.exceptionType ?: "*"}@${normalizedAddress(method, handler.handlerCodeAddress, stripObserver)}"
+            }
+        } ?: emptyList()
 
-    private fun debugSignature(method: Method): List<String> = method.implementation?.debugItems?.map {
-        it.javaClass.name.substringAfterLast('.')
-    } ?: emptyList()
+    private fun debugSignature(method: Method, stripObserver: Boolean): List<String> =
+        method.implementation?.debugItems?.map { item ->
+            val address = normalizedAddress(method, item.codeAddress, stripObserver)
+            val payload = when (item) {
+                is LineNumber -> "line=${item.lineNumber}"
+                is StartLocal -> "register=${item.register},name=${item.name},type=${item.type},signature=${item.signature}"
+                is EndLocal -> "register=${item.register},name=${item.name},type=${item.type},signature=${item.signature}"
+                is RestartLocal -> "register=${item.register},name=${item.name},type=${item.type},signature=${item.signature}"
+                is SetSourceFile -> "source=${item.sourceFile}"
+                is PrologueEnd -> "prologue"
+                is EpilogueBegin -> "epilogue"
+                else -> "type=${item.debugItemType}"
+            }
+            "${item.javaClass.name.substringAfterLast('.')}@$address:$payload"
+        } ?: emptyList()
+
+    private fun normalizedAddress(method: Method, target: Int, stripObserver: Boolean): Int {
+        val implementation = requireNotNull(method.implementation)
+        var raw = 0
+        var removed = 0
+        for (instruction in implementation.instructions) {
+            if (raw >= target) break
+            if (stripObserver && instruction.isObserverCall()) {
+                require(target >= raw + instruction.codeUnits) {
+                    "metadata address falls inside an observer call: ${method.key()}@$target"
+                }
+                removed += instruction.codeUnits
+            }
+            raw += instruction.codeUnits
+        }
+        require(target >= 0) { "metadata address is negative: ${method.key()}@$target" }
+        return target - removed
+    }
+
+    private fun org.jf.dexlib2.iface.instruction.Instruction.isObserverCall(): Boolean =
+        ((this as? ReferenceInstruction)?.reference as? MethodReference)?.definingClass == OBSERVER
 
     private fun Method.key(): String = buildString {
         append(name)

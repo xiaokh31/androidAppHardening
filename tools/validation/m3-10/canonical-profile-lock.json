@@ -21,15 +21,15 @@
   },
   "derivation": {
     "manifestSizeBytes": 1161,
-    "manifestSha256": "2ab955c9603841e877fd406dea7c7cc197180558308852e92a9080f21351ecee",
-    "profileBaselineDexSha256": "78968171cbfbd115d6565d312a407ba93e4b039bb349b2fbe7cccef06e88e1f3",
-    "profileProtectedPayloadDexSha256": "777799743a780a226e7128fe2fa4a3688cc8978cb56665f41bb64edc6147883a",
+    "manifestSha256": "878d092a3cae6f4aa73cb722ea0bb9aa2f1eb32917a19b8c83220502dbdf4de8",
+    "profileBaselineDexSha256": "1fadf33ce80e7212382081bb73a1a8f40d51562fef921edfc37640457bddf75a",
+    "profileProtectedPayloadDexSha256": "70d6cc0fb48c6b85b5b825416fe912528c1cc034d7c20d29807a5af1121a44eb",
     "profileProtectedShellDexSha256": "d6099c7c71fb0dab22526583b43c5cacc10953ac87b3b5ea6d40d1790f63bf55"
   },
   "profileSigner": {
     "commitmentAlgorithm": "SHA-256(UTF8('M3-10-PROFILE-SIGNER-V1\\0') || certificateSha256Bytes)",
-    "commitment": "7ff87ffd5689a5dd6a90f75858b2ceafff0a3e142b9fea2f20b8bf811955709b",
-    "certificateSha256Prefix": "1445c5c32c5d",
+    "commitment": "e5dc8b0776b0569e54c1deb19d3a2e948d1bca6a780fff35ca0ee7c7fc5252c4",
+    "certificateSha256Prefix": "1e21b13e836d",
     "signerCount": 1,
     "requiredScheme": "v3",
     "v1Allowed": false,
@@ -38,28 +38,28 @@
   },
   "outputs": {
     "unsignedBaseline": {
-      "sizeBytes": 23107,
-      "sha256": "8db4df8b68e7905b7747ae1de5b8ce3b14b6d1d0a91e0ca103d0a1f8b2f5674c"
+      "sizeBytes": 23097,
+      "sha256": "423461bc1b900230021d2c950f5d5ce1b10f37911a8d63ea4f84a0b46e93fbe4"
     },
     "unsignedProtected": {
-      "sizeBytes": 1252556,
-      "sha256": "6a8958b3f2f2819f29039363447ddd6a487dfa1f1bd8b6f65458bf6c0e61a5c9"
+      "sizeBytes": 1252546,
+      "sha256": "167c44aa4a15071b762fcec18fd4bfcc55087676577750dc0177f8734dad7b25"
     },
     "alignedBaseline": {
       "sizeBytes": 25819,
-      "sha256": "ef09447aac06d30581340941d5259666b21e372301caa7a9c103ee0f3e66e1de"
+      "sha256": "8a39bf6e830e18d997ababe767f290bb3ee5489d31cafbb614aa5a625322b7d8"
     },
     "alignedProtected": {
       "sizeBytes": 1279696,
-      "sha256": "771974bb8fe72b6c4cdbd07e8b6510a42e201a7b900bf6d24417b1ef84b643a5"
+      "sha256": "ffcf606605ed7a13cd9f61aaa11076ff58bbe620308683ac93baa729d0c28c09"
     },
     "signedBaseline": {
       "sizeBytes": 33971,
-      "sha256": "ae0244f0a73bba737861a49d2a36239e299d8d028ded788e4d548fbabf6ae3f9"
+      "sha256": "a062e0994482b1db417ff710c554364ec80e9f8d5fa84b5745ff5753308b764b"
     },
     "signedProtected": {
       "sizeBytes": 1287848,
-      "sha256": "fdec4d283dc09b916c95a3dd1828a2b1cbd3ba838dca230f8eea4913413ba202"
+      "sha256": "1ce941404d8e6105764d041c449a60016312bc9c9671a8f8eb97c4e8b6820a10"
     }
   },
   "toolchain": {

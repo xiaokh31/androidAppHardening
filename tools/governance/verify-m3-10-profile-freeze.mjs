@@ -70,8 +70,14 @@ function verifyTrackedDesign() {
   const verifier = read("host/container/src/test/kotlin/ah/host/container/M310CanonicalProfileVerifier.kt");
   const transformer = read("host/container/src/test/kotlin/ah/host/container/M310DexProfileTool.kt");
   const preparation = read("tools/validation/prepare-m3-10-profile-package.mjs");
+  const runner = read("tools/validation/run-m3-10-startup-attribution.mjs");
   const evidenceVerifier = read("tools/validation/verify-m3-10-startup-attribution.mjs");
   const profileLock = read("tools/validation/m3-10/canonical-profile-lock.json");
+  const releaseLock = read("tools/validation/m3-10/release-artifact-lock.json");
+  const environmentLock = read("tools/validation/m3-10/api36-environment-lock.json");
+  const m305 = read("docs/tasks/M3-05-size-startup-memory-benchmarks.md");
+  const adr = read("docs/adr/0016-end-to-end-startup-attribution-boundary.md");
+  validateContractText(m305, adr);
   for (const phrase of [
     "requireExactOriginal(baseline, BASELINE_SIZE, BASELINE_SHA256",
     "SeededContainerRandom(seed)",
@@ -89,14 +95,30 @@ function verifyTrackedDesign() {
   for (const phrase of ["payload-baseline", "payload-protected", "shell", "h0", "h8", "p15"]) {
     if (!transformer.includes(phrase)) fail(`transformer missing ${phrase}`);
   }
-  for (const phrase of ["36.1.0", "--v3-signing-enabled", "M310_PROFILE_PASS", "finally", "temporarySigningAbsent"]) {
+  for (const phrase of ["36.1.0", "--v3-signing-enabled", "M310_PROFILE_PASS", "finally", "temporarySigningAbsent",
+    "release-lock", "toolLocked(toolchain.d8Jar", "toolLocked(toolchain.zipalign"]) {
     if (!preparation.includes(phrase)) fail(`profile preparation missing ${phrase}`);
   }
-  for (const phrase of ["validateProfileLock", "runDexdump", "recursiveArchiveContainsAny", "validateGithubEvidence", "EXPECTED_EVENTS"]) {
+  for (const phrase of ["validateProfileLock", "runDexdump", "recursiveArchiveContainsAny", "validateGithubEvidence",
+    "validateReleaseArtifactLock", "validateProfileVerification", "validateEnvironmentLock", "EXPECTED_EVENTS"]) {
     if (!evidenceVerifier.includes(phrase)) fail(`evidence verifier missing ${phrase}`);
   }
+  for (const phrase of ["preflight(options, output)", "exactIdentity = identity(options, adb, output)",
+    "sameBoot(adb", "before.status !== 0", "absent.status !== 0", "rawCalibrationNs", "current-job.json"]) {
+    if (!runner.includes(phrase)) fail(`diagnostic runner missing ${phrase}`);
+  }
+  if (runner.lastIndexOf("preflight(options, output)") > runner.lastIndexOf("exactIdentity = identity(options, adb, output)")) {
+    fail("diagnostic preflight occurs after device identity/install boundary");
+  }
+  if (runner.includes("nearestRank(")) fail("diagnostic runner must not aggregate raw calibration samples");
   for (const phrase of ["observer", "profileSigner", "signedBaseline", "signedProtected", "regenerationPermitted"]) {
     if (!profileLock.includes(`\"${phrase}\"`)) fail(`profile lock missing ${phrase}`);
+  }
+  for (const phrase of ["release-bootstrap", "requiredEntries", "apksignerJar", "dexdump", "zipalign", "d8Jar"]) {
+    if (!releaseLock.includes(`\"${phrase}\"`)) fail(`release artifact lock missing ${phrase}`);
+  }
+  for (const phrase of ["system-images;android-36;default;x86_64", "37.1.11", "15917651", "fingerprint"]) {
+    if (!environmentLock.includes(phrase)) fail(`environment lock missing ${phrase}`);
   }
 
   const catalog = read("gradle/libs.versions.toml");
@@ -112,6 +134,12 @@ function verifyTrackedDesign() {
     ".github/workflows/m3-09-startup-attribution.yml",
     ".github/workflows/m3-09-startup-attribution-evidence.yml",
   ]) if (fs.existsSync(path.join(root, workflow))) fail(`canonical workflow exists before independent review: ${workflow}`);
+}
+
+function validateContractText(m305, adr) {
+  if (!m305.includes("M3-10") || !m305.includes("P50 增量均不超过 300 ms") ||
+      !m305.includes("PR #63 保持阻塞") || !adr.includes("unchanged 300 ms M3-05") ||
+      !adr.includes("M3-05 remains blocked")) fail("M3-05 dependency/budget contract differs");
 }
 
 function verifyDiff() {
@@ -145,7 +173,17 @@ function selfTest() {
   for (const [name, text] of mutations) {
     if (surfaceViolations(name, text).length === 0) fail(`self-test mutation was accepted: ${name}`);
   }
-  console.log(`M3-10 profile freeze self-test PASS mutations=${mutations.length}`);
+  for (const [name, m305, adr] of [
+    ["m3-05-dependency", read("docs/tasks/M3-05-size-startup-memory-benchmarks.md").replaceAll("M3-10", "M3-XX"),
+      read("docs/adr/0016-end-to-end-startup-attribution-boundary.md")],
+    ["m3-05-budget", read("docs/tasks/M3-05-size-startup-memory-benchmarks.md").replace("300 ms", "301 ms"),
+      read("docs/adr/0016-end-to-end-startup-attribution-boundary.md")],
+  ]) {
+    let rejected = false;
+    try { validateContractText(m305, adr); } catch { rejected = true; }
+    if (!rejected) fail(`contract mutation was accepted: ${name}`);
+  }
+  console.log(`M3-10 profile freeze self-test PASS mutations=${mutations.length + 2}`);
 }
 
 verifyProductionSurface();

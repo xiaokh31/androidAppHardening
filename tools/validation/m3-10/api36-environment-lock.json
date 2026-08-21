@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "environmentId": "api36-r2-x86_64-emulator-37.1.11",
+  "systemImage": {
+    "packageId": "system-images;android-36;default;x86_64",
+    "revision": "2",
+    "archiveSha256": "e1b9d9fb665001ef27b16e57d8762a2d54aec6bff617e17506edb8676667b9da",
+    "sourcePropertiesSha256": "1a6e7c0b326c24c28ba501aa5ada247dd9fb0f087b662865f7bc649991fe74d1",
+    "buildPropSha256": "565447ab254aa5f2b974186471c28d10cfcab25c346470673d9f7b4d3ac0ac0b",
+    "fingerprint": "Android/sdk_phone64_x86_64/emu64x:16/BE2A.250530.026.D1/13818094:userdebug/test-keys",
+    "sdk": "36",
+    "abi": "x86_64"
+  },
+  "emulator": {
+    "revision": "37.1.11",
+    "buildId": "15917651",
+    "archiveSha256": "95771e0ae431897b2a4bd2d97fa095f29a8b0624a7b216baf529f9306161c266",
+    "sourcePropertiesSha256": "ee589ca350515c29dc3bad30dd5ebe8efb11d1a50c17c8815125d3c4bd12a3a8"
+  }
+}

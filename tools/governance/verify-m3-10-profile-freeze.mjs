@@ -27,7 +27,8 @@ function listFiles(directory) {
   });
 }
 
-function surfaceViolations(relative, text) {
+function surfaceViolations(relative, value) {
+  const text = Buffer.isBuffer(value) ? value.toString("latin1") : value;
   const hits = [];
   const patterns = [
     /M310StartupTimingObserver/u,
@@ -47,9 +48,7 @@ function verifyProductionSurface() {
       const relative = path.relative(root, file).replaceAll("\\", "/");
       if (!/\/src\/(?:main|release)\//u.test(`/${relative}`) &&
           !relative.startsWith("distribution/")) continue;
-      const bytes = fs.readFileSync(file);
-      if (bytes.includes(0)) continue;
-      violations.push(...surfaceViolations(relative, bytes.toString("utf8")));
+      violations.push(...surfaceViolations(relative, fs.readFileSync(file)));
     }
   }
   if (violations.length) fail(`production observer surface detected: ${violations.join(", ")}`);
@@ -70,6 +69,9 @@ function verifyTrackedDesign() {
   const deriver = read("host/container/src/test/kotlin/ah/host/container/M310CanonicalProfileDeriver.kt");
   const verifier = read("host/container/src/test/kotlin/ah/host/container/M310CanonicalProfileVerifier.kt");
   const transformer = read("host/container/src/test/kotlin/ah/host/container/M310DexProfileTool.kt");
+  const preparation = read("tools/validation/prepare-m3-10-profile-package.mjs");
+  const evidenceVerifier = read("tools/validation/verify-m3-10-startup-attribution.mjs");
+  const profileLock = read("tools/validation/m3-10/canonical-profile-lock.json");
   for (const phrase of [
     "requireExactOriginal(baseline, BASELINE_SIZE, BASELINE_SHA256",
     "SeededContainerRandom(seed)",
@@ -86,6 +88,15 @@ function verifyTrackedDesign() {
   ]) if (!verifier.includes(phrase)) fail(`verifier missing ${phrase}`);
   for (const phrase of ["payload-baseline", "payload-protected", "shell", "h0", "h8", "p15"]) {
     if (!transformer.includes(phrase)) fail(`transformer missing ${phrase}`);
+  }
+  for (const phrase of ["36.1.0", "--v3-signing-enabled", "M310_PROFILE_PASS", "finally", "temporarySigningAbsent"]) {
+    if (!preparation.includes(phrase)) fail(`profile preparation missing ${phrase}`);
+  }
+  for (const phrase of ["validateProfileLock", "runDexdump", "recursiveArchiveContainsAny", "validateGithubEvidence", "EXPECTED_EVENTS"]) {
+    if (!evidenceVerifier.includes(phrase)) fail(`evidence verifier missing ${phrase}`);
+  }
+  for (const phrase of ["observer", "profileSigner", "signedBaseline", "signedProtected", "regenerationPermitted"]) {
+    if (!profileLock.includes(`\"${phrase}\"`)) fail(`profile lock missing ${phrase}`);
   }
 
   const catalog = read("gradle/libs.versions.toml");
@@ -113,6 +124,7 @@ function verifyDiff() {
   if (result.status !== 0) fail(`git diff failed: ${result.stderr.trim()}`);
   const forbidden = result.stdout.split(/\r?\n/u).filter(Boolean).filter((file) =>
     /^(?:runtime|host|fixtures|benchmarks)\/.*\/src\/(?:main|release)\//u.test(file) ||
+    /^(?:runtime\/[^/]+|host\/cli|fixtures\/android|benchmarks\/android|distribution)\/build\.gradle(?:\.kts)?$/u.test(file) ||
     file === ".github/workflows/m3-09-startup-attribution.yml" ||
     file === ".github/workflows/m3-09-startup-attribution-evidence.yml",
   );
@@ -127,6 +139,8 @@ function selfTest() {
     ["fixtures/android/src/main/java/X.java", "Lah/runtime/profile/M310;"],
     ["benchmarks/android/src/release/java/X.java", "M310StartupTimingObserver"],
     ["distribution/readme.txt", "m3_10_profile"],
+    ["runtime/bootstrap/build/outputs/aar/bootstrap-release.aar", Buffer.from("\0M310StartupTimingObserver\0")],
+    ["distribution/build/distributions/host-cli.zip", Buffer.from("dex\n039\0AAH-M3-10")],
   ];
   for (const [name, text] of mutations) {
     if (surfaceViolations(name, text).length === 0) fail(`self-test mutation was accepted: ${name}`);

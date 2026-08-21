@@ -83,11 +83,13 @@ abstract class M310VerifyArguments : CommandLineArgumentProvider {
     @get:Input abstract val profileBaseline: Property<String>
     @get:Input abstract val profileProtected: Property<String>
     @get:Input abstract val observerDex: Property<String>
+    @get:Input abstract val derivationManifest: Property<String>
+    @get:Input abstract val profileLock: Property<String>
     @get:Input abstract val report: Property<String>
 
     override fun asArguments(): Iterable<String> = listOf(
         originalBaseline.get(), originalProtected.get(), profileBaseline.get(), profileProtected.get(),
-        observerDex.get(), report.get(),
+        observerDex.get(), derivationManifest.get(), profileLock.get(), report.get(),
     )
 }
 
@@ -164,8 +166,8 @@ val m310CanonicalProfiles by tasks.registering(JavaExec::class) {
             baselineApk.set(providers.gradleProperty("m310BaselineApk"))
             protectedApk.set(providers.gradleProperty("m310ProtectedApk"))
             observerDex.set(providers.gradleProperty("m310ObserverDex"))
-            secretSeed.set(providers.gradleProperty("m310SecretSeed"))
-            signerSha256.set(providers.gradleProperty("m310SignerSha256"))
+            secretSeed.set(providers.environmentVariable("M310_SECRET_SEED"))
+            signerSha256.set(providers.environmentVariable("M310_SIGNER_SHA256"))
             outputDirectory.set(providers.gradleProperty("m310OutputDirectory"))
         },
     )
@@ -179,12 +181,14 @@ val m310VerifyProfiles by tasks.registering(JavaExec::class) {
     mainClass.set("ah.host.container.M310CanonicalProfileVerifier")
     argumentProviders.add(
         objects.newInstance(M310VerifyArguments::class).apply {
-            originalBaseline.set(providers.gradleProperty("m310OriginalBaseline"))
-            originalProtected.set(providers.gradleProperty("m310OriginalProtected"))
-            profileBaseline.set(providers.gradleProperty("m310ProfileBaseline"))
-            profileProtected.set(providers.gradleProperty("m310ProfileProtected"))
-            observerDex.set(providers.gradleProperty("m310ObserverDex"))
-            report.set(providers.gradleProperty("m310VerificationReport"))
+            originalBaseline.set(providers.environmentVariable("M310_ORIGINAL_BASELINE"))
+            originalProtected.set(providers.environmentVariable("M310_ORIGINAL_PROTECTED"))
+            profileBaseline.set(providers.environmentVariable("M310_PROFILE_BASELINE"))
+            profileProtected.set(providers.environmentVariable("M310_PROFILE_PROTECTED"))
+            observerDex.set(providers.environmentVariable("M310_OBSERVER_DEX"))
+            derivationManifest.set(providers.environmentVariable("M310_DERIVATION_MANIFEST"))
+            profileLock.set(providers.environmentVariable("M310_PROFILE_LOCK"))
+            report.set(providers.environmentVariable("M310_VERIFICATION_REPORT"))
         },
     )
 }

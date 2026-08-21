@@ -8,12 +8,14 @@ import ah.host.inspector.VerifiedScheme
 import java.nio.file.Files
 import java.nio.file.Path
 import org.jf.dexlib2.Opcodes
+import org.jf.dexlib2.Opcode
 import org.jf.dexlib2.dexbacked.DexBackedDexFile
 import org.jf.dexlib2.iface.Method
 import org.jf.dexlib2.iface.instruction.ReferenceInstruction
 import org.jf.dexlib2.iface.reference.MethodReference
 import java.io.BufferedInputStream
 import java.io.ByteArrayInputStream
+import java.nio.charset.StandardCharsets
 
 /** Independent actual-byte verifier for the canonical pair and its two signed M3-10 profiles. */
 object M310CanonicalProfileVerifier {
@@ -26,20 +28,32 @@ object M310CanonicalProfileVerifier {
 
     @JvmStatic
     fun main(arguments: Array<String>) {
-        require(arguments.size == 6) {
-            "usage: original-baseline.apk original-protected.apk profile-baseline.apk profile-protected.apk observer.dex report.json"
+        require(arguments.size == 8) {
+            "usage: original-baseline.apk original-protected.apk profile-baseline.apk profile-protected.apk observer.dex derivation-manifest.json canonical-profile-lock.json report.json"
         }
         val originalBaseline = regular(arguments[0], "original baseline")
         val originalProtected = regular(arguments[1], "original protected")
         val profileBaseline = regular(arguments[2], "profile baseline")
         val profileProtected = regular(arguments[3], "profile protected")
         val observer = regular(arguments[4], "observer DEX")
-        val report = Path.of(arguments[5]).toAbsolutePath().normalize()
+        val derivationManifest = regular(arguments[5], "derivation manifest")
+        val profileLock = regular(arguments[6], "canonical profile lock")
+        val report = Path.of(arguments[7]).toAbsolutePath().normalize()
         require(!Files.exists(report)) { "verification report already exists" }
         Files.createDirectories(report.parent)
         val scratch = Files.createTempDirectory(report.parent, ".m310-verify-")
         try {
-            verify(originalBaseline, originalProtected, profileBaseline, profileProtected, observer, report, scratch)
+            verify(
+                originalBaseline,
+                originalProtected,
+                profileBaseline,
+                profileProtected,
+                observer,
+                derivationManifest,
+                profileLock,
+                report,
+                scratch,
+            )
         } finally {
             M310CanonicalProfileDeriver.deleteTree(scratch)
         }
@@ -51,9 +65,16 @@ object M310CanonicalProfileVerifier {
         profileBaseline: Path,
         profileProtected: Path,
         observer: Path,
+        derivationManifest: Path,
+        profileLock: Path,
         report: Path,
         scratch: Path,
     ) {
+        val lock = Files.readString(profileLock, StandardCharsets.UTF_8)
+        requireLockedFile(lock, "observer", observer, "dexSizeBytes", "dexSha256")
+        requireLockedFile(lock, "derivation", derivationManifest, "manifestSizeBytes", "manifestSha256")
+        requireLockedFile(lock, "signedBaseline", profileBaseline)
+        requireLockedFile(lock, "signedProtected", profileProtected)
         M310CanonicalProfileDeriver.requireExactOriginal(originalBaseline, 29_962L, BASELINE_SHA256, "baseline")
         M310CanonicalProfileDeriver.requireExactOriginal(originalProtected, 1_287_876L, PROTECTED_SHA256, "protected")
         require(M310CanonicalProfileDeriver.sha256(profileBaseline) != BASELINE_SHA256 &&
@@ -97,6 +118,7 @@ object M310CanonicalProfileVerifier {
             profileBaselineSigner.lineageCertificateSha256.size == 1 &&
             profileProtectedSigner.lineageCertificateSha256.size == 1
         ) { "profile signer/v3 semantics differ" }
+        requireLockedSigner(lock, profileBaselineSigner.currentCertificateSha256)
 
         compareEntrySets(originalBaselineEntries, profileBaselineEntries, setOf(DEX_ENTRY), "baseline")
         val protectedAllowed = mutableSetOf(DEX_ENTRY, CONFIG_ENTRY, CONTAINER_ENTRY)
@@ -109,24 +131,23 @@ object M310CanonicalProfileVerifier {
         )) { "profile manifest bytes differ" }
         require(profileBaselineInspection.appComponentFactoryClass == null) { "baseline gained a synthetic Factory" }
 
-        val expectedBaselineDex = scratch.resolve("expected-baseline.dex")
-        val expectedPayloadDex = scratch.resolve("expected-protected-payload.dex")
-        val expectedShellDex = scratch.resolve("expected-shell.dex")
-        val originalPayloadDex = scratch.resolve("original-payload.dex")
-        val originalShellDex = scratch.resolve("original-shell.dex")
-        Files.write(originalPayloadDex, originalBaselineEntries.getValue(DEX_ENTRY).bytes)
-        Files.write(originalShellDex, originalProtectedEntries.getValue(DEX_ENTRY).bytes)
-        M310DexProfileTool.derive("payload-baseline", originalPayloadDex, observer, expectedBaselineDex)
-        M310DexProfileTool.derive("payload-protected", originalPayloadDex, observer, expectedPayloadDex)
-        M310DexProfileTool.derive("shell", originalShellDex, observer, expectedShellDex)
-        require(Files.readAllBytes(expectedBaselineDex).contentEquals(profileBaselineEntries.getValue(DEX_ENTRY).bytes)) {
-            "baseline DEX is not the exact reviewed transform"
-        }
+        requireLockedDigest(lock, "profileBaselineDexSha256", profileBaselineEntries.getValue(DEX_ENTRY).bytes)
         requireProbeCalls(profileBaselineEntries.getValue(DEX_ENTRY).bytes, OUTER_CALLS, observerPresent = true)
-        require(Files.readAllBytes(expectedShellDex).contentEquals(profileProtectedEntries.getValue(DEX_ENTRY).bytes)) {
-            "protected shell DEX is not the exact reviewed transform"
-        }
+        requireMetadataEquivalent(
+            originalBaselineEntries.getValue(DEX_ENTRY).bytes,
+            profileBaselineEntries.getValue(DEX_ENTRY).bytes,
+            SYNTHETIC_OUTER_METHODS,
+            "baseline payload",
+        )
+        requireSyntheticLifecycleOverrides(profileBaselineEntries.getValue(DEX_ENTRY).bytes)
+        requireLockedDigest(lock, "profileProtectedShellDexSha256", profileProtectedEntries.getValue(DEX_ENTRY).bytes)
         requireProbeCalls(profileProtectedEntries.getValue(DEX_ENTRY).bytes, INNER_CALLS, observerPresent = true)
+        requireMetadataEquivalent(
+            originalProtectedEntries.getValue(DEX_ENTRY).bytes,
+            profileProtectedEntries.getValue(DEX_ENTRY).bytes,
+            emptySet(),
+            "protected shell",
+        )
 
         val profileConfig = profileProtectedEntries.getValue(CONFIG_ENTRY).bytes
         require(ConfigV2Codec.originalFactory(profileConfig) == null) { "profile config original Factory differs" }
@@ -140,40 +161,47 @@ object M310CanonicalProfileVerifier {
                     abi,
                 )
             }
-            val expectedPayloadApk = scratch.resolve("expected-payload.apk")
-            M310CanonicalProfileDeriver.writeApk(
-                originalBaselineEntries,
-                mapOf(DEX_ENTRY to Files.readAllBytes(expectedPayloadDex)),
-                expectedPayloadApk,
-            )
-            val expectedPayloadBytes = Files.readAllBytes(expectedPayloadDex)
-            val expectedPayloadInspection = M310CanonicalProfileDeriver.toContainerInspection(profileInspection(
-                expectedPayloadApk,
-                originalBaselineInspection,
-                expectedPayloadBytes,
-                originalBaselineInspection.dexEntries.single().classCount,
-            ))
             val profileContainer = scratch.resolve("profile.ahdc")
             Files.write(profileContainer, profileProtectedEntries.getValue(CONTAINER_ENTRY).bytes)
-            ExpectedBinding.from(
-                expectedPayloadInspection,
-                profileProtectedSigner,
-                profileConfig,
-                profileSlots.rNative,
-                NO_CONTAINER_OBSERVER,
-            ).use { binding -> DexContainerVerifier().verify(profileContainer, binding) }
+            val canonicalPackageDigest = M310CanonicalProfileDeriver.toContainerInspection(originalBaselineInspection)
+                .packageNameSha256
             val decrypted = M310CanonicalProfileDeriver.decryptPayload(
                 profileContainer,
                 profileConfig,
                 profileSlots.rNative,
-                expectedPayloadInspection.packageNameSha256,
+                canonicalPackageDigest,
                 profileProtectedSigner.currentCertificateSha256,
             )
             try {
-                require(decrypted.size == 1 && decrypted.single().contentEquals(Files.readAllBytes(expectedPayloadDex))) {
-                    "profile authenticated payload is not the exact reviewed transform"
-                }
+                require(decrypted.size == 1) { "profile authenticated payload count differs" }
+                requireLockedDigest(lock, "profileProtectedPayloadDexSha256", decrypted.single())
                 requireProbeCalls(decrypted.single(), OUTER_CALLS, observerPresent = false)
+                requireMetadataEquivalent(
+                    originalBaselineEntries.getValue(DEX_ENTRY).bytes,
+                    decrypted.single(),
+                    SYNTHETIC_OUTER_METHODS,
+                    "protected payload",
+                )
+                requireSyntheticLifecycleOverrides(decrypted.single())
+                val actualPayloadApk = scratch.resolve("actual-payload.apk")
+                M310CanonicalProfileDeriver.writeApk(
+                    originalBaselineEntries,
+                    mapOf(DEX_ENTRY to decrypted.single()),
+                    actualPayloadApk,
+                )
+                val actualPayloadInspection = M310CanonicalProfileDeriver.toContainerInspection(profileInspection(
+                    actualPayloadApk,
+                    originalBaselineInspection,
+                    decrypted.single(),
+                    originalBaselineInspection.dexEntries.single().classCount,
+                ))
+                ExpectedBinding.from(
+                    actualPayloadInspection,
+                    profileProtectedSigner,
+                    profileConfig,
+                    profileSlots.rNative,
+                    NO_CONTAINER_OBSERVER,
+                ).use { binding -> DexContainerVerifier().verify(profileContainer, binding) }
             } finally {
                 decrypted.forEach { it.fill(0) }
             }
@@ -190,6 +218,7 @@ object M310CanonicalProfileVerifier {
               "profileBaselineSha256": "${M310CanonicalProfileDeriver.sha256(profileBaseline)}",
               "profileProtectedSha256": "${M310CanonicalProfileDeriver.sha256(profileProtected)}",
               "profileSignerSha256Prefix": "${profileBaselineSigner.currentCertificateSha256Hex.take(12)}",
+              "profileLockSha256": "${M310CanonicalProfileDeriver.sha256(profileLock)}",
               "profileV3Verified": true,
               "sameProfileSigner": true,
               "manifestBytesEqual": true,
@@ -277,12 +306,146 @@ object M310CanonicalProfileVerifier {
         }
     }
 
+    /**
+     * Independent metadata comparison. This does not call the profile transformer and therefore
+     * cannot approve a transformer bug by regenerating the same bug. Instruction equivalence is
+     * separately checked by the tracked dexdump comparator after observer calls are removed.
+     */
+    private fun requireMetadataEquivalent(
+        originalBytes: ByteArray,
+        profileBytes: ByteArray,
+        syntheticMethods: Set<String>,
+        label: String,
+    ) {
+        val original = parseDex(originalBytes).classes.associateBy { it.type }
+        val profile = parseDex(profileBytes).classes.filterNot { it.type == OBSERVER }.associateBy { it.type }
+        require(original.keys == profile.keys) { "$label class set differs" }
+        for ((type, left) in original) {
+            val right = profile.getValue(type)
+            require(left.accessFlags == right.accessFlags && left.superclass == right.superclass &&
+                left.interfaces.toList() == right.interfaces.toList() && left.sourceFile == right.sourceFile &&
+                annotationSignature(left.annotations) == annotationSignature(right.annotations)
+            ) { "$label class metadata differs: $type" }
+            val leftFields = left.fields.associate { field -> field.key() to field.signature() }
+            val rightFields = right.fields.associate { field -> field.key() to field.signature() }
+            require(leftFields == rightFields) { "$label field metadata differs: $type" }
+            val leftMethods = left.methods.associateBy { it.key() }
+            val rightMethods = right.methods.associateBy { it.key() }
+            val allowed = syntheticMethods.filter { it.startsWith("$type->") }.map { it.substringAfter("->") }.toSet()
+            require(rightMethods.keys - leftMethods.keys == allowed && leftMethods.keys - rightMethods.keys == emptySet<String>()) {
+                "$label method set differs: $type"
+            }
+            for ((key, leftMethod) in leftMethods) {
+                val rightMethod = rightMethods.getValue(key)
+                require(leftMethod.accessFlags == rightMethod.accessFlags &&
+                    annotationSignature(leftMethod.annotations) == annotationSignature(rightMethod.annotations) &&
+                    leftMethod.parameters.map { it.type to annotationSignature(it.annotations) } ==
+                        rightMethod.parameters.map { it.type to annotationSignature(it.annotations) } &&
+                    leftMethod.hiddenApiRestrictions == rightMethod.hiddenApiRestrictions &&
+                    leftMethod.implementation?.registerCount == rightMethod.implementation?.registerCount &&
+                    trySignature(leftMethod) == trySignature(rightMethod) &&
+                    debugSignature(leftMethod) == debugSignature(rightMethod)
+                ) { "$label method metadata differs: $type->$key" }
+            }
+        }
+    }
+
+    private fun requireSyntheticLifecycleOverrides(dexBytes: ByteArray) {
+        val classes = parseDex(dexBytes).classes.associateBy { it.type }
+        requireExactOverride(
+            classes.getValue("Lah/fixtures/android/m301/BenchmarkFixtureApplication;"),
+            "attachBaseContext(Landroid/content/Context;)V",
+            listOf("p3", "attachBaseContext", "p4"),
+        )
+        requireExactOverride(
+            classes.getValue("Lah/fixtures/android/m301/FixtureActivity;"),
+            "onResume()V",
+            listOf("p13", "onResume", "p14"),
+        )
+    }
+
+    private fun requireExactOverride(classDef: org.jf.dexlib2.iface.ClassDef, key: String, calls: List<String>) {
+        val method = classDef.methods.singleOrNull { it.key() == key } ?: error("synthetic override is missing: ${classDef.type}->$key")
+        require(method.accessFlags == 0x14 && method.annotations.isEmpty() && method.hiddenApiRestrictions.isEmpty()) {
+            "synthetic override metadata differs: ${classDef.type}->$key"
+        }
+        val implementation = requireNotNull(method.implementation)
+        require(implementation.tryBlocks.none() && implementation.debugItems.none()) {
+            "synthetic override handler/debug surface differs: ${classDef.type}->$key"
+        }
+        val instructions = implementation.instructions.toList()
+        require(instructions.map { it.opcode } == listOf(
+            Opcode.INVOKE_STATIC, Opcode.INVOKE_SUPER, Opcode.INVOKE_STATIC, Opcode.RETURN_VOID,
+        )) { "synthetic override opcode sequence differs: ${classDef.type}->$key" }
+        val actualCalls = instructions.filterIsInstance<ReferenceInstruction>().mapNotNull {
+            (it.reference as? MethodReference)?.name
+        }
+        require(actualCalls == calls) { "synthetic override call sequence differs: ${classDef.type}->$key" }
+    }
+
+    private fun parseDex(bytes: ByteArray): DexBackedDexFile = ByteArrayInputStream(bytes).use { stream ->
+        DexBackedDexFile.fromInputStream(Opcodes.forApi(36), BufferedInputStream(stream))
+    }
+
+    private fun annotationSignature(values: Set<org.jf.dexlib2.iface.Annotation>): List<String> =
+        values.map { annotation ->
+            annotation.type + ":" + annotation.visibility + ":" + annotation.elements
+                .sortedBy { it.name }.joinToString(",") { it.name + "=" + it.value.toString() }
+        }.sorted()
+
+    private fun org.jf.dexlib2.iface.Field.key(): String = "$name:$type"
+
+    private fun org.jf.dexlib2.iface.Field.signature(): String = listOf(
+        accessFlags.toString(), initialValue?.toString() ?: "null", annotationSignature(annotations).joinToString("|"),
+        hiddenApiRestrictions.map { it.toString() }.sorted().joinToString("|"),
+    ).joinToString(";")
+
+    private fun trySignature(method: Method): List<String> = method.implementation?.tryBlocks?.map { block ->
+        block.exceptionHandlers.joinToString(",") { (it.exceptionType ?: "*") }
+    } ?: emptyList()
+
+    private fun debugSignature(method: Method): List<String> = method.implementation?.debugItems?.map {
+        it.javaClass.name.substringAfterLast('.')
+    } ?: emptyList()
+
     private fun Method.key(): String = buildString {
         append(name)
         append('(')
         parameters.forEach { append(it.type) }
         append(')')
         append(returnType)
+    }
+
+    private fun requireLockedFile(
+        lock: String,
+        objectName: String,
+        file: Path,
+        sizeName: String = "sizeBytes",
+        hashName: String = "sha256",
+    ) {
+        val body = Regex("\\\"${Regex.escape(objectName)}\\\"\\s*:\\s*\\{([^{}]*)}", RegexOption.DOT_MATCHES_ALL)
+            .find(lock)?.groupValues?.get(1) ?: error("profile lock object is missing: $objectName")
+        val size = Regex("\\\"${Regex.escape(sizeName)}\\\"\\s*:\\s*([0-9]+)")
+            .find(body)?.groupValues?.get(1)?.toLong() ?: error("profile lock size is missing: $objectName")
+        val digest = Regex("\\\"${Regex.escape(hashName)}\\\"\\s*:\\s*\\\"([0-9a-f]{64})\\\"")
+            .find(body)?.groupValues?.get(1) ?: error("profile lock digest is missing: $objectName")
+        require(Files.size(file) == size && M310CanonicalProfileDeriver.sha256(file) == digest) {
+            "profile lock file differs: $objectName"
+        }
+    }
+
+    private fun requireLockedDigest(lock: String, name: String, bytes: ByteArray) {
+        val digest = Regex("\\\"${Regex.escape(name)}\\\"\\s*:\\s*\\\"([0-9a-f]{64})\\\"")
+            .find(lock)?.groupValues?.get(1) ?: error("profile lock digest is missing: $name")
+        require(M310CanonicalProfileDeriver.sha256(bytes) == digest) { "profile lock DEX differs: $name" }
+    }
+
+    private fun requireLockedSigner(lock: String, certificateDigest: ByteArray) {
+        val expected = Regex("\\\"commitment\\\"\\s*:\\s*\\\"([0-9a-f]{64})\\\"")
+            .find(lock)?.groupValues?.get(1) ?: error("profile signer commitment is missing")
+        val prefix = "M3-10-PROFILE-SIGNER-V1\u0000".toByteArray(StandardCharsets.UTF_8)
+        val commitment = ContainerCrypto.sha256(prefix + certificateDigest).joinToString("") { "%02x".format(it) }
+        require(commitment == expected) { "profile signer commitment differs" }
     }
 
     private fun regular(value: String, label: String): Path = Path.of(value).toAbsolutePath().normalize().also {
@@ -306,5 +469,9 @@ object M310CanonicalProfileVerifier {
         "Lah/runtime/bootstrap/ShellAppComponentFactory;->instantiateClassLoader(Ljava/lang/ClassLoader;Landroid/content/pm/ApplicationInfo;)Ljava/lang/ClassLoader;" to listOf("h0", "h8"),
         "Lah/runtime/guard/RuntimeStartupGuard;->openVerifiedPayloadInternal(Landroid/content/pm/ApplicationInfo;Ljava/lang/ClassLoader;Lah/runtime/guard/RuntimeStartupGuard\$GuardFailureProbe;)Lah/runtime/guard/VerifiedPayloadSession;" to
             listOf("h1", "h2", "h3", "h4", "h5", "h6"),
+    )
+    private val SYNTHETIC_OUTER_METHODS = setOf(
+        "Lah/fixtures/android/m301/BenchmarkFixtureApplication;->attachBaseContext(Landroid/content/Context;)V",
+        "Lah/fixtures/android/m301/FixtureActivity;->onResume()V",
     )
 }

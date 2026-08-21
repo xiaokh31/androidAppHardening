@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { createHash } from "node:crypto";
+import { request } from "node:https";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -12,11 +13,15 @@ const PACKAGE = "ah.fixtures.android.m301.java_single";
 const ACTIVITY = "ah.fixtures.android.m301.FixtureActivity";
 const EXPECTED_EVENTS = ["provider.ready", "activity.create"];
 const RELEASE_ROLES = ["release-bootstrap", "release-policy", "release-native", "release-fixture", "cli", "distribution"];
+const REPOSITORY = "xiaokh31/androidAppHardening";
+const TRACKED_LOCK_INPUTS = {
+  "profile-lock.json": "tools/validation/m3-10/canonical-profile-lock.json",
+  "release-artifact-lock.json": "tools/validation/m3-10/release-artifact-lock.json",
+  "api36-environment-lock.json": "tools/validation/m3-10/api36-environment-lock.json",
+};
 const COPY_INPUTS = {
   "original-baseline.apk": "original-baseline", "original-protected.apk": "original-protected",
   "observer.dex": "observer-dex", "derivation-manifest.json": "derivation-manifest",
-  "profile-lock.json": "profile-lock", "release-artifact-lock.json": "release-lock",
-  "api36-environment-lock.json": "environment-lock", "current-job.json": "current-job",
   "profile-baseline-unsigned.apk": "profile-baseline-unsigned",
   "profile-protected-unsigned.apk": "profile-protected-unsigned",
   "profile-baseline-aligned.apk": "profile-baseline-aligned",
@@ -67,6 +72,29 @@ function lockedFile(file, expected, label) {
   }
 }
 
+function fetchOfficialJobsPage(runId) {
+  const token = process.env.GITHUB_TOKEN;
+  if (!token || process.env.GITHUB_REPOSITORY !== REPOSITORY) fail("official GitHub API identity is unavailable");
+  const url = new URL(`https://api.github.com/repos/${REPOSITORY}/actions/runs/${runId}/jobs?per_page=100&page=1`);
+  return new Promise((resolve, reject) => {
+    const call = request(url, { method: "GET", headers: {
+      Accept: "application/vnd.github+json", Authorization: `Bearer ${token}`,
+      "User-Agent": "androidAppHardening-M3-10", "X-GitHub-Api-Version": "2022-11-28",
+    } }, (response) => {
+      const chunks = [];
+      response.on("data", (chunk) => chunks.push(chunk));
+      response.on("end", () => {
+        const bytes = Buffer.concat(chunks);
+        if (response.statusCode !== 200) return reject(new Error(`official jobs API returned ${response.statusCode}`));
+        resolve(bytes);
+      });
+    });
+    call.setTimeout(30_000, () => call.destroy(new Error("official jobs API timed out")));
+    call.on("error", reject);
+    call.end();
+  });
+}
+
 function releaseArgs(output) {
   return RELEASE_ROLES.flatMap((name) => [`--${name}`, path.join(output,
     name === "cli" ? "cli.zip" : name === "distribution" ? "distribution.jar" :
@@ -109,15 +137,28 @@ function preflight(options, output) {
     "--profile-lock", path.join(output, "profile-lock.json")]);
 }
 
-function identity(options, adb, output) {
+async function identity(options, adb, output) {
   if (process.env.GITHUB_ACTIONS !== "true" || process.env.GITHUB_EVENT_NAME !== "push") fail("canonical diagnostic requires a GitHub push run");
-  const value = { headSha: required(options, "head-sha"), runId: required(options, "run-id"), jobId: required(options, "job-id"),
+  const value = { headSha: required(options, "head-sha"), runId: required(options, "run-id"), jobId: "",
     runAttempt: Number(required(options, "run-attempt")), environmentId: ENVIRONMENT, bootIdHashPrefix: "",
     taskKey: TASK_KEY, productTuple: PRODUCT_TUPLE };
   if (value.headSha !== process.env.GITHUB_SHA || value.runId !== process.env.GITHUB_RUN_ID || value.runAttempt !== 1 ||
       String(process.env.GITHUB_RUN_ATTEMPT) !== "1" || !/^[0-9a-f]{40}$/.test(value.headSha) ||
-      !/^[1-9][0-9]*$/.test(value.runId) || !/^[1-9][0-9]*$/.test(value.jobId)) fail("GitHub identity differs");
-  const job = json(path.join(output, "current-job.json"));
+      !/^[1-9][0-9]*$/.test(value.runId)) fail("GitHub identity differs");
+  const pageBytes = await fetchOfficialJobsPage(value.runId);
+  writeFileSync(path.join(output, "current-jobs-page-1.json"), pageBytes);
+  const page = json(path.join(output, "current-jobs-page-1.json"));
+  if (!Number.isSafeInteger(page.total_count) || page.total_count < 1 || page.total_count >= 100 ||
+      !Array.isArray(page.jobs) || page.jobs.length !== page.total_count) fail("official jobs API page is incomplete");
+  const matches = page.jobs.filter((candidate) => String(candidate.run_id) === value.runId &&
+    candidate.name === "m3-09-startup-attribution");
+  if (matches.length !== 1) fail("official current job selection differs");
+  const official = matches[0];
+  value.jobId = String(official.id);
+  if (!/^[1-9][0-9]*$/.test(value.jobId)) fail("official current job ID differs");
+  const job = Object.fromEntries(["id", "run_id", "name", "status", "conclusion", "runner_name", "labels"]
+    .map((key) => [key, official[key]]));
+  writeFileSync(path.join(output, "current-job.json"), `${JSON.stringify(job, null, 2)}\n`);
   if (Object.keys(job).sort().join(",") !== ["conclusion", "id", "labels", "name", "run_id", "runner_name", "status"].sort().join(",") ||
       String(job.id) !== value.jobId || String(job.run_id) !== value.runId || job.name !== "m3-09-startup-attribution" ||
       job.status !== "in_progress" || job.conclusion !== null || !Array.isArray(job.labels) || !job.labels.includes("ubuntu-24.04")) {
@@ -158,23 +199,59 @@ function parseEvents(output, completedStarts) {
   return events.slice(-EXPECTED_EVENTS.length);
 }
 
+function packagePaths(result, label) {
+  if (result.status !== 0 || result.stderr.trim() !== "") fail(`${label} package query failed`);
+  const value = result.stdout.trim();
+  if (value !== "" && !value.split(/\r?\n/).every((line) => /^package:\S+$/.test(line))) {
+    fail(`${label} package state differs`);
+  }
+  return value;
+}
+
+function requireUninstallSuccess(result) {
+  if (result.status !== 0 || `${result.stdout}${result.stderr}`.trim() !== "Success") fail("package uninstall failed");
+}
+
+function requireRemoteAbsence(result) {
+  if (result.status !== 0 || result.stderr.trim() !== "" ||
+      result.stdout.split(/\r?\n/).some((name) => name.startsWith("m3-10-"))) {
+    fail("remote temporary file absence proof failed");
+  }
+}
+
+function cleanupSelfTest() {
+  const rejected = [];
+  const expectRejected = (name, action) => {
+    try { action(); } catch { rejected.push(name); return; }
+    fail(`cleanup mutation was accepted: ${name}`);
+  };
+  packagePaths({ status: 0, stdout: "", stderr: "" }, "canonical");
+  requireUninstallSuccess({ status: 0, stdout: "Success\n", stderr: "" });
+  requireRemoteAbsence({ status: 0, stdout: "other-file\n", stderr: "" });
+  expectRejected("pm-path-nonzero", () => packagePaths({ status: 1, stdout: "", stderr: "" }, "mutation"));
+  expectRejected("pm-path-stderr", () => packagePaths({ status: 0, stdout: "", stderr: "error" }, "mutation"));
+  expectRejected("pm-path-malformed", () => packagePaths({ status: 0, stdout: "unexpected", stderr: "" }, "mutation"));
+  expectRejected("uninstall-nonzero", () => requireUninstallSuccess({ status: 1, stdout: "Failure", stderr: "" }));
+  expectRejected("uninstall-inexact", () => requireUninstallSuccess({ status: 0, stdout: "Success extra", stderr: "" }));
+  expectRejected("remote-ls-nonzero", () => requireRemoteAbsence({ status: 1, stdout: "", stderr: "" }));
+  expectRejected("remote-ls-stderr", () => requireRemoteAbsence({ status: 0, stdout: "", stderr: "error" }));
+  expectRejected("remote-residual", () => requireRemoteAbsence({ status: 0, stdout: "m3-10-leftover.apk", stderr: "" }));
+  return { cleanupSelfTest: "PASS", rejectedMutations: rejected };
+}
+
 function proveAbsent(adb, identityValue) {
   if (identityValue) sameBoot(adb, identityValue.bootIdHashPrefix);
   const before = run(adb, ["shell", "pm", "path", PACKAGE], { timeout: 30_000, allowFailure: true, recordOutput: false });
-  if (before.status !== 0 || before.stderr.trim() !== "") fail("package pre-cleanup query failed");
-  const installedPaths = before.stdout.trim();
+  const installedPaths = packagePaths(before, "pre-cleanup");
   if (installedPaths !== "") {
-    if (!installedPaths.split(/\r?\n/).every((line) => /^package:\S+$/.test(line))) fail("package pre-cleanup state differs");
     run(adb, ["shell", "am", "force-stop", PACKAGE], { timeout: 30_000, recordOutput: false });
     const uninstall = run(adb, ["uninstall", PACKAGE], { timeout: 60_000, allowFailure: true, recordOutput: false });
-    if (uninstall.status !== 0 || `${uninstall.stdout}${uninstall.stderr}`.trim() !== "Success") fail("package uninstall failed");
+    requireUninstallSuccess(uninstall);
   }
   const absent = run(adb, ["shell", "pm", "path", PACKAGE], { timeout: 30_000, allowFailure: true, recordOutput: false });
-  if (absent.status !== 0 || absent.stdout.trim() !== "" || absent.stderr.trim() !== "") fail("package absence proof failed");
+  if (packagePaths(absent, "absence-proof") !== "") fail("package absence proof failed");
   const temporary = run(adb, ["shell", "ls", "/data/local/tmp"], { timeout: 30_000, allowFailure: true, recordOutput: false });
-  if (temporary.status !== 0 || temporary.stdout.split(/\r?\n/).some((name) => name.startsWith("m3-10-"))) {
-    fail("remote temporary file absence proof failed");
-  }
+  requireRemoteAbsence(temporary);
   if (identityValue) sameBoot(adb, identityValue.bootIdHashPrefix);
 }
 
@@ -228,7 +305,7 @@ function campaign(adb, name, order, inputs, exactIdentity) {
     calibrationNs: collected.protected.calibrationNs, maximumProtectedProbeCount: 24, identity: exactIdentity };
 }
 
-function main(options) {
+async function main(options) {
   const output = path.resolve(required(options, "output"));
   const allowed = path.resolve("build", "m3-10") + path.sep;
   if (!(output + path.sep).startsWith(allowed) || existsSync(output)) fail("output must be a new build/m3-10 directory");
@@ -243,8 +320,11 @@ function main(options) {
       if (!existsSync(source) || !statSync(source).isFile()) fail(`input is missing: ${name}`);
       copyFileSync(source, path.join(output, name));
     }
+    for (const [name, source] of Object.entries(TRACKED_LOCK_INPUTS)) {
+      copyFileSync(path.resolve(source), path.join(output, name));
+    }
     preflight(options, output);
-    exactIdentity = identity(options, adb, output);
+    exactIdentity = await identity(options, adb, output);
     deviceTouched = true;
     const inputs = { baseline: path.join(output, "profile-baseline.apk"), protected: path.join(output, "profile-protected.apk") };
     const campaignA = campaign(adb, "A", ["baseline", "protected"], inputs, exactIdentity);
@@ -262,6 +342,7 @@ function main(options) {
       profileVerificationSha256: sha256File(path.join(output, "profile-verification.json")),
       environmentLockSha256: sha256File(path.join(output, "api36-environment-lock.json")),
       currentJobSha256: sha256File(path.join(output, "current-job.json")),
+      currentJobsPageSha256: sha256File(path.join(output, "current-jobs-page-1.json")),
       systemImageSourceSha256: sha256File(path.resolve(required(options, "system-image-source"))),
       systemImageBuildPropSha256: sha256File(path.resolve(required(options, "system-image-build-prop"))),
       emulatorSourceSha256: sha256File(path.resolve(required(options, "emulator-source"))) };
@@ -269,7 +350,8 @@ function main(options) {
     proveAbsent(adb, exactIdentity);
     writeFileSync(path.join(output, "cleanup.json"), `${JSON.stringify({ schemaVersion: 1, packagesAbsent: true,
       remoteFilesAbsent: true, temporarySigningAbsent: true }, null, 2)}\n`);
-    const files = [...Object.keys(COPY_INPUTS), "profile-verification.json", "campaign-a.json", "campaign-b.json",
+    const files = [...Object.keys(COPY_INPUTS), ...Object.keys(TRACKED_LOCK_INPUTS), "current-job.json", "current-jobs-page-1.json",
+      "profile-verification.json", "campaign-a.json", "campaign-b.json",
       "cleanup.json", "probe-manifest.json", "result.json"].sort();
     const manifest = { schemaVersion: 1, identity: exactIdentity, files: Object.fromEntries(files.map((name) =>
       [name, { sha256: sha256File(path.join(output, name)), size: statSync(path.join(output, name)).size }])) };
@@ -284,5 +366,12 @@ function main(options) {
   process.stdout.write(`${JSON.stringify({ status: "PASS", artifactRoot: path.relative(process.cwd(), output).replaceAll("\\", "/") })}\n`);
 }
 
-try { main(optionsOf(process.argv.slice(2))); }
-catch (error) { process.stderr.write(`${error.stack ?? error}\n`); process.exitCode = 1; }
+if (process.argv.length === 3 && process.argv[2] === "--cleanup-self-test") {
+  try { process.stdout.write(`${JSON.stringify(cleanupSelfTest())}\n`); }
+  catch (error) { process.stderr.write(`${error.stack ?? error}\n`); process.exitCode = 1; }
+} else {
+  main(optionsOf(process.argv.slice(2))).catch((error) => {
+    process.stderr.write(`${error.stack ?? error}\n`);
+    process.exitCode = 1;
+  });
+}

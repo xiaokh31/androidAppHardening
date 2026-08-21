@@ -15,6 +15,12 @@ import {
 
 const TASK_KEY = "M3-09-DIAGNOSTIC-V1";
 const ENVIRONMENT = "api36-r2-x86_64-emulator-37.1.11";
+const PRODUCT_TUPLE = "883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd";
+const TRACKED_LOCKS = Object.freeze({
+  "profile-lock.json": "a9e130bb4e66e14443d83ea01ef0d60a95adddefa9dc92a9bdc980e5728dab4b",
+  "release-artifact-lock.json": "9b84d0005892f8a77c2b4ca5041acc29d563cee0edec2ab7eb17488cbe2caead",
+  "api36-environment-lock.json": "6e8fe036b3eadc7dad0fd1eed90178d96feae569ab8cbbac5f94717e21f34a1f",
+});
 const OWNERS = [
   "RUNTIME_BOOTSTRAP",
   "PRE_APPLICATION_RESIDUAL",
@@ -27,7 +33,7 @@ const PACKAGE_FILES = [
   "profile-baseline-aligned.apk", "profile-baseline-unsigned.apk", "profile-lock.json",
   "profile-protected.apk", "profile-protected-aligned.apk", "profile-protected-unsigned.apk",
   "profile-verification.json", "release-artifact-lock.json", "api36-environment-lock.json",
-  "current-job.json", "release-bootstrap.aar", "release-fixture.apk", "release-native.aar",
+  "current-job.json", "current-jobs-page-1.json", "release-bootstrap.aar", "release-fixture.apk", "release-native.aar",
   "release-policy.aar", "result.json",
 ].sort();
 const MANIFESTED_FILES = PACKAGE_FILES.filter((name) => name !== "artifact-manifest.json");
@@ -76,6 +82,13 @@ function sha256Bytes(bytes) {
 
 function sha256File(file) {
   return sha256Bytes(readFileSync(file));
+}
+
+function requireTrackedLockCopy(packageFile, trackedFile, expectedSha256, label) {
+  if (!existsSync(trackedFile) || !statSync(trackedFile).isFile() || lstatSync(trackedFile).isSymbolicLink() ||
+      sha256File(trackedFile) !== expectedSha256 || !readFileSync(packageFile).equals(readFileSync(trackedFile))) {
+    fail(`${label} is not the reviewed tracked lock`);
+  }
 }
 
 function exactKeys(value, keys, label) {
@@ -208,8 +221,9 @@ function validatePinnedFile(file, expected, label) {
 function validateReleaseArtifactLock(options) {
   const lockFile = path.resolve(required(options, "release-lock"));
   const lock = json(lockFile);
-  exactKeys(lock, ["schemaVersion", "taskId", "headSha", "artifacts", "androidTools"], "release-lock");
-  if (lock.schemaVersion !== 1 || lock.taskId !== "M3-10" || !/^[0-9a-f]{40}$/.test(lock.headSha)) {
+  exactKeys(lock, ["schemaVersion", "taskId", "productionSourceHeadSha", "artifacts", "androidTools"], "release-lock");
+  if (lock.schemaVersion !== 1 || lock.taskId !== "M3-10" ||
+      lock.productionSourceHeadSha !== "19fd56d0068e5416b390703c24a2c1d100d27a1b") {
     fail("release lock identity differs");
   }
   const roles = ["release-bootstrap", "release-policy", "release-native", "release-fixture", "cli", "distribution"];
@@ -293,8 +307,9 @@ function identityOf(value, label) {
   if (result.runAttempt !== 1 || result.environmentId !== ENVIRONMENT || result.taskKey !== TASK_KEY) {
     fail(`${label} fixed identity differs`);
   }
-  if (!/^[0-9a-f]{12}$/.test(result.bootIdHashPrefix ?? "") ||
-      !/^[0-9a-f]{64}$/.test(result.productTuple ?? "")) fail(`${label} boot/product identity differs`);
+  if (!/^[0-9a-f]{12}$/.test(result.bootIdHashPrefix ?? "") || result.productTuple !== PRODUCT_TUPLE) {
+    fail(`${label} boot/product identity differs`);
+  }
   return result;
 }
 
@@ -302,7 +317,7 @@ function sameIdentity(left, right, label) {
   if (JSON.stringify(left) !== JSON.stringify(right)) fail(`${label} identity differs`);
 }
 
-function validateEnvironmentLock(lockFile, currentJobFile, identity) {
+function validateEnvironmentLock(lockFile, currentJobFile, currentJobsPageFile, identity) {
   const lock = json(lockFile);
   exactKeys(lock, ["schemaVersion", "environmentId", "systemImage", "emulator"], "environment-lock");
   exactKeys(lock.systemImage, ["packageId", "revision", "archiveSha256", "sourcePropertiesSha256",
@@ -311,9 +326,14 @@ function validateEnvironmentLock(lockFile, currentJobFile, identity) {
     "environment-lock.emulator");
   if (lock.schemaVersion !== 1 || lock.environmentId !== ENVIRONMENT ||
       lock.systemImage.packageId !== "system-images;android-36;default;x86_64" || lock.systemImage.revision !== "2" ||
+      lock.systemImage.archiveSha256 !== "e1b9d9fb665001ef27b16e57d8762a2d54aec6bff617e17506edb8676667b9da" ||
+      lock.systemImage.sourcePropertiesSha256 !== "1a6e7c0b326c24c28ba501aa5ada247dd9fb0f087b662865f7bc649991fe74d1" ||
+      lock.systemImage.buildPropSha256 !== "565447ab254aa5f2b974186471c28d10cfcab25c346470673d9f7b4d3ac0ac0b" ||
+      lock.systemImage.fingerprint !== "Android/sdk_phone64_x86_64/emu64x:16/BE2A.250530.026.D1/13818094:userdebug/test-keys" ||
       lock.systemImage.sdk !== "36" || lock.systemImage.abi !== "x86_64" ||
       lock.emulator.revision !== "37.1.11" || lock.emulator.buildId !== "15917651" ||
-      !/^Android\/sdk_phone64_x86_64\/emu64x:16\/[A-Z0-9.]+\/[0-9]+:userdebug\/test-keys$/.test(lock.systemImage.fingerprint)) {
+      lock.emulator.archiveSha256 !== "95771e0ae431897b2a4bd2d97fa095f29a8b0624a7b216baf529f9306161c266" ||
+      lock.emulator.sourcePropertiesSha256 !== "ee589ca350515c29dc3bad30dd5ebe8efb11d1a50c17c8815125d3c4bd12a3a8") {
     fail("environment lock differs");
   }
   for (const [name, digest] of Object.entries({ imageArchive: lock.systemImage.archiveSha256,
@@ -327,8 +347,20 @@ function validateEnvironmentLock(lockFile, currentJobFile, identity) {
       job.name !== "m3-09-startup-attribution" || job.status !== "in_progress" || job.conclusion !== null ||
       typeof job.runner_name !== "string" || job.runner_name.length === 0 || !Array.isArray(job.labels) ||
       !job.labels.includes("ubuntu-24.04")) fail("current official GitHub job differs");
+  const page = json(currentJobsPageFile);
+  if (!Number.isSafeInteger(page.total_count) || page.total_count < 1 || page.total_count >= 100 ||
+      !Array.isArray(page.jobs) || page.jobs.length !== page.total_count) fail("official jobs page is incomplete");
+  const matches = page.jobs.filter((candidate) => String(candidate.id) === String(identity.jobId) &&
+    String(candidate.run_id) === String(identity.runId) && candidate.name === "m3-09-startup-attribution");
+  if (matches.length !== 1) fail("official jobs page current job selection differs");
+  const official = matches[0];
+  for (const key of ["id", "run_id", "name", "status", "conclusion", "runner_name"]) {
+    if (official[key] !== job[key]) fail(`normalized current job differs from official page: ${key}`);
+  }
+  if (JSON.stringify(official.labels) !== JSON.stringify(job.labels)) fail("normalized current job labels differ");
   sensitiveScan(lock, "environment lock");
   sensitiveScan(job, "current job");
+  sensitiveScan(page, "official jobs page");
   return { lock, job };
 }
 
@@ -345,7 +377,7 @@ function validateProfileVerification(value, files) {
       value.profileProtectedSha256 !== sha256File(files.profileProtected) ||
       value.profileLockSha256 !== sha256File(files.profileLock) ||
       !/^[0-9a-f]{12}$/.test(value.profileSignerSha256Prefix)) fail("profile verification identity differs");
-  for (const key of keys.slice(9)) if (value[key] !== true) fail(`profile verification is incomplete: ${key}`);
+  for (const key of keys.slice(8)) if (value[key] !== true) fail(`profile verification is incomplete: ${key}`);
   const lock = json(files.profileLock);
   if (value.profileSignerSha256Prefix !== lock.profileSigner.certificateSha256Prefix) {
     fail("profile verification signer differs");
@@ -853,7 +885,12 @@ function validateProfileLock(options) {
 
 export function validatePackage(options) {
   const root = path.resolve(required(options, "artifact-root"));
+  const repositoryRoot = path.resolve(options.root ?? process.cwd());
   requireRegularRoot(root, PACKAGE_FILES);
+  for (const [name, digest] of Object.entries(TRACKED_LOCKS)) {
+    requireTrackedLockCopy(path.join(root, name), path.join(repositoryRoot, "tools", "validation", "m3-10",
+      name === "profile-lock.json" ? "canonical-profile-lock.json" : name), digest, name);
+  }
   const documents = Object.fromEntries(
     ["artifact-manifest", "campaign-a", "campaign-b", "cleanup", "probe-manifest", "result"]
       .map((name) => [name, json(path.join(root, `${name}.json`))]),
@@ -862,7 +899,7 @@ export function validatePackage(options) {
     lock: path.join(root, "profile-lock.json"),
     "original-baseline": path.join(root, "original-baseline.apk"),
     "original-protected": path.join(root, "original-protected.apk"),
-    "observer-source": path.join(options.root ?? process.cwd(), "tools/validation/m3-10/profile-src/ah/runtime/profile/M310StartupTimingObserver.java"),
+    "observer-source": path.join(repositoryRoot, "tools/validation/m3-10/profile-src/ah/runtime/profile/M310StartupTimingObserver.java"),
     "observer-dex": path.join(root, "observer.dex"),
     "derivation-manifest": path.join(root, "derivation-manifest.json"),
     "unsigned-baseline": path.join(root, "profile-baseline-unsigned.apk"),
@@ -883,7 +920,8 @@ export function validatePackage(options) {
   });
   Object.entries(documents).forEach(([name, value]) => sensitiveScan(value, name));
   const identity = identityOf(documents.result.identity, "result.identity");
-  validateEnvironmentLock(path.join(root, "api36-environment-lock.json"), path.join(root, "current-job.json"), identity);
+  validateEnvironmentLock(path.join(root, "api36-environment-lock.json"), path.join(root, "current-job.json"),
+    path.join(root, "current-jobs-page-1.json"), identity);
   for (const key of ["campaign-a", "campaign-b", "artifact-manifest", "probe-manifest"]) {
     sameIdentity(identityOf(documents[key].identity, `${key}.identity`), identity, key);
   }
@@ -902,6 +940,7 @@ export function validatePackage(options) {
   exactKeys(probe, ["schemaVersion", "identity", "originalBaselineSha256", "originalProtectedSha256",
     "profileBaselineSha256", "profileProtectedSha256", "outerPoints", "innerPoints",
     "maximumProtectedProbeCount", "profileVerificationSha256", "environmentLockSha256", "currentJobSha256",
+    "currentJobsPageSha256",
     "systemImageSourceSha256", "systemImageBuildPropSha256", "emulatorSourceSha256"], "probe-manifest");
   if (probe.schemaVersion !== 1 || probe.outerPoints !== 16 || probe.innerPoints !== 9 ||
       probe.maximumProtectedProbeCount !== MAX_PROTECTED_PROBES) fail("probe manifest fixed boundary differs");
@@ -926,6 +965,7 @@ export function validatePackage(options) {
   const environmentLock = json(path.join(root, "api36-environment-lock.json"));
   if (probe.environmentLockSha256 !== sha256File(path.join(root, "api36-environment-lock.json")) ||
       probe.currentJobSha256 !== sha256File(path.join(root, "current-job.json")) ||
+      probe.currentJobsPageSha256 !== sha256File(path.join(root, "current-jobs-page-1.json")) ||
       probe.systemImageSourceSha256 !== environmentLock.systemImage.sourcePropertiesSha256 ||
       probe.systemImageBuildPropSha256 !== environmentLock.systemImage.buildPropSha256 ||
       probe.emulatorSourceSha256 !== environmentLock.emulator.sourcePropertiesSha256) {
@@ -951,7 +991,7 @@ export function validatePackage(options) {
     cli: "cli.zip",
     distribution: "distribution.jar",
   };
-  validateSurface({ root: options.root ?? process.cwd(), "release-lock": path.join(root, "release-artifact-lock.json"),
+  validateSurface({ root: repositoryRoot, "release-lock": path.join(root, "release-artifact-lock.json"),
     dexdump, apksigner: required(options, "apksigner"), "build-tools-source": required(options, "build-tools-source"), ...Object.fromEntries(
     Object.entries(releaseMap).map(([key, name]) => [key, path.join(root, name)]),
   ) });
@@ -1076,7 +1116,7 @@ function selfTest() {
   const identity = {
     headSha: "a".repeat(40), runId: "1001", jobId: "2002", runAttempt: 1,
     environmentId: ENVIRONMENT, bootIdHashPrefix: "b".repeat(12), taskKey: TASK_KEY,
-    productTuple: "c".repeat(64),
+    productTuple: PRODUCT_TUPLE,
   };
   const a = campaign("A", identity);
   const b = campaign("B", identity);
@@ -1152,18 +1192,23 @@ function selfTest() {
   const environmentValue = {
     schemaVersion: 1, environmentId: ENVIRONMENT,
     systemImage: { packageId: "system-images;android-36;default;x86_64", revision: "2",
-      archiveSha256: "1".repeat(64), sourcePropertiesSha256: "2".repeat(64), buildPropSha256: "3".repeat(64),
+      archiveSha256: "e1b9d9fb665001ef27b16e57d8762a2d54aec6bff617e17506edb8676667b9da",
+      sourcePropertiesSha256: "1a6e7c0b326c24c28ba501aa5ada247dd9fb0f087b662865f7bc649991fe74d1",
+      buildPropSha256: "565447ab254aa5f2b974186471c28d10cfcab25c346470673d9f7b4d3ac0ac0b",
       fingerprint: "Android/sdk_phone64_x86_64/emu64x:16/BE2A.250530.026.D1/13818094:userdebug/test-keys",
       sdk: "36", abi: "x86_64" },
-    emulator: { revision: "37.1.11", buildId: "15917651", archiveSha256: "4".repeat(64),
-      sourcePropertiesSha256: "5".repeat(64) },
+    emulator: { revision: "37.1.11", buildId: "15917651",
+      archiveSha256: "95771e0ae431897b2a4bd2d97fa095f29a8b0624a7b216baf529f9306161c266",
+      sourcePropertiesSha256: "ee589ca350515c29dc3bad30dd5ebe8efb11d1a50c17c8815125d3c4bd12a3a8" },
   };
   const currentJob = { id: 2002, run_id: 1001, name: "m3-09-startup-attribution", status: "in_progress",
     conclusion: null, runner_name: "GitHub Actions 1", labels: ["ubuntu-24.04"] };
   const environmentFile = path.join(environmentRoot, "environment.json");
   const currentJobFile = path.join(environmentRoot, "job.json");
+  const currentJobsPageFile = path.join(environmentRoot, "jobs-page.json");
   writeFileSync(environmentFile, JSON.stringify(environmentValue)); writeFileSync(currentJobFile, JSON.stringify(currentJob));
-  validateEnvironmentLock(environmentFile, currentJobFile, identity);
+  writeFileSync(currentJobsPageFile, JSON.stringify({ total_count: 1, jobs: [currentJob] }));
+  validateEnvironmentLock(environmentFile, currentJobFile, currentJobsPageFile, identity);
   const environmentMutations = [
     ["environment-fingerprint", (environment) => { environment.systemImage.fingerprint += "-changed"; }],
     ["system-image-revision", (environment) => { environment.systemImage.revision = "3"; }],
@@ -1173,7 +1218,16 @@ function selfTest() {
   ].map(([name, mutate]) => {
     const environment = structuredClone(environmentValue); const job = structuredClone(currentJob); mutate(environment, job);
     writeFileSync(environmentFile, JSON.stringify(environment)); writeFileSync(currentJobFile, JSON.stringify(job));
-    return expectRejected(name, () => validateEnvironmentLock(environmentFile, currentJobFile, identity));
+    writeFileSync(currentJobsPageFile, JSON.stringify({ total_count: 1, jobs: [job] }));
+    return expectRejected(name, () => validateEnvironmentLock(environmentFile, currentJobFile, currentJobsPageFile, identity));
+  });
+  writeFileSync(environmentFile, JSON.stringify(environmentValue)); writeFileSync(currentJobFile, JSON.stringify(currentJob));
+  const officialPageMutations = [
+    ["current-job-page-duplicate", { total_count: 2, jobs: [currentJob, structuredClone(currentJob)] }],
+    ["current-job-page-truncated", { total_count: 2, jobs: [currentJob] }],
+  ].map(([name, page]) => {
+    writeFileSync(currentJobsPageFile, JSON.stringify(page));
+    return expectRejected(name, () => validateEnvironmentLock(environmentFile, currentJobFile, currentJobsPageFile, identity));
   });
   rmSync(environmentRoot, { recursive: true, force: true });
 
@@ -1203,8 +1257,21 @@ function selfTest() {
     mutate(...values);
     return expectRejected(name, () => validateGithubModel(...values, identity, 4004));
   });
-  return { canonical: 1, rejectedMutations: rejected + cleanupMutations.length + githubMutations.length + resultMutations.length + environmentMutations.length,
-    reportMutations: rejected, resultMutations, thresholdMutations, cleanupMutations, environmentMutations, githubMutations,
+  const tupleMutation = expectRejected("product-tuple", () => identityOf({ ...identity, productTuple: "c".repeat(64) }, "mutation.identity"));
+  const lockRoot = mkdtempSync(path.join(tmpdir(), "m310-locks-"));
+  const trackedLockMutations = Object.entries(TRACKED_LOCKS).map(([name, digest]) => {
+    const trackedName = name === "profile-lock.json" ? "canonical-profile-lock.json" : name;
+    const tracked = path.resolve("tools", "validation", "m3-10", trackedName);
+    const copy = path.join(lockRoot, name);
+    writeFileSync(copy, readFileSync(tracked));
+    requireTrackedLockCopy(copy, tracked, digest, name);
+    const bytes = readFileSync(copy); bytes[bytes.length - 2] ^= 1; writeFileSync(copy, bytes);
+    return expectRejected(`tracked-${name}`, () => requireTrackedLockCopy(copy, tracked, digest, name));
+  });
+  rmSync(lockRoot, { recursive: true, force: true });
+  return { canonical: 1, rejectedMutations: rejected + cleanupMutations.length + githubMutations.length + resultMutations.length + environmentMutations.length + officialPageMutations.length + trackedLockMutations.length + 1,
+    reportMutations: rejected, resultMutations, thresholdMutations, cleanupMutations, environmentMutations,
+    officialPageMutations, trackedLockMutations, tupleMutation, githubMutations,
     owner: expected.selectedOwner };
 }
 
@@ -1215,6 +1282,10 @@ function expectRejected(name, action) {
 
 function profileSelfTest(options) {
   validateProfileLock(options);
+  validateProfileReport({ report: required(options, "profile-report"),
+    "original-baseline": options["original-baseline"], "original-protected": options["original-protected"],
+    "profile-baseline": options["signed-baseline"], "profile-protected": options["signed-protected"],
+    "profile-lock": options.lock });
   const scratch = path.resolve(required(options, "scratch"));
   const allowed = path.resolve(process.cwd(), "build", "m3-10") + path.sep;
   if (!(scratch + path.sep).startsWith(allowed)) fail("profile self-test scratch must remain under build/m3-10");
@@ -1272,6 +1343,14 @@ function profileSelfTest(options) {
     writeFileSync(fakeDexdump, "");
     mutations.push(expectRejected("unpinned-dexdump", () => validateReleaseArtifactLock({ ...surfaceOptions, dexdump: fakeDexdump })));
     mutations.push(expectRejected("sensitive-host-path", () => sensitiveScan("C:\\Users\\redacted\\secret", "mutation")));
+    const profileReport = json(path.resolve(options["profile-report"]));
+    profileReport.profileV3Verified = false;
+    const falseV3Report = path.join(scratch, "profile-v3-false.json");
+    writeFileSync(falseV3Report, JSON.stringify(profileReport));
+    mutations.push(expectRejected("profile-v3-false", () => validateProfileReport({ report: falseV3Report,
+      "original-baseline": options["original-baseline"], "original-protected": options["original-protected"],
+      "profile-baseline": options["signed-baseline"], "profile-protected": options["signed-protected"],
+      "profile-lock": options.lock })));
   } finally {
     rmSync(scratch, { recursive: true, force: true });
   }

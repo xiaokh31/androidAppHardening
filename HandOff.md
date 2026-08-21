@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260821-124805
-updated_at: 2026-08-21T12:48:05+08:00
+handoff_id: HO-20260821-130407
+updated_at: 2026-08-21T13:04:07+08:00
 updated_by: /root
 state: blocked
 source_branch: feat/m3-10-startup-attribution-diagnostic
@@ -21,6 +21,7 @@ Implement the bounded M3-10 ADR 0016 startup-attribution diagnostic from the exa
 
 ## Current State
 
+- M3-10 third independent review of `9151097ad2b8feb7985e81da46df436e6886223a` returned `FAIL — P0=0/P1=3/P2=1` without consuming API 36 eligibility. The bounded remediation is frozen at `cbf064301063d64928bf8f0af6820956ecaf3e1f`: the complete verifier now fixes the exact M3-11 tuple, runner/package locks are byte-bound to three reviewed tracked files, the runner derives the current job from a complete official GitHub jobs API page before first install, all profile booleans including v3 are true-gated, and metadata/probe/cleanup failure injection covers the reported gaps. Node 39-mutation/4-threshold self-test, 8 cleanup injections, Kotlin 9-field/all-adjacency self-test, 17 actual-file mutations, profile freeze, governance and diff checks pass. Exact evidence is `docs/evidence/M3-10/review-3-remediation-local.md`. Both canonical workflows remain absent; the only next action is a fourth independent read-only review, and only all-zero may unlock a workflow successor.
 - M3-10 second-review remediation is frozen at implementation commit `e28a563b0b24446f8dbee6da5e7cadb86e3d2c61`. Review 2 returned `FAIL — P0=0/P1=6/P2=1`; the candidate now binds six real Release artifacts and five Android tools by exact bytes/type/entries, pins the API 36 r2/Emulator 37.1.11/fingerprint/current-job/same-boot identity, completes all actual-byte/profile/Release checks before first install, keeps one defined set of 15 raw calibration values, fails closed on `pm path`/uninstall/remote cleanup, requires an exact freshly generated profile report, and independently preserves/compares DEX try-handler/debug metadata plus probe adjacency. Actual Kotlin four-APK verification, 4 metadata mutations, 16 byte/signer/surface/tool mutations, 33 report/result/cleanup/environment/GitHub mutations, 4 threshold cases, Host/container 13 cases, six Release builds and governance all pass. No signing secret remains, both canonical workflows remain absent, and API 36 eligibility is unconsumed. Exact local evidence is `docs/evidence/M3-10/review-2-remediation-local.md`. The only current action is a third independent read-only review; no workflow may be added unless it returns `P0=0/P1=0/P2=0`.
 - M3-10 restarted from clean `main@9d3fc3a4ae17d14f84d223b9dbb5f92016814f1a` on `feat/m3-10-startup-attribution-diagnostic`; the rejected candidate remains historical only on `spike/m3-10-rejected-candidate`. Implementation freeze `2eb462b1d3e410d20e684ec70be84aab3cd09562` and evidence-only successor `2ae3e19e319e95e0cde474f4600408737fa67513` use the exact ignored M3-11 pair and implement deterministic post-build DEX probes, a separate ephemeral test-only v3 signer, transactional protected ConfigV2/AHDC/four-ABI share-slot rebinding, exact call-graph and four-APK byte verification, and a fail-closed production-surface gate. Two independent derivations from the same inputs produced byte-identical unsigned, aligned and signed APKs; the actual-byte verifier authenticated the rebuilt container and decrypted its payload to the exact reviewed DEX. Host/container regression, governance and diff checks pass. All temporary keystores, passwords, private keys and deterministic container seeds have been deleted. The clean coordination successor only reconciles this HandOff. No commit is eligible for a workflow, API 36 diagnostic, KVM, emulator, ARM or M3-05 until an independent review returns `P0=0/P1=0/P2=0`.
 - Independent read-only review of coordination head `6db7cc34d27b3cbf02b3e9c1d2b0457defd19b45` concluded `FAIL — P0=0/P1=5/P2=0`. Confirmed positives are canonical actual hashes, deterministic unsigned/aligned/signed pairs, no surviving signing secrets, pinned dexlib2 metadata and absent workflows. Open P1 findings are: observer/profile lock absent; DEX equivalence shares the deriver instead of independently comparing all non-probe semantics; signing/alignment/cleanup orchestration is not tracked; binary Release/CLI/fixture/distribution surfaces are skipped; and the complete package/timeline/calibration/owner/events/cleanup/GitHub verifier plus named mutations does not yet exist. No API 36 eligibility was consumed. The exact review is archived in `docs/evidence/M3-10/read-only-review-1.md`.
@@ -1898,12 +1899,12 @@ Implement the bounded M3-10 ADR 0016 startup-attribution diagnostic from the exa
 
 ## Blockers and Required Approvals
 
-M3-10 review-2 findings have been remediated at implementation freeze `e28a563b0b24446f8dbee6da5e7cadb86e3d2c61`, but completion remains blocked pending the third independent read-only review. Canonical workflows, API 36, KVM, ARM, benchmark and M3-05 remain prohibited unless that review returns exactly `P0=0/P1=0/P2=0`.
+M3-10 review-3 findings have been remediated at implementation freeze `cbf064301063d64928bf8f0af6820956ecaf3e1f`, but completion remains blocked pending the fourth independent read-only review. Canonical workflows, API 36, KVM, ARM, benchmark and M3-05 remain prohibited unless that review returns exactly `P0=0/P1=0/P2=0`.
 
 ## Ordered Next Actions
 
-1. Commit this review-2 remediation evidence successor without changing the implementation freeze.
-2. Run the user-authorized third independent read-only M3-10 review against the implementation/evidence chain.
+1. Commit this review-3 remediation evidence successor without changing the implementation freeze.
+2. Run the user-authorized fourth independent read-only M3-10 review against the implementation/evidence chain.
 3. Only an exact `P0=0/P1=0/P2=0` result may unlock a separately reviewed workflow successor; otherwise remediate only the returned findings. API 36, ARM and M3-05 remain unexecuted now.
 
 ## Relevant Files and Artifacts
@@ -1931,6 +1932,7 @@ M3-10 review-2 findings have been remediated at implementation freeze `e28a563b0
 - `docs/evidence/M3-10/read-only-review-1.md`
 - `docs/evidence/M3-10/review-remediation-local.md`
 - `docs/evidence/M3-10/review-2-remediation-local.md`
+- `docs/evidence/M3-10/review-3-remediation-local.md`
 - `tools/validation/m3-10/canonical-profile-lock.json`
 - `tools/validation/m3-10/release-artifact-lock.json`
 - `tools/validation/m3-10/api36-environment-lock.json`

@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M3-10",
+  "headSha": "19fd56d0068e5416b390703c24a2c1d100d27a1b",
+  "artifacts": {
+    "release-bootstrap": {
+      "type": "aar",
+      "sizeBytes": 20631,
+      "sha256": "9c71b6519bec3095ad3217c39394a6a7ec8ebaffdb77b8b67838f7fbfa1a9490",
+      "requiredEntries": ["AndroidManifest.xml", "classes.jar", "META-INF/com/android/build/gradle/aar-metadata.properties"]
+    },
+    "release-policy": {
+      "type": "aar",
+      "sizeBytes": 36474,
+      "sha256": "a7fdea442c5419ac1c7081dba59261d1fe297de6d51ec40fccb4603a6ea3cad5",
+      "requiredEntries": ["AndroidManifest.xml", "classes.jar", "META-INF/com/android/build/gradle/aar-metadata.properties"]
+    },
+    "release-native": {
+      "type": "aar",
+      "sizeBytes": 458041,
+      "sha256": "336422d2da7f5a0f169fdd5dadb235630fc5ed28fe62cc903be1df6e627af0e4",
+      "requiredEntries": ["AndroidManifest.xml", "classes.jar", "jni/arm64-v8a/libah_runtime.so", "jni/armeabi-v7a/libah_runtime.so", "jni/x86/libah_runtime.so", "jni/x86_64/libah_runtime.so"]
+    },
+    "release-fixture": {
+      "type": "apk",
+      "sizeBytes": 338647,
+      "sha256": "8afac2b4c38d402a99d1a4d10dab440d8bf433f3e5db97809c50a09e5449a724",
+      "requiredEntries": ["AndroidManifest.xml", "classes.dex", "lib/arm64-v8a/libfixture_jni.so", "lib/armeabi-v7a/libfixture_jni.so", "lib/x86/libfixture_jni.so", "lib/x86_64/libfixture_jni.so"]
+    },
+    "cli": {
+      "type": "zip",
+      "sizeBytes": 5874221,
+      "sha256": "e1589feb1f2fc77348ee8f9c7af41b331ca6b5a9ffc3cfbcc523032a1e717bfc",
+      "requiredEntries": ["android-app-hardening-0.1.0-dev/bin/android-app-hardening", "android-app-hardening-0.1.0-dev/bin/android-app-hardening.bat", "android-app-hardening-0.1.0-dev/lib/cli-0.1.0-dev.jar"]
+    },
+    "distribution": {
+      "type": "jar",
+      "sizeBytes": 261,
+      "sha256": "c6deada2fac53b8ea6523dbda77597b128006674616f140f04df23264c6d1aa3",
+      "requiredEntries": ["META-INF/MANIFEST.MF"]
+    }
+  },
+  "androidTools": {
+    "buildToolsRevision": "36.1.0",
+    "sourceProperties": {"sizeBytes": 62, "sha256": "cde98413251206c52e50cfcefc2e0627b2660c03814e9c9ab7e2c56fdf5a9472"},
+    "dexdump": {"sizeBytes": 1183384, "sha256": "ed8980d5cf02736dcf7ddb080a9eaa2683bc55e52207d1208be734bbfc762732"},
+    "apksignerJar": {"sizeBytes": 1109763, "sha256": "71e18adf733f5e112d1f062dbe6b0c2eb439a4d7c773d083c42a703c66f56df1"},
+    "zipalign": {"sizeBytes": 910488, "sha256": "e067e7333ffbb305eefa510e42ccda8589fefd66a040e95e43a216f1e558c2d2"},
+    "d8Jar": {"sizeBytes": 18288458, "sha256": "e0c2803fbf9a1258051c3202daad46a2e00f33a0eb91258ac9fd373df0a832ce"}
+  }
+}

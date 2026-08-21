@@ -17,7 +17,15 @@ import org.jf.dexlib2.iface.reference.FieldReference
 import org.jf.dexlib2.iface.reference.MethodReference
 import org.jf.dexlib2.immutable.ImmutableClassDef
 import org.jf.dexlib2.immutable.ImmutableMethod
+import org.jf.dexlib2.immutable.ImmutableMethodImplementation
 import org.jf.dexlib2.immutable.ImmutableMethodParameter
+import org.jf.dexlib2.immutable.debug.ImmutableEndLocal
+import org.jf.dexlib2.immutable.debug.ImmutableEpilogueBegin
+import org.jf.dexlib2.immutable.debug.ImmutableLineNumber
+import org.jf.dexlib2.immutable.debug.ImmutablePrologueEnd
+import org.jf.dexlib2.immutable.debug.ImmutableRestartLocal
+import org.jf.dexlib2.immutable.debug.ImmutableSetSourceFile
+import org.jf.dexlib2.immutable.debug.ImmutableStartLocal
 import org.jf.dexlib2.immutable.reference.ImmutableMethodReference
 import org.jf.dexlib2.writer.io.FileDataStore
 import org.jf.dexlib2.writer.pool.DexPool
@@ -272,13 +280,34 @@ object M310DexProfileTool {
     private fun insert(
         original: org.jf.dexlib2.iface.MethodImplementation,
         insertions: List<Pair<Int, BuilderInstruction>>,
-    ): MutableMethodImplementation {
+    ): org.jf.dexlib2.iface.MethodImplementation {
         require(insertions.groupBy { it.first }.values.all { it.size == 1 }) { "duplicate probe insertion index" }
+        val originalInstructions = original.instructions.toList()
+        val insertionAddresses = insertions.map { (index, instruction) ->
+            require(index in 0..originalInstructions.size) { "probe insertion index escapes method" }
+            originalInstructions.take(index).sumOf { it.codeUnits } to instruction.codeUnits
+        }
         val mutable = MutableMethodImplementation(original)
         insertions.sortedByDescending { it.first }.forEach { (index, instruction) ->
             mutable.addInstruction(index, instruction)
         }
-        return mutable
+        val debugItems = original.debugItems.map { item ->
+            val shifted = item.codeAddress + insertionAddresses.filter { (address) -> item.codeAddress >= address }.sumOf { it.second }
+            when (item) {
+                is org.jf.dexlib2.iface.debug.LineNumber -> ImmutableLineNumber(shifted, item.lineNumber)
+                is org.jf.dexlib2.iface.debug.StartLocal ->
+                    ImmutableStartLocal(shifted, item.register, item.name, item.type, item.signature)
+                is org.jf.dexlib2.iface.debug.EndLocal ->
+                    ImmutableEndLocal(shifted, item.register, item.name, item.type, item.signature)
+                is org.jf.dexlib2.iface.debug.RestartLocal ->
+                    ImmutableRestartLocal(shifted, item.register, item.name, item.type, item.signature)
+                is org.jf.dexlib2.iface.debug.SetSourceFile -> ImmutableSetSourceFile(shifted, item.sourceFile)
+                is org.jf.dexlib2.iface.debug.PrologueEnd -> ImmutablePrologueEnd(shifted)
+                is org.jf.dexlib2.iface.debug.EpilogueBegin -> ImmutableEpilogueBegin(shifted)
+                else -> error("unsupported DEX debug item type: ${item.javaClass.name}")
+            }
+        }
+        return ImmutableMethodImplementation(mutable.registerCount, mutable.instructions, mutable.tryBlocks, debugItems)
     }
 
     private fun mark(point: String): BuilderInstruction35c = BuilderInstruction35c(

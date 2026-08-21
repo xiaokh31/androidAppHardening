@@ -11,21 +11,26 @@ const PRODUCT_TUPLE = "883da673d3bced1ec93f11323fe63152c1007112d08c46643976c7039
 const PACKAGE = "ah.fixtures.android.m301.java_single";
 const ACTIVITY = "ah.fixtures.android.m301.FixtureActivity";
 const EXPECTED_EVENTS = ["provider.ready", "activity.create"];
+const RELEASE_ROLES = ["release-bootstrap", "release-policy", "release-native", "release-fixture", "cli", "distribution"];
 const COPY_INPUTS = {
   "original-baseline.apk": "original-baseline", "original-protected.apk": "original-protected",
   "observer.dex": "observer-dex", "derivation-manifest.json": "derivation-manifest",
-  "profile-lock.json": "profile-lock", "profile-baseline-unsigned.apk": "profile-baseline-unsigned",
-  "profile-protected-unsigned.apk": "profile-protected-unsigned", "profile-baseline-aligned.apk": "profile-baseline-aligned",
-  "profile-protected-aligned.apk": "profile-protected-aligned", "profile-baseline.apk": "profile-baseline",
-  "profile-protected.apk": "profile-protected", "profile-verification.json": "profile-verification",
+  "profile-lock.json": "profile-lock", "release-artifact-lock.json": "release-lock",
+  "api36-environment-lock.json": "environment-lock", "current-job.json": "current-job",
+  "profile-baseline-unsigned.apk": "profile-baseline-unsigned",
+  "profile-protected-unsigned.apk": "profile-protected-unsigned",
+  "profile-baseline-aligned.apk": "profile-baseline-aligned",
+  "profile-protected-aligned.apk": "profile-protected-aligned",
+  "profile-baseline.apk": "profile-baseline", "profile-protected.apk": "profile-protected",
   "release-bootstrap.aar": "release-bootstrap", "release-policy.aar": "release-policy",
   "release-native.aar": "release-native", "release-fixture.apk": "release-fixture",
-  "cli.zip": "cli", "distribution.zip": "distribution",
+  "cli.zip": "cli", "distribution.jar": "distribution",
 };
 
 function fail(message) { throw new Error(`M3-10 diagnostic failed: ${message}`); }
 function sha256(value) { return createHash("sha256").update(value).digest("hex"); }
 function sha256File(file) { return sha256(readFileSync(file)); }
+function json(file) { try { return JSON.parse(readFileSync(file, "utf8")); } catch (error) { fail(`${path.basename(file)} invalid JSON: ${error.message}`); } }
 function optionsOf(values) {
   const result = {};
   for (let index = 0; index < values.length; index += 2) {
@@ -35,28 +40,100 @@ function optionsOf(values) {
   return result;
 }
 function required(options, name) { if (!options[name]) fail(`--${name} is required`); return options[name]; }
-function run(command, args, timeout = 120_000, allowFailure = false, recordOutput = true) {
-  const result = spawnSync(command, args, { encoding: "utf8", windowsHide: true, timeout, maxBuffer: 16 * 1024 * 1024 });
-  if (result.error || (!allowFailure && result.status !== 0)) fail(`${path.basename(command)} ${args[0] ?? ""} failed`);
+function run(command, args, { timeout = 120_000, allowFailure = false, recordOutput = true, env = process.env } = {}) {
+  let executable = command;
+  let commandArgs = args;
+  if (process.platform === "win32" && /\.(?:bat|cmd)$/i.test(command)) {
+    executable = process.env.ComSpec ?? "C:\\Windows\\System32\\cmd.exe";
+    commandArgs = ["/d", "/c", command, ...args];
+  }
+  const result = spawnSync(executable, commandArgs, {
+    cwd: process.cwd(), env, encoding: "utf8", windowsHide: true, timeout, maxBuffer: 32 * 1024 * 1024,
+  });
+  if (result.error || (!allowFailure && result.status !== 0)) {
+    fail(`${path.basename(command)} ${args[0] ?? ""} failed (${result.status ?? "START"})`);
+  }
   return { status: result.status, stdout: result.stdout ?? "", stderr: result.stderr ?? "",
     evidence: recordOutput ? `${result.stdout ?? ""}${result.stderr ?? ""}` : "<output-omitted>" };
 }
 function sleepMs(value) { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, value); }
-function nearestRank(values, percentile) { return [...values].sort((a, b) => a - b)[Math.ceil(percentile * values.length) - 1]; }
+function sameBoot(adb, expectedPrefix) {
+  const boot = run(adb, ["shell", "cat", "/proc/sys/kernel/random/boot_id"], { timeout: 30_000 }).stdout.trim();
+  if (!/^[0-9a-f-]{36}$/.test(boot) || sha256(Buffer.from(boot)).slice(0, 12) !== expectedPrefix) fail("device boot identity changed");
+}
+function lockedFile(file, expected, label) {
+  if (!existsSync(file) || !statSync(file).isFile() || statSync(file).size !== expected.sizeBytes || sha256File(file) !== expected.sha256) {
+    fail(`${label} identity differs`);
+  }
+}
 
-function identity(options, adb) {
+function releaseArgs(output) {
+  return RELEASE_ROLES.flatMap((name) => [`--${name}`, path.join(output,
+    name === "cli" ? "cli.zip" : name === "distribution" ? "distribution.jar" :
+      name === "release-fixture" ? "release-fixture.apk" : `${name}.aar`)]);
+}
+
+function preflight(options, output) {
+  const verifier = path.resolve("tools/validation/verify-m3-10-startup-attribution.mjs");
+  const common = ["--release-lock", path.join(output, "release-artifact-lock.json"),
+    "--build-tools-source", path.resolve(required(options, "build-tools-source")), ...releaseArgs(output)];
+  run(process.execPath, [path.resolve("tools/governance/verify-m3-11-canonical-artifact-contract.mjs"),
+    "--artifact-root", path.resolve(required(options, "m3-11-artifact-root"))]);
+  run(process.execPath, [verifier, "profile-lock", "--lock", path.join(output, "profile-lock.json"),
+    "--original-baseline", path.join(output, "original-baseline.apk"), "--original-protected", path.join(output, "original-protected.apk"),
+    "--observer-source", path.resolve("tools/validation/m3-10/profile-src/ah/runtime/profile/M310StartupTimingObserver.java"),
+    "--observer-dex", path.join(output, "observer.dex"), "--derivation-manifest", path.join(output, "derivation-manifest.json"),
+    "--unsigned-baseline", path.join(output, "profile-baseline-unsigned.apk"), "--unsigned-protected", path.join(output, "profile-protected-unsigned.apk"),
+    "--aligned-baseline", path.join(output, "profile-baseline-aligned.apk"), "--aligned-protected", path.join(output, "profile-protected-aligned.apk"),
+    "--signed-baseline", path.join(output, "profile-baseline.apk"), "--signed-protected", path.join(output, "profile-protected.apk"),
+    "--apksigner", path.resolve(required(options, "apksigner")), ...common], { timeout: 180_000 });
+  for (const role of ["baseline", "protected"]) {
+    run(process.execPath, [verifier, "apk-pair", "--original", path.join(output, `original-${role}.apk`),
+      "--profile", path.join(output, `profile-${role}.apk`), "--role", role,
+      "--dexdump", path.resolve(required(options, "dexdump")), "--scratch", path.join(output, `preflight-${role}`),
+      ...common], { timeout: 180_000 });
+  }
+  run(process.execPath, [verifier, "surface", "--dexdump", path.resolve(required(options, "dexdump")),
+    "--apksigner", path.resolve(required(options, "apksigner")), ...common], { timeout: 180_000 });
+  const report = path.join(output, "profile-verification.json");
+  const gradleEnv = { ...process.env, M310_ORIGINAL_BASELINE: path.join(output, "original-baseline.apk"),
+    M310_ORIGINAL_PROTECTED: path.join(output, "original-protected.apk"), M310_PROFILE_BASELINE: path.join(output, "profile-baseline.apk"),
+    M310_PROFILE_PROTECTED: path.join(output, "profile-protected.apk"), M310_OBSERVER_DEX: path.join(output, "observer.dex"),
+    M310_DERIVATION_MANIFEST: path.join(output, "derivation-manifest.json"), M310_PROFILE_LOCK: path.join(output, "profile-lock.json"),
+    M310_VERIFICATION_REPORT: report };
+  run(path.resolve(required(options, "gradle")), [":host:container:m310VerifyProfiles", "--offline", "--no-daemon"],
+    { timeout: 600_000, env: gradleEnv });
+  run(process.execPath, [verifier, "profile-report", "--report", report,
+    "--original-baseline", path.join(output, "original-baseline.apk"), "--original-protected", path.join(output, "original-protected.apk"),
+    "--profile-baseline", path.join(output, "profile-baseline.apk"), "--profile-protected", path.join(output, "profile-protected.apk"),
+    "--profile-lock", path.join(output, "profile-lock.json")]);
+}
+
+function identity(options, adb, output) {
   if (process.env.GITHUB_ACTIONS !== "true" || process.env.GITHUB_EVENT_NAME !== "push") fail("canonical diagnostic requires a GitHub push run");
-  const value = {
-    headSha: required(options, "head-sha"), runId: required(options, "run-id"), jobId: required(options, "job-id"),
+  const value = { headSha: required(options, "head-sha"), runId: required(options, "run-id"), jobId: required(options, "job-id"),
     runAttempt: Number(required(options, "run-attempt")), environmentId: ENVIRONMENT, bootIdHashPrefix: "",
-    taskKey: TASK_KEY, productTuple: PRODUCT_TUPLE,
-  };
-  if (value.headSha !== process.env.GITHUB_SHA || value.runId !== process.env.GITHUB_RUN_ID ||
-      value.runAttempt !== 1 || String(process.env.GITHUB_RUN_ATTEMPT) !== "1" || !/^[0-9a-f]{40}$/.test(value.headSha) ||
+    taskKey: TASK_KEY, productTuple: PRODUCT_TUPLE };
+  if (value.headSha !== process.env.GITHUB_SHA || value.runId !== process.env.GITHUB_RUN_ID || value.runAttempt !== 1 ||
+      String(process.env.GITHUB_RUN_ATTEMPT) !== "1" || !/^[0-9a-f]{40}$/.test(value.headSha) ||
       !/^[1-9][0-9]*$/.test(value.runId) || !/^[1-9][0-9]*$/.test(value.jobId)) fail("GitHub identity differs");
+  const job = json(path.join(output, "current-job.json"));
+  if (Object.keys(job).sort().join(",") !== ["conclusion", "id", "labels", "name", "run_id", "runner_name", "status"].sort().join(",") ||
+      String(job.id) !== value.jobId || String(job.run_id) !== value.runId || job.name !== "m3-09-startup-attribution" ||
+      job.status !== "in_progress" || job.conclusion !== null || !Array.isArray(job.labels) || !job.labels.includes("ubuntu-24.04")) {
+    fail("official current job identity differs");
+  }
+  const lock = json(path.join(output, "api36-environment-lock.json"));
+  if (lock.environmentId !== ENVIRONMENT) fail("environment lock identity differs");
+  lockedFile(path.resolve(required(options, "system-image-source")), { sizeBytes: 319, sha256: lock.systemImage.sourcePropertiesSha256 }, "system image source.properties");
+  lockedFile(path.resolve(required(options, "system-image-build-prop")), { sizeBytes: 5281, sha256: lock.systemImage.buildPropSha256 }, "system image build.prop");
+  lockedFile(path.resolve(required(options, "emulator-source")), { sizeBytes: 103, sha256: lock.emulator.sourcePropertiesSha256 }, "emulator source.properties");
   const sdk = run(adb, ["shell", "getprop", "ro.build.version.sdk"]).stdout.trim();
   const abi = run(adb, ["shell", "getprop", "ro.product.cpu.abi"]).stdout.trim();
-  if (sdk !== "36" || abi !== "x86_64") fail(`device differs: API=${sdk} ABI=${abi}`);
+  const fingerprint = run(adb, ["shell", "getprop", "ro.build.fingerprint"]).stdout.trim();
+  if (sdk !== lock.systemImage.sdk || abi !== lock.systemImage.abi || fingerprint !== lock.systemImage.fingerprint) {
+    fail("running device differs from the pinned environment");
+  }
   const boot = run(adb, ["shell", "cat", "/proc/sys/kernel/random/boot_id"]).stdout.trim();
   if (!/^[0-9a-f-]{36}$/.test(boot)) fail("boot ID differs");
   value.bootIdHashPrefix = sha256(Buffer.from(boot)).slice(0, 12);
@@ -67,67 +144,88 @@ function parseProfile(output, protectedPath) {
   const matches = [...output.matchAll(/m3_10_profile=(\{[^\r\n]+\})/g)];
   if (matches.length !== 1) fail(`profile marker count differs: ${matches.length}`);
   const value = JSON.parse(matches[0][1]);
-  if (value.schemaVersion !== 1 || value.valid !== true || value.clock !== "CLOCK_BOOTTIME" ||
-      value.protected !== protectedPath || !Number.isSafeInteger(value.pid) || value.pid <= 0 ||
-      !Array.isArray(value.outerNs) || value.outerNs.length !== 16 ||
+  if (value.schemaVersion !== 1 || value.valid !== true || value.clock !== "CLOCK_BOOTTIME" || value.protected !== protectedPath ||
+      !Number.isSafeInteger(value.pid) || value.pid <= 0 || !Array.isArray(value.outerNs) || value.outerNs.length !== 16 ||
       (protectedPath ? !Array.isArray(value.innerNs) || value.innerNs.length !== 9 : value.innerNs !== null) ||
-      !Array.isArray(value.calibrationNs) || value.calibrationNs.length !== 15) fail("profile marker differs");
+      !Array.isArray(value.calibrationNs) || value.calibrationNs.length !== 15 ||
+      value.calibrationNs.some((item) => !Number.isSafeInteger(item) || item < 0)) fail("profile marker differs");
   return value;
 }
-
-function parseEvents(output) {
+function parseEvents(output, completedStarts) {
   const events = [...output.matchAll(/(?:^|,\s*)event=([^,\r\n]+)/g)].map((match) => match[1].trim());
-  if (JSON.stringify(events) !== JSON.stringify(EXPECTED_EVENTS)) fail(`lifecycle events differ: ${events.join(",")}`);
-  return events;
+  const expected = Array.from({ length: completedStarts }, () => EXPECTED_EVENTS).flat();
+  if (JSON.stringify(events) !== JSON.stringify(expected)) fail(`lifecycle event history differs at start ${completedStarts}`);
+  return events.slice(-EXPECTED_EVENTS.length);
 }
 
-function proveAbsent(adb) {
-  run(adb, ["shell", "am", "force-stop", PACKAGE], 30_000, true, false);
-  run(adb, ["uninstall", PACKAGE], 60_000, true, false);
-  const absent = run(adb, ["shell", "pm", "path", PACKAGE], 30_000, true, false);
-  if (absent.stdout.includes("package:")) fail("package cleanup failed");
+function proveAbsent(adb, identityValue) {
+  if (identityValue) sameBoot(adb, identityValue.bootIdHashPrefix);
+  const before = run(adb, ["shell", "pm", "path", PACKAGE], { timeout: 30_000, allowFailure: true, recordOutput: false });
+  if (before.status !== 0 || before.stderr.trim() !== "") fail("package pre-cleanup query failed");
+  const installedPaths = before.stdout.trim();
+  if (installedPaths !== "") {
+    if (!installedPaths.split(/\r?\n/).every((line) => /^package:\S+$/.test(line))) fail("package pre-cleanup state differs");
+    run(adb, ["shell", "am", "force-stop", PACKAGE], { timeout: 30_000, recordOutput: false });
+    const uninstall = run(adb, ["uninstall", PACKAGE], { timeout: 60_000, allowFailure: true, recordOutput: false });
+    if (uninstall.status !== 0 || `${uninstall.stdout}${uninstall.stderr}`.trim() !== "Success") fail("package uninstall failed");
+  }
+  const absent = run(adb, ["shell", "pm", "path", PACKAGE], { timeout: 30_000, allowFailure: true, recordOutput: false });
+  if (absent.status !== 0 || absent.stdout.trim() !== "" || absent.stderr.trim() !== "") fail("package absence proof failed");
+  const temporary = run(adb, ["shell", "ls", "/data/local/tmp"], { timeout: 30_000, allowFailure: true, recordOutput: false });
+  if (temporary.status !== 0 || temporary.stdout.split(/\r?\n/).some((name) => name.startsWith("m3-10-"))) {
+    fail("remote temporary file absence proof failed");
+  }
+  if (identityValue) sameBoot(adb, identityValue.bootIdHashPrefix);
 }
 
-function collect(adb, protectedPath, ordinal) {
-  run(adb, ["shell", "am", "force-stop", PACKAGE], 30_000, false, false);
-  run(adb, ["logcat", "-c"], 30_000, false, false);
-  const started = run(adb, ["shell", "am", "start", "-W", "-n", `${PACKAGE}/${ACTIVITY}`], 30_000);
+function collect(adb, protectedPath, ordinal, completedStarts) {
+  run(adb, ["shell", "am", "force-stop", PACKAGE], { timeout: 30_000, recordOutput: false });
+  run(adb, ["logcat", "-c"], { timeout: 30_000, recordOutput: false });
+  const started = run(adb, ["shell", "am", "start", "-W", "-n", `${PACKAGE}/${ACTIVITY}`], { timeout: 30_000 });
   if (!/Status:\s*ok/.test(started.stdout) || !started.stdout.includes(`${PACKAGE}/${ACTIVITY}`)) fail(`start ${ordinal} differs`);
   sleepMs(200);
   const pid = run(adb, ["shell", "pidof", "-s", PACKAGE]).stdout.trim();
   if (!/^[1-9][0-9]*$/.test(pid)) fail(`start ${ordinal} PID differs`);
-  const marker = parseProfile(run(adb, ["logcat", "--pid", pid, "-d", "-s", "AAH-M3-10:I", "*:S"], 30_000, false, false).stdout,
-    protectedPath);
+  const marker = parseProfile(run(adb, ["logcat", "--pid", pid, "-d", "-s", "AAH-M3-10:I", "*:S"],
+    { timeout: 30_000, recordOutput: false }).stdout, protectedPath);
   if (String(marker.pid) !== pid) fail(`start ${ordinal} marker PID differs`);
-  const events = parseEvents(run(adb, ["shell", "content", "query", "--uri", `content://${PACKAGE}.events`], 30_000).stdout);
-  return { observation: { ordinal, outerNs: marker.outerNs, innerNs: marker.innerNs, events },
-    calibrationP95Ns: nearestRank(marker.calibrationNs, 0.95) };
+  const events = parseEvents(run(adb, ["shell", "content", "query", "--uri", `content://${PACKAGE}.events`],
+    { timeout: 30_000 }).stdout, completedStarts);
+  return { observation: { ordinal, outerNs: marker.outerNs, innerNs: marker.innerNs, events }, rawCalibrationNs: marker.calibrationNs };
 }
 
-function installAndCollect(adb, apk, protectedPath) {
-  proveAbsent(adb);
-  const installed = run(adb, ["install", "-t", apk], 120_000);
+function installAndCollect(adb, apk, protectedPath, identityValue) {
+  proveAbsent(adb, identityValue);
+  const installed = run(adb, ["install", "-t", apk], { timeout: 120_000 });
   if (!/Success/.test(installed.stdout + installed.stderr)) fail("install did not report Success");
-  const warmups = [], samples = [], calibration = [];
-  for (let index = 1; index <= 5; index++) warmups.push(collect(adb, protectedPath, index).observation);
+  const warmups = [], samples = [];
+  for (let index = 1; index <= 5; index++) warmups.push(collect(adb, protectedPath, index, index).observation);
+  let calibrationNs = null;
   for (let index = 1; index <= 15; index++) {
-    const value = collect(adb, protectedPath, index); samples.push(value.observation); calibration.push(value.calibrationP95Ns);
+    const value = collect(adb, protectedPath, index, index + 5);
+    samples.push(value.observation);
+    if (protectedPath && index === 1) calibrationNs = value.rawCalibrationNs;
   }
-  proveAbsent(adb);
-  return { warmups, samples, calibration };
+  proveAbsent(adb, identityValue);
+  return { warmups, samples, calibrationNs };
 }
 
 function campaign(adb, name, order, inputs, exactIdentity) {
+  sameBoot(adb, exactIdentity.bootIdHashPrefix);
   const collected = {};
   try {
-    for (const mode of order) collected[mode] = installAndCollect(adb, inputs[mode], mode === "protected");
-  } finally { proveAbsent(adb); }
-  return {
-    schemaVersion: 1, campaign: name, order,
+    for (const mode of order) {
+      collected[mode] = installAndCollect(adb, inputs[mode], mode === "protected", exactIdentity);
+      sameBoot(adb, exactIdentity.bootIdHashPrefix);
+    }
+  } finally { proveAbsent(adb, exactIdentity); }
+  if (!Array.isArray(collected.protected.calibrationNs) || collected.protected.calibrationNs.length !== 15) {
+    fail("protected retained ordinal 1 calibration differs");
+  }
+  return { schemaVersion: 1, campaign: name, order,
     warmups: { baseline: collected.baseline.warmups, protected: collected.protected.warmups },
     samples: { baseline: collected.baseline.samples, protected: collected.protected.samples },
-    calibrationNs: collected.protected.calibration, maximumProtectedProbeCount: 24, identity: exactIdentity,
-  };
+    calibrationNs: collected.protected.calibrationNs, maximumProtectedProbeCount: 24, identity: exactIdentity };
 }
 
 function main(options) {
@@ -136,6 +234,8 @@ function main(options) {
   if (!(output + path.sep).startsWith(allowed) || existsSync(output)) fail("output must be a new build/m3-10 directory");
   mkdirSync(output, { recursive: true });
   let complete = false;
+  let exactIdentity = null;
+  let deviceTouched = false;
   const adb = path.resolve(required(options, "adb"));
   try {
     for (const [name, option] of Object.entries(COPY_INPUTS)) {
@@ -143,7 +243,9 @@ function main(options) {
       if (!existsSync(source) || !statSync(source).isFile()) fail(`input is missing: ${name}`);
       copyFileSync(source, path.join(output, name));
     }
-    const exactIdentity = identity(options, adb);
+    preflight(options, output);
+    exactIdentity = identity(options, adb, output);
+    deviceTouched = true;
     const inputs = { baseline: path.join(output, "profile-baseline.apk"), protected: path.join(output, "profile-protected.apk") };
     const campaignA = campaign(adb, "A", ["baseline", "protected"], inputs, exactIdentity);
     const campaignB = campaign(adb, "B", ["protected", "baseline"], inputs, exactIdentity);
@@ -157,19 +259,25 @@ function main(options) {
       originalProtectedSha256: sha256File(path.join(output, "original-protected.apk")),
       profileBaselineSha256: sha256File(inputs.baseline), profileProtectedSha256: sha256File(inputs.protected),
       outerPoints: 16, innerPoints: 9, maximumProtectedProbeCount: 24,
-      profileVerificationSha256: sha256File(path.join(output, "profile-verification.json")) };
+      profileVerificationSha256: sha256File(path.join(output, "profile-verification.json")),
+      environmentLockSha256: sha256File(path.join(output, "api36-environment-lock.json")),
+      currentJobSha256: sha256File(path.join(output, "current-job.json")),
+      systemImageSourceSha256: sha256File(path.resolve(required(options, "system-image-source"))),
+      systemImageBuildPropSha256: sha256File(path.resolve(required(options, "system-image-build-prop"))),
+      emulatorSourceSha256: sha256File(path.resolve(required(options, "emulator-source"))) };
     writeFileSync(path.join(output, "probe-manifest.json"), `${JSON.stringify(probe, null, 2)}\n`);
-    proveAbsent(adb);
+    proveAbsent(adb, exactIdentity);
     writeFileSync(path.join(output, "cleanup.json"), `${JSON.stringify({ schemaVersion: 1, packagesAbsent: true,
       remoteFilesAbsent: true, temporarySigningAbsent: true }, null, 2)}\n`);
-    const files = [...Object.keys(COPY_INPUTS), "campaign-a.json", "campaign-b.json", "cleanup.json", "probe-manifest.json", "result.json"].sort();
+    const files = [...Object.keys(COPY_INPUTS), "profile-verification.json", "campaign-a.json", "campaign-b.json",
+      "cleanup.json", "probe-manifest.json", "result.json"].sort();
     const manifest = { schemaVersion: 1, identity: exactIdentity, files: Object.fromEntries(files.map((name) =>
       [name, { sha256: sha256File(path.join(output, name)), size: statSync(path.join(output, name)).size }])) };
     writeFileSync(path.join(output, "artifact-manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
     complete = true;
   } finally {
     let cleanupFailure;
-    try { proveAbsent(adb); } catch (error) { cleanupFailure = error; }
+    try { if (deviceTouched) proveAbsent(adb, exactIdentity); } catch (error) { cleanupFailure = error; }
     if (!complete || cleanupFailure) rmSync(output, { recursive: true, force: true });
     if (cleanupFailure) throw cleanupFailure;
   }

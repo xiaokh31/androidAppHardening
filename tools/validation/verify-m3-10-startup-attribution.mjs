@@ -22,12 +22,13 @@ const OWNERS = [
 ];
 const PACKAGE_FILES = [
   "artifact-manifest.json", "campaign-a.json", "campaign-b.json", "cleanup.json",
-  "cli.zip", "derivation-manifest.json", "distribution.zip", "original-baseline.apk",
+  "cli.zip", "derivation-manifest.json", "distribution.jar", "original-baseline.apk",
   "original-protected.apk", "observer.dex", "probe-manifest.json", "profile-baseline.apk",
   "profile-baseline-aligned.apk", "profile-baseline-unsigned.apk", "profile-lock.json",
   "profile-protected.apk", "profile-protected-aligned.apk", "profile-protected-unsigned.apk",
-  "profile-verification.json", "release-bootstrap.aar",
-  "release-fixture.apk", "release-native.aar", "release-policy.aar", "result.json",
+  "profile-verification.json", "release-artifact-lock.json", "api36-environment-lock.json",
+  "current-job.json", "release-bootstrap.aar", "release-fixture.apk", "release-native.aar",
+  "release-policy.aar", "result.json",
 ].sort();
 const MANIFESTED_FILES = PACKAGE_FILES.filter((name) => name !== "artifact-manifest.json");
 const OBSERVER = "M310StartupTimingObserver";
@@ -194,6 +195,58 @@ function recursiveArchiveContainsAny(file, needles) {
   return needles.some((needle) => recursiveArchiveContains(file, needle));
 }
 
+function validatePinnedFile(file, expected, label) {
+  exactKeys(expected, ["sizeBytes", "sha256"], label);
+  const resolved = path.resolve(file);
+  if (!existsSync(resolved) || !statSync(resolved).isFile() || lstatSync(resolved).isSymbolicLink() ||
+      statSync(resolved).size !== expected.sizeBytes || sha256File(resolved) !== expected.sha256) {
+    fail(`${label} identity differs`);
+  }
+  return resolved;
+}
+
+function validateReleaseArtifactLock(options) {
+  const lockFile = path.resolve(required(options, "release-lock"));
+  const lock = json(lockFile);
+  exactKeys(lock, ["schemaVersion", "taskId", "headSha", "artifacts", "androidTools"], "release-lock");
+  if (lock.schemaVersion !== 1 || lock.taskId !== "M3-10" || !/^[0-9a-f]{40}$/.test(lock.headSha)) {
+    fail("release lock identity differs");
+  }
+  const roles = ["release-bootstrap", "release-policy", "release-native", "release-fixture", "cli", "distribution"];
+  exactKeys(lock.artifacts, roles, "release-lock.artifacts");
+  for (const role of roles) {
+    const expected = lock.artifacts[role];
+    exactKeys(expected, ["type", "sizeBytes", "sha256", "requiredEntries"], `release-lock.${role}`);
+    const suffixes = { aar: ".aar", apk: ".apk", zip: ".zip", jar: ".jar" };
+    if (!Object.hasOwn(suffixes, expected.type) || !required(options, role).toLowerCase().endsWith(suffixes[expected.type])) {
+      fail(`${role} type differs`);
+    }
+    const file = validatePinnedFile(required(options, role), { sizeBytes: expected.sizeBytes, sha256: expected.sha256 },
+      `release-lock.${role}`);
+    const entries = readZip(file);
+    if (!Array.isArray(expected.requiredEntries) || expected.requiredEntries.length === 0 ||
+        new Set(expected.requiredEntries).size !== expected.requiredEntries.length ||
+        expected.requiredEntries.some((name) => !entries.has(name))) {
+      fail(`${role} required archive entries differ`);
+    }
+  }
+  exactKeys(lock.androidTools, ["buildToolsRevision", "sourceProperties", "dexdump", "apksignerJar", "zipalign", "d8Jar"], "release-lock.androidTools");
+  if (lock.androidTools.buildToolsRevision !== "36.1.0") fail("Android Build Tools revision differs");
+  if (options.dexdump) validatePinnedFile(options.dexdump, lock.androidTools.dexdump, "release-lock.dexdump");
+  if (options.apksigner) validatePinnedFile(options.apksigner, lock.androidTools.apksignerJar, "release-lock.apksignerJar");
+  if (options.zipalign) validatePinnedFile(options.zipalign, lock.androidTools.zipalign, "release-lock.zipalign");
+  if (options["d8-jar"]) validatePinnedFile(options["d8-jar"], lock.androidTools.d8Jar, "release-lock.d8Jar");
+  if (options["build-tools-source"]) {
+    const source = validatePinnedFile(options["build-tools-source"], lock.androidTools.sourceProperties,
+      "release-lock.sourceProperties");
+    if (!readFileSync(source, "utf8").split(/\r?\n/).includes("Pkg.Revision=36.1.0")) {
+      fail("Build Tools source.properties differs");
+    }
+  }
+  sensitiveScan(lock, "release artifact lock");
+  return { releaseLockSha256: sha256File(lockFile), releaseArtifacts: roles.length };
+}
+
 function replaceZipEntry(source, target, mutate) {
   const entries = readMutableEntries(readFileSync(source));
   if (entries.filter((entry) => entry.name === target).length !== 1) fail(`mutation target differs: ${target}`);
@@ -247,6 +300,69 @@ function identityOf(value, label) {
 
 function sameIdentity(left, right, label) {
   if (JSON.stringify(left) !== JSON.stringify(right)) fail(`${label} identity differs`);
+}
+
+function validateEnvironmentLock(lockFile, currentJobFile, identity) {
+  const lock = json(lockFile);
+  exactKeys(lock, ["schemaVersion", "environmentId", "systemImage", "emulator"], "environment-lock");
+  exactKeys(lock.systemImage, ["packageId", "revision", "archiveSha256", "sourcePropertiesSha256",
+    "buildPropSha256", "fingerprint", "sdk", "abi"], "environment-lock.systemImage");
+  exactKeys(lock.emulator, ["revision", "buildId", "archiveSha256", "sourcePropertiesSha256"],
+    "environment-lock.emulator");
+  if (lock.schemaVersion !== 1 || lock.environmentId !== ENVIRONMENT ||
+      lock.systemImage.packageId !== "system-images;android-36;default;x86_64" || lock.systemImage.revision !== "2" ||
+      lock.systemImage.sdk !== "36" || lock.systemImage.abi !== "x86_64" ||
+      lock.emulator.revision !== "37.1.11" || lock.emulator.buildId !== "15917651" ||
+      !/^Android\/sdk_phone64_x86_64\/emu64x:16\/[A-Z0-9.]+\/[0-9]+:userdebug\/test-keys$/.test(lock.systemImage.fingerprint)) {
+    fail("environment lock differs");
+  }
+  for (const [name, digest] of Object.entries({ imageArchive: lock.systemImage.archiveSha256,
+    imageSource: lock.systemImage.sourcePropertiesSha256, imageBuild: lock.systemImage.buildPropSha256,
+    emulatorArchive: lock.emulator.archiveSha256, emulatorSource: lock.emulator.sourcePropertiesSha256 })) {
+    if (!/^[0-9a-f]{64}$/.test(digest)) fail(`environment lock ${name} digest differs`);
+  }
+  const job = json(currentJobFile);
+  exactKeys(job, ["id", "run_id", "name", "status", "conclusion", "runner_name", "labels"], "current-job");
+  if (String(job.id) !== String(identity.jobId) || String(job.run_id) !== String(identity.runId) ||
+      job.name !== "m3-09-startup-attribution" || job.status !== "in_progress" || job.conclusion !== null ||
+      typeof job.runner_name !== "string" || job.runner_name.length === 0 || !Array.isArray(job.labels) ||
+      !job.labels.includes("ubuntu-24.04")) fail("current official GitHub job differs");
+  sensitiveScan(lock, "environment lock");
+  sensitiveScan(job, "current job");
+  return { lock, job };
+}
+
+function validateProfileVerification(value, files) {
+  const keys = ["schemaVersion", "status", "canonicalBaselineSha256", "canonicalProtectedSha256",
+    "profileBaselineSha256", "profileProtectedSha256", "profileSignerSha256Prefix", "profileLockSha256",
+    "profileV3Verified", "sameProfileSigner", "manifestBytesEqual", "baselineFactoryAbsent",
+    "authenticatedContainerVerified", "runtimeShareSlotsOnly", "exactProbeDexTransforms"];
+  exactKeys(value, keys, "profile-verification");
+  if (value.schemaVersion !== 1 || value.status !== "PASS" ||
+      value.canonicalBaselineSha256 !== sha256File(files.originalBaseline) ||
+      value.canonicalProtectedSha256 !== sha256File(files.originalProtected) ||
+      value.profileBaselineSha256 !== sha256File(files.profileBaseline) ||
+      value.profileProtectedSha256 !== sha256File(files.profileProtected) ||
+      value.profileLockSha256 !== sha256File(files.profileLock) ||
+      !/^[0-9a-f]{12}$/.test(value.profileSignerSha256Prefix)) fail("profile verification identity differs");
+  for (const key of keys.slice(9)) if (value[key] !== true) fail(`profile verification is incomplete: ${key}`);
+  const lock = json(files.profileLock);
+  if (value.profileSignerSha256Prefix !== lock.profileSigner.certificateSha256Prefix) {
+    fail("profile verification signer differs");
+  }
+  sensitiveScan(value, "profile verification");
+}
+
+function validateProfileReport(options) {
+  const report = path.resolve(required(options, "report"));
+  validateProfileVerification(json(report), {
+    originalBaseline: path.resolve(required(options, "original-baseline")),
+    originalProtected: path.resolve(required(options, "original-protected")),
+    profileBaseline: path.resolve(required(options, "profile-baseline")),
+    profileProtected: path.resolve(required(options, "profile-protected")),
+    profileLock: path.resolve(required(options, "profile-lock")),
+  });
+  return { profileVerificationSha256: sha256File(report), status: "PASS" };
 }
 
 function validateObservation(value, protectedPath, ordinal, label) {
@@ -353,6 +469,15 @@ function computeResult(campaignA, campaignB) {
     eligibleOwners,
     campaigns: { A: campaignA, B: campaignB },
   };
+}
+
+function validateResult(value, identity, computed) {
+  exactKeys(value, ["schemaVersion", "identity", "status", "selectedOwner", "eligibleOwners", "campaigns"], "result");
+  sameIdentity(identityOf(value.identity, "result.identity"), identity, "result");
+  if (value.schemaVersion !== 1 || JSON.stringify({ status: value.status, selectedOwner: value.selectedOwner,
+    eligibleOwners: value.eligibleOwners, campaigns: value.campaigns }) !== JSON.stringify(computed)) {
+    fail("result does not equal independently recomputed attribution");
+  }
 }
 
 function runDexdump(executable, apk, scratch, label) {
@@ -557,6 +682,7 @@ function validateSurface(options) {
     "Lah/runtime/profile/M310StartupTimingObserver;", "M3-10-PROFILE-SIGNER-V1",
   ];
   const releaseNames = ["release-bootstrap", "release-policy", "release-native", "release-fixture", "cli", "distribution"];
+  validateReleaseArtifactLock(options);
   for (const name of releaseNames) {
     if (!options[name]) fail(`--${name} is required`);
     if (recursiveArchiveContainsAny(path.resolve(options[name]), forbiddenSurface)) {
@@ -571,6 +697,13 @@ function validateApkPair(options) {
   const profile = path.resolve(required(options, "profile"));
   const role = required(options, "role");
   if (!new Set(["baseline", "protected"]).has(role)) fail("--role must be baseline or protected");
+  validateReleaseArtifactLock({
+    "release-lock": required(options, "release-lock"),
+    dexdump: required(options, "dexdump"),
+    "build-tools-source": required(options, "build-tools-source"),
+    ...Object.fromEntries(["release-bootstrap", "release-policy", "release-native", "release-fixture", "cli", "distribution"]
+      .map((name) => [name, required(options, name)])),
+  });
   const dexdump = path.resolve(required(options, "dexdump"));
   const scratch = path.resolve(required(options, "scratch"));
   rmSync(scratch, { recursive: true, force: true });
@@ -695,6 +828,12 @@ function validateProfileLock(options) {
       signed: path.resolve(required(options, `signed-${role}`)) });
   }
   const apksigner = path.resolve(required(options, "apksigner"));
+  validateReleaseArtifactLock({
+    "release-lock": required(options, "release-lock"), apksigner,
+    "build-tools-source": required(options, "build-tools-source"),
+    ...Object.fromEntries(["release-bootstrap", "release-policy", "release-native", "release-fixture", "cli", "distribution"]
+      .map((name) => [name, required(options, name)])),
+  });
   const baselineSigner = profileSigner(apksigner, path.resolve(required(options, "signed-baseline")));
   const protectedSigner = profileSigner(apksigner, path.resolve(required(options, "signed-protected")));
   if (baselineSigner.commitment !== protectedSigner.commitment ||
@@ -732,10 +871,19 @@ export function validatePackage(options) {
     "aligned-protected": path.join(root, "profile-protected-aligned.apk"),
     "signed-baseline": path.join(root, "profile-baseline.apk"),
     "signed-protected": path.join(root, "profile-protected.apk"),
+    "release-lock": path.join(root, "release-artifact-lock.json"),
+    "build-tools-source": required(options, "build-tools-source"),
+    "release-bootstrap": path.join(root, "release-bootstrap.aar"),
+    "release-policy": path.join(root, "release-policy.aar"),
+    "release-native": path.join(root, "release-native.aar"),
+    "release-fixture": path.join(root, "release-fixture.apk"),
+    cli: path.join(root, "cli.zip"),
+    distribution: path.join(root, "distribution.jar"),
     apksigner: required(options, "apksigner"),
   });
   Object.entries(documents).forEach(([name, value]) => sensitiveScan(value, name));
   const identity = identityOf(documents.result.identity, "result.identity");
+  validateEnvironmentLock(path.join(root, "api36-environment-lock.json"), path.join(root, "current-job.json"), identity);
   for (const key of ["campaign-a", "campaign-b", "artifact-manifest", "probe-manifest"]) {
     sameIdentity(identityOf(documents[key].identity, `${key}.identity`), identity, key);
   }
@@ -753,7 +901,8 @@ export function validatePackage(options) {
   const probe = documents["probe-manifest"];
   exactKeys(probe, ["schemaVersion", "identity", "originalBaselineSha256", "originalProtectedSha256",
     "profileBaselineSha256", "profileProtectedSha256", "outerPoints", "innerPoints",
-    "maximumProtectedProbeCount", "profileVerificationSha256"], "probe-manifest");
+    "maximumProtectedProbeCount", "profileVerificationSha256", "environmentLockSha256", "currentJobSha256",
+    "systemImageSourceSha256", "systemImageBuildPropSha256", "emulatorSourceSha256"], "probe-manifest");
   if (probe.schemaVersion !== 1 || probe.outerPoints !== 16 || probe.innerPoints !== 9 ||
       probe.maximumProtectedProbeCount !== MAX_PROTECTED_PROBES) fail("probe manifest fixed boundary differs");
   const apkHashes = {
@@ -766,12 +915,23 @@ export function validatePackage(options) {
   const profileVerificationFile = path.join(root, "profile-verification.json");
   if (probe.profileVerificationSha256 !== sha256File(profileVerificationFile)) fail("profile verification hash differs");
   const profileVerification = json(profileVerificationFile);
-  for (const key of ["profileV3Verified", "sameProfileSigner", "manifestBytesEqual", "baselineFactoryAbsent",
-    "authenticatedContainerVerified", "runtimeShareSlotsOnly", "exactProbeDexTransforms"]) {
-    if (profileVerification[key] !== true) fail(`profile verification is incomplete: ${key}`);
+  validateProfileVerification(profileVerification, {
+    originalBaseline: path.join(root, "original-baseline.apk"),
+    originalProtected: path.join(root, "original-protected.apk"),
+    profileBaseline: path.join(root, "profile-baseline.apk"),
+    profileProtected: path.join(root, "profile-protected.apk"),
+    profileLock: path.join(root, "profile-lock.json"),
+  });
+  sensitiveScan(json(path.join(root, "derivation-manifest.json")), "derivation manifest");
+  const environmentLock = json(path.join(root, "api36-environment-lock.json"));
+  if (probe.environmentLockSha256 !== sha256File(path.join(root, "api36-environment-lock.json")) ||
+      probe.currentJobSha256 !== sha256File(path.join(root, "current-job.json")) ||
+      probe.systemImageSourceSha256 !== environmentLock.systemImage.sourcePropertiesSha256 ||
+      probe.systemImageBuildPropSha256 !== environmentLock.systemImage.buildPropSha256 ||
+      probe.emulatorSourceSha256 !== environmentLock.emulator.sourcePropertiesSha256) {
+    fail("probe environment evidence differs");
   }
   const dexdump = path.resolve(required(options, "dexdump"));
-  if (!existsSync(dexdump) || !statSync(dexdump).isFile()) fail("pinned dexdump is missing");
   const scratch = path.resolve(options.scratch ?? path.join(root, "..", "scratch"));
   const allowedScratch = path.resolve(root, "..");
   if (!scratch.startsWith(allowedScratch + path.sep)) fail("scratch must remain beside the artifact root");
@@ -789,20 +949,16 @@ export function validatePackage(options) {
     "release-native": "release-native.aar",
     "release-fixture": "release-fixture.apk",
     cli: "cli.zip",
-    distribution: "distribution.zip",
+    distribution: "distribution.jar",
   };
-  validateSurface({ root: options.root ?? process.cwd(), ...Object.fromEntries(
+  validateSurface({ root: options.root ?? process.cwd(), "release-lock": path.join(root, "release-artifact-lock.json"),
+    dexdump, apksigner: required(options, "apksigner"), "build-tools-source": required(options, "build-tools-source"), ...Object.fromEntries(
     Object.entries(releaseMap).map(([key, name]) => [key, path.join(root, name)]),
   ) });
   const campaignA = validateCampaign(documents["campaign-a"], "A", ["baseline", "protected"], identity);
   const campaignB = validateCampaign(documents["campaign-b"], "B", ["protected", "baseline"], identity);
   const computed = computeResult(campaignA, campaignB);
-  exactKeys(documents.result, ["schemaVersion", "identity", "status", "selectedOwner", "eligibleOwners", "campaigns"], "result");
-  if (documents.result.schemaVersion !== 1 ||
-      JSON.stringify({ status: documents.result.status, selectedOwner: documents.result.selectedOwner,
-        eligibleOwners: documents.result.eligibleOwners, campaigns: documents.result.campaigns }) !== JSON.stringify(computed)) {
-    fail("result does not equal independently recomputed attribution");
-  }
+  validateResult(documents.result, identity, computed);
   validateCleanup(documents.cleanup);
   return { status: computed.status, selectedOwner: computed.selectedOwner, manifestSha256: sha256File(path.join(root, "artifact-manifest.json")) };
 }
@@ -903,9 +1059,9 @@ function sample(ordinal, totalDelta = 360_000_000, runtime = 300_000_000) {
   };
 }
 
-function campaign(name, identity, runtime = 300_000_000) {
-  const retained = Array.from({ length: 15 }, (_, index) => sample(index + 1, 360_000_000, runtime));
-  const warmups = Array.from({ length: 5 }, (_, index) => sample(index + 1, 360_000_000, runtime));
+function campaign(name, identity, runtime = 300_000_000, totalDelta = 360_000_000) {
+  const retained = Array.from({ length: 15 }, (_, index) => sample(index + 1, totalDelta, runtime));
+  const warmups = Array.from({ length: 5 }, (_, index) => sample(index + 1, totalDelta, runtime));
   return {
     schemaVersion: 1, campaign: name,
     order: name === "A" ? ["baseline", "protected"] : ["protected", "baseline"],
@@ -930,6 +1086,15 @@ function selfTest() {
   if (expected.status !== "ELIGIBLE" || expected.selectedOwner !== "RUNTIME_BOOTSTRAP") {
     fail("canonical attribution does not select Runtime");
   }
+  const validResult = { schemaVersion: 1, identity, ...expected };
+  validateResult(validResult, identity, expected);
+  const resultMutations = [
+    ["selected-owner", (value) => { value.selectedOwner = "P1_P2"; }],
+    ["eligible-owner-summary", (value) => { value.eligibleOwners = ["P1_P2"]; }],
+    ["owner-summary", (value) => { value.campaigns.A.ownerP50Ns.RUNTIME_BOOTSTRAP -= 1; }],
+  ].map(([name, mutate]) => {
+    const value = structuredClone(validResult); mutate(value); return expectRejected(name, () => validateResult(value, identity, expected));
+  });
   const mutations = [
     ["attempt", (value) => { value.identity.runAttempt = 2; }],
     ["order", (value) => { value.order.reverse(); }],
@@ -961,6 +1126,20 @@ function selfTest() {
   const multiA = validateCampaign(campaign("A", identity, 180_000_000), "A", ["baseline", "protected"], identity);
   const multiB = validateCampaign(campaign("B", identity, 180_000_000), "B", ["protected", "baseline"], identity);
   if (computeResult(multiA, multiB).status !== "UNATTRIBUTED") fail("multiple/residual owner case must be unattributed");
+  const thresholdCases = [
+    ["budget-threshold", campaign("A", identity, 250_000_000, 300_000_000), campaign("B", identity, 250_000_000, 300_000_000), true],
+    ["minimum-owner-threshold", campaign("A", identity, 29_999_999), campaign("B", identity, 29_999_999), false],
+    ["owner-share-threshold", campaign("A", identity, 170_000_000), campaign("B", identity, 170_000_000), false],
+    ["variation-threshold", campaign("A", identity, 300_000_000), campaign("B", identity, 260_000_000), false],
+  ];
+  const thresholdMutations = thresholdCases.map(([name, left, right, requireUnattributed]) => {
+    const result = computeResult(validateCampaign(left, "A", ["baseline", "protected"], identity),
+      validateCampaign(right, "B", ["protected", "baseline"], identity));
+    if ((requireUnattributed && result.status !== "UNATTRIBUTED") || result.eligibleOwners.includes("RUNTIME_BOOTSTRAP")) {
+      fail(`${name} did not fail closed`);
+    }
+    return name;
+  });
   if (rejected !== mutations.length) {
     fail(`self-test rejected ${rejected}/${mutations.length} mutations; accepted=${accepted.join(",")}`);
   }
@@ -968,6 +1147,35 @@ function selfTest() {
   const cleanupMutations = ["packagesAbsent", "remoteFilesAbsent", "temporarySigningAbsent"].map((key) =>
     expectRejected(`cleanup-${key}`, () => validateCleanup({ schemaVersion: 1, packagesAbsent: true,
       remoteFilesAbsent: true, temporarySigningAbsent: true, [key]: false })));
+
+  const environmentRoot = mkdtempSync(path.join(tmpdir(), "m310-environment-"));
+  const environmentValue = {
+    schemaVersion: 1, environmentId: ENVIRONMENT,
+    systemImage: { packageId: "system-images;android-36;default;x86_64", revision: "2",
+      archiveSha256: "1".repeat(64), sourcePropertiesSha256: "2".repeat(64), buildPropSha256: "3".repeat(64),
+      fingerprint: "Android/sdk_phone64_x86_64/emu64x:16/BE2A.250530.026.D1/13818094:userdebug/test-keys",
+      sdk: "36", abi: "x86_64" },
+    emulator: { revision: "37.1.11", buildId: "15917651", archiveSha256: "4".repeat(64),
+      sourcePropertiesSha256: "5".repeat(64) },
+  };
+  const currentJob = { id: 2002, run_id: 1001, name: "m3-09-startup-attribution", status: "in_progress",
+    conclusion: null, runner_name: "GitHub Actions 1", labels: ["ubuntu-24.04"] };
+  const environmentFile = path.join(environmentRoot, "environment.json");
+  const currentJobFile = path.join(environmentRoot, "job.json");
+  writeFileSync(environmentFile, JSON.stringify(environmentValue)); writeFileSync(currentJobFile, JSON.stringify(currentJob));
+  validateEnvironmentLock(environmentFile, currentJobFile, identity);
+  const environmentMutations = [
+    ["environment-fingerprint", (environment) => { environment.systemImage.fingerprint += "-changed"; }],
+    ["system-image-revision", (environment) => { environment.systemImage.revision = "3"; }],
+    ["emulator-version", (environment) => { environment.emulator.revision = "37.1.12"; }],
+    ["current-job-id", (_environment, job) => { job.id = 9999; }],
+    ["current-job-status", (_environment, job) => { job.status = "completed"; job.conclusion = "success"; }],
+  ].map(([name, mutate]) => {
+    const environment = structuredClone(environmentValue); const job = structuredClone(currentJob); mutate(environment, job);
+    writeFileSync(environmentFile, JSON.stringify(environment)); writeFileSync(currentJobFile, JSON.stringify(job));
+    return expectRejected(name, () => validateEnvironmentLock(environmentFile, currentJobFile, identity));
+  });
+  rmSync(environmentRoot, { recursive: true, force: true });
 
   const ledger = { taskKey: TASK_KEY, productTuple: identity.productTuple, headSha: identity.headSha,
     workflowPath: ".github/workflows/m3-09-startup-attribution.yml",
@@ -995,8 +1203,9 @@ function selfTest() {
     mutate(...values);
     return expectRejected(name, () => validateGithubModel(...values, identity, 4004));
   });
-  return { canonical: 1, rejectedMutations: rejected + cleanupMutations.length + githubMutations.length,
-    reportMutations: rejected, cleanupMutations, githubMutations, owner: expected.selectedOwner };
+  return { canonical: 1, rejectedMutations: rejected + cleanupMutations.length + githubMutations.length + resultMutations.length + environmentMutations.length,
+    reportMutations: rejected, resultMutations, thresholdMutations, cleanupMutations, environmentMutations, githubMutations,
+    owner: expected.selectedOwner };
 }
 
 function expectRejected(name, action) {
@@ -1046,13 +1255,22 @@ function profileSelfTest(options) {
         comparePair(path.resolve(original), mutated, role, dexdump, pairScratch);
       }));
     }
-    const surfaceOptions = { root: options.root ?? process.cwd() };
+    const surfaceOptions = { root: options.root ?? process.cwd(), "release-lock": required(options, "release-lock"),
+      dexdump: required(options, "dexdump"), apksigner: required(options, "apksigner"),
+      "build-tools-source": required(options, "build-tools-source") };
     for (const name of ["release-bootstrap", "release-policy", "release-native", "release-fixture", "cli", "distribution"]) {
       surfaceOptions[name] = path.resolve(required(options, name));
     }
     const polluted = path.join(scratch, "polluted-release.aar");
     writeFileSync(polluted, Buffer.concat([readFileSync(surfaceOptions["release-bootstrap"]), Buffer.from("\0M310StartupTimingObserver\0")]));
     mutations.push(expectRejected("binary-release-surface", () => validateSurface({ ...surfaceOptions, "release-bootstrap": polluted })));
+    const wrongType = path.join(scratch, "release-bootstrap.md");
+    writeFileSync(wrongType, readFileSync(path.resolve("README.md")));
+    mutations.push(expectRejected("release-artifact-type-and-identity", () =>
+      validateSurface({ ...surfaceOptions, "release-bootstrap": wrongType })));
+    const fakeDexdump = path.join(scratch, "dexdump.exe");
+    writeFileSync(fakeDexdump, "");
+    mutations.push(expectRejected("unpinned-dexdump", () => validateReleaseArtifactLock({ ...surfaceOptions, dexdump: fakeDexdump })));
     mutations.push(expectRejected("sensitive-host-path", () => sensitiveScan("C:\\Users\\redacted\\secret", "mutation")));
   } finally {
     rmSync(scratch, { recursive: true, force: true });
@@ -1084,6 +1302,7 @@ try {
   else if (command === "profile-self-test") result = profileSelfTest(options);
   else if (command === "surface") result = validateSurface(options);
   else if (command === "profile-lock") result = validateProfileLock(options);
+  else if (command === "profile-report") result = validateProfileReport(options);
   else if (command === "apk-pair") result = validateApkPair(options);
   else if (command === "signed-copy") result = validateSignedCopy(options);
   else if (command === "summarize") result = summarize(options);

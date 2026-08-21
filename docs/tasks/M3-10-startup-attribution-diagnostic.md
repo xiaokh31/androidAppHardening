@@ -69,6 +69,8 @@ M3-09 accepted the attribution model. M3-11 then fixed the canonical originals t
 - Baseline receives no synthetic Factory. No candidate `m310Base` Activity, manifest entry or keep rule may enter the canonical original comparison.
 - Each campaign retains exactly fifteen ordinals after five warmups. P50 is sorted element eight; omissions, replacements, duplicates, reordering and retries are forbidden.
 - Nine signed owner contributions reconcile per ordinal before percentiles. Eligibility remains 300 ms reproduction, positive 30 ms minimum, at most 10% cross-campaign variation and at least 50% share in both campaigns; zero or multiple owners produce `UNATTRIBUTED`.
+- The profile, Release/tool and API 36 environment locks are repository-tracked immutable inputs. The runner copies only those reviewed paths, and the package verifier requires byte equality plus their reviewed SHA-256 values; callers cannot substitute lock files.
+- Before the first install, the runner reads page 1 of the official GitHub Actions jobs API itself with the workflow token, requires a complete `<100`-job page and exactly one current `m3-09-startup-attribution` job for `GITHUB_RUN_ID`, derives `jobId` from that response, and archives both the raw page and its normalized selected job. A caller-provided job JSON is not accepted.
 - Canonical workflows are added only after an exact implementation freeze passes independent review `P0=0/P1=0/P2=0`. Invalid evidence consumes eligibility for the tuple and cannot be replaced.
 
 ## Public Interfaces
@@ -100,6 +102,7 @@ M3-09 accepted the attribution model. M3-11 then fixed the canonical originals t
 - Independent review approves the derivation/signing/security model and returns `P0=0/P1=0/P2=0` before either workflow exists.
 - Product Release AARs, fixture APKs, CLI and distribution contain no observer, probe call, diagnostic keep rule or activation surface.
 - The verifier accepts one canonical four-APK package and rejects fixed APK/DEX/signature/manifest/resource/native/hash/event/calibration/identity/cleanup mutations.
+- The package identity requires the exact product tuple `883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd`, all seven profile-verification booleans including v3, the three tracked lock bytes, and the archived official current-jobs page.
 - The first-and-only diagnostic yields exactly one eligible owner or terminal `UNATTRIBUTED`; invalid execution blocks without replacement.
 - Terminal evidence proves exact head, run/job/attempt/boot, task key, canonical product tuple, artifact bytes, pagination and uniqueness.
 - README, INDEX, ADR, evidence and HandOff are synchronized; M3-05 remains blocked pending any separately reviewed owner remediation.
@@ -110,7 +113,7 @@ M3-09 accepted the attribution model. M3-11 then fixed the canonical originals t
 - Probe/tracing boundary tests for every required timestamp, order, zero duration and reconciliation.
 - Exact four-APK ZIP/DEX/manifest/resource/native/signature/security comparison, including rebuilt-original and same-semantics/different-bytes rejection.
 - Two-campaign cardinality/order/P50/P95, owner arithmetic, thresholds and zero/multiple-owner mutations.
-- Raw calibration/event, Release pollution, GitHub history/pagination, sensitive output, artifact and cleanup mutations.
+- Raw calibration/event, Release pollution, GitHub history/pagination, sensitive output, artifact and cleanup mutations, including every try/debug/parameter field, every p/h adjacency family, nonzero/malformed `pm path`, uninstall failure and remote-list failure/residue.
 
 ## Required Evidence
 

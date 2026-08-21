@@ -100,14 +100,16 @@ function verifyTrackedDesign() {
     if (!preparation.includes(phrase)) fail(`profile preparation missing ${phrase}`);
   }
   for (const phrase of ["validateProfileLock", "runDexdump", "recursiveArchiveContainsAny", "validateGithubEvidence",
-    "validateReleaseArtifactLock", "validateProfileVerification", "validateEnvironmentLock", "EXPECTED_EVENTS"]) {
+    "validateReleaseArtifactLock", "validateProfileVerification", "validateEnvironmentLock", "EXPECTED_EVENTS",
+    "requireTrackedLockCopy", "result.productTuple !== PRODUCT_TUPLE", "keys.slice(8)"]) {
     if (!evidenceVerifier.includes(phrase)) fail(`evidence verifier missing ${phrase}`);
   }
-  for (const phrase of ["preflight(options, output)", "exactIdentity = identity(options, adb, output)",
-    "sameBoot(adb", "before.status !== 0", "absent.status !== 0", "rawCalibrationNs", "current-job.json"]) {
+  for (const phrase of ["preflight(options, output)", "exactIdentity = await identity(options, adb, output)",
+    "sameBoot(adb", "fetchOfficialJobsPage", "current-jobs-page-1.json", "packagePaths(", "requireUninstallSuccess(",
+    "requireRemoteAbsence(", "rawCalibrationNs", "TRACKED_LOCK_INPUTS"]) {
     if (!runner.includes(phrase)) fail(`diagnostic runner missing ${phrase}`);
   }
-  if (runner.lastIndexOf("preflight(options, output)") > runner.lastIndexOf("exactIdentity = identity(options, adb, output)")) {
+  if (runner.lastIndexOf("preflight(options, output)") > runner.lastIndexOf("exactIdentity = await identity(options, adb, output)")) {
     fail("diagnostic preflight occurs after device identity/install boundary");
   }
   if (runner.includes("nearestRank(")) fail("diagnostic runner must not aggregate raw calibration samples");

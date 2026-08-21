@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "taskId": "M3-10",
-  "headSha": "19fd56d0068e5416b390703c24a2c1d100d27a1b",
+  "productionSourceHeadSha": "19fd56d0068e5416b390703c24a2c1d100d27a1b",
   "artifacts": {
     "release-bootstrap": {
       "type": "aar",

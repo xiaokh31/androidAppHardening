@@ -23,6 +23,7 @@ import org.jf.dexlib2.iface.reference.MethodReference
 import org.jf.dexlib2.immutable.ImmutableExceptionHandler
 import org.jf.dexlib2.immutable.ImmutableMethod
 import org.jf.dexlib2.immutable.ImmutableMethodImplementation
+import org.jf.dexlib2.immutable.ImmutableMethodParameter
 import org.jf.dexlib2.immutable.ImmutableTryBlock
 import org.jf.dexlib2.immutable.debug.ImmutableLineNumber
 import org.jf.dexlib2.immutable.debug.ImmutableStartLocal
@@ -79,32 +80,77 @@ object M310CanonicalProfileVerifier {
 
     private fun metadataSelfTest() {
         fun method(
+            tryStart: Int = 0,
+            tryCount: Int = 1,
             handlerAddress: Int = 0,
             lineAddress: Int = 0,
             lineNumber: Int = 7,
             localName: String = "value",
+            localType: String = "I",
+            localSignature: String? = null,
+            parameterName: String = "input",
         ): Method = ImmutableMethod(
-            "Ltest/M310;", "sample", emptyList(), "V", 0x8, emptySet(), emptySet(),
+            "Ltest/M310;", "sample", listOf(ImmutableMethodParameter("I", emptySet(), parameterName)), "V", 0x8,
+            emptySet(), emptySet(),
             ImmutableMethodImplementation(
-                1,
-                listOf(ImmutableInstruction10x(Opcode.RETURN_VOID)),
-                listOf(ImmutableTryBlock(0, 1, listOf(ImmutableExceptionHandler("Ljava/lang/Exception;", handlerAddress)))),
-                listOf(ImmutableLineNumber(lineAddress, lineNumber), ImmutableStartLocal(0, 0, localName, "I", null)),
+                2,
+                listOf(ImmutableInstruction10x(Opcode.NOP), ImmutableInstruction10x(Opcode.RETURN_VOID)),
+                listOf(ImmutableTryBlock(tryStart, tryCount, listOf(ImmutableExceptionHandler("Ljava/lang/Exception;", handlerAddress)))),
+                listOf(ImmutableLineNumber(lineAddress, lineNumber),
+                    ImmutableStartLocal(0, 0, localName, localType, localSignature)),
             ),
         )
         val baseline = method()
         val mutations = linkedMapOf(
+            "try-start" to method(tryStart = 1),
+            "try-end" to method(tryCount = 2),
             "try-handler-target" to method(handlerAddress = 1),
             "debug-address" to method(lineAddress = 1),
             "debug-line" to method(lineNumber = 8),
             "debug-local-name" to method(localName = "changed"),
+            "debug-local-type" to method(localType = "J"),
+            "debug-local-signature" to method(localSignature = "Ljava/lang/Integer;"),
+            "parameter-name" to method(parameterName = "changed"),
         )
         for ((name, candidate) in mutations) {
             val unchanged = trySignature(baseline, false) == trySignature(candidate, false) &&
-                debugSignature(baseline, false) == debugSignature(candidate, false)
+                debugSignature(baseline, false) == debugSignature(candidate, false) &&
+                baseline.parameters.map { Triple(it.type, it.name, annotationSignature(it.annotations)) } ==
+                    candidate.parameters.map { Triple(it.type, it.name, annotationSignature(it.annotations)) }
             require(!unchanged) { "metadata mutation was accepted: $name" }
         }
-        println("M3-10 metadata self-test PASS mutations=${mutations.keys.joinToString(",")}")
+        probeAdjacencySelfTest()
+        println("M3-10 metadata self-test PASS mutations=${mutations.keys.joinToString(",")},all-probe-adjacency")
+    }
+
+    private fun probeAdjacencySelfTest() {
+        fun rejected(name: String, tokens: List<String>, expected: List<String>) {
+            val failure = runCatching { requireProbeAdjacencyTokens(tokens, expected, name) }.exceptionOrNull()
+            require(failure != null) { "probe adjacency mutation was accepted: $name" }
+        }
+        requireProbeAdjacencyTokens(listOf("observer:p1", "opcode:NOP", "observer:p2", "opcode:RETURN_VOID"),
+            listOf("p1", "p2"), "p-entry-exit")
+        rejected("p-entry", listOf("opcode:NOP", "observer:p1", "observer:p2", "opcode:RETURN_VOID"), listOf("p1", "p2"))
+        rejected("p-exit", listOf("observer:p1", "observer:p2", "opcode:NOP", "opcode:RETURN_VOID"), listOf("p1", "p2"))
+        requireProbeAdjacencyTokens(listOf("observer:p15", "opcode:RETURN_VOID"), listOf("p15"), "p15")
+        rejected("p15-entry", listOf("opcode:NOP", "observer:p15", "opcode:RETURN_VOID"), listOf("p15"))
+        requireProbeAdjacencyTokens(listOf("observer:h0", "observer:h8", "opcode:RETURN_OBJECT"), listOf("h0", "h8"), "h0-h8")
+        rejected("h0-entry", listOf("opcode:NOP", "observer:h0", "observer:h8", "opcode:RETURN_OBJECT"), listOf("h0", "h8"))
+        rejected("h8-exit", listOf("observer:h0", "observer:h8", "opcode:NOP", "opcode:RETURN_OBJECT"), listOf("h0", "h8"))
+        val guard = listOf("observer:h1", "method:Lah/runtime/guard/RuntimeSignerVerifier;->verify",
+            "method:Lah/runtime/guard/RuntimeStartupGuard;->sha256", "observer:h2",
+            "method:Lah/runtime/guard/IntegrityChecks;->verifyPreReadSigner", "observer:h3",
+            "method:Lah/runtime/loader/PayloadRuntime;->openVerified", "observer:h4",
+            "method:Lah/runtime/MemoryControls;->apply", "observer:h5", "observer:h6", "opcode:RETURN_OBJECT")
+        requireProbeAdjacencyTokens(guard, listOf("h1", "h2", "h3", "h4", "h5", "h6"), "guard")
+        for ((point, position) in mapOf("h1" to 1, "h2" to 2, "h3" to 4, "h4" to 6, "h5" to 8, "h6" to 11)) {
+            val mutated = guard.toMutableList().apply {
+                if (point == "h1" || point == "h6") add(position, "opcode:NOP") else this[position] = "opcode:NOP"
+            }
+            rejected("$point-adjacency", mutated, listOf("h1", "h2", "h3", "h4", "h5", "h6"))
+        }
+        requireProbeAdjacencyTokens(listOf("field:IPUT_OBJECT:Ltest;->state", "observer:h7"), listOf("h7"), "h7")
+        rejected("h7-adjacency", listOf("field:IPUT_OBJECT:Ltest;->state", "opcode:NOP", "observer:h7"), listOf("h7"))
     }
 
     private fun verify(
@@ -358,17 +404,29 @@ object M310CanonicalProfileVerifier {
 
     private fun requireProbeAdjacency(method: Method, expectedPoints: List<String>, label: String) {
         val instructions = requireNotNull(method.implementation).instructions.toList()
-        fun reference(index: Int): MethodReference? =
-            (instructions.getOrNull(index) as? ReferenceInstruction)?.reference as? MethodReference
-        fun observer(index: Int): String? = reference(index)?.takeIf { it.definingClass == OBSERVER }?.name
-        val positions = instructions.indices.filter { observer(it) != null }
+        val tokens = instructions.map { instruction ->
+            val reference = (instruction as? ReferenceInstruction)?.reference
+            when {
+                reference is MethodReference && reference.definingClass == OBSERVER -> "observer:${reference.name}"
+                reference is MethodReference -> "method:${reference.definingClass}->${reference.name}"
+                reference is org.jf.dexlib2.iface.reference.FieldReference ->
+                    "field:${instruction.opcode.name}:${reference.definingClass}->${reference.name}"
+                else -> "opcode:${instruction.opcode.name}"
+            }
+        }
+        requireProbeAdjacencyTokens(tokens, expectedPoints, label)
+    }
+
+    private fun requireProbeAdjacencyTokens(tokens: List<String>, expectedPoints: List<String>, label: String) {
+        fun observer(index: Int): String? = tokens.getOrNull(index)?.takeIf { it.startsWith("observer:") }?.substringAfter(':')
+        val positions = tokens.indices.filter { observer(it) != null }
         require(positions.mapNotNull(::observer) == expectedPoints) { "$label probe order differs" }
         when {
             expectedPoints.singleOrNull() == "p15" -> require(positions.single() == 0) { "$label p15 is not the entry boundary" }
             expectedPoints == listOf("h7") -> {
-                val previous = instructions.getOrNull(positions.single() - 1)
-                val field = (previous as? ReferenceInstruction)?.reference as? org.jf.dexlib2.iface.reference.FieldReference
-                require(previous?.opcode == Opcode.IPUT_OBJECT && field?.name == "state") { "$label h7 is not adjacent to READY publication" }
+                require(tokens.getOrNull(positions.single() - 1)?.let {
+                    it.startsWith("field:IPUT_OBJECT:") && it.endsWith("->state")
+                } == true) { "$label h7 is not adjacent to READY publication" }
             }
             expectedPoints.first() in setOf("h1", "h2", "h3", "h4", "h5", "h6") -> {
                 val targets = mapOf(
@@ -380,25 +438,26 @@ object M310CanonicalProfileVerifier {
                 )
                 for ((point, target) in targets) {
                     val position = positions.single { observer(it) == point }
+                    val expected = "method:${target.first}->${target.second}"
                     if (point == "h1") {
-                        require(reference(position + 1)?.let { it.definingClass == target.first && it.name == target.second } == true) {
+                        require(tokens.getOrNull(position + 1) == expected) {
                             "$label $point is not immediately before its target"
                         }
                     } else {
-                        val priorReferences = (maxOf(0, position - 2) until position).mapNotNull(::reference)
-                        require(priorReferences.lastOrNull()?.let { it.definingClass == target.first && it.name == target.second } == true) {
+                        val priorReferences = (maxOf(0, position - 2) until position).map { tokens[it] }
+                            .filter { it.startsWith("method:") }
+                        require(priorReferences.lastOrNull() == expected) {
                             "$label $point is not immediately after its target/result"
                         }
                     }
                 }
                 val h6 = positions.single { observer(it) == "h6" }
-                require(instructions.getOrNull(h6 + 1)?.opcode == Opcode.RETURN_OBJECT) { "$label h6 is not the success return boundary" }
+                require(tokens.getOrNull(h6 + 1) == "opcode:RETURN_OBJECT") { "$label h6 is not the success return boundary" }
             }
             else -> {
                 require(positions.first() == 0) { "$label entry probe is not first" }
                 val exitPoint = expectedPoints.last()
-                val returnOpcodes = setOf(Opcode.RETURN, Opcode.RETURN_OBJECT, Opcode.RETURN_VOID)
-                val returns = instructions.indices.filter { instructions[it].opcode in returnOpcodes }
+                val returns = tokens.indices.filter { tokens[it] in setOf("opcode:RETURN", "opcode:RETURN_OBJECT", "opcode:RETURN_VOID") }
                 require(returns.isNotEmpty() && returns.all { index -> observer(index - 1) == exitPoint }) {
                     "$label exit probe is not adjacent to every return"
                 }

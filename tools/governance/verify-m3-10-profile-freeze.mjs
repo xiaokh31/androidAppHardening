@@ -90,6 +90,11 @@ function verifyTrackedDesign() {
     "authenticatedContainerVerified",
     "runtimeShareSlotsOnly",
     "requireProbeCalls",
+    "requireProbeAdjacencyTokens",
+    "opcode:MOVE_RESULT_OBJECT",
+    "h2-overload",
+    "h7-wrong-owner",
+    "h7-wrong-value",
     "VerifiedScheme.V3",
   ]) if (!verifier.includes(phrase)) fail(`verifier missing ${phrase}`);
   for (const phrase of ["payload-baseline", "payload-protected", "shell", "h0", "h8", "p15"]) {

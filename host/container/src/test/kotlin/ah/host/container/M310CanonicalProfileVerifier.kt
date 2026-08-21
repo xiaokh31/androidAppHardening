@@ -19,6 +19,8 @@ import org.jf.dexlib2.iface.debug.RestartLocal
 import org.jf.dexlib2.iface.debug.SetSourceFile
 import org.jf.dexlib2.iface.debug.StartLocal
 import org.jf.dexlib2.iface.instruction.ReferenceInstruction
+import org.jf.dexlib2.iface.instruction.OneRegisterInstruction
+import org.jf.dexlib2.iface.instruction.TwoRegisterInstruction
 import org.jf.dexlib2.iface.reference.MethodReference
 import org.jf.dexlib2.immutable.ImmutableExceptionHandler
 import org.jf.dexlib2.immutable.ImmutableMethod
@@ -137,20 +139,34 @@ object M310CanonicalProfileVerifier {
         requireProbeAdjacencyTokens(listOf("observer:h0", "observer:h8", "opcode:RETURN_OBJECT"), listOf("h0", "h8"), "h0-h8")
         rejected("h0-entry", listOf("opcode:NOP", "observer:h0", "observer:h8", "opcode:RETURN_OBJECT"), listOf("h0", "h8"))
         rejected("h8-exit", listOf("observer:h0", "observer:h8", "opcode:NOP", "opcode:RETURN_OBJECT"), listOf("h0", "h8"))
-        val guard = listOf("observer:h1", "method:Lah/runtime/guard/RuntimeSignerVerifier;->verify",
-            "method:Lah/runtime/guard/RuntimeStartupGuard;->sha256", "observer:h2",
-            "method:Lah/runtime/guard/IntegrityChecks;->verifyPreReadSigner", "observer:h3",
-            "method:Lah/runtime/loader/PayloadRuntime;->openVerified", "observer:h4",
-            "method:Lah/runtime/MemoryControls;->apply", "observer:h5", "observer:h6", "opcode:RETURN_OBJECT")
+        val guard = listOf("observer:h1",
+            "method:Lah/runtime/guard/RuntimeSignerVerifier;->verify(Landroid/content/pm/ApplicationInfo;)Lah/runtime/guard/RuntimeSignerVerifier\$Measurement;",
+            "opcode:MOVE_RESULT_OBJECT",
+            "method:Lah/runtime/guard/RuntimeStartupGuard;->sha256(Ljava/lang/String;)[B", "opcode:MOVE_RESULT_OBJECT", "observer:h2",
+            "method:Lah/runtime/guard/IntegrityChecks;->verifyPreReadSigner(Lah/runtime/loader/UntrustedPayloadBinding;[B)V", "observer:h3",
+            "method:Lah/runtime/loader/PayloadRuntime;->openVerified(Ljava/lang/ClassLoader;Landroid/content/pm/ApplicationInfo;[B)Lah/runtime/loader/LoadedPayload;",
+            "opcode:MOVE_RESULT_OBJECT", "observer:h4",
+            "method:Lah/runtime/MemoryControls;->apply(Lah/runtime/loader/LoadedPayload;Lah/runtime/risk/RiskReportV1;)Lah/runtime/MemoryProtectionReport;",
+            "observer:h5", "observer:h6", "opcode:RETURN_OBJECT")
         requireProbeAdjacencyTokens(guard, listOf("h1", "h2", "h3", "h4", "h5", "h6"), "guard")
-        for ((point, position) in mapOf("h1" to 1, "h2" to 2, "h3" to 4, "h4" to 6, "h5" to 8, "h6" to 11)) {
-            val mutated = guard.toMutableList().apply {
-                if (point == "h1" || point == "h6") add(position, "opcode:NOP") else this[position] = "opcode:NOP"
-            }
-            rejected("$point-adjacency", mutated, listOf("h1", "h2", "h3", "h4", "h5", "h6"))
+        val guardPoints = listOf("h1", "h2", "h3", "h4", "h5", "h6")
+        for ((point, position) in mapOf("h1" to 1, "h2" to 5, "h3" to 7, "h4" to 10, "h5" to 12, "h6" to 14)) {
+            rejected("$point-gap", guard.toMutableList().apply { add(position, "opcode:NOP") }, guardPoints)
         }
-        requireProbeAdjacencyTokens(listOf("field:IPUT_OBJECT:Ltest;->state", "observer:h7"), listOf("h7"), "h7")
-        rejected("h7-adjacency", listOf("field:IPUT_OBJECT:Ltest;->state", "opcode:NOP", "observer:h7"), listOf("h7"))
+        rejected("h1-overload", guard.toMutableList().apply {
+            this[1] = "method:Lah/runtime/guard/RuntimeSignerVerifier;->verify(Ljava/lang/String;)V"
+        }, guardPoints)
+        rejected("h2-overload", guard.toMutableList().apply {
+            this[3] = "method:Lah/runtime/guard/RuntimeStartupGuard;->sha256([B)[B"
+        }, guardPoints)
+        val ready = "field:SGET_OBJECT:r9:Lah/runtime/bootstrap/HardeningBootstrap\$State;->READY:Lah/runtime/bootstrap/HardeningBootstrap\$State;"
+        val state = "field:IPUT_OBJECT:r9,r11:Lah/runtime/bootstrap/HardeningBootstrap\$Coordinator;->state:Lah/runtime/bootstrap/HardeningBootstrap\$State;"
+        requireProbeAdjacencyTokens(listOf(ready, state, "observer:h7"), listOf("h7"), "h7")
+        rejected("h7-gap", listOf(ready, state, "opcode:NOP", "observer:h7"), listOf("h7"))
+        rejected("h7-wrong-owner", listOf(ready, state.replace("HardeningBootstrap\$Coordinator", "Other"), "observer:h7"), listOf("h7"))
+        rejected("h7-wrong-type", listOf(ready, state.replace("HardeningBootstrap\$State;", "Ljava/lang/Object;"), "observer:h7"), listOf("h7"))
+        rejected("h7-wrong-value", listOf(ready.replace("->READY", "->FAILED"), state, "observer:h7"), listOf("h7"))
+        rejected("h7-wrong-register", listOf(ready.replace("r9:", "r8:"), state, "observer:h7"), listOf("h7"))
     }
 
     private fun verify(
@@ -406,12 +422,19 @@ object M310CanonicalProfileVerifier {
         val instructions = requireNotNull(method.implementation).instructions.toList()
         val tokens = instructions.map { instruction ->
             val reference = (instruction as? ReferenceInstruction)?.reference
+            val opcodeName = instruction.opcode.name.uppercase().replace('-', '_')
+            val registers = when (instruction) {
+                is TwoRegisterInstruction -> "r${instruction.registerA},r${instruction.registerB}"
+                is OneRegisterInstruction -> "r${instruction.registerA}"
+                else -> "-"
+            }
             when {
                 reference is MethodReference && reference.definingClass == OBSERVER -> "observer:${reference.name}"
-                reference is MethodReference -> "method:${reference.definingClass}->${reference.name}"
+                reference is MethodReference -> "method:${reference.definingClass}->${reference.name}(" +
+                    reference.parameterTypes.joinToString("") + ")${reference.returnType}"
                 reference is org.jf.dexlib2.iface.reference.FieldReference ->
-                    "field:${instruction.opcode.name}:${reference.definingClass}->${reference.name}"
-                else -> "opcode:${instruction.opcode.name}"
+                    "field:$opcodeName:$registers:${reference.definingClass}->${reference.name}:${reference.type}"
+                else -> "opcode:$opcodeName"
             }
         }
         requireProbeAdjacencyTokens(tokens, expectedPoints, label)
@@ -424,31 +447,33 @@ object M310CanonicalProfileVerifier {
         when {
             expectedPoints.singleOrNull() == "p15" -> require(positions.single() == 0) { "$label p15 is not the entry boundary" }
             expectedPoints == listOf("h7") -> {
-                require(tokens.getOrNull(positions.single() - 1)?.let {
-                    it.startsWith("field:IPUT_OBJECT:") && it.endsWith("->state")
-                } == true) { "$label h7 is not adjacent to READY publication" }
+                val position = positions.single()
+                val ready = Regex("^field:SGET_OBJECT:r([0-9]+):Lah/runtime/bootstrap/HardeningBootstrap\\\$State;->READY:Lah/runtime/bootstrap/HardeningBootstrap\\\$State;$")
+                    .matchEntire(tokens.getOrNull(position - 2) ?: "")
+                val state = Regex("^field:IPUT_OBJECT:r([0-9]+),r([0-9]+):Lah/runtime/bootstrap/HardeningBootstrap\\\$Coordinator;->state:Lah/runtime/bootstrap/HardeningBootstrap\\\$State;$")
+                    .matchEntire(tokens.getOrNull(position - 1) ?: "")
+                require(ready != null && state != null && ready.groupValues[1] == state.groupValues[1]) {
+                    "$label h7 is not the exact READY publication"
+                }
             }
             expectedPoints.first() in setOf("h1", "h2", "h3", "h4", "h5", "h6") -> {
                 val targets = mapOf(
-                    "h1" to ("Lah/runtime/guard/RuntimeSignerVerifier;" to "verify"),
-                    "h2" to ("Lah/runtime/guard/RuntimeStartupGuard;" to "sha256"),
-                    "h3" to ("Lah/runtime/guard/IntegrityChecks;" to "verifyPreReadSigner"),
-                    "h4" to ("Lah/runtime/loader/PayloadRuntime;" to "openVerified"),
-                    "h5" to ("Lah/runtime/MemoryControls;" to "apply"),
+                    "h1" to "method:Lah/runtime/guard/RuntimeSignerVerifier;->verify(Landroid/content/pm/ApplicationInfo;)Lah/runtime/guard/RuntimeSignerVerifier\$Measurement;",
+                    "h2" to "method:Lah/runtime/guard/RuntimeStartupGuard;->sha256(Ljava/lang/String;)[B",
+                    "h3" to "method:Lah/runtime/guard/IntegrityChecks;->verifyPreReadSigner(Lah/runtime/loader/UntrustedPayloadBinding;[B)V",
+                    "h4" to "method:Lah/runtime/loader/PayloadRuntime;->openVerified(Ljava/lang/ClassLoader;Landroid/content/pm/ApplicationInfo;[B)Lah/runtime/loader/LoadedPayload;",
+                    "h5" to "method:Lah/runtime/MemoryControls;->apply(Lah/runtime/loader/LoadedPayload;Lah/runtime/risk/RiskReportV1;)Lah/runtime/MemoryProtectionReport;",
                 )
                 for ((point, target) in targets) {
                     val position = positions.single { observer(it) == point }
-                    val expected = "method:${target.first}->${target.second}"
-                    if (point == "h1") {
-                        require(tokens.getOrNull(position + 1) == expected) {
-                            "$label $point is not immediately before its target"
-                        }
-                    } else {
-                        val priorReferences = (maxOf(0, position - 2) until position).map { tokens[it] }
-                            .filter { it.startsWith("method:") }
-                        require(priorReferences.lastOrNull() == expected) {
-                            "$label $point is not immediately after its target/result"
-                        }
+                    val exact = when (point) {
+                        "h1" -> tokens.getOrNull(position + 1) == target
+                        "h2", "h4" -> tokens.getOrNull(position - 2) == target &&
+                            tokens.getOrNull(position - 1) == "opcode:MOVE_RESULT_OBJECT"
+                        else -> tokens.getOrNull(position - 1) == target
+                    }
+                    require(exact) {
+                        "$label $point is not at its exact invoke/result boundary"
                     }
                 }
                 val h6 = positions.single { observer(it) == "h6" }

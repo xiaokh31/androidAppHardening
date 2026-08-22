@@ -108,6 +108,8 @@ M3-02 的持续 fuzz 机器锁位于 `tools/validation/m3-02-fuzz-toolchain.json
 
 ## 6. GitHub Actions
 
+M3-12 将已复核、不可再生成的 M3-10 synthetic profile package 保留为 GitHub prerelease 的唯一 asset。机器锁固定 repository、release ID `374769776`、asset ID `524507375`、target commit、asset name/size、GitHub digest、archive SHA-256 `21816d2a843bb5c59902224c7bf786d546d52b4a5b2d1168ca0c449a2ca27964` 与十个 member hash。GitHub API 报告 `immutable=false`；因此这是“按 ID 和内容验证的只读消费”而不是平台不可删除承诺。CI 只授予 `contents: read`，按 numeric asset endpoint 下载，并在 emulator 或安装前完成全部验证。404、删除、替换、ID/size/digest/hash/member 漂移均永久失败关闭，不允许 tag/name fallback、Actions cache 或重新生成。
+
 - 第三方 Action 使用完整 commit SHA 固定，不使用浮动 tag。
 - 注释记录对应上游 release tag，便于审计。
 - workflow 权限默认只读，按 job 最小化提升。

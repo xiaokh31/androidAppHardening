@@ -52,6 +52,7 @@ const expectedTasks = [
   "M3-09-startup-attribution-boundary-contract.md",
   "M3-10-startup-attribution-diagnostic.md",
   "M3-11-canonical-startup-artifact-contract.md",
+  "M3-12-profile-package-retention.md",
 ];
 
 const taskHeadings = [
@@ -206,6 +207,8 @@ if (!fs.existsSync(indexFile)) {
             ? "70"
           : id === "M3-11"
             ? "71"
+          : id === "M3-12"
+            ? "75"
           : String(expectedTasks.indexOf(expectedFile) + 1);
     if (!issueMatch || issueMatch[1] !== issueMatch[2] || issueMatch[1] !== expectedIssue) {
       errors.push(`docs/tasks/INDEX.md: ${id} must link its GitHub Issue`);
@@ -356,6 +359,12 @@ const m311Text = readUtf8(
 const m311LockText = readUtf8(
   path.join(root, "docs", "evidence", "M3-11", "canonical-artifact-lock.json"),
 );
+const m312Text = readUtf8(
+  path.join(root, "docs", "tasks", "M3-12-profile-package-retention.md"),
+);
+const m312LockText = readUtf8(
+  path.join(root, "docs", "evidence", "M3-12", "profile-package-retention-lock.json"),
+);
 for (const [text, label] of [
   [m310Text, "docs/tasks/M3-10-startup-attribution-diagnostic.md"],
   [m311Text, "docs/tasks/M3-11-canonical-startup-artifact-contract.md"],
@@ -375,6 +384,15 @@ for (const phrase of [
 ]) requirePhrase(m311LockText, phrase, "docs/evidence/M3-11/canonical-artifact-lock.json");
 for (const phrase of ["M3-10", "M3-11", "artifact `9260244215`"]) {
   requirePhrase(m305Text, phrase, "docs/tasks/M3-05-size-startup-memory-benchmarks.md");
+}
+for (const [text, label] of [
+  [m310Text, "docs/tasks/M3-10-startup-attribution-diagnostic.md"],
+  [m312Text, "docs/tasks/M3-12-profile-package-retention.md"],
+  [m312LockText, "docs/evidence/M3-12/profile-package-retention-lock.json"],
+]) {
+  for (const phrase of ["M3-12", "524507375", "21816d2a843bb5c59902224c7bf786d546d52b4a5b2d1168ca0c449a2ca27964"]) {
+    requirePhrase(text, phrase, label);
+  }
 }
 
 const m401Text = readUtf8(
@@ -421,6 +439,9 @@ for (const tool of [
   "tools/governance/verify-m3-08-startup-stability-contract.mjs",
   "tools/governance/verify-m3-09-startup-attribution-contract.mjs",
   "tools/governance/verify-m3-11-canonical-artifact-contract.mjs",
+  "tools/governance/verify-m3-12-profile-retention.mjs",
+  "tools/validation/create-m3-12-profile-package.mjs",
+  "tools/validation/fetch-m3-12-profile-package.mjs",
 ]) {
   if (!fs.existsSync(path.join(root, tool))) errors.push(`Missing governance tool: ${tool}`);
 }
@@ -459,6 +480,7 @@ const expectedAdrs = [
   "docs/adr/0014-test-only-high-benchmark-boundary.md",
   "docs/adr/0015-startup-performance-measurement-stability.md",
   "docs/adr/0016-end-to-end-startup-attribution-boundary.md",
+  "docs/adr/0017-profile-package-retention-boundary.md",
 ];
 const adrHeadings = [
   "## Status",

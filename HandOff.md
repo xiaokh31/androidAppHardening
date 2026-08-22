@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260822-103805
-updated_at: 2026-08-22T10:38:05+08:00
+handoff_id: HO-20260822-104044
+updated_at: 2026-08-22T10:40:44+08:00
 updated_by: /root
 state: active
 source_branch: docs/m3-12-profile-package-retention
@@ -21,7 +21,7 @@ Retain the already-reviewed M3-10 profile package as one fixed, content-verified
 
 ## Current State
 
-- M3-12 is active on Issue #75 and unique draft PR #76. Three rejected freezes recorded `P0=0/P1=2/P2=3`, then `P0=0/P1=1/P2=0`, then `P0=0/P1=0/P2=1`; fourth independent review accepts implementation `3415e2826054b0ce31c32e8f934e973cb1a85cd0` and evidence `4cc8736d1de1f5b0d71ff5790bd9333849acccd8` with `P0=0/P1=0/P2=0`. Published head `dcd538a2449d0c0a52b380b2c4c3f9b40d51a02b` triggered required Build `32546688332` and Governance `32546688290`; automatically triggered fuzz `32546688305`, KVM `32546688304` and equivalence `32546688264` were immediately cancelled as out of scope. Governance failed only because the historical M3-08 validator still required the superseded `M3-11 → M3-10` INDEX sequence instead of approved `M3-11 → M3-12 → M3-10`. The one-line static compatibility correction passes M3-08 syntax, contract, 45 package mutations, project governance and diff checks locally; no M3-12 security logic or retained byte changed. Build remains in progress. No profile was regenerated, no signing secret exists, and no workflow or Android environment ran locally.
+- M3-12 is active on Issue #75 and unique draft PR #76. Three rejected freezes recorded `P0=0/P1=2/P2=3`, then `P0=0/P1=1/P2=0`, then `P0=0/P1=0/P2=1`; fourth independent review accepts implementation `3415e2826054b0ce31c32e8f934e973cb1a85cd0` and evidence `4cc8736d1de1f5b0d71ff5790bd9333849acccd8` with `P0=0/P1=0/P2=0`. Published head `dcd538a2449d0c0a52b380b2c4c3f9b40d51a02b` triggered required Build `32546688332` and Governance `32546688290`; automatically triggered fuzz `32546688305`, KVM `32546688304` and equivalence `32546688264` were immediately cancelled as out of scope. Governance failed only because the historical M3-08 validator still required the superseded `M3-11 → M3-10` INDEX sequence instead of approved `M3-11 → M3-12 → M3-10`. The one-line correction at `839d7405c4dfae777b37018db0602ca50577b634` passes bounded independent review with `P0=0/P1=0/P2=0`, M3-08 syntax/positive/self-test, M3-12 verification, project governance, strict HandOff and diff/status checks. It changes no M3-12 security logic, retained byte, workflow, product, fixture, benchmark or distribution input. Replacement exact-head Build/Governance are pending publication. No profile was regenerated, no signing secret exists, and no workflow or Android environment ran locally.
 - M2-07 Ubuntu runner-lock maintenance is merged and complete. Official immutable ref `ubuntu24/20260816.277` remains fixed to commit `3b5f596ffecb076aa5f3c3ded95b145f6daeb016`; manifest blob `0023ec0741a8c708f9ba2e2bcfc1ee0d9fcb219c` is `15740` bytes with SHA-256 `50384bd5268bb03ae44ab93d621d9d9f20b30f8f0c8155ed49333a57c31a7d88`. Initial freeze `e8ed50a89c52fb8e66516ab6c4a4775c6fac1124` was rejected with `P0=0/P1=2/P2=0`; remediation freeze `da37f47958522986fd25086368dc5598193e4906` and evidence successor `81a1e5b6f9467d4ec1ae6b880c4be27024dde488` passed complete and incremental independent review with `P0=0/P1=0/P2=0`. Final PR head `2f48d5eae74dc753ff8b3370852ee23f2989e402` passed Ubuntu/Windows Build `32330793427` and Governance `32330793521`; PR #74 was made ready and merged with expected-head protection as `77e5148c5aa035fd450adffe9a09111d6b67f973`, and Issue #73 closed. Post-merge Build `32333998709` passed both platforms. Initial main Governance `32333998706` failed only because the merged HandOff still named the source branch; this coordination snapshot corrects it to `main`. Out-of-scope KVM/equivalence/fuzz were cancelled; no Runtime, Host, APK, benchmark, emulator or physical-device input changed.
 - M3-11 is complete on `main`. Final PR head `b29c8c50a99ae1b4ea35926bd12337563c0dfe49` retained the all-zero independent review and passed required Ubuntu/Windows Build and Governance. PR #72 was converted to ready and merged with expected-head protection as `98e652b3017df0255ba8be4869513698c18c9ce6`; Issue #71 closed. Post-merge coordination head `445ea066cc3514b62ceede7beff87721bd9ab2c5` passed Windows Build and Ubuntu/Windows Governance, while Ubuntu Build `32323762679` correctly failed closed before project build on then-unreviewed image `ubuntu24/20260816.277.1`. M2-07 PR #74 has now independently reviewed and fixed that exact image, closing the toolchain provenance blocker without rerunning M3-11. No benchmark, KVM, emulator, ARM or canonical diagnostic ran. M3-10 and M3-05 remain blocked by their own contracts.
 - M3-09 is complete on `main`. Final PR head `613e61ac8d3e74f60219ee0d462fae635c3a663d` passed independent bounded review with `P0=0/P1=0/P2=0`, exact-head Ubuntu/Windows Build `32192033540`, and Governance `32192033589`. PR #69 was made ready and merged with expected-head protection as `886b49f001936edc5d1a090e14e626d6e8e3f3ab`; Issue #68 closed. ADR 0016 is accepted and the M3-09 validator remains synthetic-contract-only. No Runtime, Host, fixture, benchmark or diagnostic workflow implementation changed; no Gradle, KVM, emulator, ARM, benchmark, M3-05 or M2-10 retry ran. M3-05 PR #63 remains blocked until a separate ADR 0016 implementation task and any selected owner remediation complete.
@@ -430,6 +430,18 @@ Retain the already-reviewed M3-10 profile package as one fixed, content-verified
 - M2-02 第三实现层已完成本地检查点：同一 `sourceDir` 只读文件映射、OS 只读 DEX commit、generation+slot 类型化 JNI handle、同 handle `AHMD` 认证 metadata、精确五 JNI 方法、Java primitive/finally 交接窗口、幂等 `LoadedPayload` owner，以及 M0-05 等价 Native 搜索路径和三参数 API 29 `InMemoryDexClassLoader` 已接通。Java 17 编译/lint、NDK 四 ABI warnings-as-errors 与离线根 `assembleRelease check` 284-task 均 PASS，四个 ELF 都含唯一 104-byte alloc/read-only `.ah_share_v1`，未启动设备或模拟器。证据更新于 `docs/evidence/M2-02/local-validation.md`；任务仍未完成或发布，下一步仅补 failure injection、Host sanitizer/fuzz/OOM 与已授权 KVM/arm64 验收，不启动 M2-03。
 
 ## Verification Evidence
+
+### M3-12 CI-only correction independent review
+
+- task_id: M3-12
+- git_commit: 839d7405c4dfae777b37018db0602ca50577b634
+- command: bounded parent-to-candidate review; Node syntax; M3-08 positive/base-ref and self-test; M3-12 verifier; project Governance; strict HandOff; diff/status checks
+- exit_code: 0
+- environment: Windows 10.0.19045 x64; Node.js v24.12.0; no network, Gradle, device, KVM, fuzz or benchmark
+- timestamp: 2026-08-22T10:40:44+08:00
+- artifact: `docs/evidence/M3-12/ci-fix-read-only-review.md`
+- sha256: b6a571d60194e52444cc3734f57965c12ab6776684b21d0eb8fcee2fbd96046e
+- result: PASS; P0=0/P1=0/P2=0, the one-line M3-08 dependency sequence matches the approved M3-11 to M3-12 to M3-10 graph without weakening any M3-08 or M3-12 predicate
 
 ### M2-07 Ubuntu runner-lock initial freeze and review
 
@@ -1901,8 +1913,8 @@ M3-10 workflow creation remains blocked until the current M3-12 freeze passes in
 
 ## Ordered Next Actions
 
-1. Commit/push the one-line M3-08 dependency-chain compatibility correction and run replacement exact-head Ubuntu/Windows Build/Governance; cancel all out-of-scope workflows.
-2. Record exact-head CI and run a bounded independent review of the CI-only increment if executable governance input changed.
+1. Commit/push the accepted CI-only review evidence successor and run replacement exact-head Ubuntu/Windows Build/Governance; cancel all out-of-scope workflows.
+2. Record exact-head CI without changing executable scope; keep the unique API 36 workflow absent.
 3. Request ready/expected-head merge only after required checks and review pass; after M3-12 merges, M3-10 may separately incorporate the lock and add its one-shot API 36 workflow.
 
 ## Relevant Files and Artifacts
@@ -1932,6 +1944,7 @@ M3-10 workflow creation remains blocked until the current M3-12 freeze passes in
 - `docs/evidence/M3-12/read-only-review-3.md`
 - `docs/evidence/M3-12/review-3-remediation-local.md`
 - `docs/evidence/M3-12/read-only-review-4.md`
+- `docs/evidence/M3-12/ci-fix-read-only-review.md`
 - `tools/validation/create-m3-12-profile-package.mjs`
 - `tools/validation/fetch-m3-12-profile-package.mjs`
 - `tools/validation/m3-12-security-scan.mjs`

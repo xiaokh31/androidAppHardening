@@ -1,27 +1,27 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260822-124209
-updated_at: 2026-08-22T12:42:09+08:00
+handoff_id: HO-20260822-125158
+updated_at: 2026-08-22T12:51:58+08:00
 updated_by: /root
-state: active
-source_branch: docs/m3-12-profile-package-retention
-base_commit: 9d3fc3a4ae17d14f84d223b9dbb5f92016814f1a
+state: ready
+source_branch: main
+base_commit: c1d81fe6c4257efecf8cbb0b23aa724034f6b3a1
 working_tree: clean
 current_milestone: M3
-active_task: M3-12
-next_owner: /root
+active_task: NONE
+next_owner: unassigned
 ---
 
 # Project HandOff
 
 ## Objective
 
-Retain the already-reviewed M3-10 profile package as one fixed, content-verified remote asset without regeneration, and independently review M3-12 before any unique API 36 workflow is created.
+Keep the merged M3-12 profile package retention boundary stable and leave M3-10 as the next separately resumed task; do not create or execute its unique API 36 workflow in this coordination step.
 
 ## Current State
 
-- M3-12 is active on Issue #75 and unique draft PR #76. Three rejected freezes recorded `P0=0/P1=2/P2=3`, then `P0=0/P1=1/P2=0`, then `P0=0/P1=0/P2=1`; fourth independent review accepts implementation `3415e2826054b0ce31c32e8f934e973cb1a85cd0` and evidence `4cc8736d1de1f5b0d71ff5790bd9333849acccd8` with `P0=0/P1=0/P2=0`. Published head `dcd538a2449d0c0a52b380b2c4c3f9b40d51a02b` triggered required Build `32546688332` and Governance `32546688290`; automatically triggered fuzz `32546688305`, KVM `32546688304` and equivalence `32546688264` were immediately cancelled as out of scope. Governance failed because historical M3-08 and M3-09 validators independently retained the superseded `M3-11 → M3-10` INDEX sequence instead of approved `M3-11 → M3-12 → M3-10`. The M3-08 correction at `839d7405c4dfae777b37018db0602ca50577b634` and the bounded M3-09 synchronization after replacement head `3a14c612de2e65108e7ac6f6e3f19567a807b06e` each passed independent review with `P0=0/P1=0/P2=0`. Reviewed `main@28493ca0c572b2af45a107e0e77010f6ebe878c2` was then merged normally as `5a8c3a018cf875bc6c45b29a6bef05094143c58e`; exact-head Build `32551730109` and Governance `32551730123` passed Ubuntu/Windows, while KVM `32551730120`, fuzz `32551730134` and equivalence `32551730155` were cancelled as out of scope. The current evidence-only successor records those results without changing executable or retained-package input; its own final Build/Governance must pass before ready/merge authorization is requested. No profile was regenerated, no signing secret exists, and no workflow or Android environment ran locally.
+- M3-12 is merged and complete. Fourth independent review accepted implementation `3415e2826054b0ce31c32e8f934e973cb1a85cd0` and evidence `4cc8736d1de1f5b0d71ff5790bd9333849acccd8` with `P0=0/P1=0/P2=0`; the reviewed-main merge head `5a8c3a018cf875bc6c45b29a6bef05094143c58e` passed Build `32551730109` and Governance `32551730123`. Final evidence-only head `95a42b556374c92191d2511894fb2613afc187b9` passed Build `32552469351` and Governance `32552469492` on Ubuntu/Windows. PR #76 was converted to ready and merged with expected-head protection as `c1d81fe6c4257efecf8cbb0b23aa724034f6b3a1`; Issue #75 closed. The fixed release ID `374769776`, asset ID `524507375`, archive SHA-256 `21816d2a...27964` and ten member identities remain the sole accepted source. No profile was regenerated, no signing secret was retained, and no device, KVM, fuzz, equivalence, benchmark, API 36 diagnostic, ARM or M3-05 work ran.
 - M2-07 Windows runner maintenance is merged and complete. Final expected head `88f1c11ab137867a6b8ea07af5c136a4fdfbea0d` retained the all-zero independent review and passed Build `32549204828` plus Governance `32549204792` on Ubuntu/Windows. PR #78 was converted to ready and merged with expected-head protection as `28493ca0c572b2af45a107e0e77010f6ebe878c2`; Issue #77 closed. The reviewed `main` is now merged into PR #76 so only its final exact-head Build/Governance can resume. No device, KVM, fuzz, equivalence, benchmark, API 36 diagnostic, ARM or M3-05 work is authorized by this transition.
 - M2-07 Ubuntu runner-lock maintenance is merged and complete. Official immutable ref `ubuntu24/20260816.277` remains fixed to commit `3b5f596ffecb076aa5f3c3ded95b145f6daeb016`; manifest blob `0023ec0741a8c708f9ba2e2bcfc1ee0d9fcb219c` is `15740` bytes with SHA-256 `50384bd5268bb03ae44ab93d621d9d9f20b30f8f0c8155ed49333a57c31a7d88`. Initial freeze `e8ed50a89c52fb8e66516ab6c4a4775c6fac1124` was rejected with `P0=0/P1=2/P2=0`; remediation freeze `da37f47958522986fd25086368dc5598193e4906` and evidence successor `81a1e5b6f9467d4ec1ae6b880c4be27024dde488` passed complete and incremental independent review with `P0=0/P1=0/P2=0`. Final PR head `2f48d5eae74dc753ff8b3370852ee23f2989e402` passed Ubuntu/Windows Build `32330793427` and Governance `32330793521`; PR #74 was made ready and merged with expected-head protection as `77e5148c5aa035fd450adffe9a09111d6b67f973`, and Issue #73 closed. Post-merge Build `32333998709` passed both platforms. Initial main Governance `32333998706` failed only because the merged HandOff still named the source branch; this coordination snapshot corrects it to `main`. Out-of-scope KVM/equivalence/fuzz were cancelled; no Runtime, Host, APK, benchmark, emulator or physical-device input changed.
 - M3-11 is complete on `main`. Final PR head `b29c8c50a99ae1b4ea35926bd12337563c0dfe49` retained the all-zero independent review and passed required Ubuntu/Windows Build and Governance. PR #72 was converted to ready and merged with expected-head protection as `98e652b3017df0255ba8be4869513698c18c9ce6`; Issue #71 closed. Post-merge coordination head `445ea066cc3514b62ceede7beff87721bd9ab2c5` passed Windows Build and Ubuntu/Windows Governance, while Ubuntu Build `32323762679` correctly failed closed before project build on then-unreviewed image `ubuntu24/20260816.277.1`. M2-07 PR #74 has now independently reviewed and fixed that exact image, closing the toolchain provenance blocker without rerunning M3-11. No benchmark, KVM, emulator, ARM or canonical diagnostic ran. M3-10 and M3-05 remain blocked by their own contracts.
@@ -208,8 +208,8 @@ Retain the already-reviewed M3-10 profile package as one fixed, content-verified
 | M3-08 | `/root` | `main` | done | M3-01, M3-07 | PR #65 merged; independent review and post-merge main Build/Governance complete |
 | M3-09 | `/root` | `main` | done | M3-08 | PR #69 merged as `886b49f`; Issue #68 closed; independent review and exact-head Ubuntu/Windows Build/Governance passed |
 | M3-11 | `/root` | `main` | done | M3-09 | PR #72 merged with expected-head protection as `98e652b3017df0255ba8be4869513698c18c9ce6`; Issue #71 closed |
-| M3-12 | `/root` | `docs/m3-12-profile-package-retention` | in_progress | M3-11 | Run final exact-head Build/Governance after merging reviewed `main`; keep the M3-10 workflow absent |
-| M3-10 | `runtime-security-agent` | `feat/m3-10-startup-attribution-diagnostic` | blocked | M3-09, M3-11, M3-12 | Implementation review is all-zero; wait for M3-12 retention merge before adding the unique API 36 workflow |
+| M3-12 | `/root` | `main` | done | M3-11 | PR #76 merged as `c1d81fe`; Issue #75 closed; all-zero review, immutable asset lock and final dual-platform Build/Governance passed |
+| M3-10 | `runtime-security-agent` | `feat/m3-10-startup-attribution-diagnostic` | planned | M3-09, M3-11, M3-12 | Separately resume from the reviewed implementation, incorporate the merged retention lock, then add the unique API 36 workflow |
 | M3-05 | `/root` | `chore/m3-05-performance-benchmarks` | blocked | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08, M3-09, M3-10 | Keep PR #63 blocked until M3-10 attribution and any selected owner remediation complete |
 | M3-03 | `/root` | `main` | done | M0-03, M1-05, M1-06, M2-06, M3-01 | PR #55 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | done | M2-02 | PR #54 merged; exact regression, ASan/UBSan, dual-platform Build/Governance and independent review passed |
@@ -1935,13 +1935,13 @@ Retain the already-reviewed M3-10 profile package as one fixed, content-verified
 
 ## Blockers and Required Approvals
 
-M3-12 remains draft until this evidence-only successor passes exact-head Ubuntu/Windows Build and Governance and the user separately authorizes ready/expected-head merge. M3-10 workflow creation remains blocked until M3-12 merges; API 36 eligibility, ARM and M3-05 remain unconsumed/unexecuted.
+None
 
 ## Ordered Next Actions
 
-1. Commit and push this evidence-only successor, then run only exact-head Ubuntu/Windows Build and Governance; cancel KVM/equivalence/fuzz.
-2. If both required workflows pass, request ready/expected-head merge authorization for PR #76 without changing executable scope.
-3. After M3-12 merges, M3-10 may separately incorporate the lock and add its unique API 36 workflow; ARM and M3-05 remain blocked.
+1. Keep M3-12 merged bytes and numeric asset identity unchanged.
+2. On a separate explicit M3-10 resume, merge current `main`, incorporate the M3-12 lock/verifier and add the one authorized API 36 workflow.
+3. Do not start ARM or M3-05 until the unique M3-10 diagnostic and its attribution decision complete.
 
 ## Relevant Files and Artifacts
 
@@ -1986,7 +1986,7 @@ M3-12 remains draft until this evidence-only successor passes exact-head Ubuntu/
 - `tools/validation/m3-12-security-scan.mjs`
 - `tools/governance/verify-m3-12-profile-retention.mjs`
 - GitHub prerelease release ID `374769776`, asset ID `524507375`; Issue #75
-- Draft PR #76; reviewed-main merge head `5a8c3a018cf875bc6c45b29a6bef05094143c58e`; final Build `32551730109`; final Governance `32551730123`; cancelled KVM `32551730120`, fuzz `32551730134`, equivalence `32551730155`
+- PR #76 final head `95a42b556374c92191d2511894fb2613afc187b9`; Build `32552469351`; Governance `32552469492`; merge commit `c1d81fe6c4257efecf8cbb0b23aa724034f6b3a1`; Issue #75 closed
 - `docs/tasks/M3-11-canonical-startup-artifact-contract.md`
 - `docs/tasks/M3-10-startup-attribution-diagnostic.md`
 - `docs/evidence/M3-11/canonical-artifact-lock.json`
@@ -2327,6 +2327,8 @@ M3-12 remains draft until this evidence-only successor passes exact-head Ubuntu/
 - [x] 对当前 clean 冻结提交完成新的独立 parser/security 复核；P0/P1/P2 全零。
 
 ## Handoff Sign-off
+
+- `/root` verified M3-12 final head `95a42b556374c92191d2511894fb2613afc187b9`, all-zero independent review, final Ubuntu/Windows Build `32552469351`, Governance `32552469492` and the user's expected-head authorization. PR #76 merged normally as `c1d81fe6c4257efecf8cbb0b23aa724034f6b3a1`, Issue #75 closed, and this main coordination changes only completion status/README/HandOff. M3-10 has not started and its unique API 36 workflow remains absent.
 
 - `/root` verified M3-12 reviewed-main merge head `5a8c3a018cf875bc6c45b29a6bef05094143c58e`, exact-head Ubuntu/Windows Build `32551730109`, Governance `32551730123`, local strict HandOff/project Governance/M3-12 24/12/24 mutation verifier and the all-zero independent review chain. This evidence-only successor changes no retained package, verifier, product or workflow input; PR #76 remains draft until its final exact-head Build/Governance pass and the user grants ready/merge authorization. No device, KVM, fuzz, equivalence, benchmark, API 36 diagnostic, ARM or M3-05 work ran.
 

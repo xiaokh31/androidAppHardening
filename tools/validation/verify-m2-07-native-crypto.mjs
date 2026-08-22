@@ -21,6 +21,7 @@ const ubuntuWorkflowPaths = [
   ".github/workflows/m0-05-linux-kvm.yml",
   ".github/workflows/cross-platform-equivalence.yml",
 ];
+const windowsWorkflowPath = ".github/workflows/build.yml";
 
 const expectedLock = {
   schema_version: 1,
@@ -93,7 +94,7 @@ const expectedLock = {
   },
   android_abis: ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"],
   ci_toolchains: {
-    reviewed_at: "2026-08-20",
+    reviewed_at: "2026-08-22",
     ubuntu: {
       runs_on: "ubuntu-24.04",
       image_os: "ubuntu24",
@@ -126,20 +127,31 @@ const expectedLock = {
         {
           image_version: "20260728.188.1",
           manifest_ref: "win25-vs2026/20260728.188",
+          visual_studio_version: "18.8.12023.21",
+          visual_studio_x64_tools: "18.8.11901.359",
         },
         {
           image_version: "20260803.193.1",
           manifest_ref: "win25-vs2026/20260803.193",
+          visual_studio_version: "18.8.12023.21",
+          visual_studio_x64_tools: "18.8.11901.359",
         },
         {
           image_version: "20260810.198.2",
           manifest_ref: "win25-vs2026/20260810.198",
+          visual_studio_version: "18.8.12023.21",
+          visual_studio_x64_tools: "18.8.11901.359",
+        },
+        {
+          image_version: "20260818.207.1",
+          manifest_ref: "win25-vs2026/20260818.207",
+          visual_studio_version: "18.9.12112.369",
+          visual_studio_x64_tools: "18.9.12009.112",
         },
       ],
       clang_cl_version: "20.1.8",
-      visual_studio_version: "18.8.12023.21",
-      visual_studio_x64_tools: "18.8.11901.359",
       cl_runtime_version: "19.51.36252",
+      windows_sdk_version: "10.0.26100.0",
     },
   },
 };
@@ -200,6 +212,22 @@ function verifyUbuntuWorkflowBindings(workflows) {
   if (countExact(equivalence, "runner_manifest_ref=%s\\n") !== 1 ||
       countExact(equivalence, "runner_manifest_ref=$($reviewedUbuntuImages[$env:ImageVersion])") !== 1) {
     fail("cross-platform equivalence does not emit both reviewed manifest refs exactly once");
+  }
+}
+
+function verifyWindowsWorkflowBinding(text) {
+  const required = [
+    "$reviewedImages[[string] $reviewedImage.image_version] = $reviewedImage",
+    "$selectedImage = $reviewedImages[$env:ImageVersion]",
+    "runner_manifest_ref=$($selectedImage.manifest_ref)",
+    "Assert-ExactVersion ([string] $instance.installationVersion) ([string] $selectedImage.visual_studio_version) \"Visual Studio\"",
+    "Assert-ExactVersion $x64ToolsVersion ([string] $selectedImage.visual_studio_x64_tools) \"Visual Studio x64 tools component\"",
+    "Windows Kits/10/Include/$($toolchainLock.windows_sdk_version)",
+  ];
+  for (const needle of required) {
+    if (countExact(text, needle) !== 1) {
+      fail(`Windows workflow binding missing or duplicated: ${needle}`);
+    }
   }
 }
 
@@ -325,6 +353,8 @@ const ubuntuWorkflows = Object.fromEntries(await Promise.all(ubuntuWorkflowPaths
   await readFile(path.join(root, ...workflowPath.split("/")), "utf8"),
 ])));
 verifyUbuntuWorkflowBindings(ubuntuWorkflows);
+const windowsWorkflow = await readFile(path.join(root, ...windowsWorkflowPath.split("/")), "utf8");
+verifyWindowsWorkflowBinding(windowsWorkflow);
 const archivePath = path.join(root, ...lock.local_paths.archive.split("/"));
 const archiveBytes = await readFile(archivePath).catch(() => null);
 if (archiveBytes === null) {
@@ -430,14 +460,15 @@ if (selfTest) {
     ["Windows runner label", (candidate) => { candidate.ci_toolchains.windows.runs_on = "windows-latest"; }],
     ["Windows image OS", (candidate) => { candidate.ci_toolchains.windows.image_os = "changed"; }],
     ["Windows reviewed image", (candidate) => { candidate.ci_toolchains.windows.reviewed_images[0].image_version += ".changed"; }],
-    ["Windows manifest ref", (candidate) => { candidate.ci_toolchains.windows.reviewed_images[2].manifest_ref += ".changed"; }],
+    ["Windows manifest ref", (candidate) => { candidate.ci_toolchains.windows.reviewed_images[3].manifest_ref += ".changed"; }],
     ["Windows reviewed image removal", (candidate) => { candidate.ci_toolchains.windows.reviewed_images.pop(); }],
-    ["Windows unreviewed image addition", (candidate) => { candidate.ci_toolchains.windows.reviewed_images.push({ image_version: "20990101.1.1", manifest_ref: "win25-vs2026/20990101.1" }); }],
+    ["Windows unreviewed image addition", (candidate) => { candidate.ci_toolchains.windows.reviewed_images.push({ image_version: "20990101.1.1", manifest_ref: "win25-vs2026/20990101.1", visual_studio_version: "changed", visual_studio_x64_tools: "changed" }); }],
     ["Windows reviewed image order", (candidate) => { candidate.ci_toolchains.windows.reviewed_images.reverse(); }],
     ["Windows clang-cl", (candidate) => { candidate.ci_toolchains.windows.clang_cl_version = "changed"; }],
-    ["Windows Visual Studio", (candidate) => { candidate.ci_toolchains.windows.visual_studio_version = "changed"; }],
-    ["Windows x64 tools", (candidate) => { candidate.ci_toolchains.windows.visual_studio_x64_tools = "changed"; }],
+    ["Windows Visual Studio", (candidate) => { candidate.ci_toolchains.windows.reviewed_images[3].visual_studio_version = "changed"; }],
+    ["Windows x64 tools", (candidate) => { candidate.ci_toolchains.windows.reviewed_images[3].visual_studio_x64_tools = "changed"; }],
     ["Windows cl runtime", (candidate) => { candidate.ci_toolchains.windows.cl_runtime_version = "changed"; }],
+    ["Windows SDK", (candidate) => { candidate.ci_toolchains.windows.windows_sdk_version = "changed"; }],
   ];
   for (const [label, mutate] of mutations) {
     const candidate = structuredClone(lock);
@@ -475,6 +506,27 @@ if (selfTest) {
     const candidate = structuredClone(ubuntuWorkflows);
     mutate(candidate);
     await expectRejected(() => Promise.resolve(verifyUbuntuWorkflowBindings(candidate)), label);
+  }
+  const windowsWorkflowMutations = [
+    ["Windows selected image binding", (candidate) => candidate.replace(
+      "$selectedImage = $reviewedImages[$env:ImageVersion]",
+      "$selectedImage = $null",
+    )],
+    ["Windows per-image Visual Studio binding", (candidate) => candidate.replace(
+      "$selectedImage.visual_studio_version",
+      "$toolchainLock.visual_studio_version",
+    )],
+    ["Windows per-image x64 tools binding", (candidate) => candidate.replace(
+      "$selectedImage.visual_studio_x64_tools",
+      "$toolchainLock.visual_studio_x64_tools",
+    )],
+    ["Windows SDK binding", (candidate) => candidate.replace(
+      "Windows Kits/10/Include/$($toolchainLock.windows_sdk_version)",
+      "Windows Kits/10/Include/latest",
+    )],
+  ];
+  for (const [label, mutate] of windowsWorkflowMutations) {
+    await expectRejected(() => Promise.resolve(verifyWindowsWorkflowBinding(mutate(windowsWorkflow))), label);
   }
 }
 

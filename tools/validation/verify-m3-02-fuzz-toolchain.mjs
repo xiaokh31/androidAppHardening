@@ -11,7 +11,7 @@ const check = (condition, message) => { if (!condition) failures.push(message); 
 const hex64 = (value) => typeof value === "string" && /^[0-9a-f]{64}$/u.test(value);
 
 check(lock.schema === "m3-02-fuzz-toolchain-v1", "schema");
-check(lock.reviewed_at === "2026-08-20", "review date");
+check(lock.reviewed_at === "2026-08-22", "review date");
 check(lock.jazzer?.version === "0.29.1", "Jazzer version");
 check(lock.jazzer?.repository === "https://repo.maven.apache.org/maven2", "Maven repository");
 check(lock.jazzer?.source === "https://github.com/CodeIntelligenceTesting/jazzer", "Jazzer source");
@@ -40,6 +40,7 @@ const expectedWindowsImages = [
   {image_version: "20260728.188.1", manifest_ref: "win25-vs2026/20260728.188"},
   {image_version: "20260803.193.1", manifest_ref: "win25-vs2026/20260803.193"},
   {image_version: "20260810.198.2", manifest_ref: "win25-vs2026/20260810.198"},
+  {image_version: "20260818.207.1", manifest_ref: "win25-vs2026/20260818.207"},
 ];
 check(JSON.stringify(lock.runners?.ubuntu?.reviewed_images) === JSON.stringify(expectedUbuntuImages),
   "Ubuntu image lock/order");

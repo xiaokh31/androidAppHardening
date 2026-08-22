@@ -23,7 +23,7 @@ M3-10 implementation review reached `P0=0/P1=0/P2=0`, but a separate execution-r
 ## Inputs
 
 - M3-11 canonical original contract and accepted ADR 0016.
-- M3-10 implementation freeze `86ec37475fd7a96b4baf764530baefc3fe3d4cde` and review evidence successor `7a384b321e9afa8df5f683ad1a2b78ba2cb31bd0`.
+- M3-10 implementation freeze `86ec37475fd7a96b4baf764530baefc3fe3d4cde`, evidence successor `7a384b321e9afa8df5f683ad1a2b78ba2cb31bd0`, and the all-zero review/workflow-readiness record committed at `ac2d969392556fd9b338399e6cc2e9c22c90daed`.
 - The nine exact files under ignored `build/m3-10/review3-profile/package/`.
 - Signed profile hashes `a062e0994482b1db417ff710c554364ec80e9f8d5fa84b5745ff5753308b764b` and `1ce941404d8e6105764d041c449a60016312bc9c9671a8f8eb97c4e8b6820a10`.
 
@@ -38,7 +38,7 @@ M3-10 implementation review reached `P0=0/P1=0/P2=0`, but a separate execution-r
 ## In Scope
 
 - Package the exact existing nine files plus a deterministic member manifest.
-- Scan filenames and bytes for signing secrets, tokens and absolute user paths.
+- Scan every outer member name/byte and every APK ZIP entry name/decompressed byte for signing secrets, keystores, credentials/tokens and Windows/Unix absolute user paths.
 - Publish one GitHub prerelease asset and re-download it for byte comparison.
 - Fix release/asset identity, archive and member hashes, availability semantics and read-only consumer permissions.
 - Update ADR/task/dependency/provenance/governance/HandOff documents.
@@ -53,6 +53,7 @@ M3-10 implementation review reached `P0=0/P1=0/P2=0`, but a separate execution-r
 ## Implementation Decisions
 
 - The source package is byte-exact; archive creation may wrap but never transform its members.
+- The machine lock fixes the upstream implementation/evidence/review commits, the all-zero review record and canonical profile-lock path/size/SHA-256 (`a9e130bb4e66e14443d83ea01ef0d60a95adddefa9dc92a9bdc980e5728dab4b`), and the accepted four-APK report SHA-256. Git object ancestry and bytes are verified.
 - Release ID `374769776` and asset ID `524507375` are mandatory identity fields. Tag/name URLs are descriptive and cannot substitute the numeric asset endpoint.
 - The archive is `2184246` bytes with SHA-256 `21816d2a843bb5c59902224c7bf786d546d52b4a5b2d1168ca0c449a2ca27964` and exactly ten regular root members.
 - GitHub reports `immutable=false`. Read-only consumption plus asset ID, archive SHA-256 and member hashes creates the acceptance boundary; administrator deletion or mutation causes a permanent fail-closed blocker.
@@ -86,6 +87,7 @@ M3-10 implementation review reached `P0=0/P1=0/P2=0`, but a separate execution-r
 
 - Local archive creation reads all nine exact members and produces the locked ZIP.
 - Official release metadata, remote download, archive and all ten members match the lock.
+- The upstream M3-10 all-zero review record and canonical profile lock match their fixed Git commits, sizes and SHA-256 values and map exactly to all retained profile members.
 - Replacement, wrong IDs, wrong digest/size, unavailable asset, malformed ZIP, duplicate/extra/missing member, traversal, truncation, trailing bytes and member mutation fail closed.
 - ADR 0016, M3-10, INDEX, ROADMAP, PROJECT_PLAN, TEST_STRATEGY, provenance, README and HandOff agree on the M3-12 gate.
 - Base-to-head diff contains no Runtime, Host, fixture, benchmark, product build or diagnostic workflow change.
@@ -93,10 +95,11 @@ M3-10 implementation review reached `P0=0/P1=0/P2=0`, but a separate execution-r
 
 ## Required Tests
 
-- Creator source-entry set, size/hash, sensitive marker and new-output enforcement.
+- Creator source-entry set, size/hash, recursive APK sensitive scan, exact locked archive output, two-run determinism and new-output enforcement.
 - Lock schema and named field mutation tests.
 - Strict actual ZIP parsing and member size/hash verification.
-- Archive byte flip, truncation, trailing-byte and member-set mutations.
+- Archive byte flip, truncation, trailing-byte, duplicate/extra/missing/substituted/traversal member, method, flags, local offset and local/central mismatch mutations.
+- Output-root symlink/junction escape rejection for creator, fetcher and verifier.
 - Remote re-download byte equality, governance, strict HandOff and diff checks.
 
 ## Required Evidence
@@ -105,6 +108,7 @@ M3-10 implementation review reached `P0=0/P1=0/P2=0`, but a separate execution-r
 - Release ID, asset ID/name/size/digest, tag, target commit and `immutable=false` fact.
 - Archive plus ten member sizes/SHA-256 values and remote byte equality.
 - Explicit no-regeneration/no-secret/no-device/no-workflow statement.
+- Exact creator positive commands, two-run byte equality and expected-nonzero existing-output/extra-entry/source-hash failures.
 - Independent review result and exact-head Ubuntu/Windows Build/Governance before merge.
 
 ## Likely Files

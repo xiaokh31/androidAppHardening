@@ -394,6 +394,15 @@ for (const [text, label] of [
     requirePhrase(text, phrase, label);
   }
 }
+for (const [text, label] of [
+  [m312Text, "docs/tasks/M3-12-profile-package-retention.md"],
+  [m312LockText, "docs/evidence/M3-12/profile-package-retention-lock.json"],
+]) {
+  for (const phrase of [
+    "ac2d969392556fd9b338399e6cc2e9c22c90daed",
+    "a9e130bb4e66e14443d83ea01ef0d60a95adddefa9dc92a9bdc980e5728dab4b",
+  ]) requirePhrase(text, phrase, label);
+}
 
 const m401Text = readUtf8(
   path.join(root, "docs", "tasks", "M4-01-security-and-supply-chain-review.md"),
@@ -442,6 +451,7 @@ for (const tool of [
   "tools/governance/verify-m3-12-profile-retention.mjs",
   "tools/validation/create-m3-12-profile-package.mjs",
   "tools/validation/fetch-m3-12-profile-package.mjs",
+  "tools/validation/m3-12-security-scan.mjs",
 ]) {
   if (!fs.existsSync(path.join(root, tool))) errors.push(`Missing governance tool: ${tool}`);
 }

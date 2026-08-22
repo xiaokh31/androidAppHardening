@@ -4,7 +4,8 @@ import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { inflateRawSync } from "node:zlib";
+import { deflateRawSync, inflateRawSync } from "node:zlib";
+import { scanApkBytes, scanSensitiveBytes } from "../validation/m3-12-security-scan.mjs";
 
 const root = process.cwd();
 const lockFile = path.join(root, "docs/evidence/M3-12/profile-package-retention-lock.json");
@@ -21,6 +22,19 @@ const EXPECTED = Object.freeze({
   createdAt: "2026-08-22T01:53:36Z",
   updatedAt: "2026-08-22T01:54:53Z",
 });
+const EXPECTED_UPSTREAM = Object.freeze({
+  implementationCommit: "86ec37475fd7a96b4baf764530baefc3fe3d4cde",
+  evidenceCommit: "7a384b321e9afa8df5f683ad1a2b78ba2cb31bd0",
+  reviewRecordCommit: "ac2d969392556fd9b338399e6cc2e9c22c90daed",
+  reviewRecordPath: "docs/evidence/M3-10/read-only-review-5.md",
+  reviewRecordSizeBytes: 2755,
+  reviewRecordSha256: "43b9ce026161c60b990c6c56d0932c4a0b931fc0edc8612ebbffde848fc68c10",
+  profileLockPath: "tools/validation/m3-10/canonical-profile-lock.json",
+  profileLockSizeBytes: 2812,
+  profileLockSha256: "a9e130bb4e66e14443d83ea01ef0d60a95adddefa9dc92a9bdc980e5728dab4b",
+  acceptedFourApkReportSha256: "1610f895cb1a3003387a2c7f2e2e1474d6fbbfc523da8fc11c88d6cd283c5b93",
+  result: "P0=0/P1=0/P2=0",
+});
 const EXPECTED_ENTRIES = Object.freeze([
   Object.freeze({ name: "derivation-manifest.json", sizeBytes: 1161, sha256: "878d092a3cae6f4aa73cb722ea0bb9aa2f1eb32917a19b8c83220502dbdf4de8" }),
   Object.freeze({ name: "m3-12-manifest.json", sizeBytes: 1620, sha256: "c5f4b45404a6bec5d7915fb6df595d19690022085384592a080c7df454083fd5" }),
@@ -32,10 +46,6 @@ const EXPECTED_ENTRIES = Object.freeze([
   Object.freeze({ name: "profile-protected-aligned.apk", sizeBytes: 1279696, sha256: "ffcf606605ed7a13cd9f61aaa11076ff58bbe620308683ac93baa729d0c28c09" }),
   Object.freeze({ name: "profile-protected-unsigned.apk", sizeBytes: 1252546, sha256: "167c44aa4a15071b762fcec18fd4bfcc55087676577750dc0177f8734dad7b25" }),
   Object.freeze({ name: "profile-protected.apk", sizeBytes: 1287848, sha256: "1ce941404d8e6105764d041c449a60016312bc9c9671a8f8eb97c4e8b6820a10" }),
-]);
-const SENSITIVE = Object.freeze([
-  `-----BEGIN ${"PRIVATE"} KEY-----`, `-----BEGIN ENCRYPTED ${"PRIVATE"} KEY-----`, "M310_PROFILE_PASS",
-  "container-seed.bin", "profile.p12", "C:\\Users\\", "D:\\works\\",
 ]);
 const CRC_TABLE = new Uint32Array(256);
 for (let n = 0; n < 256; n += 1) {
@@ -65,14 +75,68 @@ function crc32(bytes) {
   for (const byte of bytes) value = CRC_TABLE[(value ^ byte) & 0xff] ^ (value >>> 8);
   return (value ^ 0xffffffff) >>> 0;
 }
+function contained(parent, child) {
+  const relative = path.relative(parent, child);
+  return relative === "" || (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
+}
+function samePath(left, right) {
+  const a = path.resolve(left); const b = path.resolve(right);
+  return process.platform === "win32" ? a.toLowerCase() === b.toLowerCase() : a === b;
+}
+function zipHeader(name, data, compressed, localOffset, central) {
+  const nameBytes = Buffer.from(name, "utf8");
+  const header = Buffer.alloc(central ? 46 : 30);
+  header.writeUInt32LE(central ? 0x02014b50 : 0x04034b50, 0);
+  if (central) { header.writeUInt16LE(20, 4); header.writeUInt16LE(20, 6); }
+  else header.writeUInt16LE(20, 4);
+  const flagsOffset = central ? 8 : 6; const methodOffset = central ? 10 : 8; const timeOffset = central ? 12 : 10;
+  header.writeUInt16LE(0x0800, flagsOffset); header.writeUInt16LE(8, methodOffset);
+  header.writeUInt16LE(0, timeOffset); header.writeUInt16LE(0x21, timeOffset + 2);
+  const crcOffset = central ? 16 : 14;
+  header.writeUInt32LE(crc32(data), crcOffset); header.writeUInt32LE(compressed.length, crcOffset + 4);
+  header.writeUInt32LE(data.length, crcOffset + 8); header.writeUInt16LE(nameBytes.length, central ? 28 : 26);
+  if (central) header.writeUInt32LE(localOffset, 42);
+  return Buffer.concat([header, nameBytes, central ? Buffer.alloc(0) : compressed]);
+}
+function makeZip(entries) {
+  const local = []; const central = []; let offset = 0;
+  for (const { name, data } of entries) {
+    const compressed = deflateRawSync(data, { level: 9 });
+    const localRecord = zipHeader(name, data, compressed, offset, false);
+    local.push(localRecord); central.push(zipHeader(name, data, compressed, offset, true)); offset += localRecord.length;
+  }
+  const centralBytes = Buffer.concat(central); const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(entries.length, 8); end.writeUInt16LE(entries.length, 10);
+  end.writeUInt32LE(centralBytes.length, 12); end.writeUInt32LE(offset, 16);
+  return Buffer.concat([...local, centralBytes, end]);
+}
+function archiveRecordOffsets(bytes) {
+  const eocd = bytes.length - 22; const count = bytes.readUInt16LE(eocd + 10); const records = [];
+  let cursor = bytes.readUInt32LE(eocd + 16);
+  for (let index = 0; index < count; index += 1) {
+    const nameLength = bytes.readUInt16LE(cursor + 28); const extraLength = bytes.readUInt16LE(cursor + 30);
+    const commentLength = bytes.readUInt16LE(cursor + 32); const local = bytes.readUInt32LE(cursor + 42);
+    records.push({ central: cursor, local, nameLength, name: bytes.subarray(cursor + 46, cursor + 46 + nameLength).toString("utf8") });
+    cursor += 46 + nameLength + extraLength + commentLength;
+  }
+  return { eocd, records };
+}
+function replaceRecordName(bytes, record, name, localToo = true) {
+  const encoded = Buffer.from(name, "utf8");
+  if (encoded.length !== record.nameLength) fail("self-test replacement name length differs");
+  encoded.copy(bytes, record.central + 46);
+  if (localToo) encoded.copy(bytes, record.local + 30);
+}
 function readJson(file, label) {
   try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch { fail(`${label} is missing or invalid JSON`); }
 }
 
 function validateLock(lock) {
-  exactKeys(lock, ["schemaVersion", "taskId", "packageId", "source", "archive", "retention"], "lock");
+  exactKeys(lock, ["schemaVersion", "taskId", "packageId", "upstreamReview", "source", "archive", "retention"], "lock");
   equal(lock.schemaVersion, 1, "schemaVersion"); equal(lock.taskId, "M3-12", "taskId");
   equal(lock.packageId, "m3-10-profile-package-v1", "packageId");
+  exactKeys(lock.upstreamReview, Object.keys(EXPECTED_UPSTREAM), "upstreamReview");
+  for (const [key, wanted] of Object.entries(EXPECTED_UPSTREAM)) equal(lock.upstreamReview[key], wanted, `upstreamReview.${key}`);
   exactKeys(lock.source, ["repository", "releaseId", "tag", "targetCommitish", "draft", "prerelease", "immutable",
     "assetId", "assetName", "assetLabel", "contentType", "assetState", "apiPath", "createdAt", "updatedAt"], "source");
   for (const [key, wanted] of Object.entries({ repository: "xiaokh31/androidAppHardening", releaseId: EXPECTED.releaseId,
@@ -122,6 +186,47 @@ function validateMetadata(metadata, lock) {
   }
 }
 
+function gitBytes(commit, relative, label) {
+  const result = spawnSync("git", ["show", `${commit}:${relative}`], { cwd: root, encoding: null, timeout: 30_000, maxBuffer: 8 * 1024 * 1024 });
+  if (result.status !== 0 || !Buffer.isBuffer(result.stdout)) fail(`${label} is unavailable from Git`);
+  return result.stdout;
+}
+function validateUpstreamObjects(lock) {
+  for (const [older, newer, label] of [
+    [lock.upstreamReview.implementationCommit, lock.upstreamReview.evidenceCommit, "implementation-to-evidence"],
+    [lock.upstreamReview.evidenceCommit, lock.upstreamReview.reviewRecordCommit, "evidence-to-review"],
+  ]) {
+    const result = spawnSync("git", ["merge-base", "--is-ancestor", older, newer], { cwd: root, encoding: "utf8", timeout: 30_000 });
+    if (result.status !== 0) fail(`upstream ancestry differs: ${label}`);
+  }
+  const reviewBytes = gitBytes(lock.upstreamReview.reviewRecordCommit, lock.upstreamReview.reviewRecordPath, "upstream review record");
+  equal(reviewBytes.length, lock.upstreamReview.reviewRecordSizeBytes, "upstream review record size");
+  equal(sha256(reviewBytes), lock.upstreamReview.reviewRecordSha256, "upstream review record hash");
+  const reviewText = reviewBytes.toString("utf8");
+  for (const value of [lock.upstreamReview.implementationCommit, lock.upstreamReview.evidenceCommit,
+    lock.upstreamReview.acceptedFourApkReportSha256, "PASS — P0=0/P1=0/P2=0"]) {
+    if (!reviewText.includes(value)) fail(`upstream review record missing ${value}`);
+  }
+  const profileBytes = gitBytes(lock.upstreamReview.reviewRecordCommit, lock.upstreamReview.profileLockPath, "upstream profile lock");
+  equal(profileBytes.length, lock.upstreamReview.profileLockSizeBytes, "upstream profile lock size");
+  equal(sha256(profileBytes), lock.upstreamReview.profileLockSha256, "upstream profile lock hash");
+  let profile;
+  try { profile = JSON.parse(profileBytes.toString("utf8")); } catch { fail("upstream profile lock JSON differs"); }
+  const byName = Object.fromEntries(lock.archive.entries.map((entry) => [entry.name, entry]));
+  for (const [name, value] of [
+    ["observer.dex", profile.observer], ["derivation-manifest.json", profile.derivation],
+    ["profile-baseline-unsigned.apk", profile.outputs?.unsignedBaseline], ["profile-protected-unsigned.apk", profile.outputs?.unsignedProtected],
+    ["profile-baseline-aligned.apk", profile.outputs?.alignedBaseline], ["profile-protected-aligned.apk", profile.outputs?.alignedProtected],
+    ["profile-baseline.apk", profile.outputs?.signedBaseline], ["profile-protected.apk", profile.outputs?.signedProtected],
+  ]) {
+    const expected = byName[name];
+    const size = name === "observer.dex" ? value?.dexSizeBytes : name === "derivation-manifest.json" ? value?.manifestSizeBytes : value?.sizeBytes;
+    const digest = name === "observer.dex" ? value?.dexSha256 : name === "derivation-manifest.json" ? value?.manifestSha256 : value?.sha256;
+    equal(size, expected.sizeBytes, `upstream ${name} size`); equal(digest, expected.sha256, `upstream ${name} hash`);
+  }
+  equal(profile.retention?.regenerationPermitted, false, "upstream regeneration policy");
+}
+
 function validateArchive(bytes, lock) {
   equal(bytes.length, lock.archive.sizeBytes, "archive byte length");
   equal(sha256(bytes), lock.archive.sha256, "archive byte hash");
@@ -159,7 +264,8 @@ function validateArchive(bytes, lock) {
     if (dataEnd > centralOffset || !bytes.subarray(localNameStart, dataStart).equals(nameBytes)) fail("local name/data bounds differ");
     let data; try { data = inflateRawSync(bytes.subarray(dataStart, dataEnd)); } catch { fail(`deflate failed for ${name}`); }
     equal(data.length, size, `${name} uncompressed size`); equal(crc32(data), crc, `${name} CRC-32`);
-    for (const marker of SENSITIVE) if (data.toString("latin1").includes(marker)) fail(`sensitive marker found in ${name}`);
+    scanSensitiveBytes(data, name);
+    if (name.endsWith(".apk")) scanApkBytes(data, name);
     values.set(name, data); ranges.push([localOffset, dataEnd]); cursor = centralEnd;
   }
   equal(cursor, eocd, "central directory parsed length");
@@ -184,11 +290,11 @@ function validateArchive(bytes, lock) {
 
 function validateDocuments() {
   const files = [
-    ["docs/adr/0017-profile-package-retention-boundary.md", ["374769776", "524507375", EXPECTED.sha256, "immutable=false", "contents: read"]],
+    ["docs/adr/0017-profile-package-retention-boundary.md", ["374769776", "524507375", EXPECTED.sha256, "immutable=false", "contents: read", EXPECTED_UPSTREAM.reviewRecordCommit]],
     ["docs/adr/0016-end-to-end-startup-attribution-boundary.md", ["M3-12", "524507375", EXPECTED.sha256]],
-    ["docs/tasks/M3-12-profile-package-retention.md", ["Issue #75", "P0=0/P1=0/P2=0", "no profile regeneration"]],
+    ["docs/tasks/M3-12-profile-package-retention.md", ["Issue #75", "P0=0/P1=0/P2=0", "no profile regeneration", EXPECTED_UPSTREAM.reviewRecordCommit]],
     ["docs/tasks/M3-10-startup-attribution-diagnostic.md", ["M3-12", "numeric asset ID"]],
-    ["docs/evidence/M3-12/provenance.md", ["byte_equal=true", "immutable=false", "no Android environment ran"]],
+    ["docs/evidence/M3-12/provenance.md", ["byte_equal=true", "immutable=false", "no Android environment ran", EXPECTED_UPSTREAM.profileLockSha256]],
   ];
   for (const [relative, phrases] of files) {
     const text = fs.readFileSync(path.join(root, relative), "utf8");
@@ -198,6 +304,13 @@ function validateDocuments() {
 
 function selfTest(lock, metadata, archiveBytes) {
   const mutations = [
+    ["upstream_implementation", (x) => { x.upstreamReview.implementationCommit = "0".repeat(40); }],
+    ["upstream_evidence", (x) => { x.upstreamReview.evidenceCommit = "0".repeat(40); }],
+    ["upstream_review_record", (x) => { x.upstreamReview.reviewRecordCommit = "0".repeat(40); }],
+    ["upstream_review_hash", (x) => { x.upstreamReview.reviewRecordSha256 = "0".repeat(64); }],
+    ["upstream_profile_lock_hash", (x) => { x.upstreamReview.profileLockSha256 = "0".repeat(64); }],
+    ["upstream_report_hash", (x) => { x.upstreamReview.acceptedFourApkReportSha256 = "0".repeat(64); }],
+    ["upstream_review_result", (x) => { x.upstreamReview.result = "P0=0/P1=1/P2=0"; }],
     ["release_id", (x) => { x.source.releaseId += 1; }], ["asset_id", (x) => { x.source.assetId += 1; }],
     ["asset_name", (x) => { x.source.assetName += ".new"; }], ["target", (x) => { x.source.targetCommitish = "0".repeat(40); }],
     ["draft", (x) => { x.source.draft = true; }], ["immutable_claim", (x) => { x.source.immutable = true; }],
@@ -218,10 +331,25 @@ function selfTest(lock, metadata, archiveBytes) {
   if (!metadataRejected) fail("metadata asset mutation accepted");
   let archiveMutations = 0;
   if (archiveBytes) {
+    const layout = archiveRecordOffsets(archiveBytes);
+    const record = (name) => {
+      const value = layout.records.find((entry) => entry.name === name);
+      if (!value) fail(`self-test record missing: ${name}`);
+      return value;
+    };
     const cases = [
       ["trailing", Buffer.concat([archiveBytes, Buffer.from([0])])],
       ["truncated", archiveBytes.subarray(0, archiveBytes.length - 1)],
       ["byte_flip", (() => { const value = Buffer.from(archiveBytes); value[Math.floor(value.length / 3)] ^= 1; return value; })()],
+      ["duplicate_member", (() => { const value = Buffer.from(archiveBytes); replaceRecordName(value, record("profile-protected-aligned.apk"), "profile-baseline-unsigned.apk"); return value; })()],
+      ["member_set_substitution", (() => { const value = Buffer.from(archiveBytes); replaceRecordName(value, record("observer.dex"), "missing1.dex"); return value; })()],
+      ["traversal_member", (() => { const value = Buffer.from(archiveBytes); replaceRecordName(value, record("derivation-manifest.json"), `../${"x".repeat(21)}`); return value; })()],
+      ["unsupported_method", (() => { const value = Buffer.from(archiveBytes); const item = record("observer.dex"); value.writeUInt16LE(99, item.central + 10); value.writeUInt16LE(99, item.local + 8); return value; })()],
+      ["unsupported_flags", (() => { const value = Buffer.from(archiveBytes); const item = record("observer.dex"); value.writeUInt16LE(1, item.central + 8); value.writeUInt16LE(1, item.local + 6); return value; })()],
+      ["local_offset", (() => { const value = Buffer.from(archiveBytes); const item = record("observer.dex"); value.writeUInt32LE(value.length, item.central + 42); return value; })()],
+      ["local_central_name_mismatch", (() => { const value = Buffer.from(archiveBytes); const item = record("observer.dex"); replaceRecordName(value, item, "observer.dfx", false); return value; })()],
+      ["missing_entry_count", (() => { const value = Buffer.from(archiveBytes); value.writeUInt16LE(layout.records.length - 1, layout.eocd + 8); value.writeUInt16LE(layout.records.length - 1, layout.eocd + 10); return value; })()],
+      ["extra_entry_count", (() => { const value = Buffer.from(archiveBytes); value.writeUInt16LE(layout.records.length + 1, layout.eocd + 8); value.writeUInt16LE(layout.records.length + 1, layout.eocd + 10); return value; })()],
     ];
     for (const [name, bytes] of cases) {
       const changedLock = clone(lock); changedLock.archive.sizeBytes = bytes.length; changedLock.archive.sha256 = sha256(bytes);
@@ -230,7 +358,29 @@ function selfTest(lock, metadata, archiveBytes) {
       archiveMutations += 1;
     }
   }
-  return { lockMutations: mutations.length + 1, archiveMutations };
+  const sensitiveVectors = [
+    ["pem", ["-----BEGIN", "RSA", "PRIVATE KEY-----"].join(" ")],
+    ["github_fine", `github${"_pat_"}${"a".repeat(24)}`],
+    ["github_classic", `gh${"p_"}${"b".repeat(24)}`],
+    ["bearer", `Bearer ${"c".repeat(24)}`],
+    ["keystore", "fixture.keystore"],
+    ["windows_path", `C:${"\\"}Users${"\\"}fixture${"\\"}secret`],
+    ["unix_path", ["", "home", "fixture", "secret"].join("/")],
+  ];
+  for (const [name, text] of sensitiveVectors) {
+    let rejected = false; try { scanSensitiveBytes(Buffer.from(text), `self-test ${name}`); } catch { rejected = true; }
+    if (!rejected) fail(`sensitive mutation accepted: ${name}`);
+  }
+  const nestedCases = [
+    ["nested_content", makeZip([{ name: "assets/value.bin", data: Buffer.from(`gh${"p_"}${"d".repeat(24)}`) }])],
+    ["nested_name", makeZip([{ name: "assets/release.jks", data: Buffer.from("safe") }])],
+    ["nested_traversal", makeZip([{ name: "../escape.bin", data: Buffer.from("safe") }])],
+  ];
+  for (const [name, bytes] of nestedCases) {
+    let rejected = false; try { scanApkBytes(bytes, `self-test ${name}`); } catch { rejected = true; }
+    if (!rejected) fail(`nested scan mutation accepted: ${name}`);
+  }
+  return { lockMutations: mutations.length + 1, archiveMutations, sensitiveMutations: sensitiveVectors.length + nestedCases.length };
 }
 
 function verifyDiff(baseRef) {
@@ -252,15 +402,19 @@ function main() {
     else fail(`unknown or incomplete argument ${args[index]}`);
   }
   const lock = validateLock(readJson(lockFile, "lock")); const metadata = readJson(metadataFile, "metadata");
-  validateMetadata(metadata, lock); validateDocuments();
+  validateMetadata(metadata, lock); validateUpstreamObjects(lock); validateDocuments();
   let archiveBytes;
   if (archivePath) {
-    const resolved = path.resolve(archivePath); const buildRoot = path.join(root, "build", "m3-12");
-    const relative = path.relative(buildRoot, resolved);
-    if (relative.startsWith(`..${path.sep}`) || relative === ".." || path.isAbsolute(relative)) fail("archive must be below build/m3-12");
+    const resolved = path.resolve(archivePath); const buildRoot = path.resolve(root, "build", "m3-12");
+    const rootStat = fs.lstatSync(buildRoot, { throwIfNoEntry: false });
+    if (!rootStat?.isDirectory() || rootStat.isSymbolicLink()) fail("build/m3-12 must be a real directory");
+    const buildReal = fs.realpathSync.native(buildRoot);
+    if (!samePath(buildReal, buildRoot)) fail("build/m3-12 must not be a junction");
     const stat = fs.lstatSync(resolved, { throwIfNoEntry: false });
     if (!stat?.isFile() || stat.isSymbolicLink()) fail("archive must be a regular non-symlink file");
-    archiveBytes = fs.readFileSync(resolved); validateArchive(archiveBytes, lock);
+    const archiveReal = fs.realpathSync.native(resolved);
+    if (!contained(buildReal, archiveReal)) fail("archive realpath must stay below build/m3-12");
+    archiveBytes = fs.readFileSync(archiveReal); validateArchive(archiveBytes, lock);
   }
   verifyDiff(baseRef);
   const mutations = selfTestRequested ? selfTest(lock, metadata, archiveBytes) : { lockMutations: 0, archiveMutations: 0 };

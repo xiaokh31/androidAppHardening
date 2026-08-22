@@ -3,6 +3,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { assertContainedNewOutput } from "./m3-12-security-scan.mjs";
 
 const root = process.cwd();
 const lock = JSON.parse(fs.readFileSync(path.join(root, "docs/evidence/M3-12/profile-package-retention-lock.json"), "utf8"));
@@ -10,10 +11,6 @@ const api = "https://api.github.com";
 
 function fail(message) { throw new Error(`M3-12 asset fetch failed: ${message}`); }
 function sha256(bytes) { return crypto.createHash("sha256").update(bytes).digest("hex"); }
-function contained(parent, child) {
-  const relative = path.relative(parent, child);
-  return relative === "" || (!relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative));
-}
 function headers(accept, token = true) {
   const result = { Accept: accept, "User-Agent": "androidAppHardening-m3-12", "X-GitHub-Api-Version": "2022-11-28" };
   if (token) result.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
@@ -30,8 +27,7 @@ async function main() {
   const args = process.argv.slice(2); const outputIndex = args.indexOf("--output");
   if (outputIndex < 0 || !args[outputIndex + 1] || args.length !== 2) fail("exactly --output <new-file> is required");
   if (!process.env.GITHUB_TOKEN) fail("GITHUB_TOKEN is required");
-  const output = path.resolve(args[outputIndex + 1]); const allowed = path.join(root, "build", "m3-12");
-  if (!contained(allowed, output) || output === allowed || fs.existsSync(output)) fail("output must be a new file below build/m3-12");
+  const output = assertContainedNewOutput(fs.realpathSync.native(root), path.join(root, "build", "m3-12"), args[outputIndex + 1], "fetch output");
   const release = await json(`${api}/repos/${lock.source.repository}/releases/${lock.source.releaseId}`);
   equal(release.id, lock.source.releaseId, "release id"); equal(release.tag_name, lock.source.tag, "release tag");
   equal(release.target_commitish, lock.source.targetCommitish, "release target"); equal(release.draft, false, "release draft");
@@ -56,7 +52,7 @@ async function main() {
   if (!response.ok) fail(`asset download returned ${response.status}`);
   const bytes = Buffer.from(await response.arrayBuffer());
   equal(bytes.length, lock.archive.sizeBytes, "downloaded size"); equal(sha256(bytes), lock.archive.sha256, "downloaded SHA-256");
-  fs.mkdirSync(path.dirname(output), { recursive: true }); fs.writeFileSync(output, bytes, { flag: "wx" });
+  fs.writeFileSync(output, bytes, { flag: "wx" });
   process.stdout.write(`${JSON.stringify({ result: "PASS", releaseId: lock.source.releaseId, assetId: lock.source.assetId,
     sizeBytes: bytes.length, sha256: sha256(bytes) }, null, 2)}\n`);
 }

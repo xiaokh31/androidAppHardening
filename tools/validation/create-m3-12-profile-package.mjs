@@ -4,6 +4,10 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { deflateRawSync } from "node:zlib";
+import { assertContainedNewOutput, scanApkBytes, scanSensitiveBytes } from "./m3-12-security-scan.mjs";
+
+const EXPECTED_ARCHIVE_SIZE = 2184246;
+const EXPECTED_ARCHIVE_SHA256 = "21816d2a843bb5c59902224c7bf786d546d52b4a5b2d1168ca0c449a2ca27964";
 
 const SOURCE_ENTRIES = Object.freeze([
   ["derivation-manifest.json", 1161, "878d092a3cae6f4aa73cb722ea0bb9aa2f1eb32917a19b8c83220502dbdf4de8"],
@@ -15,10 +19,6 @@ const SOURCE_ENTRIES = Object.freeze([
   ["profile-protected-aligned.apk", 1279696, "ffcf606605ed7a13cd9f61aaa11076ff58bbe620308683ac93baa729d0c28c09"],
   ["profile-protected-unsigned.apk", 1252546, "167c44aa4a15071b762fcec18fd4bfcc55087676577750dc0177f8734dad7b25"],
   ["profile-protected.apk", 1287848, "1ce941404d8e6105764d041c449a60016312bc9c9671a8f8eb97c4e8b6820a10"],
-]);
-const SENSITIVE = Object.freeze([
-  `-----BEGIN ${"PRIVATE"} KEY-----`, `-----BEGIN ENCRYPTED ${"PRIVATE"} KEY-----`, "M310_PROFILE_PASS",
-  "container-seed.bin", "profile.p12", "C:\\Users\\", "D:\\works\\",
 ]);
 const CRC_TABLE = new Uint32Array(256);
 for (let n = 0; n < 256; n += 1) {
@@ -97,11 +97,10 @@ function main() {
   if (!options.source || !options.output) fail("--source and --output are required");
   const repository = fs.realpathSync.native(process.cwd());
   const source = path.resolve(options.source);
-  const output = path.resolve(options.output);
   const allowedOutput = path.join(repository, "build", "m3-12");
-  if (!contained(repository, source) || !contained(allowedOutput, output) || output === allowedOutput || fs.existsSync(output)) {
-    fail("source must stay in the repository and output must be a new file below build/m3-12");
-  }
+  const sourceStat = fs.lstatSync(source, { throwIfNoEntry: false });
+  if (!sourceStat?.isDirectory() || sourceStat.isSymbolicLink() || !contained(repository, fs.realpathSync.native(source))) fail("source must be a real directory inside the repository");
+  const output = assertContainedNewOutput(repository, allowedOutput, options.output, "creator output");
   const actualNames = fs.readdirSync(source, { withFileTypes: true }).map((entry) => {
     if (!entry.isFile()) fail(`source contains a non-file entry: ${entry.name}`);
     return entry.name;
@@ -112,8 +111,8 @@ function main() {
     const { candidate, stat } = regularFileBelow(source, name);
     const data = fs.readFileSync(candidate);
     if (stat.size !== sizeBytes || sha256(data) !== expectedHash) fail(`reviewed bytes differ: ${name}`);
-    const latin = data.toString("latin1");
-    for (const pattern of SENSITIVE) if (latin.includes(pattern)) fail(`sensitive material marker found in ${name}`);
+    scanSensitiveBytes(data, name);
+    if (name.endsWith(".apk")) scanApkBytes(data, name);
     return { name, data, sizeBytes, sha256: expectedHash };
   });
   const manifest = Buffer.from(`${JSON.stringify({
@@ -125,7 +124,7 @@ function main() {
   }, null, 2)}\n`, "utf8");
   const allEntries = [...entries, { name: "m3-12-manifest.json", data: manifest }].sort((a, b) => a.name.localeCompare(b.name));
   const archive = zip(allEntries);
-  fs.mkdirSync(path.dirname(output), { recursive: true });
+  if (archive.length !== EXPECTED_ARCHIVE_SIZE || sha256(archive) !== EXPECTED_ARCHIVE_SHA256) fail("deterministic archive bytes differ from the reviewed lock");
   fs.writeFileSync(output, archive, { flag: "wx" });
   process.stdout.write(`${JSON.stringify({
     archive: path.relative(repository, output).replaceAll("\\", "/"),

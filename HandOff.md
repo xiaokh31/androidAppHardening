@@ -1,13 +1,13 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260823-001215
-updated_at: 2026-08-23T00:12:15+08:00
+handoff_id: HO-20260823-001700
+updated_at: 2026-08-23T00:17:00+08:00
 updated_by: /root
 state: active
 source_branch: docs/m3-13-diagnostic-identity-contract
 base_commit: c9399b40884778f027ffbe33f96786197365acb3
-working_tree: dirty
+working_tree: clean
 current_milestone: M3
 active_task: M3-13
 next_owner: /root
@@ -22,7 +22,7 @@ Define ADR 0018 and M3-13 as the sole narrow successor diagnostic identity contr
 ## Current State
 
 - M3-13 is active on Issue #80 and branch `docs/m3-13-diagnostic-identity-contract`. The contract binds M3-10 run `32554806537` and terminal evidence run `32554917303`, permits a successor only after official evidence proves zero AVD creation, zero APK installation attempt, zero retained samples and zero artifacts, and fixes one future task key/run with `runAttempt=1` and no further renewal. No device, KVM, emulator, ARM, API 29 or benchmark is authorized or running. The canonical successor workflows remain absent.
-- The M3-13 contract candidate has completed local static validation: its immutable proof contains all 17 diagnostic and 10 terminal job steps; the 1033-byte identity preimage hashes to `4104670b...7faf`; 53 named mutations, project governance, strict HandOff and diff checks pass. It remains unpublished and requires a clean local freeze plus independent all-zero read-only review before any push or PR.
+- The M3-13 implementation freeze is `55997e61a2f734ab3d7ed5f8a44a44064b526ac3`. Its immutable proof contains all 17 diagnostic and 10 terminal job steps; the 1033-byte identity preimage hashes to `4104670b...7faf`; 53 named mutations, project governance, strict HandOff and diff checks pass. It remains unpublished and requires an independent all-zero read-only review before any push or PR.
 - M3-10 is terminally blocked. Its independently reviewed run failed during shallow-checkout provenance validation before Android setup and produced no measurement or artifact; PR #79 must remain draft. M3-13 records a distinct future eligibility contract and does not retry, reopen or convert M3-10 into success evidence.
 - M3-12 is merged and complete. Fourth independent review accepted implementation `3415e2826054b0ce31c32e8f934e973cb1a85cd0` and evidence `4cc8736d1de1f5b0d71ff5790bd9333849acccd8` with `P0=0/P1=0/P2=0`; the reviewed-main merge head `5a8c3a018cf875bc6c45b29a6bef05094143c58e` passed Build `32551730109` and Governance `32551730123`. Final evidence-only head `95a42b556374c92191d2511894fb2613afc187b9` passed Build `32552469351` and Governance `32552469492` on Ubuntu/Windows. PR #76 was converted to ready and merged with expected-head protection as `c1d81fe6c4257efecf8cbb0b23aa724034f6b3a1`; Issue #75 closed. The fixed release ID `374769776`, asset ID `524507375`, archive SHA-256 `21816d2a...27964` and ten member identities remain the sole accepted source. No profile was regenerated, no signing secret was retained, and no device, KVM, fuzz, equivalence, benchmark, API 36 diagnostic, ARM or M3-05 work ran.
 - M2-07 Windows runner maintenance is merged and complete. Final expected head `88f1c11ab137867a6b8ea07af5c136a4fdfbea0d` retained the all-zero independent review and passed Build `32549204828` plus Governance `32549204792` on Ubuntu/Windows. PR #78 was converted to ready and merged with expected-head protection as `28493ca0c572b2af45a107e0e77010f6ebe878c2`; Issue #77 closed. The reviewed `main` is now merged into PR #76 so only its final exact-head Build/Governance can resume. No device, KVM, fuzz, equivalence, benchmark, API 36 diagnostic, ARM or M3-05 work is authorized by this transition.
@@ -436,6 +436,18 @@ Define ADR 0018 and M3-13 as the sole narrow successor diagnostic identity contr
 - M2-02 第三实现层已完成本地检查点：同一 `sourceDir` 只读文件映射、OS 只读 DEX commit、generation+slot 类型化 JNI handle、同 handle `AHMD` 认证 metadata、精确五 JNI 方法、Java primitive/finally 交接窗口、幂等 `LoadedPayload` owner，以及 M0-05 等价 Native 搜索路径和三参数 API 29 `InMemoryDexClassLoader` 已接通。Java 17 编译/lint、NDK 四 ABI warnings-as-errors 与离线根 `assembleRelease check` 284-task 均 PASS，四个 ELF 都含唯一 104-byte alloc/read-only `.ah_share_v1`，未启动设备或模拟器。证据更新于 `docs/evidence/M2-02/local-validation.md`；任务仍未完成或发布，下一步仅补 failure injection、Host sanitizer/fuzz/OOM 与已授权 KVM/arm64 验收，不启动 M2-03。
 
 ## Verification Evidence
+
+### M3-13 successor diagnostic identity local freeze
+
+- task_id: M3-13
+- git_commit: 55997e61a2f734ab3d7ed5f8a44a44064b526ac3
+- command: M3-13 positive, 53 named mutations and base-ref gate; M3-07/M3-08/M3-09/M3-11/M3-12 compatibility validators; project Governance; strict HandOff; diff and sensitive checks
+- exit_code: 0
+- environment: Windows 10.0.19045 x64; Node.js v24.12.0; Git 2.52.0.windows.1; no network, Gradle, Android, device, emulator, KVM or benchmark
+- timestamp: 2026-08-23T00:08:18+08:00
+- artifact: `docs/evidence/M3-13/local-validation.md`
+- sha256: 1562eec9e1812f21910715102f820f6142dc922bf850cf0cd1e134861c061aae
+- result: PASS; official 17/10-step proof and 1033-byte identity are fixed, all 53 mutations fail closed, both successor workflows remain absent, and independent all-zero review is still required before publication
 
 ### M3-12 CI-only correction independent review
 
@@ -1945,8 +1957,8 @@ Define ADR 0018 and M3-13 as the sole narrow successor diagnostic identity contr
 
 ## Ordered Next Actions
 
-1. Freeze the clean ADR 0018/M3-13 contract candidate and add an evidence-only child recording its exact commit and local static checks.
-2. After explicit user direction, launch an independent read-only M3-13 review.
+1. Preserve implementation freeze `55997e61a2f734ab3d7ed5f8a44a44064b526ac3` and its evidence-only child without modifying contract semantics.
+2. After explicit user direction, launch an independent read-only M3-13 review against the frozen chain.
 3. Only after `P0=0/P1=0/P2=0`, record review evidence and request separate push/draft-PR authorization for Issue #80.
 4. Do not add a successor workflow, retry M3-10, run API 36, ARM, API 29, KVM, emulator, physical device, benchmark or M3-05 in this task.
 

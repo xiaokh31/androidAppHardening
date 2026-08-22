@@ -8,9 +8,28 @@ const root = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace
 const args = new Set(process.argv.slice(2));
 const baseIndex = process.argv.indexOf("--base-ref");
 const baseRef = baseIndex >= 0 ? process.argv[baseIndex + 1] : undefined;
+const reviewedWorkflowSuccessor = args.has("--allow-reviewed-workflows");
 
 function fail(message) {
   throw new Error(`M3-10 profile freeze: ${message}`);
+}
+
+function validateReviewedWorkflows(diagnostic, evidence) {
+  for (const phrase of [
+    "M3-09-DIAGNOSTIC-V1-883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd",
+    "m3-09-startup-attribution", "cancel-in-progress: false", "actions: read", "contents: read",
+    "fetch-m3-12-profile-package.mjs", "verify-m3-12-profile-retention.mjs", "9260244215",
+    "run-m3-10-startup-attribution.mjs", "m3-09-startup-attribution-raw",
+  ]) if (!diagnostic.includes(phrase)) fail(`diagnostic workflow missing ${phrase}`);
+  for (const phrase of [
+    "diagnostic-terminal-request.json", "collect-m3-10-github-evidence.mjs",
+    "verify-m3-10-startup-attribution.mjs github-evidence", "m3-09-startup-attribution-terminal-evidence",
+    "fetch-depth: 0", "git rev-list --parents -n 1 HEAD", "git rev-parse HEAD^", "git diff --name-only",
+    "cancel-in-progress: false", "actions: read", "contents: read",
+  ]) if (!evidence.includes(phrase)) fail(`evidence workflow missing ${phrase}`);
+  for (const forbidden of ["workflow_dispatch", "pull_request", "schedule:"]) {
+    if (diagnostic.includes(forbidden) || evidence.includes(forbidden)) fail(`canonical workflow has forbidden trigger ${forbidden}`);
+  }
 }
 
 function read(relative) {
@@ -137,10 +156,20 @@ function verifyTrackedDesign() {
     [metadata, "org.smali\" name=\"dexlib2\" version=\"2.5.2\"", "verification metadata"],
   ]) if (!text.includes(phrase)) fail(`${label} missing pinned dexlib2`);
 
-  for (const workflow of [
+  const workflowPaths = [
     ".github/workflows/m3-09-startup-attribution.yml",
     ".github/workflows/m3-09-startup-attribution-evidence.yml",
-  ]) if (fs.existsSync(path.join(root, workflow))) fail(`canonical workflow exists before independent review: ${workflow}`);
+  ];
+  const present = workflowPaths.filter((workflow) => fs.existsSync(path.join(root, workflow)));
+  if (present.length !== 0 && !reviewedWorkflowSuccessor) {
+    fail(`canonical workflow exists without --allow-reviewed-workflows: ${present.join(", ")}`);
+  }
+  if (reviewedWorkflowSuccessor) {
+    if (present.length !== workflowPaths.length) fail("reviewed canonical workflow pair is incomplete");
+    const diagnostic = read(workflowPaths[0]);
+    const evidence = read(workflowPaths[1]);
+    validateReviewedWorkflows(diagnostic, evidence);
+  }
 }
 
 function validateContractText(m305, adr) {
@@ -160,8 +189,8 @@ function verifyDiff() {
   const forbidden = result.stdout.split(/\r?\n/u).filter(Boolean).filter((file) =>
     /^(?:runtime|host|fixtures|benchmarks)\/.*\/src\/(?:main|release)\//u.test(file) ||
     /^(?:runtime\/[^/]+|host\/cli|fixtures\/android|benchmarks\/android|distribution)\/build\.gradle(?:\.kts)?$/u.test(file) ||
-    file === ".github/workflows/m3-09-startup-attribution.yml" ||
-    file === ".github/workflows/m3-09-startup-attribution-evidence.yml",
+    (!reviewedWorkflowSuccessor && (file === ".github/workflows/m3-09-startup-attribution.yml" ||
+      file === ".github/workflows/m3-09-startup-attribution-evidence.yml")),
   );
   if (forbidden.length) fail(`production/workflow diff detected: ${forbidden.join(", ")}`);
 }
@@ -190,11 +219,24 @@ function selfTest() {
     try { validateContractText(m305, adr); } catch { rejected = true; }
     if (!rejected) fail(`contract mutation was accepted: ${name}`);
   }
-  console.log(`M3-10 profile freeze self-test PASS mutations=${mutations.length + 2}`);
+  if (reviewedWorkflowSuccessor) {
+    const diagnostic = read(".github/workflows/m3-09-startup-attribution.yml");
+    const evidence = read(".github/workflows/m3-09-startup-attribution-evidence.yml");
+    for (const [name, mutated] of [
+      ["terminal-shallow-checkout", evidence.replace("fetch-depth: 0", "fetch-depth: 1")],
+      ["terminal-parent-binding", evidence.replace("git rev-parse HEAD^", "git rev-parse HEAD")],
+      ["terminal-diff-binding", evidence.replace("git diff --name-only", "git show --name-only")],
+    ]) {
+      let rejected = false;
+      try { validateReviewedWorkflows(diagnostic, mutated); } catch { rejected = true; }
+      if (!rejected) fail(`workflow self-test mutation was accepted: ${name}`);
+    }
+  }
+  console.log(`M3-10 profile freeze self-test PASS mutations=${mutations.length + 2 + (reviewedWorkflowSuccessor ? 3 : 0)}`);
 }
 
 verifyProductionSurface();
 verifyTrackedDesign();
 verifyDiff();
 if (args.has("--self-test")) selfTest();
-console.log("M3-10 profile freeze PASS workflows=absent productionObserver=absent");
+console.log(`M3-10 profile freeze PASS workflows=${reviewedWorkflowSuccessor ? "reviewed" : "absent"} productionObserver=absent`);

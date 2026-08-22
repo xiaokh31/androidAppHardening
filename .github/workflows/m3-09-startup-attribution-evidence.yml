@@ -1,0 +1,83 @@
+name: M3-09 startup attribution terminal evidence
+
+on:
+  push:
+    branches:
+      - feat/m3-10-startup-attribution-diagnostic
+    paths:
+      - "docs/evidence/M3-10/diagnostic-terminal-request.json"
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: m3-09-terminal-evidence
+  cancel-in-progress: false
+
+jobs:
+  evidence:
+    name: m3-09-startup-attribution-terminal-evidence
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out terminal evidence head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Bind terminal request to reviewed diagnostic bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          request='docs/evidence/M3-10/diagnostic-terminal-request.json'
+          diagnostic_head="$(jq -er '.diagnosticHeadSha | select(type == "string" and test("^[0-9a-f]{40}$"))' "$request")"
+          git cat-file -e "$diagnostic_head^{commit}"
+          test "$(git rev-list --parents -n 1 HEAD | wc -w)" -eq 2
+          test "$(git rev-parse HEAD^)" = "$diagnostic_head"
+          mapfile -t changed < <(git diff --name-only --diff-filter=ACMRTUXB "$diagnostic_head"..HEAD)
+          test "${#changed[@]}" -eq 1
+          test "${changed[0]}" = "$request"
+          test -z "$(git status --porcelain)"
+
+      - name: Verify pinned Ubuntu runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${ImageOS:-}" = "ubuntu24"
+          case "${ImageVersion:-}" in
+            20260816.277.1) ;;
+            *) printf 'unexpected mutable runner image: ImageOS=%s ImageVersion=%s\n' "${ImageOS:-}" "${ImageVersion:-}" >&2; exit 1 ;;
+          esac
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24.12.0
+          check-latest: false
+
+      - name: Collect and verify official terminal evidence
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          node tools/validation/collect-m3-10-github-evidence.mjs \
+            --request docs/evidence/M3-10/diagnostic-terminal-request.json \
+            --output build/m3-10/github-evidence \
+            --result-output build/m3-10/terminal-result.json
+          node tools/validation/verify-m3-10-startup-attribution.mjs github-evidence \
+            --evidence-root build/m3-10/github-evidence \
+            --result build/m3-10/terminal-result.json
+
+      - name: Upload terminal evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: m3-09-startup-attribution-terminal-evidence
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+          path: |
+            build/m3-10/github-evidence/
+            build/m3-10/terminal-result.json

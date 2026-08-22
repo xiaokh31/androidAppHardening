@@ -1,13 +1,13 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260822-130359
-updated_at: 2026-08-22T13:03:59+08:00
+handoff_id: HO-20260822-132026
+updated_at: 2026-08-22T13:20:26+08:00
 updated_by: /root
 state: active
 source_branch: feat/m3-10-startup-attribution-diagnostic
 base_commit: c9399b40884778f027ffbe33f96786197365acb3
-working_tree: clean
+working_tree: dirty
 current_milestone: M3
 active_task: M3-10
 next_owner: /root
@@ -21,6 +21,7 @@ Complete the bounded M3-10 ADR 0016 startup-attribution diagnostic from the exac
 
 ## Current State
 
+- The M3-10 workflow successor is prepared but not yet published. It fetches only the fixed M3-12 release/asset/archive, validates the exact M3-11 originals, builds the locked Release surfaces, and permits one branch-push API 36 diagnostic followed by a separate terminal-evidence push. Local actual-byte verification passed for the canonical/profile APKs, v3-only signer, Manifest/DEX/Native equivalence, six Release/CLI/distribution artifacts and 17 real mutations; the complete verifier now rejects 49 report/result/GitHub/artifact/cleanup mutations, the collector rejects five redirect cases plus an oversized ZIP entry, the cleanup runner rejects 8 injected command failures, and the profile-freeze validator accepts only the reviewed workflow pair while preserving zero production observer surface. No device, emulator, ARM, API 29, benchmark or M3-05 action has run locally.
 - M3-10 implementation freeze `86ec37475fd7a96b4baf764530baefc3fe3d4cde` and evidence successor `7a384b321e9afa8df5f683ad1a2b78ba2cb31bd0` passed fifth independent review with `P0=0/P1=0/P2=0`. The later readiness audit at `ac2d969392556fd9b338399e6cc2e9c22c90daed` found only that GitHub runners could not obtain the exact reviewed profile package; it did not invalidate the implementation or consume API 36 eligibility.
 - M3-12 is merged and complete. Fourth independent review accepted implementation `3415e2826054b0ce31c32e8f934e973cb1a85cd0` and evidence `4cc8736d1de1f5b0d71ff5790bd9333849acccd8` with `P0=0/P1=0/P2=0`; the reviewed-main merge head `5a8c3a018cf875bc6c45b29a6bef05094143c58e` passed Build `32551730109` and Governance `32551730123`. Final evidence-only head `95a42b556374c92191d2511894fb2613afc187b9` passed Build `32552469351` and Governance `32552469492` on Ubuntu/Windows. PR #76 was converted to ready and merged with expected-head protection as `c1d81fe6c4257efecf8cbb0b23aa724034f6b3a1`; Issue #75 closed. The fixed release ID `374769776`, asset ID `524507375`, archive SHA-256 `21816d2a...27964` and ten member identities remain the sole accepted source. No profile was regenerated, no signing secret was retained, and no device, KVM, fuzz, equivalence, benchmark, API 36 diagnostic, ARM or M3-05 work ran.
 - M2-07 Windows runner maintenance is merged and complete. Final expected head `88f1c11ab137867a6b8ea07af5c136a4fdfbea0d` retained the all-zero independent review and passed Build `32549204828` plus Governance `32549204792` on Ubuntu/Windows. PR #78 was converted to ready and merged with expected-head protection as `28493ca0c572b2af45a107e0e77010f6ebe878c2`; Issue #77 closed. The reviewed `main` is now merged into PR #76 so only its final exact-head Build/Governance can resume. No device, KVM, fuzz, equivalence, benchmark, API 36 diagnostic, ARM or M3-05 work is authorized by this transition.
@@ -1940,10 +1941,10 @@ None
 
 ## Ordered Next Actions
 
-1. Keep M3-12 merged bytes and numeric asset identity unchanged.
-2. Validate the merged M3-12 lock against the M3-10 implementation, then add and statically verify the canonical diagnostic and terminal-evidence workflows.
-3. Push the fixed branch once, execute the first-and-only API 36 diagnostic, then run terminal evidence collection and record the attribution result.
-4. Do not start ARM or M3-05 until the unique M3-10 result and any required owner remediation are resolved.
+1. Freeze and publish the statically verified canonical diagnostic and terminal-evidence workflow successor without changing the M3-12 asset or product bytes.
+2. Execute exactly one API 36 diagnostic run; do not retry or replace an invalid/ineligible result.
+3. Commit the terminal request only after that run completes, execute the separate terminal evidence collector, and record the exact run/job/artifact identities and attribution result.
+4. Update README/task evidence and open the unique Issue #70 draft PR; keep ARM and M3-05 blocked until the unique result and any required owner remediation are resolved.
 
 ## Relevant Files and Artifacts
 

@@ -1,0 +1,280 @@
+name: M3-09-DIAGNOSTIC-V1-883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd
+run-name: M3-09-DIAGNOSTIC-V1-883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd
+
+on:
+  push:
+    branches:
+      - feat/m3-10-startup-attribution-diagnostic
+    paths:
+      - ".github/workflows/m3-09-startup-attribution.yml"
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: m3-09-first-and-only-startup-attribution
+  cancel-in-progress: false
+
+jobs:
+  diagnostic:
+    name: m3-09-startup-attribution
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out exact diagnostic head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Verify pinned Ubuntu runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${ImageOS:-}" = "ubuntu24"
+          case "${ImageVersion:-}" in
+            20260816.277.1) reviewed_manifest='ubuntu24/20260816.277' ;;
+            *) printf 'unexpected mutable runner image: ImageOS=%s ImageVersion=%s\n' "${ImageOS:-}" "${ImageVersion:-}" >&2; exit 1 ;;
+          esac
+          test "$(gcc -dumpfullversion -dumpversion)" = "13.3.0"
+          test "$(g++ -dumpfullversion -dumpversion)" = "13.3.0"
+          printf '%s\n' "runner_manifest_ref=$reviewed_manifest"
+
+      - name: Set up Temurin JDK
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95
+        with:
+          distribution: temurin
+          java-version: "17.0.19+10"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24.12.0
+          check-latest: false
+
+      - name: Restore verified Gradle inputs
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-m3-10-gradle-${{ hashFiles('**/*gradle.lockfile', 'gradle/verification-metadata.xml', 'gradle/wrapper/gradle-wrapper.properties', 'gradle/wrapper/gradle-wrapper.jar', 'gradle/libs.versions.toml') }}
+
+      - name: Prepare pinned API 36 r2 and Emulator 37.1.11
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest="tools/validation/m0-05-linux-kvm-packages.json"
+          sdk_root="$GITHUB_WORKSPACE/.toolchains/android-m3-10-ci"
+          downloads="$sdk_root/downloads"
+          mkdir -p "$downloads" "$sdk_root/system-images/android-36/default" build/m3-10
+
+          pulse_package="$(jq -r '.host_packages[0].package' "$manifest")"
+          pulse_version="$(jq -r '.host_packages[0].version' "$manifest")"
+          test "$pulse_package" = "libpulse0"
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends "$pulse_package=$pulse_version"
+          test "$(dpkg-query -W -f='${Version}' "$pulse_package")" = "$pulse_version"
+
+          for directory in cmdline-tools licenses platform-tools; do
+            test -e "$ANDROID_HOME/$directory"
+            ln -s "$ANDROID_HOME/$directory" "$sdk_root/$directory"
+          done
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$sdk_root" \
+            "platforms;android-36" "build-tools;36.1.0" "ndk;29.0.14206865" "cmake;4.1.2"
+
+          emulator_name="$(jq -r '.packages[0].archive' "$manifest")"
+          emulator_url="$(jq -r '.packages[0].archive_url' "$manifest")"
+          emulator_sha="$(jq -r '.packages[0].sha256' "$manifest")"
+          emulator_bytes="$(jq -r '.packages[0].bytes' "$manifest")"
+          image_name="$(jq -r '.packages[2].archive' "$manifest")"
+          image_url="$(jq -r '.packages[2].archive_url' "$manifest")"
+          image_sha="$(jq -r '.packages[2].sha256' "$manifest")"
+          image_bytes="$(jq -r '.packages[2].bytes' "$manifest")"
+          curl --fail --location --retry 3 --output "$downloads/$emulator_name" "$emulator_url"
+          curl --fail --location --retry 3 --output "$downloads/$image_name" "$image_url"
+          test "$(stat -c %s "$downloads/$emulator_name")" = "$emulator_bytes"
+          test "$(stat -c %s "$downloads/$image_name")" = "$image_bytes"
+          echo "$emulator_sha  $downloads/$emulator_name" | sha256sum --check --strict
+          echo "$image_sha  $downloads/$image_name" | sha256sum --check --strict
+          unzip -q "$downloads/$emulator_name" -d "$sdk_root"
+          unzip -q "$downloads/$image_name" -d "$sdk_root/system-images/android-36/default"
+          test "$(sha256sum "$sdk_root/emulator/source.properties" | awk '{print $1}')" = "ee589ca350515c29dc3bad30dd5ebe8efb11d1a50c17c8815125d3c4bd12a3a8"
+          test "$(sha256sum "$sdk_root/system-images/android-36/default/x86_64/source.properties" | awk '{print $1}')" = "1a6e7c0b326c24c28ba501aa5ada247dd9fb0f087b662865f7bc649991fe74d1"
+          test "$(sha256sum "$sdk_root/system-images/android-36/default/x86_64/build.prop" | awk '{print $1}')" = "565447ab254aa5f2b974186471c28d10cfcab25c346470673d9f7b4d3ac0ac0b"
+          "$sdk_root/emulator/emulator" -version | grep -F "Android emulator version 37.1.11"
+          echo "ANDROID_HOME=$sdk_root" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$sdk_root" >> "$GITHUB_ENV"
+          echo "ANDROID_AVD_HOME=$sdk_root/avd" >> "$GITHUB_ENV"
+          echo "$sdk_root/platform-tools" >> "$GITHUB_PATH"
+          echo "$sdk_root/emulator" >> "$GITHUB_PATH"
+
+      - name: Download and verify canonical originals and retained profile package
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p build/m3-11 build/m3-12 build/m3-10/retained
+          node tools/validation/fetch-m3-12-profile-package.mjs \
+            --output build/m3-12/m3-10-profile-package-v1.zip
+          node tools/governance/verify-m3-12-profile-retention.mjs \
+            --archive build/m3-12/m3-10-profile-package-v1.zip --self-test
+          unzip -q build/m3-12/m3-10-profile-package-v1.zip -d build/m3-10/retained
+
+          gh api repos/xiaokh31/androidAppHardening/actions/artifacts/9260244215 \
+            > build/m3-11/artifact-metadata.json
+          jq -e '.id == 9260244215 and .expired == false and .size_in_bytes == 3316848 and
+            .workflow_run.id == 31931428130 and .workflow_run.head_sha == "1c030334d607bc10054b876dd969ea8048725cb3"' \
+            build/m3-11/artifact-metadata.json >/dev/null
+          gh api -H 'Accept: application/vnd.github+json' \
+            repos/xiaokh31/androidAppHardening/actions/artifacts/9260244215/zip \
+            > build/m3-11/canonical-artifact.zip
+          test "$(sha256sum build/m3-11/canonical-artifact.zip | awk '{print $1}')" = \
+            "98c5cedce457775e4f4365226647b1bf1d49cb3f824d07ae5f9450c31803d5ae"
+          mkdir build/m3-11/provenance-artifact
+          unzip -q build/m3-11/canonical-artifact.zip -d build/m3-11/provenance-artifact
+          node tools/governance/verify-m3-11-canonical-artifact-contract.mjs \
+            --artifact-root build/m3-11/provenance-artifact
+
+      - name: Prepare verified M2-07 Native crypto source
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive=".toolchains/native-crypto/downloads/mbedtls-4.1.1.tar.bz2"
+          source_parent=".toolchains/native-crypto/src"
+          source_root="$source_parent/mbedtls-4.1.1"
+          extract_root="$source_parent/.mbedtls-4.1.1.extract"
+          mkdir -p "$(dirname "$archive")" "$source_parent"
+          curl --fail --location --retry 3 --output "$archive" \
+            "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-4.1.1/mbedtls-4.1.1.tar.bz2"
+          node tools/validation/verify-m2-07-native-crypto.mjs --archive-only
+          mkdir "$extract_root"
+          tar -xjf "$archive" -C "$extract_root"
+          node tools/validation/verify-m2-07-native-crypto.mjs --self-test --pre-promote \
+            --source-root="$extract_root/mbedtls-4.1.1"
+          printf '%s\n' \
+            'archive_sha256=3359a349e23db3d5536fcee032ae7b2ecbfc08972fab643089b5cbf2a375c98c' \
+            'source_tree_sha256=7c4ba6554fed6eb67c201054bc75b124fcdc0649e2f56cd762746e01a25d2140' \
+            > "$extract_root/mbedtls-4.1.1/.aah-m2-07-verified"
+          mv "$extract_root/mbedtls-4.1.1" "$source_root"
+          rmdir "$extract_root"
+          node tools/validation/verify-m2-07-native-crypto.mjs --self-test
+          rm -f "$archive"
+
+      - name: Build exact Release surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew --no-daemon --console=plain \
+            :host:container:testClasses \
+            :runtime:bootstrap:assembleRelease \
+            :runtime:policy:assembleRelease \
+            :runtime:native:assembleRelease \
+            :fixtures:android:assembleM301JavaSingleDexRelease \
+            :host:cli:distZip \
+            :distribution:jar
+          mkdir -p build/m3-10/release-inputs
+          cp runtime/bootstrap/build/outputs/aar/bootstrap-release.aar build/m3-10/release-inputs/release-bootstrap.aar
+          cp runtime/policy/build/outputs/aar/policy-release.aar build/m3-10/release-inputs/release-policy.aar
+          cp runtime/native/build/outputs/aar/native-release.aar build/m3-10/release-inputs/release-native.aar
+          cp fixtures/android/build/outputs/apk/m301JavaSingleDex/release/android-m301JavaSingleDex-release.apk \
+            build/m3-10/release-inputs/release-fixture.apk
+          cp host/cli/build/distributions/android-app-hardening-0.1.0-dev.zip build/m3-10/release-inputs/cli.zip
+          cp distribution/build/libs/distribution-0.1.0-dev.jar build/m3-10/release-inputs/distribution.jar
+
+      - name: Execute first-and-only API 36 attribution diagnostic
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          avd_name="m3_10_api36_r2_x86_64"
+          serial="emulator-5554"
+          emulator_pid=""
+          cleanup() {
+            set +e
+            adb -s "$serial" uninstall ah.fixtures.android.m301.java_single >/dev/null 2>&1
+            adb -s "$serial" emu kill >/dev/null 2>&1
+            if [[ -n "$emulator_pid" ]]; then
+              kill -TERM "$emulator_pid" >/dev/null 2>&1
+              pkill -TERM -P "$emulator_pid" >/dev/null 2>&1
+              timeout 10s tail --pid="$emulator_pid" -f /dev/null >/dev/null 2>&1
+              kill -KILL "$emulator_pid" >/dev/null 2>&1
+              pkill -KILL -P "$emulator_pid" >/dev/null 2>&1
+            fi
+            pkill -TERM -f "$ANDROID_HOME/emulator/qemu/" >/dev/null 2>&1
+            sleep 1
+            pkill -KILL -f "$ANDROID_HOME/emulator/qemu/" >/dev/null 2>&1
+          }
+          trap cleanup EXIT INT TERM
+
+          avd_dir="$ANDROID_AVD_HOME/$avd_name.avd"
+          mkdir -p "$avd_dir" build/m3-10/emulator
+          printf '%s\n' 'avd.ini.encoding=UTF-8' "path=$avd_dir" 'target=android-36' \
+            > "$ANDROID_AVD_HOME/$avd_name.ini"
+          printf '%s\n' \
+            'PlayStore.enabled=no' 'abi.type=x86_64' "avd.id=$avd_name" 'avd.ini.encoding=UTF-8' \
+            "avd.name=$avd_name" 'disk.dataPartition.size=2147483648' 'fastboot.forceColdBoot=yes' \
+            'fastboot.forceFastBoot=no' 'hw.cpu.arch=x86_64' 'hw.cpu.ncore=2' 'hw.device.name=pixel_2' \
+            'hw.gpu.enabled=yes' 'hw.keyboard=yes' 'hw.lcd.density=420' 'hw.lcd.height=1920' \
+            'hw.lcd.width=1080' 'hw.ramSize=2048' 'image.sysdir.1=system-images/android-36/default/x86_64/' \
+            'runtime.network.latency=none' 'runtime.network.speed=full' 'tag.id=default' \
+            > "$avd_dir/config.ini"
+          sudo chmod 666 /dev/kvm
+          "$ANDROID_HOME/emulator/emulator" -avd "$avd_name" -port 5554 -no-window -no-audio -no-boot-anim \
+            -no-snapshot -wipe-data -gpu swiftshader_indirect -accel on -no-metrics \
+            > build/m3-10/emulator/stdout.txt 2> build/m3-10/emulator/stderr.txt &
+          emulator_pid=$!
+          timeout 180s adb -s "$serial" wait-for-device
+          timeout 180s bash -c \
+            'until [[ "$(adb -s "$1" shell getprop sys.boot_completed 2>/dev/null | tr -d "\r")" = 1 ]]; do sleep 2; done' \
+            _ "$serial"
+          adb -s "$serial" shell input keyevent 82
+
+          originals="build/m3-11/provenance-artifact/benchmarks/android/build/reports/performance/apks"
+          retained="build/m3-10/retained"
+          release="build/m3-10/release-inputs"
+          image_dir="$ANDROID_HOME/system-images/android-36/default/x86_64"
+          node tools/validation/run-m3-10-startup-attribution.mjs \
+            --output build/m3-10/diagnostic-package \
+            --original-baseline "$originals/java-single-dex-baseline.apk" \
+            --original-protected "$originals/java-single-dex-protected.apk" \
+            --observer-dex "$retained/observer.dex" \
+            --derivation-manifest "$retained/derivation-manifest.json" \
+            --profile-baseline-unsigned "$retained/profile-baseline-unsigned.apk" \
+            --profile-protected-unsigned "$retained/profile-protected-unsigned.apk" \
+            --profile-baseline-aligned "$retained/profile-baseline-aligned.apk" \
+            --profile-protected-aligned "$retained/profile-protected-aligned.apk" \
+            --profile-baseline "$retained/profile-baseline.apk" \
+            --profile-protected "$retained/profile-protected.apk" \
+            --release-bootstrap "$release/release-bootstrap.aar" \
+            --release-policy "$release/release-policy.aar" \
+            --release-native "$release/release-native.aar" \
+            --release-fixture "$release/release-fixture.apk" \
+            --cli "$release/cli.zip" \
+            --distribution "$release/distribution.jar" \
+            --m3-11-artifact-root build/m3-11/provenance-artifact \
+            --gradle ./gradlew \
+            --dexdump "$ANDROID_HOME/build-tools/36.1.0/dexdump" \
+            --apksigner "$ANDROID_HOME/build-tools/36.1.0/lib/apksigner.jar" \
+            --build-tools-source "$ANDROID_HOME/build-tools/36.1.0/source.properties" \
+            --adb "$ANDROID_HOME/platform-tools/adb" \
+            --system-image-source "$image_dir/source.properties" \
+            --system-image-build-prop "$image_dir/build.prop" \
+            --emulator-source "$ANDROID_HOME/emulator/source.properties" \
+            --head-sha "$GITHUB_SHA" --run-id "$GITHUB_RUN_ID" --run-attempt "$GITHUB_RUN_ATTEMPT"
+          node tools/validation/verify-m3-10-startup-attribution.mjs package \
+            --artifact-root build/m3-10/diagnostic-package \
+            --dexdump "$ANDROID_HOME/build-tools/36.1.0/dexdump" \
+            --apksigner "$ANDROID_HOME/build-tools/36.1.0/lib/apksigner.jar" \
+            --build-tools-source "$ANDROID_HOME/build-tools/36.1.0/source.properties"
+
+      - name: Upload immutable raw diagnostic package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: m3-09-startup-attribution-raw
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+          path: build/m3-10/diagnostic-package/

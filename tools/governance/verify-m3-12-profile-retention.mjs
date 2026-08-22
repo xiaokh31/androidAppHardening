@@ -83,14 +83,14 @@ function samePath(left, right) {
   const a = path.resolve(left); const b = path.resolve(right);
   return process.platform === "win32" ? a.toLowerCase() === b.toLowerCase() : a === b;
 }
-function zipHeader(name, data, compressed, localOffset, central) {
+function zipHeader(name, data, compressed, localOffset, central, flags) {
   const nameBytes = Buffer.from(name, "utf8");
   const header = Buffer.alloc(central ? 46 : 30);
   header.writeUInt32LE(central ? 0x02014b50 : 0x04034b50, 0);
   if (central) { header.writeUInt16LE(20, 4); header.writeUInt16LE(20, 6); }
   else header.writeUInt16LE(20, 4);
   const flagsOffset = central ? 8 : 6; const methodOffset = central ? 10 : 8; const timeOffset = central ? 12 : 10;
-  header.writeUInt16LE(0x0800, flagsOffset); header.writeUInt16LE(8, methodOffset);
+  header.writeUInt16LE(flags, flagsOffset); header.writeUInt16LE(8, methodOffset);
   header.writeUInt16LE(0, timeOffset); header.writeUInt16LE(0x21, timeOffset + 2);
   const crcOffset = central ? 16 : 14;
   header.writeUInt32LE(crc32(data), crcOffset); header.writeUInt32LE(compressed.length, crcOffset + 4);
@@ -98,12 +98,18 @@ function zipHeader(name, data, compressed, localOffset, central) {
   if (central) header.writeUInt32LE(localOffset, 42);
   return Buffer.concat([header, nameBytes, central ? Buffer.alloc(0) : compressed]);
 }
-function makeZip(entries) {
+function makeZip(entries, options = {}) {
   const local = []; const central = []; let offset = 0;
   for (const { name, data } of entries) {
-    const compressed = deflateRawSync(data, { level: 9 });
-    const localRecord = zipHeader(name, data, compressed, offset, false);
-    local.push(localRecord); central.push(zipHeader(name, data, compressed, offset, true)); offset += localRecord.length;
+    const compressed = deflateRawSync(data, { level: 9 }); const flags = options.dataDescriptor ? 0x0808 : 0x0800;
+    let localRecord = zipHeader(name, data, compressed, offset, false, flags);
+    if (options.dataDescriptor) {
+      const descriptor = Buffer.alloc(options.descriptorSignature === false ? 12 : 16); let cursor = 0;
+      if (options.descriptorSignature !== false) { descriptor.writeUInt32LE(0x08074b50, 0); cursor = 4; }
+      descriptor.writeUInt32LE(crc32(data), cursor); descriptor.writeUInt32LE(compressed.length, cursor + 4); descriptor.writeUInt32LE(data.length, cursor + 8);
+      localRecord = Buffer.concat([localRecord, descriptor]);
+    }
+    local.push(localRecord); central.push(zipHeader(name, data, compressed, offset, true, flags)); offset += localRecord.length;
   }
   const centralBytes = Buffer.concat(central); const end = Buffer.alloc(22);
   end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(entries.length, 8); end.writeUInt16LE(entries.length, 10);
@@ -114,9 +120,13 @@ function archiveRecordOffsets(bytes) {
   const eocd = bytes.length - 22; const count = bytes.readUInt16LE(eocd + 10); const records = [];
   let cursor = bytes.readUInt32LE(eocd + 16);
   for (let index = 0; index < count; index += 1) {
-    const nameLength = bytes.readUInt16LE(cursor + 28); const extraLength = bytes.readUInt16LE(cursor + 30);
+    const flags = bytes.readUInt16LE(cursor + 8); const compressedSize = bytes.readUInt32LE(cursor + 20);
+    const size = bytes.readUInt32LE(cursor + 24); const nameLength = bytes.readUInt16LE(cursor + 28); const extraLength = bytes.readUInt16LE(cursor + 30);
     const commentLength = bytes.readUInt16LE(cursor + 32); const local = bytes.readUInt32LE(cursor + 42);
-    records.push({ central: cursor, local, nameLength, name: bytes.subarray(cursor + 46, cursor + 46 + nameLength).toString("utf8") });
+    const localNameLength = bytes.readUInt16LE(local + 26); const localExtraLength = bytes.readUInt16LE(local + 28);
+    const dataEnd = local + 30 + localNameLength + localExtraLength + compressedSize;
+    records.push({ central: cursor, local, flags, compressedSize, size, dataEnd, nameLength,
+      name: bytes.subarray(cursor + 46, cursor + 46 + nameLength).toString("utf8") });
     cursor += 46 + nameLength + extraLength + commentLength;
   }
   return { eocd, records };
@@ -285,7 +295,7 @@ function validateArchive(bytes, lock) {
   if (JSON.stringify(manifest.entries) !== JSON.stringify(expectedManifestEntries)) fail("member manifest entries differ");
   const report = JSON.parse(values.get("preparation-report.json").toString("utf8"));
   equal(report.signingSecretsPublished, false, "preparation signingSecretsPublished"); equal(report.v3Only, true, "preparation v3Only"); equal(report.result, "PASS", "preparation result");
-  return { entries: values.size };
+  return { entries: values.size, values };
 }
 
 function validateDocuments() {
@@ -302,7 +312,7 @@ function validateDocuments() {
   }
 }
 
-function selfTest(lock, metadata, archiveBytes) {
+function selfTest(lock, metadata, archiveBytes, archiveValues) {
   const mutations = [
     ["upstream_implementation", (x) => { x.upstreamReview.implementationCommit = "0".repeat(40); }],
     ["upstream_evidence", (x) => { x.upstreamReview.evidenceCommit = "0".repeat(40); }],
@@ -371,11 +381,39 @@ function selfTest(lock, metadata, archiveBytes) {
     let rejected = false; try { scanSensitiveBytes(Buffer.from(text), `self-test ${name}`); } catch { rejected = true; }
     if (!rejected) fail(`sensitive mutation accepted: ${name}`);
   }
+  const descriptorWithSignature = makeZip([{ name: "assets/value.bin", data: Buffer.from("safe") }], { dataDescriptor: true });
+  const descriptorWithoutSignature = makeZip([{ name: "assets/value.bin", data: Buffer.from("safe") }], { dataDescriptor: true, descriptorSignature: false });
+  scanApkBytes(descriptorWithSignature, "self-test descriptor signature positive");
+  scanApkBytes(descriptorWithoutSignature, "self-test descriptor no-signature positive");
   const nestedCases = [
     ["nested_content", makeZip([{ name: "assets/value.bin", data: Buffer.from(`gh${"p_"}${"d".repeat(24)}`) }])],
     ["nested_name", makeZip([{ name: "assets/release.jks", data: Buffer.from("safe") }])],
     ["nested_traversal", makeZip([{ name: "../escape.bin", data: Buffer.from("safe") }])],
   ];
+  if (archiveValues) {
+    const baseline = archiveValues.get("profile-baseline.apk"); const protectedApk = archiveValues.get("profile-protected.apk");
+    if (!baseline || !protectedApk) fail("real APK mutation inputs missing");
+    const baselineLayout = archiveRecordOffsets(baseline); const protectedLayout = archiveRecordOffsets(protectedApk);
+    const descriptor = baselineLayout.records.find((entry) => (entry.flags & 0x0008) !== 0);
+    const direct = protectedLayout.records.find((entry) => (entry.flags & 0x0008) === 0);
+    if (!descriptor || !direct || baseline.readUInt32LE(descriptor.dataEnd) !== 0x08074b50) fail("real APK mutation records differ");
+    nestedCases.push(
+      ["descriptor_signature", (() => { const value = Buffer.from(baseline); value[descriptor.dataEnd] ^= 1; return value; })()],
+      ["descriptor_crc", (() => { const value = Buffer.from(baseline); value[descriptor.dataEnd + 4] ^= 1; return value; })()],
+      ["descriptor_compressed_size", (() => { const value = Buffer.from(baseline); value[descriptor.dataEnd + 8] ^= 1; return value; })()],
+      ["descriptor_uncompressed_size", (() => { const value = Buffer.from(baseline); value[descriptor.dataEnd + 12] ^= 1; return value; })()],
+      ["local_crc", (() => { const value = Buffer.from(protectedApk); value[direct.local + 14] ^= 1; return value; })()],
+      ["local_compressed_size", (() => { const value = Buffer.from(protectedApk); value[direct.local + 18] ^= 1; return value; })()],
+      ["local_uncompressed_size", (() => { const value = Buffer.from(protectedApk); value[direct.local + 22] ^= 1; return value; })()],
+      ["encrypted_flags", (() => { const value = Buffer.from(protectedApk); value.writeUInt16LE(direct.flags | 1, direct.central + 8); value.writeUInt16LE(direct.flags | 1, direct.local + 6); return value; })()],
+      ["local_offset_bounds", (() => { const value = Buffer.from(protectedApk); value.writeUInt32LE(value.length, direct.central + 42); return value; })()],
+      ["expanded_size", (() => { const value = Buffer.from(protectedApk); value.writeUInt32LE(33 * 1024 * 1024, direct.central + 24); value.writeUInt32LE(33 * 1024 * 1024, direct.local + 22); return value; })()],
+      ["symlink_entry", (() => { const value = Buffer.from(protectedApk); value.writeUInt32LE(0xa0000000, direct.central + 38); return value; })()],
+      ["duplicate_entry", makeZip([{ name: "assets/same.bin", data: Buffer.from("one") }, { name: "assets/same.bin", data: Buffer.from("two") }])],
+      ["overlapping_local", (() => { const value = Buffer.from(protectedApk); const second = protectedLayout.records[1]; value.writeUInt32LE(protectedLayout.records[0].local, second.central + 42); return value; })()],
+      ["signing_block_magic", (() => { const value = Buffer.from(protectedApk); const central = protectedLayout.eocd > 0 ? value.readUInt32LE(protectedLayout.eocd + 16) : 0; value[central - 1] ^= 1; return value; })()],
+    );
+  }
   for (const [name, bytes] of nestedCases) {
     let rejected = false; try { scanApkBytes(bytes, `self-test ${name}`); } catch { rejected = true; }
     if (!rejected) fail(`nested scan mutation accepted: ${name}`);
@@ -403,7 +441,7 @@ function main() {
   }
   const lock = validateLock(readJson(lockFile, "lock")); const metadata = readJson(metadataFile, "metadata");
   validateMetadata(metadata, lock); validateUpstreamObjects(lock); validateDocuments();
-  let archiveBytes;
+  let archiveBytes; let archiveResult;
   if (archivePath) {
     const resolved = path.resolve(archivePath); const buildRoot = path.resolve(root, "build", "m3-12");
     const rootStat = fs.lstatSync(buildRoot, { throwIfNoEntry: false });
@@ -414,10 +452,10 @@ function main() {
     if (!stat?.isFile() || stat.isSymbolicLink()) fail("archive must be a regular non-symlink file");
     const archiveReal = fs.realpathSync.native(resolved);
     if (!contained(buildReal, archiveReal)) fail("archive realpath must stay below build/m3-12");
-    archiveBytes = fs.readFileSync(archiveReal); validateArchive(archiveBytes, lock);
+    archiveBytes = fs.readFileSync(archiveReal); archiveResult = validateArchive(archiveBytes, lock);
   }
   verifyDiff(baseRef);
-  const mutations = selfTestRequested ? selfTest(lock, metadata, archiveBytes) : { lockMutations: 0, archiveMutations: 0 };
+  const mutations = selfTestRequested ? selfTest(lock, metadata, archiveBytes, archiveResult?.values) : { lockMutations: 0, archiveMutations: 0 };
   process.stdout.write(`${JSON.stringify({ result: "PASS", releaseId: lock.source.releaseId, assetId: lock.source.assetId,
     archiveSha256: lock.archive.sha256, entryCount: lock.archive.entryCount, ...mutations }, null, 2)}\n`);
 }

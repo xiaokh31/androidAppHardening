@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260822-101800
-updated_at: 2026-08-22T10:18:00+08:00
+handoff_id: HO-20260822-102404
+updated_at: 2026-08-22T10:24:04+08:00
 updated_by: /root
 state: active
 source_branch: docs/m3-12-profile-package-retention
@@ -21,7 +21,7 @@ Retain the already-reviewed M3-10 profile package as one fixed, content-verified
 
 ## Current State
 
-- M3-12 is active on Issue #75 and branch `docs/m3-12-profile-package-retention` from `main@9d3fc3a4ae17d14f84d223b9dbb5f92016814f1a`. Initial implementation freeze `69b2fa75b0362992a3544188ae843106c66bb347` and evidence successor `3c98db78f69f5e980ed1043681ef8d617e3c2b45` were rejected by the first independent review with `P0=0/P1=2/P2=3`. Remediation freeze `f651731b42b4a4f6158f3f51f7e299d49f639f17` binds and validates the M3-10 all-zero Git commits/blobs/ancestry/report hash, recursively scans all six APKs, enforces the exact deterministic archive, passes 24 lock/12 actual archive/10 sensitive mutations, and rejects creator/fetcher/verifier junction escapes. Two fresh creator outputs, the prior numeric download and a post-remediation numeric download are all `2184246` bytes with SHA-256 `21816d2a843bb5c59902224c7bf786d546d52b4a5b2d1168ca0c449a2ca27964`; GitHub remains accurately recorded as `immutable=false`. No profile was regenerated, no signing secret exists, and no workflow or Android environment ran. The next action is a second independent read-only review of this exact freeze plus its evidence successor.
+- M3-12 is active on Issue #75 and branch `docs/m3-12-profile-package-retention` from `main@9d3fc3a4ae17d14f84d223b9dbb5f92016814f1a`. The first independent review rejected `69b2fa75.../3c98db7...` with `P0=0/P1=2/P2=3`; all five findings were closed in `f651731b42b4a4f6158f3f51f7e299d49f639f17` / `a261b0ab58d6c386aececeaefa27a55397e8b08b`. The second review confirmed those closures but rejected that remediation with `P0=0/P1=1/P2=0` because reachable APK data descriptors and non-descriptor local CRC/sizes were not reconciled. The bounded second remediation now validates signed/signature-less descriptors, local fields, record ranges and bounded zipalign/APK Signing Block gaps and raises nested sensitive/parser mutations from 10 to 24 using real retained APK bytes. All retained archives remain `2184246` bytes with SHA-256 `21816d2a843bb5c59902224c7bf786d546d52b4a5b2d1168ca0c449a2ca27964`; GitHub remains accurately recorded as `immutable=false`. No profile was regenerated, no signing secret exists, and no workflow or Android environment ran. A new freeze and third independent review are required.
 - M2-07 Ubuntu runner-lock maintenance is merged and complete. Official immutable ref `ubuntu24/20260816.277` remains fixed to commit `3b5f596ffecb076aa5f3c3ded95b145f6daeb016`; manifest blob `0023ec0741a8c708f9ba2e2bcfc1ee0d9fcb219c` is `15740` bytes with SHA-256 `50384bd5268bb03ae44ab93d621d9d9f20b30f8f0c8155ed49333a57c31a7d88`. Initial freeze `e8ed50a89c52fb8e66516ab6c4a4775c6fac1124` was rejected with `P0=0/P1=2/P2=0`; remediation freeze `da37f47958522986fd25086368dc5598193e4906` and evidence successor `81a1e5b6f9467d4ec1ae6b880c4be27024dde488` passed complete and incremental independent review with `P0=0/P1=0/P2=0`. Final PR head `2f48d5eae74dc753ff8b3370852ee23f2989e402` passed Ubuntu/Windows Build `32330793427` and Governance `32330793521`; PR #74 was made ready and merged with expected-head protection as `77e5148c5aa035fd450adffe9a09111d6b67f973`, and Issue #73 closed. Post-merge Build `32333998709` passed both platforms. Initial main Governance `32333998706` failed only because the merged HandOff still named the source branch; this coordination snapshot corrects it to `main`. Out-of-scope KVM/equivalence/fuzz were cancelled; no Runtime, Host, APK, benchmark, emulator or physical-device input changed.
 - M3-11 is complete on `main`. Final PR head `b29c8c50a99ae1b4ea35926bd12337563c0dfe49` retained the all-zero independent review and passed required Ubuntu/Windows Build and Governance. PR #72 was converted to ready and merged with expected-head protection as `98e652b3017df0255ba8be4869513698c18c9ce6`; Issue #71 closed. Post-merge coordination head `445ea066cc3514b62ceede7beff87721bd9ab2c5` passed Windows Build and Ubuntu/Windows Governance, while Ubuntu Build `32323762679` correctly failed closed before project build on then-unreviewed image `ubuntu24/20260816.277.1`. M2-07 PR #74 has now independently reviewed and fixed that exact image, closing the toolchain provenance blocker without rerunning M3-11. No benchmark, KVM, emulator, ARM or canonical diagnostic ran. M3-10 and M3-05 remain blocked by their own contracts.
 - M3-09 is complete on `main`. Final PR head `613e61ac8d3e74f60219ee0d462fae635c3a663d` passed independent bounded review with `P0=0/P1=0/P2=0`, exact-head Ubuntu/Windows Build `32192033540`, and Governance `32192033589`. PR #69 was made ready and merged with expected-head protection as `886b49f001936edc5d1a090e14e626d6e8e3f3ab`; Issue #68 closed. ADR 0016 is accepted and the M3-09 validator remains synthetic-contract-only. No Runtime, Host, fixture, benchmark or diagnostic workflow implementation changed; no Gradle, KVM, emulator, ARM, benchmark, M3-05 or M2-10 retry ran. M3-05 PR #63 remains blocked until a separate ADR 0016 implementation task and any selected owner remediation complete.
@@ -1901,9 +1901,9 @@ M3-10 workflow creation remains blocked until the current M3-12 freeze passes in
 
 ## Ordered Next Actions
 
-1. Run a second independent, strict read-only review of remediation freeze `f651731b42b4a4f6158f3f51f7e299d49f639f17` and its evidence-only successor. Remediate only returned findings until `P0=0/P1=0/P2=0`.
-2. Only after all-zero review may M3-12 be pushed/opened as its unique draft PR and run exact-head Ubuntu/Windows Build/Governance.
-3. Merge M3-12 only after exact-head gates pass; after merge, M3-10 may separately incorporate the lock and add its one-shot API 36 workflow.
+1. Freeze and record the descriptor/local-header remediation with 24 nested production-predicate mutations and clean governance/strict/diff gates.
+2. Run a third independent, strict read-only review; remediate only returned findings until `P0=0/P1=0/P2=0`.
+3. Only after all-zero review may M3-12 be pushed/opened as its unique draft PR and run exact-head Ubuntu/Windows Build/Governance; after merge, M3-10 may separately incorporate the lock and add its one-shot API 36 workflow.
 
 ## Relevant Files and Artifacts
 
@@ -1927,6 +1927,7 @@ M3-10 workflow creation remains blocked until the current M3-12 freeze passes in
 - `docs/evidence/M3-12/local-validation.md`
 - `docs/evidence/M3-12/read-only-review-1.md`
 - `docs/evidence/M3-12/review-1-remediation-local.md`
+- `docs/evidence/M3-12/read-only-review-2.md`
 - `tools/validation/create-m3-12-profile-package.mjs`
 - `tools/validation/fetch-m3-12-profile-package.mjs`
 - `tools/validation/m3-12-security-scan.mjs`

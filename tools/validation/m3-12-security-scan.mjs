@@ -4,6 +4,8 @@ import { inflateRawSync } from "node:zlib";
 
 const MAX_ENTRY_BYTES = 32 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 128 * 1024 * 1024;
+const MAX_SIGNING_BLOCK_BYTES = 16 * 1024 * 1024;
+const APK_SIG_MAGIC = Buffer.from("APK Sig Block 42", "ascii");
 const TEXT_PATTERNS = Object.freeze([
   ["PEM private key", /-----BEGIN (?:ENCRYPTED |RSA |EC |OPENSSH )?PRIVATE KEY-----/iu],
   ["GitHub fine-grained token", /github_pat_[A-Za-z0-9_]{20,}/u],
@@ -52,6 +54,21 @@ export function scanSensitiveBytes(bytes, label) {
   scanSensitiveText(Buffer.from(bytes).toString("latin1"), label);
 }
 
+function validateTailGap(bytes, localEnd, centralOffset, label) {
+  if (localEnd === centralOffset) return;
+  if (localEnd > centralOffset || centralOffset < 24 || !bytes.subarray(centralOffset - 16, centralOffset).equals(APK_SIG_MAGIC)) {
+    fail(label, "unexplained local-to-central gap");
+  }
+  const sizeValue = bytes.readBigUInt64LE(centralOffset - 24);
+  if (sizeValue > BigInt(MAX_SIGNING_BLOCK_BYTES) || sizeValue > BigInt(Number.MAX_SAFE_INTEGER)) fail(label, "APK Signing Block size");
+  const totalSize = Number(sizeValue) + 8;
+  const blockStart = centralOffset - totalSize;
+  if (totalSize < 32 || blockStart < localEnd || blockStart % 4096 !== 0 ||
+      bytes.readBigUInt64LE(blockStart) !== sizeValue) fail(label, "APK Signing Block bounds");
+  const padding = bytes.subarray(localEnd, blockStart);
+  if (padding.length > 4095 || padding.some((byte) => byte !== 0)) fail(label, "APK alignment padding");
+}
+
 export function scanApkBytes(input, label) {
   const bytes = Buffer.from(input);
   scanSensitiveBytes(bytes, `${label} raw bytes`);
@@ -62,7 +79,7 @@ export function scanApkBytes(input, label) {
   const centralSize = u32(bytes, eocd + 12, label);
   const centralOffset = u32(bytes, eocd + 16, label);
   if (centralOffset + centralSize !== eocd) fail(label, "central directory bounds");
-  const names = new Set();
+  const names = new Set(); const ranges = [];
   let cursor = centralOffset;
   let totalBytes = 0;
   for (let index = 0; index < count; index += 1) {
@@ -94,10 +111,28 @@ export function scanApkBytes(input, label) {
     if (u16(bytes, localOffset + 6, label) !== flags || u16(bytes, localOffset + 8, label) !== method) fail(label, "local policy mismatch");
     const localNameLength = u16(bytes, localOffset + 26, label);
     const localExtraLength = u16(bytes, localOffset + 28, label);
+    const localCrc = u32(bytes, localOffset + 14, label);
+    const localCompressedSize = u32(bytes, localOffset + 18, label);
+    const localSize = u32(bytes, localOffset + 22, label);
     const dataStart = localOffset + 30 + localNameLength + localExtraLength;
     const dataEnd = dataStart + compressedSize;
     if (dataEnd > centralOffset || localNameLength !== nameLength ||
         !bytes.subarray(localOffset + 30, localOffset + 30 + localNameLength).equals(nameBytes)) fail(label, "local name/data bounds");
+    let recordEnd = dataEnd;
+    if ((flags & 0x0008) === 0) {
+      if (localCrc !== crc || localCompressedSize !== compressedSize || localSize !== size) fail(label, `local integrity differs: ${name}`);
+    } else {
+      const localValuesValid = (localCrc === 0 && localCompressedSize === 0 && localSize === 0) ||
+        (localCrc === crc && localCompressedSize === compressedSize && localSize === size);
+      if (!localValuesValid) fail(label, `local descriptor values differ: ${name}`);
+      let descriptor = dataEnd;
+      if (u32(bytes, descriptor, label) === 0x08074b50) descriptor += 4;
+      if (descriptor + 12 > centralOffset || u32(bytes, descriptor, label) !== crc ||
+          u32(bytes, descriptor + 4, label) !== compressedSize || u32(bytes, descriptor + 8, label) !== size) {
+        fail(label, `data descriptor differs: ${name}`);
+      }
+      recordEnd = descriptor + 12;
+    }
     let data;
     try {
       data = method === 0 ? Buffer.from(bytes.subarray(dataStart, dataEnd)) :
@@ -108,9 +143,17 @@ export function scanApkBytes(input, label) {
     if (data.length !== size || crc32(data) !== crc) fail(label, `entry integrity differs: ${name}`);
     scanSensitiveBytes(data, `${label}!${name}`);
     totalBytes += data.length;
+    ranges.push([localOffset, recordEnd]);
     cursor = centralEnd;
   }
   if (cursor !== eocd) fail(label, "central directory parsed length");
+  ranges.sort((left, right) => left[0] - right[0]);
+  let localEnd = 0;
+  for (const [start, end] of ranges) {
+    if (start !== localEnd || end <= start || end > centralOffset) fail(label, "local record overlap or gap");
+    localEnd = end;
+  }
+  validateTailGap(bytes, localEnd, centralOffset, label);
   return { entryCount: names.size, expandedBytes: totalBytes };
 }
 

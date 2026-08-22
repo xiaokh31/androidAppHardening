@@ -75,6 +75,7 @@ M3-10 implementation review reached `P0=0/P1=0/P2=0`, but a separate execution-r
 - No private key, keystore, password, seed, token, customer APK/path, plaintext customer DEX or local absolute path may enter Git, release notes, logs or evidence.
 - ZIP names must be unique UTF-8 root basenames with no directory, traversal, slash, backslash, NUL, drive or symlink semantics.
 - Archive parsing must bounds-check all counts, offsets and lengths and reject unsupported methods, extra members and trailing bytes.
+- Nested APK parsing must reconcile central and local CRC/size fields, strictly validate signed or signature-less data descriptors, reject overlapping/gapped local records, and recognize only bounded zero zipalign padding plus a structurally bounded APK Signing Block before the central directory.
 - The future workflow receives only `contents: read` and verifies before emulator creation or installation.
 
 ## Compatibility Requirements
@@ -99,6 +100,7 @@ M3-10 implementation review reached `P0=0/P1=0/P2=0`, but a separate execution-r
 - Lock schema and named field mutation tests.
 - Strict actual ZIP parsing and member size/hash verification.
 - Archive byte flip, truncation, trailing-byte, duplicate/extra/missing/substituted/traversal member, method, flags, local offset and local/central mismatch mutations.
+- Real nested-APK descriptor signature/CRC/size, local CRC/size, encrypted flag, bounds, expansion, duplicate, overlap, symlink and signing-block mutations through the production scanner.
 - Output-root symlink/junction escape rejection for creator, fetcher and verifier.
 - Remote re-download byte equality, governance, strict HandOff and diff checks.
 

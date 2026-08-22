@@ -7,6 +7,7 @@ owner_role: runtime-security-agent
 depends_on:
   - M3-09
   - M3-11
+  - M3-12
 required_skills:
   - plan-apk-hardening-change
   - implement-runtime-protection
@@ -72,6 +73,7 @@ M3-09 accepted the attribution model. M3-11 then fixed the canonical originals t
 - The profile, Release/tool and API 36 environment locks are repository-tracked immutable inputs. The runner copies only those reviewed paths, and the package verifier requires byte equality plus their reviewed SHA-256 values; callers cannot substitute lock files.
 - Before the first install, the runner reads page 1 of the official GitHub Actions jobs API itself with the workflow token, requires a complete `<100`-job page and exactly one current `m3-09-startup-attribution` job for `GITHUB_RUN_ID`, derives `jobId` from that response, and archives both the raw page and its normalized selected job. A caller-provided job JSON is not accepted.
 - Canonical workflows are added only after an exact implementation freeze passes independent review `P0=0/P1=0/P2=0`. Invalid evidence consumes eligibility for the tuple and cannot be replaced.
+- The reviewed profile package is obtained only through M3-12 numeric asset ID `524507375`, archive SHA-256 `21816d2a843bb5c59902224c7bf786d546d52b4a5b2d1168ca0c449a2ca27964` and its exact member lock, and must pass verification before emulator creation. Tag/name fallback, regeneration and cache substitution are forbidden.
 
 ## Public Interfaces
 

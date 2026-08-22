@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M3-12",
+  "packageId": "m3-10-profile-package-v1",
+  "upstreamReview": {
+    "implementationCommit": "86ec37475fd7a96b4baf764530baefc3fe3d4cde",
+    "evidenceCommit": "7a384b321e9afa8df5f683ad1a2b78ba2cb31bd0",
+    "reviewRecordCommit": "ac2d969392556fd9b338399e6cc2e9c22c90daed",
+    "reviewRecordPath": "docs/evidence/M3-10/read-only-review-5.md",
+    "reviewRecordSizeBytes": 2755,
+    "reviewRecordSha256": "43b9ce026161c60b990c6c56d0932c4a0b931fc0edc8612ebbffde848fc68c10",
+    "profileLockPath": "tools/validation/m3-10/canonical-profile-lock.json",
+    "profileLockSizeBytes": 2812,
+    "profileLockSha256": "a9e130bb4e66e14443d83ea01ef0d60a95adddefa9dc92a9bdc980e5728dab4b",
+    "acceptedFourApkReportSha256": "1610f895cb1a3003387a2c7f2e2e1474d6fbbfc523da8fc11c88d6cd283c5b93",
+    "result": "P0=0/P1=0/P2=0"
+  },
+  "source": {
+    "repository": "xiaokh31/androidAppHardening",
+    "releaseId": 374769776,
+    "tag": "m3-10-profile-package-v1",
+    "targetCommitish": "9d3fc3a4ae17d14f84d223b9dbb5f92016814f1a",
+    "draft": false,
+    "prerelease": true,
+    "immutable": false,
+    "assetId": 524507375,
+    "assetName": "m3-10-profile-package-v1.zip",
+    "assetLabel": "M3-10 profile package v1 (test-only)",
+    "contentType": "application/zip",
+    "assetState": "uploaded",
+    "apiPath": "/repos/xiaokh31/androidAppHardening/releases/assets/524507375",
+    "createdAt": "2026-08-22T01:53:36Z",
+    "updatedAt": "2026-08-22T01:54:53Z"
+  },
+  "archive": {
+    "sizeBytes": 2184246,
+    "sha256": "21816d2a843bb5c59902224c7bf786d546d52b4a5b2d1168ca0c449a2ca27964",
+    "githubDigest": "sha256:21816d2a843bb5c59902224c7bf786d546d52b4a5b2d1168ca0c449a2ca27964",
+    "entryCount": 10,
+    "entries": [
+      { "name": "derivation-manifest.json", "sizeBytes": 1161, "sha256": "878d092a3cae6f4aa73cb722ea0bb9aa2f1eb32917a19b8c83220502dbdf4de8" },
+      { "name": "m3-12-manifest.json", "sizeBytes": 1620, "sha256": "c5f4b45404a6bec5d7915fb6df595d19690022085384592a080c7df454083fd5" },
+      { "name": "observer.dex", "sizeBytes": 4748, "sha256": "537b1ba424961d3897d574c10ec155e7b01cfffa313d71a0ade1d0c06e26dc88" },
+      { "name": "preparation-report.json", "sizeBytes": 782, "sha256": "bf174be280410dc98ac532a7aab04e3c1a5890a0f5693a5affe55362bec3a698" },
+      { "name": "profile-baseline-aligned.apk", "sizeBytes": 25819, "sha256": "8a39bf6e830e18d997ababe767f290bb3ee5489d31cafbb614aa5a625322b7d8" },
+      { "name": "profile-baseline-unsigned.apk", "sizeBytes": 23097, "sha256": "423461bc1b900230021d2c950f5d5ce1b10f37911a8d63ea4f84a0b46e93fbe4" },
+      { "name": "profile-baseline.apk", "sizeBytes": 33971, "sha256": "a062e0994482b1db417ff710c554364ec80e9f8d5fa84b5745ff5753308b764b" },
+      { "name": "profile-protected-aligned.apk", "sizeBytes": 1279696, "sha256": "ffcf606605ed7a13cd9f61aaa11076ff58bbe620308683ac93baa729d0c28c09" },
+      { "name": "profile-protected-unsigned.apk", "sizeBytes": 1252546, "sha256": "167c44aa4a15071b762fcec18fd4bfcc55087676577750dc0177f8734dad7b25" },
+      { "name": "profile-protected.apk", "sizeBytes": 1287848, "sha256": "1ce941404d8e6105764d041c449a60016312bc9c9671a8f8eb97c4e8b6820a10" }
+    ]
+  },
+  "retention": {
+    "trackedInGit": false,
+    "localIgnoredRoot": "build/m3-12/",
+    "consumerPermission": "contents: read",
+    "acceptHeader": "application/octet-stream",
+    "regenerationPermitted": false,
+    "fallbackPermitted": false,
+    "failClosedIfUnavailable": true,
+    "replacementChangesAssetId": true
+  }
+}

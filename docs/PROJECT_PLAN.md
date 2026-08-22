@@ -81,7 +81,8 @@ v0.1 的成功标准不是“不可破解”，而是在不破坏已声明兼容
 - M3-08：启动性能与测量稳定性合同。
 - M3-09：端到端启动性能归因边界合同。
 - M3-11：锁定 PR #63 canonical 启动诊断 APK 来源、字节与 SHA-256。
-- M3-10：在 M3-11 exact pair 上实现 ADR 0016 一次性归因诊断。
+- M3-12：把已复核 M3-10 profile package 以固定 release/asset ID、archive 与 member SHA-256 保留，不允许再生。
+- M3-10：在 M3-11 exact pair 与 M3-12 exact profile asset 上实现 ADR 0016 一次性归因诊断。
 - M3-05：大小、启动和内存基准。
 
 退出门禁：完整矩阵逐格区分 `VERIFIED`、`FAILED` 与 `UNVERIFIED`，强制可获得基线和负面测试通过，基准报告完整；不存在未解释的平台差异，所有未验证组合不形成兼容承诺，已知限制与产品文档一致。

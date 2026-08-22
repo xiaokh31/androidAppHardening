@@ -1,0 +1,22 @@
+{
+  "repository": "xiaokh31/androidAppHardening",
+  "release": {
+    "id": 374769776,
+    "tag_name": "m3-10-profile-package-v1",
+    "target_commitish": "9d3fc3a4ae17d14f84d223b9dbb5f92016814f1a",
+    "draft": false,
+    "prerelease": true,
+    "immutable": false
+  },
+  "asset": {
+    "id": 524507375,
+    "name": "m3-10-profile-package-v1.zip",
+    "label": "M3-10 profile package v1 (test-only)",
+    "content_type": "application/zip",
+    "size": 2184246,
+    "state": "uploaded",
+    "digest": "sha256:21816d2a843bb5c59902224c7bf786d546d52b4a5b2d1168ca0c449a2ca27964",
+    "created_at": "2026-08-22T01:53:36Z",
+    "updated_at": "2026-08-22T01:54:53Z"
+  }
+}

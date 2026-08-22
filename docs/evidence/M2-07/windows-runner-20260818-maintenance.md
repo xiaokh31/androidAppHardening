@@ -108,3 +108,13 @@ Replacement candidate hashes:
 | `tools/validation/verify-m2-07-native-crypto.mjs` | `8fecb585daa532f70ce9384eee764dba6eb3181d2e8fbf236e84fa9414fbb913` |
 
 No Host build was rerun locally because the exact new compiler banner exists only on the reviewed hosted image. The replacement exact-head Windows Build is the required executable proof; no device, KVM, fuzz, equivalence or benchmark is authorized.
+
+## Replacement candidate CI
+
+- Candidate: `38ecd28b7973a2817c7b66f3a1232565735defd2`
+- Independent review: `PASS — P0=0/P1=0/P2=0`
+- Build `32548803871`: Ubuntu job `96972020602` PASS; Windows job `96972020592` PASS, including exact runner/ref, per-image `cl.exe 19.51.36256`, M2-07 Host crypto vectors, complete Windows checks and four Native ABI gates.
+- Governance `32548803955`: Ubuntu job `96972020742` PASS; Windows job `96972020644` PASS.
+- KVM `32548803886`, equivalence `32548803900` and fuzz `32548803943`: cancelled as out of scope and not used as evidence.
+
+The evidence-only successor does not change the workflow, machine lock, validator or any executable input. Its bounded independent review and final exact-head Build/Governance remain required before ready/merge authorization.

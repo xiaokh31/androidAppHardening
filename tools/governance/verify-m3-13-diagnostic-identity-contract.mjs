@@ -332,10 +332,19 @@ function validateState(state) {
     plan: ["M3-13", "successor diagnostic identity"],
     strategy: ["ADR 0018", "zero device observation", "no further renewal"],
     readme: ["M3-13", "ADR 0018", "32554806537"],
-    handoff: ["active_task: M3-13", "Issue #80", "No device, KVM, emulator, ARM, API 29 or benchmark"],
+    handoff: ["Issue #80", "No device, KVM, emulator, ARM, API 29 or benchmark"],
   };
   for (const [key, required] of Object.entries(phrases)) {
     for (const phrase of required) requirePhrase(texts[key], phrase, paths[key] ?? key, errors);
+  }
+
+  const handoffActive = texts.handoff.includes("active_task: M3-13")
+    && texts.handoff.includes("| M3-13 | `/root` | `docs/m3-13-diagnostic-identity-contract` | in_progress |");
+  const handoffDone = texts.handoff.includes("active_task: NONE")
+    && texts.handoff.includes("| M3-13 | `/root` | `main` | done |")
+    && texts.handoff.includes("PR #81 merged");
+  if (!handoffActive && !handoffDone) {
+    errors.push(`${paths.handoff}: M3-13 lifecycle must be the exact active branch state or the exact merged-main done state`);
   }
 
   if (workflowPresence.diagnostic) errors.push(`${DIAGNOSTIC_WORKFLOW}: contract task must not add executable diagnostic workflow`);
@@ -443,6 +452,12 @@ function runSelfTest(baseState) {
   cases.push({ name: "missing-no-renewal-text", mutate: (state) => { state.texts.adr = state.texts.adr.replace("No second successor and no further renewal are permitted", "A later successor may be permitted"); } });
   cases.push({ name: "missing-arm-boundary", mutate: (state) => { state.texts.task = state.texts.task.replace("The available unlocked ARM device is irrelevant", "The ARM device may be used"); } });
   cases.push({ name: "missing-m310-terminal", mutate: (state) => { state.texts.m310 = state.texts.m310.replace("terminally blocked", "retryable"); } });
+  cases.push({ name: "invalid-handoff-lifecycle", mutate: (state) => {
+    state.texts.handoff = state.texts.handoff
+      .replace("active_task: M3-13", "active_task: M3-05")
+      .replace("active_task: NONE", "active_task: M3-05")
+      .replace("| M3-13 | `/root` | `main` | done |", "| M3-13 | `/root` | `main` | review |");
+  } });
   cases.push({ name: "diagnostic-workflow-present", mutate: (state) => { state.workflowPresence.diagnostic = true; } });
   cases.push({ name: "evidence-workflow-present", mutate: (state) => { state.workflowPresence.evidence = true; } });
 

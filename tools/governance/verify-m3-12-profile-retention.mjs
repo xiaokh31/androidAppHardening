@@ -116,6 +116,18 @@ function makeZip(entries, options = {}) {
   end.writeUInt32LE(centralBytes.length, 12); end.writeUInt32LE(offset, 16);
   return Buffer.concat([...local, centralBytes, end]);
 }
+function makeGapZip() {
+  const base = makeZip([
+    { name: "assets/one.bin", data: Buffer.from("one") },
+    { name: "assets/two.bin", data: Buffer.from("two") },
+  ]);
+  const layout = archiveRecordOffsets(base); const insertAt = layout.records[1].local;
+  const value = Buffer.concat([base.subarray(0, insertAt), Buffer.from([0]), base.subarray(insertAt)]);
+  const eocd = layout.eocd + 1; const central = base.readUInt32LE(layout.eocd + 16) + 1;
+  value.writeUInt32LE(central, eocd + 16);
+  value.writeUInt32LE(layout.records[1].local + 1, layout.records[1].central + 1 + 42);
+  return value;
+}
 function archiveRecordOffsets(bytes) {
   const eocd = bytes.length - 22; const count = bytes.readUInt16LE(eocd + 10); const records = [];
   let cursor = bytes.readUInt32LE(eocd + 16);
@@ -377,19 +389,17 @@ function selfTest(lock, metadata, archiveBytes, archiveValues) {
     ["windows_path", `C:${"\\"}Users${"\\"}fixture${"\\"}secret`],
     ["unix_path", ["", "home", "fixture", "secret"].join("/")],
   ];
-  for (const [name, text] of sensitiveVectors) {
-    let rejected = false; try { scanSensitiveBytes(Buffer.from(text), `self-test ${name}`); } catch { rejected = true; }
-    if (!rejected) fail(`sensitive mutation accepted: ${name}`);
-  }
   const descriptorWithSignature = makeZip([{ name: "assets/value.bin", data: Buffer.from("safe") }], { dataDescriptor: true });
   const descriptorWithoutSignature = makeZip([{ name: "assets/value.bin", data: Buffer.from("safe") }], { dataDescriptor: true, descriptorSignature: false });
   scanApkBytes(descriptorWithSignature, "self-test descriptor signature positive");
   scanApkBytes(descriptorWithoutSignature, "self-test descriptor no-signature positive");
-  const nestedCases = [
+  const nestedCases = sensitiveVectors.map(([name, text]) =>
+    [name, makeZip([{ name: "assets/value.bin", data: Buffer.from(text) }])]);
+  nestedCases.push(
     ["nested_content", makeZip([{ name: "assets/value.bin", data: Buffer.from(`gh${"p_"}${"d".repeat(24)}`) }])],
     ["nested_name", makeZip([{ name: "assets/release.jks", data: Buffer.from("safe") }])],
     ["nested_traversal", makeZip([{ name: "../escape.bin", data: Buffer.from("safe") }])],
-  ];
+  );
   if (archiveValues) {
     const baseline = archiveValues.get("profile-baseline.apk"); const protectedApk = archiveValues.get("profile-protected.apk");
     if (!baseline || !protectedApk) fail("real APK mutation inputs missing");
@@ -410,15 +420,19 @@ function selfTest(lock, metadata, archiveBytes, archiveValues) {
       ["expanded_size", (() => { const value = Buffer.from(protectedApk); value.writeUInt32LE(33 * 1024 * 1024, direct.central + 24); value.writeUInt32LE(33 * 1024 * 1024, direct.local + 22); return value; })()],
       ["symlink_entry", (() => { const value = Buffer.from(protectedApk); value.writeUInt32LE(0xa0000000, direct.central + 38); return value; })()],
       ["duplicate_entry", makeZip([{ name: "assets/same.bin", data: Buffer.from("one") }, { name: "assets/same.bin", data: Buffer.from("two") }])],
-      ["overlapping_local", (() => { const value = Buffer.from(protectedApk); const second = protectedLayout.records[1]; value.writeUInt32LE(protectedLayout.records[0].local, second.central + 42); return value; })()],
+      ["local_record_gap", makeGapZip(), "local record overlap or gap"],
       ["signing_block_magic", (() => { const value = Buffer.from(protectedApk); const central = protectedLayout.eocd > 0 ? value.readUInt32LE(protectedLayout.eocd + 16) : 0; value[central - 1] ^= 1; return value; })()],
     );
   }
-  for (const [name, bytes] of nestedCases) {
-    let rejected = false; try { scanApkBytes(bytes, `self-test ${name}`); } catch { rejected = true; }
+  for (const [name, bytes, expectedMessage] of nestedCases) {
+    let rejected = false;
+    try { scanApkBytes(bytes, `self-test ${name}`); } catch (error) {
+      if (expectedMessage && !String(error?.message).includes(expectedMessage)) fail(`nested mutation rejected at wrong boundary: ${name}`);
+      rejected = true;
+    }
     if (!rejected) fail(`nested scan mutation accepted: ${name}`);
   }
-  return { lockMutations: mutations.length + 1, archiveMutations, sensitiveMutations: sensitiveVectors.length + nestedCases.length };
+  return { lockMutations: mutations.length + 1, archiveMutations, sensitiveMutations: nestedCases.length };
 }
 
 function verifyDiff(baseRef) {

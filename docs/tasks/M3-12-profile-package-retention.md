@@ -100,7 +100,7 @@ M3-10 implementation review reached `P0=0/P1=0/P2=0`, but a separate execution-r
 - Lock schema and named field mutation tests.
 - Strict actual ZIP parsing and member size/hash verification.
 - Archive byte flip, truncation, trailing-byte, duplicate/extra/missing/substituted/traversal member, method, flags, local offset and local/central mismatch mutations.
-- Real nested-APK descriptor signature/CRC/size, local CRC/size, encrypted flag, bounds, expansion, duplicate, overlap, symlink and signing-block mutations through the production scanner.
+- Real nested-APK descriptor signature/CRC/size, local CRC/size, encrypted flag, bounds, expansion, duplicate, local-record gap/overlap predicate, symlink and signing-block mutations through the production scanner; sensitive vectors must also be ZIP-wrapped through that same scanner.
 - Output-root symlink/junction escape rejection for creator, fetcher and verifier.
 - Remote re-download byte equality, governance, strict HandOff and diff checks.
 

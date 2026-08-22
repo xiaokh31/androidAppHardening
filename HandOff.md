@@ -1,13 +1,13 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260822-132026
-updated_at: 2026-08-22T13:20:26+08:00
+handoff_id: HO-20260822-133416
+updated_at: 2026-08-22T13:34:16+08:00
 updated_by: /root
 state: active
 source_branch: feat/m3-10-startup-attribution-diagnostic
 base_commit: c9399b40884778f027ffbe33f96786197365acb3
-working_tree: dirty
+working_tree: clean
 current_milestone: M3
 active_task: M3-10
 next_owner: /root
@@ -21,7 +21,7 @@ Complete the bounded M3-10 ADR 0016 startup-attribution diagnostic from the exac
 
 ## Current State
 
-- The M3-10 workflow successor is prepared but not yet published. It fetches only the fixed M3-12 release/asset/archive, validates the exact M3-11 originals, builds the locked Release surfaces, and permits one branch-push API 36 diagnostic followed by a separate terminal-evidence push. Local actual-byte verification passed for the canonical/profile APKs, v3-only signer, Manifest/DEX/Native equivalence, six Release/CLI/distribution artifacts and 17 real mutations; the complete verifier now rejects 49 report/result/GitHub/artifact/cleanup mutations, the collector rejects five redirect cases plus an oversized ZIP entry, the cleanup runner rejects 8 injected command failures, and the profile-freeze validator accepts only the reviewed workflow pair while preserving zero production observer surface. No device, emulator, ARM, API 29, benchmark or M3-05 action has run locally.
+- The M3-10 workflow successor is frozen at `4c58759bb4e4e53eb56fc9d3cbd3c8d0929ba1d0` and not yet published. Independent complete plus bounded incremental review returned `P0=0/P1=0/P2=0`. It fetches only the fixed M3-12 release/asset/archive, validates the exact M3-11 originals, builds the locked Release surfaces, and permits one branch-push API 36 diagnostic followed by a separate terminal-evidence push. Local actual-byte verification passed for the canonical/profile APKs, v3-only signer, Manifest/DEX/Native equivalence, six Release/CLI/distribution artifacts and 17 real mutations; the complete verifier rejects 49 report/result/GitHub/artifact/cleanup mutations, the collector rejects five redirect cases plus an oversized ZIP entry, the cleanup runner rejects 8 injected command failures, and the profile-freeze validator accepts only the reviewed workflow pair while preserving zero production observer surface. No device, emulator, ARM, API 29, benchmark or M3-05 action has run locally.
 - M3-10 implementation freeze `86ec37475fd7a96b4baf764530baefc3fe3d4cde` and evidence successor `7a384b321e9afa8df5f683ad1a2b78ba2cb31bd0` passed fifth independent review with `P0=0/P1=0/P2=0`. The later readiness audit at `ac2d969392556fd9b338399e6cc2e9c22c90daed` found only that GitHub runners could not obtain the exact reviewed profile package; it did not invalidate the implementation or consume API 36 eligibility.
 - M3-12 is merged and complete. Fourth independent review accepted implementation `3415e2826054b0ce31c32e8f934e973cb1a85cd0` and evidence `4cc8736d1de1f5b0d71ff5790bd9333849acccd8` with `P0=0/P1=0/P2=0`; the reviewed-main merge head `5a8c3a018cf875bc6c45b29a6bef05094143c58e` passed Build `32551730109` and Governance `32551730123`. Final evidence-only head `95a42b556374c92191d2511894fb2613afc187b9` passed Build `32552469351` and Governance `32552469492` on Ubuntu/Windows. PR #76 was converted to ready and merged with expected-head protection as `c1d81fe6c4257efecf8cbb0b23aa724034f6b3a1`; Issue #75 closed. The fixed release ID `374769776`, asset ID `524507375`, archive SHA-256 `21816d2a...27964` and ten member identities remain the sole accepted source. No profile was regenerated, no signing secret was retained, and no device, KVM, fuzz, equivalence, benchmark, API 36 diagnostic, ARM or M3-05 work ran.
 - M2-07 Windows runner maintenance is merged and complete. Final expected head `88f1c11ab137867a6b8ea07af5c136a4fdfbea0d` retained the all-zero independent review and passed Build `32549204828` plus Governance `32549204792` on Ubuntu/Windows. PR #78 was converted to ready and merged with expected-head protection as `28493ca0c572b2af45a107e0e77010f6ebe878c2`; Issue #77 closed. The reviewed `main` is now merged into PR #76 so only its final exact-head Build/Governance can resume. No device, KVM, fuzz, equivalence, benchmark, API 36 diagnostic, ARM or M3-05 work is authorized by this transition.
@@ -434,6 +434,18 @@ Complete the bounded M3-10 ADR 0016 startup-attribution diagnostic from the exac
 - M2-02 第三实现层已完成本地检查点：同一 `sourceDir` 只读文件映射、OS 只读 DEX commit、generation+slot 类型化 JNI handle、同 handle `AHMD` 认证 metadata、精确五 JNI 方法、Java primitive/finally 交接窗口、幂等 `LoadedPayload` owner，以及 M0-05 等价 Native 搜索路径和三参数 API 29 `InMemoryDexClassLoader` 已接通。Java 17 编译/lint、NDK 四 ABI warnings-as-errors 与离线根 `assembleRelease check` 284-task 均 PASS，四个 ELF 都含唯一 104-byte alloc/read-only `.ah_share_v1`，未启动设备或模拟器。证据更新于 `docs/evidence/M2-02/local-validation.md`；任务仍未完成或发布，下一步仅补 failure injection、Host sanitizer/fuzz/OOM 与已授权 KVM/arm64 验收，不启动 M2-03。
 
 ## Verification Evidence
+
+### M3-10 workflow successor independent review
+
+- task_id: M3-10
+- git_commit: `4c58759bb4e4e53eb56fc9d3cbd3c8d0929ba1d0`
+- command: canonical/profile actual-byte verification; 17 actual-file mutations; complete verifier 49 mutations; cleanup 8 mutations; collector redirect/archive-bound self-test; profile-freeze 13 mutations; M3-11/M3-12 actual retained inputs; project Governance; strict HandOff; diff check; independent complete and incremental read-only review
+- exit_code: 0
+- environment: Windows 10.0.19045 x64; Node.js 24.12.0; Temurin 17.0.19; Gradle 9.5.0; no emulator, device, KVM, benchmark, ARM, API 29, M3-05 or canonical diagnostic run
+- timestamp: 2026-08-22T13:34:16+08:00
+- artifact: `docs/evidence/M3-10/workflow-successor-read-only-review.md`
+- sha256: `63edab84755acf4d5ceb9b55159d72d9a9bbe17deef3e455acbb738654a2abda`
+- result: PASS; P0=0/P1=0/P2=0, exact reviewed executable hashes are frozen and the unique API 36 eligibility remains unused until the single branch push
 
 ### M3-12 CI-only correction independent review
 

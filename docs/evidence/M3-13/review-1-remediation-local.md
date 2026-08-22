@@ -65,3 +65,13 @@ M3-13 rejected `65` named mutations. The explicit sensitive command reported `OK
 ## Scope statement
 
 The remediation changes only M3-13 governance/contracts/evidence and the M3-05 dependency wording needed to make the successor route executable. It does not add either canonical diagnostic workflow, change Runtime/Host/fixture/benchmark implementation or regenerate APK/DEX/profile bytes. No Gradle, Java, Android SDK, API 36 diagnostic, device, emulator, KVM, ARM, API 29, benchmark or M3-05 execution occurred. A second independent all-zero review remains mandatory before push or draft PR.
+
+## Independent read-only review 2
+
+- Evidence head reviewed: `08a01822719c5a94a5d9f6947d64802557e3e076`
+- Result: `PASS — P0=0/P1=0/P2=0`
+- Reviewer scope: review-1 closure, six raw official API pages, fixed historical Git objects, execution/run identity, M3-05 dependency, evidence completeness, all 65 mutations, sensitive/base-diff/Governance/strict checks.
+
+The reviewer independently confirmed that all four review-1 findings are closed, the proof is `6871` compact bytes with SHA-256 `9e06abb32d9e0a933e4254bea6fd781cd2a2a95d2980835fd79956e4b315f117`, and the `1033`-byte contract preimage SHA-256 is `580560859af80418058a088c6be3f7ab221e0ab37e21d76f19bf9177be35a419`. Both canonical successor workflows remain absent. No file was modified and no network, Gradle, Android, device, emulator, KVM or benchmark was used by the reviewer.
+
+M3-13 may proceed to its authorized branch publication and unique draft PR for Issue #80. This conclusion does not authorize or execute the later successor implementation or API 36 diagnostic.

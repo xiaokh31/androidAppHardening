@@ -117,4 +117,4 @@ No Host build was rerun locally because the exact new compiler banner exists onl
 - Governance `32548803955`: Ubuntu job `96972020742` PASS; Windows job `96972020644` PASS.
 - KVM `32548803886`, equivalence `32548803900` and fuzz `32548803943`: cancelled as out of scope and not used as evidence.
 
-The evidence-only successor does not change the workflow, machine lock, validator or any executable input. Its bounded independent review and final exact-head Build/Governance remain required before ready/merge authorization.
+The evidence-only successor did not change the workflow, machine lock, validator or any executable input. Final head `88f1c11ab137867a6b8ea07af5c136a4fdfbea0d` retained the bounded independent `P0=0/P1=0/P2=0` result and passed Build `32549204828` plus Governance `32549204792` on Ubuntu/Windows. PR #78 was converted to ready and merged with expected-head protection as `28493ca0c572b2af45a107e0e77010f6ebe878c2`; Issue #77 closed. The reviewed `main` may now be merged into PR #76 for Build/Governance only; no device, KVM, fuzz, equivalence, benchmark, API 36 diagnostic, ARM or M3-05 work is authorized.

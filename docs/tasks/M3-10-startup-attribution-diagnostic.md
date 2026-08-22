@@ -7,6 +7,7 @@ owner_role: runtime-security-agent
 depends_on:
   - M3-09
   - M3-11
+  - M3-12
 required_skills:
   - plan-apk-hardening-change
   - implement-runtime-protection
@@ -66,6 +67,7 @@ M3-09 accepted the attribution model. M3-11 then fixed the canonical originals t
 - Each campaign retains exactly fifteen ordinals after five warmups. P50 is sorted element eight; omissions, replacements, duplicates, reordering and retries are forbidden.
 - Nine signed owner contributions reconcile per ordinal before percentiles. Eligibility remains 300 ms reproduction, positive 30 ms minimum, at most 10% cross-campaign variation and at least 50% share in both campaigns; zero or multiple owners produce `UNATTRIBUTED`.
 - Canonical workflows are added only after an exact implementation freeze passes independent review `P0=0/P1=0/P2=0`. Invalid evidence consumes eligibility for the tuple and cannot be replaced.
+- The reviewed profile package is obtained only through M3-12 numeric asset ID `524507375`, archive SHA-256 `21816d2a843bb5c59902224c7bf786d546d52b4a5b2d1168ca0c449a2ca27964` and its exact member lock, and must pass verification before emulator creation. Tag/name fallback, regeneration and cache substitution are forbidden.
 
 ## Public Interfaces
 

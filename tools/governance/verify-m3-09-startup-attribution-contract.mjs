@@ -539,7 +539,7 @@ function validateDocuments(bundle) {
   ], "M3-09 task");
   requirePhrases(bundle.strategy, ["ADR 0016", "p0..p15", "h0..h8", "UNATTRIBUTED", "32099991400"], "TEST_STRATEGY");
   requirePhrases(bundle.m305, ["M3-09", "ADR 0016", "PR #63 保持阻塞", "300 ms"], "M3-05 task");
-  requirePhrases(bundle.index, ["| M3-09 | [#68]", "M3-08 → M3-09 → M3-11 → M3-10 → M3-05", ", M3-09, M3-10 |"], "task index");
+  requirePhrases(bundle.index, ["| M3-09 | [#68]", "M3-08 → M3-09 → M3-11 → M3-12 → M3-10 → M3-05", ", M3-09, M3-10 |"], "task index");
   requirePhrases(bundle.roadmap, ["| M3-09 |", "M3-08, M3-09"], "roadmap");
   requirePhrases(bundle.plan, ["M3-09：端到端启动性能归因边界合同"], "project plan");
   requirePhrases(bundle.handoff, ["M3-09 is complete on `main`", "M3-05 PR #63 remains blocked"], "HandOff");

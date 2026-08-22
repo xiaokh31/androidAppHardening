@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const args = process.argv.slice(2);
 const selfTest = args.includes("--self-test");
+const sensitiveOnly = args.includes("--sensitive-only");
 const baseRefIndex = args.indexOf("--base-ref");
 const baseRef = baseRefIndex >= 0 ? args[baseRefIndex + 1] : null;
 
@@ -30,10 +31,19 @@ const paths = {
   handoff: "HandOff.md",
 };
 
+const RAW_PAGE_SPECS = {
+  diagnosticRun: ["docs/evidence/M3-13/raw/diagnostic-run.json", "/repos/xiaokh31/androidAppHardening/actions/runs/32554806537"],
+  diagnosticJobsPage1: ["docs/evidence/M3-13/raw/diagnostic-jobs-page-1.json", "/repos/xiaokh31/androidAppHardening/actions/runs/32554806537/jobs?per_page=100&page=1"],
+  diagnosticArtifactsPage1: ["docs/evidence/M3-13/raw/diagnostic-artifacts-page-1.json", "/repos/xiaokh31/androidAppHardening/actions/runs/32554806537/artifacts?per_page=100&page=1"],
+  terminalRun: ["docs/evidence/M3-13/raw/terminal-run.json", "/repos/xiaokh31/androidAppHardening/actions/runs/32554917303"],
+  terminalJobsPage1: ["docs/evidence/M3-13/raw/terminal-jobs-page-1.json", "/repos/xiaokh31/androidAppHardening/actions/runs/32554917303/jobs?per_page=100&page=1"],
+  terminalArtifactsPage1: ["docs/evidence/M3-13/raw/terminal-artifacts-page-1.json", "/repos/xiaokh31/androidAppHardening/actions/runs/32554917303/artifacts?per_page=100&page=1"],
+};
+
 const DIAGNOSTIC_WORKFLOW = ".github/workflows/m3-13-startup-attribution.yml";
 const EVIDENCE_WORKFLOW = ".github/workflows/m3-13-startup-attribution-evidence.yml";
-const CONTRACT_HASH = "4104670bbe53aaa193740e4e34128051332657bb8dc8c65b57dd133443387faf";
-const OFFICIAL_PROOF_HASH = "b3faa34fcee76adb5223c99ccc854fc3000133244cce5a23c8ff2d9432d0d643";
+const CONTRACT_HASH = "580560859af80418058a088c6be3f7ab221e0ab37e21d76f19bf9177be35a419";
+const OFFICIAL_PROOF_HASH = "9e06abb32d9e0a933e4254bea6fd781cd2a2a95d2980835fd79956e4b315f117";
 const PRODUCT_TUPLE = "883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd";
 const ALLOWED_CHANGED_FILES = new Set([
   "HandOff.md",
@@ -47,6 +57,9 @@ const ALLOWED_CHANGED_FILES = new Set([
   "docs/evidence/M3-13/diagnostic-eligibility-lock.json",
   "docs/evidence/M3-13/predecessor-official-proof.json",
   "docs/evidence/M3-13/local-validation.md",
+  "docs/evidence/M3-13/read-only-review-1.md",
+  "docs/evidence/M3-13/review-1-remediation-local.md",
+  ...Object.values(RAW_PAGE_SPECS).map(([relativePath]) => relativePath),
   "docs/tasks/INDEX.md",
   "docs/tasks/M3-05-size-startup-memory-benchmarks.md",
   "docs/tasks/M3-10-startup-attribution-diagnostic.md",
@@ -59,6 +72,10 @@ const ALLOWED_CHANGED_FILES = new Set([
 
 function read(relativePath) {
   return fs.readFileSync(path.join(root, relativePath), "utf8");
+}
+
+function readBuffer(relativePath) {
+  return fs.readFileSync(path.join(root, relativePath));
 }
 
 function sha256(value) {
@@ -101,6 +118,107 @@ function requirePhrase(text, phrase, label, errors) {
   if (!text.includes(phrase)) errors.push(`${label}: missing contract phrase: ${phrase}`);
 }
 
+function requireObjectBytes(actual, expected, label, errors) {
+  requireEqual(JSON.stringify(actual), JSON.stringify(expected), label, errors);
+}
+
+function validateRawOfficialEvidence(state, errors) {
+  const { proof, rawPages, historicalBytes } = state;
+  for (const [key, [relativePath, endpoint]] of Object.entries(RAW_PAGE_SPECS)) {
+    const binding = proof.rawOfficialPages?.[key];
+    const page = rawPages[key];
+    requireEqual(binding?.path, relativePath, `proof.rawOfficialPages.${key}.path`, errors);
+    requireEqual(binding?.endpoint, endpoint, `proof.rawOfficialPages.${key}.endpoint`, errors);
+    requireEqual(binding?.bytes, page.bytes.length, `proof.rawOfficialPages.${key}.bytes`, errors);
+    requireEqual(binding?.sha256, sha256(page.bytes), `proof.rawOfficialPages.${key}.sha256`, errors);
+  }
+
+  const diagnosticRun = rawPages.diagnosticRun.json;
+  requireEqual(diagnosticRun.id, proof.diagnosticRun.id, "raw diagnostic run id", errors);
+  requireEqual(diagnosticRun.name, proof.diagnosticRun.name, "raw diagnostic run name", errors);
+  requireEqual(diagnosticRun.event, proof.diagnosticRun.event, "raw diagnostic run event", errors);
+  requireEqual(diagnosticRun.status, proof.diagnosticRun.status, "raw diagnostic run status", errors);
+  requireEqual(diagnosticRun.conclusion, proof.diagnosticRun.conclusion, "raw diagnostic run conclusion", errors);
+  requireEqual(diagnosticRun.head_sha, proof.diagnosticRun.headSha, "raw diagnostic run head", errors);
+  requireEqual(diagnosticRun.run_attempt, proof.diagnosticRun.runAttempt, "raw diagnostic run attempt", errors);
+  requireEqual(diagnosticRun.path, proof.diagnosticRun.path, "raw diagnostic run path", errors);
+  requireEqual(diagnosticRun.created_at, proof.diagnosticRun.createdAt, "raw diagnostic run created_at", errors);
+  requireEqual(diagnosticRun.updated_at, proof.diagnosticRun.updatedAt, "raw diagnostic run updated_at", errors);
+
+  const diagnosticJobs = rawPages.diagnosticJobsPage1.json;
+  requireEqual(diagnosticJobs.total_count, 1, "raw diagnostic jobs total_count", errors);
+  requireEqual(diagnosticJobs.jobs?.length, 1, "raw diagnostic jobs page completeness", errors);
+  const diagnosticJob = diagnosticJobs.jobs?.[0];
+  requireEqual(diagnosticJob?.id, proof.diagnosticJob.id, "raw diagnostic job id", errors);
+  requireEqual(diagnosticJob?.name, proof.diagnosticJob.name, "raw diagnostic job name", errors);
+  requireEqual(diagnosticJob?.status, proof.diagnosticJob.status, "raw diagnostic job status", errors);
+  requireEqual(diagnosticJob?.conclusion, proof.diagnosticJob.conclusion, "raw diagnostic job conclusion", errors);
+  requireEqual(diagnosticJob?.run_attempt, proof.diagnosticJob.runAttempt, "raw diagnostic job attempt", errors);
+  requireEqual(diagnosticJob?.started_at, proof.diagnosticJob.startedAt, "raw diagnostic job started_at", errors);
+  requireEqual(diagnosticJob?.completed_at, proof.diagnosticJob.completedAt, "raw diagnostic job completed_at", errors);
+  requireObjectBytes(diagnosticJob?.steps?.map(({ number, name, status, conclusion }) => ({ number, name, status, conclusion })), proof.diagnosticJob.steps, "raw diagnostic job steps", errors);
+
+  const diagnosticArtifacts = rawPages.diagnosticArtifactsPage1.json;
+  requireEqual(diagnosticArtifacts.total_count, 0, "raw diagnostic artifacts total_count", errors);
+  requireEqual(diagnosticArtifacts.artifacts?.length, 0, "raw diagnostic artifacts page completeness", errors);
+
+  const terminalRun = rawPages.terminalRun.json;
+  requireEqual(terminalRun.id, proof.terminalRun.id, "raw terminal run id", errors);
+  requireEqual(terminalRun.name, proof.terminalRun.name, "raw terminal run name", errors);
+  requireEqual(terminalRun.event, proof.terminalRun.event, "raw terminal run event", errors);
+  requireEqual(terminalRun.status, proof.terminalRun.status, "raw terminal run status", errors);
+  requireEqual(terminalRun.conclusion, proof.terminalRun.conclusion, "raw terminal run conclusion", errors);
+  requireEqual(terminalRun.head_sha, proof.terminalRun.headSha, "raw terminal run head", errors);
+  requireEqual(terminalRun.run_attempt, proof.terminalRun.runAttempt, "raw terminal run attempt", errors);
+  requireEqual(terminalRun.path, proof.terminalRun.path, "raw terminal run path", errors);
+  requireEqual(terminalRun.created_at, proof.terminalRun.createdAt, "raw terminal run created_at", errors);
+  requireEqual(terminalRun.updated_at, proof.terminalRun.updatedAt, "raw terminal run updated_at", errors);
+
+  const terminalJobs = rawPages.terminalJobsPage1.json;
+  requireEqual(terminalJobs.total_count, 1, "raw terminal jobs total_count", errors);
+  requireEqual(terminalJobs.jobs?.length, 1, "raw terminal jobs page completeness", errors);
+  const terminalJob = terminalJobs.jobs?.[0];
+  requireEqual(terminalJob?.id, proof.terminalJob.id, "raw terminal job id", errors);
+  requireEqual(terminalJob?.name, proof.terminalJob.name, "raw terminal job name", errors);
+  requireEqual(terminalJob?.status, proof.terminalJob.status, "raw terminal job status", errors);
+  requireEqual(terminalJob?.conclusion, proof.terminalJob.conclusion, "raw terminal job conclusion", errors);
+  requireEqual(terminalJob?.run_attempt, proof.terminalJob.runAttempt, "raw terminal job attempt", errors);
+  requireEqual(terminalJob?.started_at, proof.terminalJob.startedAt, "raw terminal job started_at", errors);
+  requireEqual(terminalJob?.completed_at, proof.terminalJob.completedAt, "raw terminal job completed_at", errors);
+  requireObjectBytes(terminalJob?.steps?.map(({ number, name, status, conclusion }) => ({ number, name, status, conclusion })), proof.terminalJob.steps, "raw terminal job steps", errors);
+
+  const terminalArtifacts = rawPages.terminalArtifactsPage1.json;
+  requireEqual(terminalArtifacts.total_count, 0, "raw terminal artifacts total_count", errors);
+  requireEqual(terminalArtifacts.artifacts?.length, 0, "raw terminal artifacts page completeness", errors);
+
+  for (const [key, entry] of Object.entries(proof.reviewedBytes)) {
+    const historical = historicalBytes[key];
+    requireEqual(historical.length, entry.bytes, `reviewed historical ${key} bytes`, errors);
+    requireEqual(sha256(historical), entry.sha256, `reviewed historical ${key} SHA-256`, errors);
+  }
+}
+
+function scanSensitiveFiles(files, errors) {
+  for (const relativePath of files) {
+    const absolute = path.join(root, relativePath);
+    if (!fs.existsSync(absolute) || !fs.statSync(absolute).isFile()) continue;
+    scanSensitiveText(fs.readFileSync(absolute, "utf8"), relativePath, errors);
+  }
+}
+
+function scanSensitiveText(text, label, errors) {
+  const patterns = [
+    [/\uFFFD/u, "Unicode replacement character"],
+    [/-----BEGIN(?: RSA| EC| OPENSSH)? PRIVATE KEY-----/iu, "private key marker"],
+    [/(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16})/u, "credential token"],
+    [/(?:Authorization\s*:\s*Bearer|Bearer\s+[A-Za-z0-9._~-]{20,})/iu, "authorization token"],
+    [/(?:[A-Za-z]:\\Users\\[^\\\s]+|\/(?:home|Users)\/[^/\s]+)/u, "absolute user path"],
+  ];
+  for (const [pattern, description] of patterns) {
+    if (pattern.test(text)) errors.push(`${label}: contains prohibited ${description}`);
+  }
+}
+
 function validateState(state) {
   const errors = [];
   const { lock, proof, texts, workflowPresence } = state;
@@ -110,7 +228,7 @@ function validateState(state) {
   requireEqual(lock.issue, 80, "lock.issue", errors);
   requireEqual(lock.status, "contract_candidate", "lock.status", errors);
   requireEqual(lock.officialProof.path, paths.proof, "lock.officialProof.path", errors);
-  requireEqual(lock.officialProof.canonicalBytes, 5274, "lock.officialProof.canonicalBytes", errors);
+  requireEqual(lock.officialProof.canonicalBytes, 6871, "lock.officialProof.canonicalBytes", errors);
   requireEqual(lock.officialProof.canonicalSha256, OFFICIAL_PROOF_HASH, "lock.officialProof.canonicalSha256", errors);
   requireEqual(lock.predecessor.task, "M3-10", "lock.predecessor.task", errors);
   requireEqual(lock.predecessor.productTupleSha256, PRODUCT_TUPLE, "lock.predecessor.productTupleSha256", errors);
@@ -145,7 +263,7 @@ function validateState(state) {
   requireEqual(lock.identityPreimageSha256, CONTRACT_HASH, "lock.identityPreimageSha256", errors);
 
   const proofCanonical = JSON.stringify(proof);
-  requireEqual(Buffer.byteLength(proofCanonical, "utf8"), 5274, "official proof canonical utf8 bytes", errors);
+  requireEqual(Buffer.byteLength(proofCanonical, "utf8"), 6871, "official proof canonical utf8 bytes", errors);
   requireEqual(sha256(proofCanonical), OFFICIAL_PROOF_HASH, "official proof canonical SHA-256", errors);
   requireEqual(proof.schemaVersion, 1, "proof.schemaVersion", errors);
   requireEqual(proof.task, "M3-13", "proof.task", errors);
@@ -188,6 +306,7 @@ function validateState(state) {
   requireEqual(proof.inferenceBoundary.apkInstallAttempted, false, "proof apkInstallAttempted", errors);
   requireEqual(proof.inferenceBoundary.retainedSamples, 0, "proof retainedSamples", errors);
   requireEqual(proof.inferenceBoundary.artifactCount, 0, "proof artifactCount", errors);
+  validateRawOfficialEvidence(state, errors);
 
   const phrases = {
     adr: [
@@ -197,6 +316,8 @@ function validateState(state) {
       CONTRACT_HASH,
       "fetch-depth: 0",
       "P0=0/P1=0/P2=0",
+      "deliberately not embedded in either workflow candidate or the run name",
+      "M3-13-SUCCESSOR-DIAGNOSTIC-V1-580560859af80418058a088c6be3f7ab221e0ab37e21d76f19bf9177be35a419-883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd",
     ],
     task: [
       "Issue #80",
@@ -205,7 +326,7 @@ function validateState(state) {
       "Independent review returns `P0=0/P1=0/P2=0` before push/PR publication",
     ],
     m310: ["32554806537", "terminally blocked", "must remain draft"],
-    m305: ["M3-13", "successor", "remains blocked"],
+    m305: ["M3-13", "successor", "remains blocked", "Terminal M3-10 仅是历史输入", "具体 successor implementation 与 remediation 任务 ID 必须在创建后加入本任务依赖"],
     index: ["M3-13-successor-diagnostic-identity-contract.md", "#80", "M3-10 → M3-13"],
     roadmap: ["M3-13", "successor diagnostic identity"],
     plan: ["M3-13", "successor diagnostic identity"],
@@ -228,6 +349,15 @@ function loadState() {
   const canonical = `${JSON.stringify(lock, null, 2)}\n`;
   if (lockText !== canonical) throw new Error(`${paths.lock}: JSON must use canonical two-space formatting and one trailing LF`);
   const proof = JSON.parse(read(paths.proof));
+  const historicalBytes = {};
+  for (const [key, entry] of Object.entries(proof.reviewedBytes)) {
+    historicalBytes[key] = execFileSync("git", ["show", `${proof.diagnosticRun.headSha}:${entry.path}`], { cwd: root });
+  }
+  const rawPages = {};
+  for (const [key, [relativePath]] of Object.entries(RAW_PAGE_SPECS)) {
+    const bytes = readBuffer(relativePath);
+    rawPages[key] = { bytes, json: JSON.parse(bytes.toString("utf8")) };
+  }
   const texts = {};
   for (const [key, relativePath] of Object.entries(paths)) {
     if (key !== "lock" && key !== "proof") texts[key] = read(relativePath);
@@ -235,6 +365,8 @@ function loadState() {
   return {
     lock,
     proof,
+    rawPages,
+    historicalBytes,
     texts,
     workflowPresence: {
       diagnostic: fs.existsSync(path.join(root, DIAGNOSTIC_WORKFLOW)),
@@ -253,6 +385,8 @@ function validateBaseDiff(reference, errors) {
     encoding: "utf8",
   }).trim().split(/\r?\n/).filter(Boolean).map((item) => item.replaceAll("\\", "/"));
   validateChangedFiles(changed, errors);
+  scanSensitiveFiles(changed, errors);
+  return changed;
 }
 
 function validateChangedFiles(changed, errors) {
@@ -340,7 +474,34 @@ function runSelfTest(baseState) {
   const positiveErrors = [];
   validateChangedFiles([...ALLOWED_CHANGED_FILES], positiveErrors);
   if (positiveErrors.length !== 0) throw new Error(`allowed base-diff paths unexpectedly rejected: ${positiveErrors.join(", ")}`);
-  return cases.length + pathCases.length;
+  const rawCases = [
+    ["raw-diagnostic-run-id", (state) => { state.rawPages.diagnosticRun.json.id += 1; }],
+    ["raw-diagnostic-job-step", (state) => { state.rawPages.diagnosticJobsPage1.json.jobs[0].steps[10].conclusion = "success"; }],
+    ["raw-diagnostic-artifact", (state) => { state.rawPages.diagnosticArtifactsPage1.json.total_count = 1; }],
+    ["raw-terminal-run-head", (state) => { state.rawPages.terminalRun.json.head_sha = "0".repeat(40); }],
+    ["raw-terminal-job-step", (state) => { state.rawPages.terminalJobsPage1.json.jobs[0].steps[5].conclusion = "success"; }],
+    ["raw-terminal-artifact", (state) => { state.rawPages.terminalArtifactsPage1.json.total_count = 1; }],
+  ];
+  for (const [name, mutate] of rawCases) {
+    const mutated = clone(baseState);
+    mutate(mutated);
+    const rawErrors = validateState(mutated);
+    if (rawErrors.length === 0) throw new Error(`raw mutation unexpectedly accepted: ${name}`);
+  }
+  const sensitiveCases = [
+    "\uFFFD",
+    ["-----BEGIN", " OPENSSH PRIVATE KEY-----"].join(""),
+    `github_pat_${"a".repeat(24)}`,
+    ["Authorization:", "Bearer", "abcdefghijklmnopqrstuvwxyz"].join(" "),
+    ["C:", "Users", "private-user", "secret.txt"].join("\\"),
+    ["", "home", "private-user", "secret.txt"].join("/"),
+  ];
+  for (const [index, value] of sensitiveCases.entries()) {
+    const sensitiveErrors = [];
+    scanSensitiveText(value, `sensitive-mutation-${index + 1}`, sensitiveErrors);
+    if (sensitiveErrors.length === 0) throw new Error(`sensitive mutation unexpectedly accepted: ${index + 1}`);
+  }
+  return cases.length + pathCases.length + rawCases.length + sensitiveCases.length;
 }
 
 let state;
@@ -352,13 +513,16 @@ try {
 }
 
 const errors = validateState(state);
+let changedFiles = [];
 if (baseRef) {
   try {
-    validateBaseDiff(baseRef, errors);
+    changedFiles = validateBaseDiff(baseRef, errors);
   } catch (error) {
     errors.push(`base diff validation failed: ${error.message}`);
   }
 }
+
+if (sensitiveOnly && !baseRef) errors.push("--sensitive-only requires --base-ref");
 
 let mutationCount = 0;
 if (selfTest && errors.length === 0) {
@@ -374,4 +538,8 @@ if (errors.length > 0) {
   process.exit(1);
 }
 
-console.log(`OK: M3-13 successor diagnostic identity contract${selfTest ? `; ${mutationCount} named mutations rejected` : ""}`);
+if (sensitiveOnly) {
+  console.log(`OK: M3-13 sensitive scan; ${changedFiles.length} changed files inspected`);
+} else {
+  console.log(`OK: M3-13 successor diagnostic identity contract${selfTest ? `; ${mutationCount} named mutations rejected` : ""}`);
+}

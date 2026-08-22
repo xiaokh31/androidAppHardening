@@ -5,8 +5,8 @@
   "status": "contract_candidate",
   "officialProof": {
     "path": "docs/evidence/M3-13/predecessor-official-proof.json",
-    "canonicalBytes": 5274,
-    "canonicalSha256": "b3faa34fcee76adb5223c99ccc854fc3000133244cce5a23c8ff2d9432d0d643"
+    "canonicalBytes": 6871,
+    "canonicalSha256": "9e06abb32d9e0a933e4254bea6fd781cd2a2a95d2980835fd79956e4b315f117"
   },
   "predecessor": {
     "task": "M3-10",
@@ -35,7 +35,7 @@
     "independentReviewRequired": true,
     "furtherRenewalPermitted": false
   },
-  "identityPreimage": "{\"schemaVersion\":1,\"contractTask\":\"M3-13\",\"predecessorTask\":\"M3-10\",\"predecessorProductTupleSha256\":\"883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd\",\"predecessorOfficialProofSha256\":\"b3faa34fcee76adb5223c99ccc854fc3000133244cce5a23c8ff2d9432d0d643\",\"predecessorWorkflowPath\":\".github/workflows/m3-09-startup-attribution.yml\",\"predecessorTaskKey\":\"M3-09-DIAGNOSTIC-V1\",\"predecessorHeadSha\":\"790ae4579ce3562dc93f3c533ffb786a39517600\",\"predecessorRunId\":32554806537,\"predecessorJobId\":96987186584,\"predecessorRunAttempt\":1,\"predecessorArtifactCount\":0,\"predecessorAvdCreated\":false,\"predecessorApkInstallAttempted\":false,\"predecessorRetainedSamples\":0,\"terminalEvidenceRunId\":32554917303,\"terminalEvidenceJobId\":96987454333,\"successorTaskKey\":\"M3-13-SUCCESSOR-DIAGNOSTIC-V1\",\"successorWorkflowPath\":\".github/workflows/m3-13-startup-attribution.yml\",\"successorEvidenceWorkflowPath\":\".github/workflows/m3-13-startup-attribution-evidence.yml\",\"successorRunLimit\":1,\"successorRunAttempt\":1,\"furtherRenewalPermitted\":false}",
+  "identityPreimage": "{\"schemaVersion\":1,\"contractTask\":\"M3-13\",\"predecessorTask\":\"M3-10\",\"predecessorProductTupleSha256\":\"883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd\",\"predecessorOfficialProofSha256\":\"9e06abb32d9e0a933e4254bea6fd781cd2a2a95d2980835fd79956e4b315f117\",\"predecessorWorkflowPath\":\".github/workflows/m3-09-startup-attribution.yml\",\"predecessorTaskKey\":\"M3-09-DIAGNOSTIC-V1\",\"predecessorHeadSha\":\"790ae4579ce3562dc93f3c533ffb786a39517600\",\"predecessorRunId\":32554806537,\"predecessorJobId\":96987186584,\"predecessorRunAttempt\":1,\"predecessorArtifactCount\":0,\"predecessorAvdCreated\":false,\"predecessorApkInstallAttempted\":false,\"predecessorRetainedSamples\":0,\"terminalEvidenceRunId\":32554917303,\"terminalEvidenceJobId\":96987454333,\"successorTaskKey\":\"M3-13-SUCCESSOR-DIAGNOSTIC-V1\",\"successorWorkflowPath\":\".github/workflows/m3-13-startup-attribution.yml\",\"successorEvidenceWorkflowPath\":\".github/workflows/m3-13-startup-attribution-evidence.yml\",\"successorRunLimit\":1,\"successorRunAttempt\":1,\"furtherRenewalPermitted\":false}",
   "identityPreimageBytes": 1033,
-  "identityPreimageSha256": "4104670bbe53aaa193740e4e34128051332657bb8dc8c65b57dd133443387faf"
+  "identityPreimageSha256": "580560859af80418058a088c6be3f7ab221e0ab37e21d76f19bf9177be35a419"
 }

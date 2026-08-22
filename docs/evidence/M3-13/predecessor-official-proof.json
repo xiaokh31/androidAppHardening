@@ -3,6 +3,44 @@
   "task": "M3-13",
   "retrievedAt": "2026-08-23T00:01:36+08:00",
   "source": "official GitHub Actions API via gh api",
+  "rawOfficialPages": {
+    "diagnosticRun": {
+      "endpoint": "/repos/xiaokh31/androidAppHardening/actions/runs/32554806537",
+      "path": "docs/evidence/M3-13/raw/diagnostic-run.json",
+      "bytes": 13444,
+      "sha256": "ef5cb179d65c0f37dadbfa6a66de3fff305f9f5e596496ad34e11ac00fcdd3d8"
+    },
+    "diagnosticJobsPage1": {
+      "endpoint": "/repos/xiaokh31/androidAppHardening/actions/runs/32554806537/jobs?per_page=100&page=1",
+      "path": "docs/evidence/M3-13/raw/diagnostic-jobs-page-1.json",
+      "bytes": 4005,
+      "sha256": "31b285456b24499ff362715c4c1a0ae2d937e644d4c6e7a8f2c680c9840b5cda"
+    },
+    "diagnosticArtifactsPage1": {
+      "endpoint": "/repos/xiaokh31/androidAppHardening/actions/runs/32554806537/artifacts?per_page=100&page=1",
+      "path": "docs/evidence/M3-13/raw/diagnostic-artifacts-page-1.json",
+      "bytes": 33,
+      "sha256": "d3ad979d01443a9d7342e7fbe39064b41ebdb340029293f1b099bcfb6c493c42"
+    },
+    "terminalRun": {
+      "endpoint": "/repos/xiaokh31/androidAppHardening/actions/runs/32554917303",
+      "path": "docs/evidence/M3-13/raw/terminal-run.json",
+      "bytes": 13381,
+      "sha256": "25da806a36a0ec12916ca915eaa5496916527ba6d0cf1acff862b28b04f4f783"
+    },
+    "terminalJobsPage1": {
+      "endpoint": "/repos/xiaokh31/androidAppHardening/actions/runs/32554917303/jobs?per_page=100&page=1",
+      "path": "docs/evidence/M3-13/raw/terminal-jobs-page-1.json",
+      "bytes": 2730,
+      "sha256": "27f9c924ee42a83cd42e5a8c7ef9a8bb20eaad7a8e4de60de1d441bc593d3ef2"
+    },
+    "terminalArtifactsPage1": {
+      "endpoint": "/repos/xiaokh31/androidAppHardening/actions/runs/32554917303/artifacts?per_page=100&page=1",
+      "path": "docs/evidence/M3-13/raw/terminal-artifacts-page-1.json",
+      "bytes": 33,
+      "sha256": "d3ad979d01443a9d7342e7fbe39064b41ebdb340029293f1b099bcfb6c493c42"
+    }
+  },
   "diagnosticRun": {
     "id": 32554806537,
     "name": "M3-09-DIAGNOSTIC-V1-883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd",

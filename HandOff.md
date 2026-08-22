@@ -1,13 +1,13 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260823-001700
-updated_at: 2026-08-23T00:17:00+08:00
+handoff_id: HO-20260823-004100
+updated_at: 2026-08-23T00:41:00+08:00
 updated_by: /root
 state: active
 source_branch: docs/m3-13-diagnostic-identity-contract
 base_commit: c9399b40884778f027ffbe33f96786197365acb3
-working_tree: clean
+working_tree: dirty
 current_milestone: M3
 active_task: M3-13
 next_owner: /root
@@ -22,7 +22,8 @@ Define ADR 0018 and M3-13 as the sole narrow successor diagnostic identity contr
 ## Current State
 
 - M3-13 is active on Issue #80 and branch `docs/m3-13-diagnostic-identity-contract`. The contract binds M3-10 run `32554806537` and terminal evidence run `32554917303`, permits a successor only after official evidence proves zero AVD creation, zero APK installation attempt, zero retained samples and zero artifacts, and fixes one future task key/run with `runAttempt=1` and no further renewal. No device, KVM, emulator, ARM, API 29 or benchmark is authorized or running. The canonical successor workflows remain absent.
-- The M3-13 implementation freeze is `55997e61a2f734ab3d7ed5f8a44a44064b526ac3`. Its immutable proof contains all 17 diagnostic and 10 terminal job steps; the 1033-byte identity preimage hashes to `4104670b...7faf`; 53 named mutations, project governance, strict HandOff and diff checks pass. It remains unpublished and requires an independent all-zero read-only review before any push or PR.
+- M3-13 independent review 1 rejected implementation `55997e61a2f734ab3d7ed5f8a44a44064b526ac3` / evidence `bec3d0ddeccc356c31f69add2e37e197cd127531` with `P0=0/P1=3/P2=1`: execution-identity self-reference, missing retained raw official API pages, terminal M3-10 still listed as an M3-05 completion dependency, and incomplete local evidence fields. No push or PR occurred.
+- The bounded remediation removes the self-reference, retains and parses six exact API pages, rehashes reviewed files from fixed historical Git objects, changes M3-10 to historical input, and expands the validator to 65 named mutations including raw-page and sensitive vectors. The new proof/preimage identities are `9e06abb3...f117` / `58056085...a419`. It is not yet frozen or independently accepted; both canonical successor workflows remain absent.
 - M3-10 is terminally blocked. Its independently reviewed run failed during shallow-checkout provenance validation before Android setup and produced no measurement or artifact; PR #79 must remain draft. M3-13 records a distinct future eligibility contract and does not retry, reopen or convert M3-10 into success evidence.
 - M3-12 is merged and complete. Fourth independent review accepted implementation `3415e2826054b0ce31c32e8f934e973cb1a85cd0` and evidence `4cc8736d1de1f5b0d71ff5790bd9333849acccd8` with `P0=0/P1=0/P2=0`; the reviewed-main merge head `5a8c3a018cf875bc6c45b29a6bef05094143c58e` passed Build `32551730109` and Governance `32551730123`. Final evidence-only head `95a42b556374c92191d2511894fb2613afc187b9` passed Build `32552469351` and Governance `32552469492` on Ubuntu/Windows. PR #76 was converted to ready and merged with expected-head protection as `c1d81fe6c4257efecf8cbb0b23aa724034f6b3a1`; Issue #75 closed. The fixed release ID `374769776`, asset ID `524507375`, archive SHA-256 `21816d2a...27964` and ten member identities remain the sole accepted source. No profile was regenerated, no signing secret was retained, and no device, KVM, fuzz, equivalence, benchmark, API 36 diagnostic, ARM or M3-05 work ran.
 - M2-07 Windows runner maintenance is merged and complete. Final expected head `88f1c11ab137867a6b8ea07af5c136a4fdfbea0d` retained the all-zero independent review and passed Build `32549204828` plus Governance `32549204792` on Ubuntu/Windows. PR #78 was converted to ready and merged with expected-head protection as `28493ca0c572b2af45a107e0e77010f6ebe878c2`; Issue #77 closed. The reviewed `main` is now merged into PR #76 so only its final exact-head Build/Governance can resume. No device, KVM, fuzz, equivalence, benchmark, API 36 diagnostic, ARM or M3-05 work is authorized by this transition.
@@ -214,7 +215,7 @@ Define ADR 0018 and M3-13 as the sole narrow successor diagnostic identity contr
 | M3-12 | `/root` | `main` | done | M3-11 | PR #76 merged as `c1d81fe`; Issue #75 closed; all-zero review, immutable asset lock and final dual-platform Build/Governance passed |
 | M3-10 | `/root` | `feat/m3-10-startup-attribution-diagnostic` | blocked | M3-09, M3-11, M3-12 | Run `32554806537` consumed the identity before Android setup; zero artifact; PR #79 remains draft and cannot rerun |
 | M3-13 | `/root` | `docs/m3-13-diagnostic-identity-contract` | in_progress | M3-09, M3-11, M3-12 | Define ADR 0018, immutable eligibility lock, fail-closed validator and zero-implementation-diff evidence for Issue #80 |
-| M3-05 | `/root` | `chore/m3-05-performance-benchmarks` | blocked | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08, M3-09, M3-10, M3-13 | Keep PR #63 blocked until M3-13, a separately authorized valid successor result and selected owner remediation complete |
+| M3-05 | `/root` | `chore/m3-05-performance-benchmarks` | blocked | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08, M3-09, M3-13 | Treat terminal M3-10 as history; keep PR #63 blocked until a separately authorized valid successor result and selected owner remediation complete, then add their concrete task IDs |
 | M3-03 | `/root` | `main` | done | M0-03, M1-05, M1-06, M2-06, M3-01 | PR #55 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | done | M2-02 | PR #54 merged; exact regression, ASan/UBSan, dual-platform Build/Governance and independent review passed |
 | M3-02 | `/root` | `main` | done | M1-03, M1-04, M1-06, M2-02, M2-03, M2-06, M2-08, M3-01 | PR #52 merged; README/evidence synchronized; wait for next task selection |
@@ -441,13 +442,25 @@ Define ADR 0018 and M3-13 as the sole narrow successor diagnostic identity contr
 
 - task_id: M3-13
 - git_commit: 55997e61a2f734ab3d7ed5f8a44a44064b526ac3
-- command: M3-13 positive, 53 named mutations and base-ref gate; M3-07/M3-08/M3-09/M3-11/M3-12 compatibility validators; project Governance; strict HandOff; diff and sensitive checks
+- command: M3-13 positive, 53 named mutations and base-ref gate; M3-07/M3-08/M3-09/M3-11/M3-12 compatibility validators; project Governance including sensitive/UTF-8 scan; strict HandOff; diff checks
 - exit_code: 0
 - environment: Windows 10.0.19045 x64; Node.js v24.12.0; Git 2.52.0.windows.1; no network, Gradle, Android, device, emulator, KVM or benchmark
 - timestamp: 2026-08-23T00:08:18+08:00
 - artifact: `docs/evidence/M3-13/local-validation.md`
-- sha256: 1562eec9e1812f21910715102f820f6142dc922bf850cf0cd1e134861c061aae
-- result: PASS; official 17/10-step proof and 1033-byte identity are fixed, all 53 mutations fail closed, both successor workflows remain absent, and independent all-zero review is still required before publication
+- sha256: f8c139539f4bbb3cf6dfa59f503f25754e29f88e4d06ffcb0a213bffd698a76d
+- result: LOCAL_PASS_SUPERSEDED; independent review 1 returned P0=0/P1=3/P2=1, so this freeze cannot be published
+
+### M3-13 independent read-only review 1
+
+- task_id: M3-13
+- git_commit: bec3d0ddeccc356c31f69add2e37e197cd127531
+- command: independent read-only proof/lock/raw-source/execution-identity/dependency/evidence audit plus static validators and Git object checks
+- exit_code: 1
+- environment: Windows 10.0.19045 x64; Node.js v24.12.0; no network, Gradle, Android, device, emulator, KVM or benchmark
+- timestamp: 2026-08-23T00:31:00+08:00
+- artifact: `docs/evidence/M3-13/read-only-review-1.md`
+- sha256: 991163268c22b15bb9f4e0b01a2fd371b32a679eec7846c2f33638d2cd1d989c
+- result: FAIL; P0=0/P1=3/P2=1, no push or draft PR permitted until bounded remediation and a new all-zero independent review
 
 ### M3-12 CI-only correction independent review
 
@@ -1957,9 +1970,9 @@ Define ADR 0018 and M3-13 as the sole narrow successor diagnostic identity contr
 
 ## Ordered Next Actions
 
-1. Preserve implementation freeze `55997e61a2f734ab3d7ed5f8a44a44064b526ac3` and its evidence-only child without modifying contract semantics.
-2. After explicit user direction, launch an independent read-only M3-13 review against the frozen chain.
-3. Only after `P0=0/P1=0/P2=0`, record review evidence and request separate push/draft-PR authorization for Issue #80.
+1. Freeze the bounded review-1 remediation and add an evidence-only child recording exact hashes, commands and applicability fields.
+2. Run a second independent read-only M3-13 review against the new frozen chain.
+3. Only after `P0=0/P1=0/P2=0`, push the branch and create Issue #80's unique draft PR under the user's conditional authorization.
 4. Do not add a successor workflow, retry M3-10, run API 36, ARM, API 29, KVM, emulator, physical device, benchmark or M3-05 in this task.
 
 ## Relevant Files and Artifacts

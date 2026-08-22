@@ -14,22 +14,22 @@ The failure exposed a distinction that ADR 0016 did not model: an execution may 
 
 M3-13 is a governance-only contract task. It records the M3-10 terminal history and defines one successor execution identity. M3-13 itself must not create a diagnostic workflow, run Android, start an emulator, install an APK, run KVM or resume M3-05.
 
-The predecessor is eligible for this exception only when raw official GitHub run, job, step and artifact evidence plus the reviewed workflow bytes prove zero AVD creation, zero installation attempt, zero retained samples and zero artifacts, including all of the following:
+The predecessor is eligible for this exception only when retained raw official GitHub run, job/step and artifact API response bytes plus the reviewed workflow bytes prove zero AVD creation, zero installation attempt, zero retained samples and zero artifacts, including all of the following:
 
 1. `runAttempt` is exactly `1` and the run/job IDs and head equal the values in `diagnostic-eligibility-lock.json`.
 2. Failure occurred in repository-provenance preflight after pinned API 36/Emulator package preparation but before Native preparation, Release build, AVD creation or any device command.
 3. No APK install command was attempted, no package was published, no campaign/warmup/retained sample began and no benchmark value exists.
 4. The official artifact count is exactly zero and the separate terminal evidence run rejects the missing artifact.
-5. The failed run, job, logs and zero-artifact result remain visible in successor evidence. They may not be omitted or described as a measurement result.
+5. The failed run, full job-step page and zero-artifact API page remain visible in successor evidence. They may not be omitted or described as a measurement result. Raw job logs are deliberately not retained because they are not needed for the zero-observation inference and may contain runner/device paths; the exact step states and reviewed workflow control flow are the evidence boundary.
 
 If any condition is absent, ambiguous or later contradicted, no successor is eligible. A caller-authored boolean is not evidence.
 
-The official predecessor proof is `docs/evidence/M3-13/predecessor-official-proof.json`. Its canonical compact JSON is 5274 UTF-8 bytes with SHA-256 `b3faa34fcee76adb5223c99ccc854fc3000133244cce5a23c8ff2d9432d0d643`; it records every official job step, run/job/artifact fields and reviewed workflow/runner/verifier/environment-lock byte hashes. The immutable contract identity is the exact 1033-byte UTF-8 `identityPreimage` in `docs/evidence/M3-13/diagnostic-eligibility-lock.json`. Its SHA-256 is `4104670bbe53aaa193740e4e34128051332657bb8dc8c65b57dd133443387faf`. It binds that proof, the consumed predecessor, zero-observation facts, product tuple, successor task key, canonical workflow paths, run limit and no-further-renewal rule.
+The official predecessor proof is `docs/evidence/M3-13/predecessor-official-proof.json`. It binds six retained raw API response pages under `docs/evidence/M3-13/raw/`, including their endpoint, byte length and SHA-256, every official job step, normalized run/job/artifact fields and reviewed workflow/runner/verifier/environment-lock byte hashes. The validator parses those raw pages and reads the reviewed historical files directly from the fixed Git commit. The proof compact JSON and contract identity hashes are fixed by `diagnostic-eligibility-lock.json`; they may not be regenerated from caller assertions.
 
 The later implementation task must create a distinct execution identity. Its exact UTF-8 JSON preimage has the following fields in this order:
 
 1. `schemaVersion` = `1`.
-2. `contractIdentitySha256` = `4104670bbe53aaa193740e4e34128051332657bb8dc8c65b57dd133443387faf`.
+2. `contractIdentitySha256` = `580560859af80418058a088c6be3f7ab221e0ab37e21d76f19bf9177be35a419`.
 3. `productTupleSha256` = `883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd`.
 4. `profileArchiveSha256` = `21816d2a843bb5c59902224c7bf786d546d52b4a5b2d1168ca0c449a2ca27964`.
 5. `implementationFreezeSha` = the independently reviewed workflow-absent implementation freeze.
@@ -38,7 +38,9 @@ The later implementation task must create a distinct execution identity. Its exa
 8. `environmentLockSha256` and `toolchainLockSha256` = reviewed repository lock hashes.
 9. `qualificationEvidenceSha256` = the tracked, pre-device proof that the full Git history contains the required M3-11/M3-12/M3-10 ancestry and objects.
 
-`executionIdentitySha256` is SHA-256 of that exact JSON serialization. All hashes are lowercase 64-hex strings. The execution identity must be fixed in a tracked pre-run ledger and the canonical run name before GitHub can execute the workflow.
+`executionIdentitySha256` is SHA-256 of that exact JSON serialization. All hashes are lowercase 64-hex strings. It is fixed only in the tracked pre-run ledger and verified by the published workflow and artifact manifest; it is deliberately not embedded in either workflow candidate or the run name, so candidate hashing is not self-referential.
+
+The canonical run name is exactly `M3-13-SUCCESSOR-DIAGNOSTIC-V1-580560859af80418058a088c6be3f7ab221e0ab37e21d76f19bf9177be35a419-883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd`. It binds only identities known before the implementation freeze. Official uniqueness is evaluated over exact workflow path, exact run name, event and branch before checking the ledger's execution identity. Changing a workflow candidate, runner, verifier, lock, qualification proof or implementation freeze changes `executionIdentitySha256` and fails ledger verification; it does not create another run entitlement.
 
 The implementation freeze contains no canonical workflow. It contains only non-executable workflow candidates plus the runner, verifier, locks and qualification evidence. An independent read-only review must return `P0=0/P1=0/P2=0`. Only then may one direct-child publication commit copy the candidate bytes unchanged to:
 

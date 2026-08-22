@@ -223,6 +223,8 @@ function verifyWindowsWorkflowBinding(text) {
     "Assert-ExactVersion ([string] $instance.installationVersion) ([string] $selectedImage.visual_studio_version) \"Visual Studio\"",
     "Assert-ExactVersion $x64ToolsVersion ([string] $selectedImage.visual_studio_x64_tools) \"Visual Studio x64 tools component\"",
     "Windows Kits/10/Include/$($toolchainLock.windows_sdk_version)",
+    "$escapedClangClVersion = [regex]::Escape([string] $toolchainLock.clang_cl_version)",
+    "clang version $escapedClangClVersion(?:\\s|$)",
   ];
   for (const needle of required) {
     if (countExact(text, needle) !== 1) {
@@ -523,6 +525,10 @@ if (selfTest) {
     ["Windows SDK binding", (candidate) => candidate.replace(
       "Windows Kits/10/Include/$($toolchainLock.windows_sdk_version)",
       "Windows Kits/10/Include/latest",
+    )],
+    ["Windows clang-cl lock binding", (candidate) => candidate.replace(
+      "$toolchainLock.clang_cl_version",
+      "'20.1.8'",
     )],
   ];
   for (const [label, mutate] of windowsWorkflowMutations) {

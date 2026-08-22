@@ -516,7 +516,8 @@ jobs:
           if (-not (Test-Path -LiteralPath $vsDevCmd)) { throw "missing pinned runner compiler environment: $vsDevCmd" }
           if (-not (Test-Path -LiteralPath $clangCl)) { throw "missing pinned runner clang-cl: $clangCl" }
           $clangVersion = (& $clangCl --version) -join "`n"
-          if ($LASTEXITCODE -ne 0 -or $clangVersion -notmatch '(?m)^clang version 20\.1\.8(?:\s|$)') {
+          $escapedClangClVersion = [regex]::Escape([string] $toolchainLock.clang_cl_version)
+          if ($LASTEXITCODE -ne 0 -or $clangVersion -notmatch "(?m)^clang version $escapedClangClVersion(?:\s|$)") {
             throw "unexpected clang-cl version: $clangVersion"
           }
           $vsEnvLines = & cmd.exe /d /s /c "`"$vsDevCmd`" -no_logo -arch=x64 -host_arch=x64 && set"

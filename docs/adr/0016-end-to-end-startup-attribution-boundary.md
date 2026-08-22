@@ -12,6 +12,8 @@ The two results answer different questions. M3-05 measures an end-to-end platfor
 
 This ADR replaces the unmerged M2-10 attribution proposal in PR #67. It does not invalidate run `32099991400`, authorize another M2-10 run, or treat that result as a failed attempt. The retained result is conclusive only for its documented inner boundary.
 
+M3-10 later consumed the ADR 0016 execution identity in run `32554806537` but failed during repository-provenance preflight before any Android observation and produced zero artifacts. Proposed [ADR 0018](0018-successor-diagnostic-execution-identity.md) does not retry or erase M3-10; it defines the sole narrow condition under which a different, full-history-qualified successor identity may be created after independently proving zero device observation.
+
 ## Decision
 
 Startup attribution uses one outer `p0..p15` sequence on the real Release/R8 cold-start path and one protected-only inner sequence. Every timestamp uses Android `CLOCK_BOOTTIME` represented in nanoseconds. A later implementation may use profile-only bytecode probes plus Perfetto/Android trace events, but the observer, its manifest control and all keep rules must be absent from Release AARs, production fixture APKs, the CLI and distribution artifacts.

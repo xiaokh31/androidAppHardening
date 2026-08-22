@@ -1,0 +1,161 @@
+{
+  "schemaVersion": 1,
+  "task": "M3-13",
+  "retrievedAt": "2026-08-23T00:01:36+08:00",
+  "source": "official GitHub Actions API via gh api",
+  "rawOfficialPages": {
+    "diagnosticRun": {
+      "endpoint": "/repos/xiaokh31/androidAppHardening/actions/runs/32554806537",
+      "path": "docs/evidence/M3-13/raw/diagnostic-run.json",
+      "bytes": 13444,
+      "sha256": "ef5cb179d65c0f37dadbfa6a66de3fff305f9f5e596496ad34e11ac00fcdd3d8"
+    },
+    "diagnosticJobsPage1": {
+      "endpoint": "/repos/xiaokh31/androidAppHardening/actions/runs/32554806537/jobs?per_page=100&page=1",
+      "path": "docs/evidence/M3-13/raw/diagnostic-jobs-page-1.json",
+      "bytes": 4005,
+      "sha256": "31b285456b24499ff362715c4c1a0ae2d937e644d4c6e7a8f2c680c9840b5cda"
+    },
+    "diagnosticArtifactsPage1": {
+      "endpoint": "/repos/xiaokh31/androidAppHardening/actions/runs/32554806537/artifacts?per_page=100&page=1",
+      "path": "docs/evidence/M3-13/raw/diagnostic-artifacts-page-1.json",
+      "bytes": 33,
+      "sha256": "d3ad979d01443a9d7342e7fbe39064b41ebdb340029293f1b099bcfb6c493c42"
+    },
+    "terminalRun": {
+      "endpoint": "/repos/xiaokh31/androidAppHardening/actions/runs/32554917303",
+      "path": "docs/evidence/M3-13/raw/terminal-run.json",
+      "bytes": 13381,
+      "sha256": "25da806a36a0ec12916ca915eaa5496916527ba6d0cf1acff862b28b04f4f783"
+    },
+    "terminalJobsPage1": {
+      "endpoint": "/repos/xiaokh31/androidAppHardening/actions/runs/32554917303/jobs?per_page=100&page=1",
+      "path": "docs/evidence/M3-13/raw/terminal-jobs-page-1.json",
+      "bytes": 2730,
+      "sha256": "27f9c924ee42a83cd42e5a8c7ef9a8bb20eaad7a8e4de60de1d441bc593d3ef2"
+    },
+    "terminalArtifactsPage1": {
+      "endpoint": "/repos/xiaokh31/androidAppHardening/actions/runs/32554917303/artifacts?per_page=100&page=1",
+      "path": "docs/evidence/M3-13/raw/terminal-artifacts-page-1.json",
+      "bytes": 33,
+      "sha256": "d3ad979d01443a9d7342e7fbe39064b41ebdb340029293f1b099bcfb6c493c42"
+    }
+  },
+  "diagnosticRun": {
+    "id": 32554806537,
+    "name": "M3-09-DIAGNOSTIC-V1-883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "failure",
+    "headSha": "790ae4579ce3562dc93f3c533ffb786a39517600",
+    "runAttempt": 1,
+    "path": ".github/workflows/m3-09-startup-attribution.yml",
+    "createdAt": "2026-08-22T05:37:00Z",
+    "updatedAt": "2026-08-22T05:38:30Z"
+  },
+  "diagnosticJob": {
+    "totalCount": 1,
+    "id": 96987186584,
+    "name": "m3-09-startup-attribution",
+    "status": "completed",
+    "conclusion": "failure",
+    "runAttempt": 1,
+    "startedAt": "2026-08-22T05:37:03Z",
+    "completedAt": "2026-08-22T05:38:29Z",
+    "steps": [
+      { "number": 1, "name": "Set up job", "status": "completed", "conclusion": "success" },
+      { "number": 2, "name": "Check out exact diagnostic head", "status": "completed", "conclusion": "success" },
+      { "number": 3, "name": "Verify pinned Ubuntu runner", "status": "completed", "conclusion": "success" },
+      { "number": 4, "name": "Set up Temurin JDK", "status": "completed", "conclusion": "success" },
+      { "number": 5, "name": "Set up Node.js", "status": "completed", "conclusion": "success" },
+      { "number": 6, "name": "Restore verified Gradle inputs", "status": "completed", "conclusion": "success" },
+      { "number": 7, "name": "Prepare pinned API 36 r2 and Emulator 37.1.11", "status": "completed", "conclusion": "success" },
+      { "number": 8, "name": "Download and verify canonical originals and retained profile package", "status": "completed", "conclusion": "failure" },
+      { "number": 9, "name": "Prepare verified M2-07 Native crypto source", "status": "completed", "conclusion": "skipped" },
+      { "number": 10, "name": "Build exact Release surfaces", "status": "completed", "conclusion": "skipped" },
+      { "number": 11, "name": "Execute first-and-only API 36 attribution diagnostic", "status": "completed", "conclusion": "skipped" },
+      { "number": 12, "name": "Upload immutable raw diagnostic package", "status": "completed", "conclusion": "skipped" },
+      { "number": 21, "name": "Post Restore verified Gradle inputs", "status": "completed", "conclusion": "skipped" },
+      { "number": 22, "name": "Post Set up Node.js", "status": "completed", "conclusion": "skipped" },
+      { "number": 23, "name": "Post Set up Temurin JDK", "status": "completed", "conclusion": "success" },
+      { "number": 24, "name": "Post Check out exact diagnostic head", "status": "completed", "conclusion": "success" },
+      { "number": 25, "name": "Complete job", "status": "completed", "conclusion": "success" }
+    ]
+  },
+  "diagnosticArtifacts": {
+    "totalCount": 0,
+    "artifacts": []
+  },
+  "terminalRun": {
+    "id": 32554917303,
+    "name": "M3-09 startup attribution terminal evidence",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "failure",
+    "headSha": "415420223441578aa028a1687cb94ef79dfd1924",
+    "runAttempt": 1,
+    "path": ".github/workflows/m3-09-startup-attribution-evidence.yml",
+    "createdAt": "2026-08-22T05:39:38Z",
+    "updatedAt": "2026-08-22T05:39:55Z"
+  },
+  "terminalJob": {
+    "totalCount": 1,
+    "id": 96987454333,
+    "name": "m3-09-startup-attribution-terminal-evidence",
+    "status": "completed",
+    "conclusion": "failure",
+    "runAttempt": 1,
+    "startedAt": "2026-08-22T05:39:42Z",
+    "completedAt": "2026-08-22T05:39:54Z",
+    "steps": [
+      { "number": 1, "name": "Set up job", "status": "completed", "conclusion": "success" },
+      { "number": 2, "name": "Check out terminal evidence head", "status": "completed", "conclusion": "success" },
+      { "number": 3, "name": "Bind terminal request to reviewed diagnostic bytes", "status": "completed", "conclusion": "success" },
+      { "number": 4, "name": "Verify pinned Ubuntu runner", "status": "completed", "conclusion": "success" },
+      { "number": 5, "name": "Set up Node.js", "status": "completed", "conclusion": "success" },
+      { "number": 6, "name": "Collect and verify official terminal evidence", "status": "completed", "conclusion": "failure" },
+      { "number": 7, "name": "Upload terminal evidence", "status": "completed", "conclusion": "skipped" },
+      { "number": 13, "name": "Post Set up Node.js", "status": "completed", "conclusion": "skipped" },
+      { "number": 14, "name": "Post Check out terminal evidence head", "status": "completed", "conclusion": "success" },
+      { "number": 15, "name": "Complete job", "status": "completed", "conclusion": "success" }
+    ]
+  },
+  "terminalArtifacts": {
+    "totalCount": 0,
+    "artifacts": []
+  },
+  "reviewedBytes": {
+    "diagnosticWorkflow": {
+      "path": ".github/workflows/m3-09-startup-attribution.yml",
+      "bytes": 15264,
+      "sha256": "a09145d499d06a769cce38e4229019fa3360bfbff26be6ed18ca1552ab1d5559"
+    },
+    "runner": {
+      "path": "tools/validation/run-m3-10-startup-attribution.mjs",
+      "bytes": 27316,
+      "sha256": "640c40d502a410f7609c0b1113a7b096a56730f5039aa18c6dffd1ddb741d228"
+    },
+    "verifier": {
+      "path": "tools/validation/verify-m3-10-startup-attribution.mjs",
+      "bytes": 86520,
+      "sha256": "d4781da1888bbacc0e52b0851d3ab1e61bcf315a55b2a068ae9d0d320985486a"
+    },
+    "environmentLock": {
+      "path": "tools/validation/m3-10/api36-environment-lock.json",
+      "bytes": 868,
+      "sha256": "6e8fe036b3eadc7dad0fd1eed90178d96feae569ab8cbbac5f94717e21f34a1f"
+    }
+  },
+  "inferenceBoundary": {
+    "classification": "ZERO_DEVICE_OBSERVATION",
+    "androidPackagesPrepared": true,
+    "nativePreparationReached": false,
+    "releaseBuildReached": false,
+    "diagnosticExecutionStepReached": false,
+    "avdCreated": false,
+    "apkInstallAttempted": false,
+    "retainedSamples": 0,
+    "artifactCount": 0,
+    "basis": "The official diagnostic job marks the only diagnostic execution step skipped; the reviewed workflow and runner place AVD creation, device commands, APK installation and sampling only in that step. Both official artifact pages report total_count=0."
+  }
+}

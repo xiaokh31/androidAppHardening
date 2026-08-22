@@ -20,6 +20,12 @@ security_sensitive: true
 
 Implement the real bounded ADR 0016 end-to-end startup attribution diagnostic for the retained failing `java-single-dex` bytes. It must identify exactly one eligible owner or return `UNATTRIBUTED`; it may not substitute a rebuilt fixture, repeat an invalid run, weaken a budget or change production security behavior.
 
+## Terminal outcome
+
+The independently reviewed workflow reached its first-and-only run `32554806537` at head `790ae4579ce3562dc93f3c533ffb786a39517600`. Repository-provenance validation failed because the shallow checkout did not contain required M3-12 ancestry. Pinned API 36/Emulator package preparation succeeded; the job then failed before Native preparation, Release build, AVD creation, APK installation or campaign execution, retained zero samples and uploaded zero artifacts. Terminal evidence run `32554917303` failed closed on the absent artifact.
+
+M3-10 is terminally blocked. Its identity is consumed, PR #79 must remain draft, and it cannot be retried or relabelled as `UNATTRIBUTED`. Proposed ADR 0018 and M3-13 may define one distinct successor eligibility contract, but they do not reopen this task or make its failed run successful.
+
 ## Background
 
 M3-09 accepted the attribution model. M3-11 then fixed the canonical originals to the exact signed baseline/protected APKs measured by PR #63. The first rejected M3-10 candidate rebuilt an `m310Base` fixture, so none of its candidate original APK identities are eligible. M3-09's synthetic validator and M3-11's provenance lock do not themselves implement probes or authorize a diagnostic.

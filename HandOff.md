@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260823-063415
-updated_at: 2026-08-23T06:34:15+08:00
+handoff_id: HO-20260823-063753
+updated_at: 2026-08-23T06:37:53+08:00
 updated_by: /root
 state: blocked
 source_branch: main
@@ -22,6 +22,7 @@ Close M3-13 on `main` and preserve ADR 0018 as the sole narrow successor diagnos
 ## Current State
 
 - M3-13 is merged and complete on `main`. Final exact head `f60543c4d5ca2891cbdcab3a028054bd41e0f7f7` retained independent review `P0=0/P1=0/P2=0` and passed Build `32590407762` plus Governance `32590407768` on Ubuntu/Windows. PR #81 was converted to ready and merged with expected-head protection as `621117dc5639bf4c9c9e8696c554bbd2ab821d8c`; Issue #80 closed. The contract binds M3-10 run `32554806537` and terminal evidence run `32554917303`, fixes one future task key/run with `runAttempt=1`, and permits no further renewal. Both canonical successor workflows remain absent. No device, KVM, emulator, ARM, API 29 or benchmark ran; Android was not invoked.
+- Initial post-merge Governance `32602883324` exposed one coordination-only lifecycle defect: the M3-13 validator accepted only the pre-merge `active_task: M3-13` state. Commit `e2259f5821ee0c53897a2b450735e111612b082f` now accepts exactly either the reviewed active branch tuple or the merged-main `done` tuple, rejects a 66th invalid-lifecycle mutation, and keeps both successor workflows forbidden.
 - M3-13 independent review 1 rejected implementation `55997e61a2f734ab3d7ed5f8a44a44064b526ac3` / evidence `bec3d0ddeccc356c31f69add2e37e197cd127531` with `P0=0/P1=3/P2=1`: execution-identity self-reference, missing retained raw official API pages, terminal M3-10 still listed as an M3-05 completion dependency, and incomplete local evidence fields. No push or PR occurred.
 - The bounded remediation freeze `7ea0f4198bfccf57808a4c976c46b2b1cb87bf6e` and evidence head `08a01822719c5a94a5d9f6947d64802557e3e076` passed independent review 2 with `P0=0/P1=0/P2=0`. It removes the self-reference, retains and parses six exact API pages, rehashes reviewed files from fixed historical Git objects, changes M3-10 to historical input, and rejects 65 named mutations including raw-page and sensitive vectors. The proof/preimage identities are `9e06abb3...f117` / `58056085...a419`; both canonical successor workflows remain absent.
 - Evidence-only review head `3226d9a3c9da02c00f638942068891560f634801` was pushed and unique draft PR #81 was created against `main`, correctly linking Issue #80. Initial Build `32590353149` and Governance `32590353196` started; automatically triggered out-of-scope equivalence `32590353152` and fuzz `32590353174` were cancelled. This coordination-only successor becomes the final exact head; it does not add a diagnostic workflow.
@@ -450,6 +451,18 @@ Close M3-13 on `main` and preserve ADR 0018 as the sole narrow successor diagnos
 - artifact: `docs/evidence/M3-13/review-1-remediation-local.md`; PR #81; merge commit `621117dc5639bf4c9c9e8696c554bbd2ab821d8c`
 - sha256: ec86aebabe85101fbbf23def3b8e01f5ac8187f6103355c5e18793ce374a0bdb
 - result: PASS; P0=0/P1=0/P2=0, exact-head required CI passed, expected-head merge succeeded, and both canonical successor workflows remain absent
+
+### M3-13 post-merge lifecycle gate remediation
+
+- task_id: M3-13
+- git_commit: e2259f5821ee0c53897a2b450735e111612b082f
+- command: Node syntax; M3-13 positive and 66 named mutations; project Governance; strict HandOff with pending-clean allowance; diff check
+- exit_code: 0
+- environment: Windows 10.0.19045 x64; Node.js v24.12.0; Git 2.52.0.windows.1; no network, Gradle, Android, device, KVM, emulator or benchmark
+- timestamp: 2026-08-23T06:37:53+08:00
+- artifact: `tools/governance/verify-m3-13-diagnostic-identity-contract.mjs`
+- sha256: 105c0e402c33ea4a0cc1a8fc157f8aec249f9ae763a55fd637cce2c11518cddc
+- result: PASS_LOCAL; exact active-or-merged lifecycle is fail-closed and the invalid lifecycle mutation is rejected
 
 ### M3-13 successor diagnostic identity local freeze
 

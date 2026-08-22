@@ -23,6 +23,10 @@ The request commit `415420223441578aa028a1687cb94ef79dfd1924` is the diagnostic 
 
 This is the required permanent terminal state for the current tuple. The workflow may not be fixed and rerun on these product bytes. M3-05 remains blocked. Any future measurement eligibility requires a separately authorized ADR/task and a new identity boundary; it cannot be treated as an M3-10 retry.
 
+## Draft PR governance correction
+
+Draft PR #79 Governance run `32555201566` failed on both platforms because the frozen M3-07 scanner treated M3-10's test-only profile artifact path bindings as a prohibited production HIGH control. This did not run or change the canonical diagnostic. Bounded successor `77d8fda` filters only eight exact whole-line M3-10 test-artifact property/environment pairs in `host/container/build.gradle.kts`; a new mutation proves an M3-10-like HIGH override still fails. Independent bounded review returned `P0=0/P1=0/P2=0`. Out-of-scope KVM, fuzz and equivalence runs were cancelled; the superseded PR-head jobs are not acceptance evidence.
+
 ## Links
 
 - [Diagnostic run 32554806537](https://github.com/xiaokh31/androidAppHardening/actions/runs/32554806537)

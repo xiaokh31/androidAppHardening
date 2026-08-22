@@ -13,6 +13,7 @@ depends_on:
   - M3-08
   - M3-09
   - M3-10
+  - M3-13
 required_skills:
   - validate-protected-apk
 security_sensitive: false
@@ -25,6 +26,8 @@ security_sensitive: false
 ## Background
 
 “APK 大小优化”只表示控制加固增量，不保证输出小于输入。基准必须同时报告原始值、加固值、绝对增量和百分比，且不得用单次测量或不同设备结果作结论。
+
+M3-10 run `32554806537` 在 Android 执行前终止且未产生归因。M3-13 只定义一个 successor diagnostic identity；它不运行测量，也不解除本任务。M3-05 remains blocked，直到该合同合并、后续独立实现产生有效 owner，且 owner remediation 完成。`UNATTRIBUTED` 或 successor 任意失败都不能用于恢复本任务。
 
 ## Inputs
 

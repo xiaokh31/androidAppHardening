@@ -69,7 +69,8 @@ M1-07 的 AHDC v2 合同必须先经独立安全复核并合并；随后 M1 与 
 | M3-11 | [#71](https://github.com/xiaokh31/androidAppHardening/issues/71) | [Canonical startup diagnostic artifact contract](M3-11-canonical-startup-artifact-contract.md) | `qa-governance-agent` | M3-09 |
 | M3-12 | [#75](https://github.com/xiaokh31/androidAppHardening/issues/75) | [Diagnostic profile package retention](M3-12-profile-package-retention.md) | `qa-governance-agent` | M3-11 |
 | M3-10 | [#70](https://github.com/xiaokh31/androidAppHardening/issues/70) | [ADR 0016 startup attribution diagnostic implementation](M3-10-startup-attribution-diagnostic.md) | `runtime-security-agent` | M3-09, M3-11, M3-12 |
-| M3-05 | [#22](https://github.com/xiaokh31/androidAppHardening/issues/22) | [Size, startup, and memory benchmarks](M3-05-size-startup-memory-benchmarks.md) | `qa-governance-agent` | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08, M3-09, M3-10 |
+| M3-13 | [#80](https://github.com/xiaokh31/androidAppHardening/issues/80) | [Successor diagnostic identity and eligibility contract](M3-13-successor-diagnostic-identity-contract.md) | `qa-governance-agent` | M3-09, M3-11, M3-12 |
+| M3-05 | [#22](https://github.com/xiaokh31/androidAppHardening/issues/22) | [Size, startup, and memory benchmarks](M3-05-size-startup-memory-benchmarks.md) | `qa-governance-agent` | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08, M3-09, M3-10, M3-13 |
 
 ## M4 Release
 
@@ -92,7 +93,7 @@ M2-02 → M2-08 → M3-02
 M2-01 → M2-09 → M3-04
 M2-06 + M3-01 + M2-08 → M3-02 → M3-06 → M3-04
 M2-06 + M3-01 → M3-03
-M2-05 + M2-06 + M3-01 → M3-07 → M3-08 → M3-09 → M3-11 → M3-12 → M3-10 → M3-05
+M2-05 + M2-06 + M3-01 → M3-07 → M3-08 → M3-09 → M3-11 → M3-12 → M3-10 → M3-13 → separately authorized successor implementation → M3-05
 M3-02 + M3-03 + M3-04 + M3-05 → M4-01 → M4-02 → M4-03
 ```
 

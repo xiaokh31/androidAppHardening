@@ -56,6 +56,7 @@ jobs:
           node --check tools/governance/verify-m3-08-startup-stability-contract.mjs
           node --check tools/governance/verify-m3-09-startup-attribution-contract.mjs
           node --check tools/governance/verify-m3-11-canonical-artifact-contract.mjs
+          node --check tools/governance/verify-m3-13-diagnostic-identity-contract.mjs
           node --check .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs
 
       - name: Validate project package
@@ -70,6 +71,8 @@ jobs:
           node tools/governance/verify-m3-09-startup-attribution-contract.mjs --self-test
           node tools/governance/verify-m3-11-canonical-artifact-contract.mjs
           node tools/governance/verify-m3-11-canonical-artifact-contract.mjs --self-test
+          node tools/governance/verify-m3-13-diagnostic-identity-contract.mjs
+          node tools/governance/verify-m3-13-diagnostic-identity-contract.mjs --self-test
 
       - name: Enforce M3-07 zero production diff
         if: github.event_name == 'pull_request' && github.head_ref == 'docs/m3-07-high-benchmark-contract'
@@ -98,6 +101,13 @@ jobs:
         env:
           M311_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: node tools/governance/verify-m3-11-canonical-artifact-contract.mjs --base-ref "$M311_BASE_SHA"
+
+      - name: Enforce M3-13 zero implementation diff
+        if: github.event_name == 'pull_request' && github.head_ref == 'docs/m3-13-diagnostic-identity-contract'
+        shell: bash
+        env:
+          M313_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node tools/governance/verify-m3-13-diagnostic-identity-contract.mjs --base-ref "$M313_BASE_SHA"
 
       - name: Validate HandOff on pull request
         if: github.event_name == 'pull_request'

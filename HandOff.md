@@ -1,26 +1,30 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260822-125158
-updated_at: 2026-08-22T12:51:58+08:00
+handoff_id: HO-20260822-140546
+updated_at: 2026-08-22T14:05:46+08:00
 updated_by: /root
-state: ready
-source_branch: main
-base_commit: c1d81fe6c4257efecf8cbb0b23aa724034f6b3a1
+state: blocked
+source_branch: feat/m3-10-startup-attribution-diagnostic
+base_commit: c9399b40884778f027ffbe33f96786197365acb3
 working_tree: clean
 current_milestone: M3
-active_task: NONE
-next_owner: unassigned
+active_task: M3-10
+next_owner: /root
 ---
 
 # Project HandOff
 
 ## Objective
 
-Keep the merged M3-12 profile package retention boundary stable and leave M3-10 as the next separately resumed task; do not create or execute its unique API 36 workflow in this coordination step.
+Record and publish the permanent blocked outcome of the M3-10 first-and-only ADR 0016 diagnostic without rerunning API 36 or starting ARM or M3-05.
 
 ## Current State
 
+- M3-10 is terminally blocked. Workflow implementation `4c58759bb4e4e53eb56fc9d3cbd3c8d0929ba1d0` and reviewed publication head `790ae4579ce3562dc93f3c533ffb786a39517600` passed independent complete and bounded incremental review with `P0=0/P1=0/P2=0`. First-and-only run `32554806537`, job `96987186584`, failed before Native preparation, AVD creation or APK installation because the shallow checkout did not contain the M3-12 implementation-to-evidence ancestry; the exact retained asset itself downloaded and passed its byte lock. The run produced zero artifacts and no owner or `UNATTRIBUTED` result. Direct-child terminal request `415420223441578aa028a1687cb94ef79dfd1924` changed only its request JSON; terminal run `32554917303`, job `96987454333`, passed parent/diff binding and failed closed on the absent artifact. Eligibility is consumed, no replacement run is permitted, and ARM, API 29 and M3-05 were not started. Unique Issue #70 draft PR #79 records this blocked result and must remain draft.
+- PR #79's first final-head Governance run `32555201566` found one cross-contract scanner false positive: M3-07 treated exact M3-10 test-artifact profile path bindings as a production HIGH override. Bounded implementation `77d8fda7594c968556ebd9b581885543ffbf90f4` filters only eight exact whole-line M3-10 verification-task bindings and adds a fail-closed M3-10-like HIGH mutation. Independent bounded read-only review returned `P0=0/P1=0/P2=0`; local Node syntax, M3-07 positive/self-test, project Governance and diff checks pass. This correction does not change or rerun the diagnostic.
+- Exact-head Build `32555451368` then failed in the ordinary shared toolchain-policy parser because it required `contents: read` to precede `actions: read` in a workflow permissions mapping. Bounded implementation `02102d249bb64b40626027bdb7c520c82d959394` accepts canonical child ordering while rejecting missing/write contents, nested/job overrides, quoted keys/headers, merge/unknown syntax and duplicates. Its two-file diff passed independent bounded review with `P0=0/P1=0/P2=0`; the canonical workflows remain byte-identical, so no diagnostic was retriggered.
+- M3-10 implementation freeze `86ec37475fd7a96b4baf764530baefc3fe3d4cde` and evidence successor `7a384b321e9afa8df5f683ad1a2b78ba2cb31bd0` passed fifth independent review with `P0=0/P1=0/P2=0`. The later readiness audit at `ac2d969392556fd9b338399e6cc2e9c22c90daed` found only that GitHub runners could not obtain the exact reviewed profile package; it did not invalidate the implementation or consume API 36 eligibility.
 - M3-12 is merged and complete. Fourth independent review accepted implementation `3415e2826054b0ce31c32e8f934e973cb1a85cd0` and evidence `4cc8736d1de1f5b0d71ff5790bd9333849acccd8` with `P0=0/P1=0/P2=0`; the reviewed-main merge head `5a8c3a018cf875bc6c45b29a6bef05094143c58e` passed Build `32551730109` and Governance `32551730123`. Final evidence-only head `95a42b556374c92191d2511894fb2613afc187b9` passed Build `32552469351` and Governance `32552469492` on Ubuntu/Windows. PR #76 was converted to ready and merged with expected-head protection as `c1d81fe6c4257efecf8cbb0b23aa724034f6b3a1`; Issue #75 closed. The fixed release ID `374769776`, asset ID `524507375`, archive SHA-256 `21816d2a...27964` and ten member identities remain the sole accepted source. No profile was regenerated, no signing secret was retained, and no device, KVM, fuzz, equivalence, benchmark, API 36 diagnostic, ARM or M3-05 work ran.
 - M2-07 Windows runner maintenance is merged and complete. Final expected head `88f1c11ab137867a6b8ea07af5c136a4fdfbea0d` retained the all-zero independent review and passed Build `32549204828` plus Governance `32549204792` on Ubuntu/Windows. PR #78 was converted to ready and merged with expected-head protection as `28493ca0c572b2af45a107e0e77010f6ebe878c2`; Issue #77 closed. The reviewed `main` is now merged into PR #76 so only its final exact-head Build/Governance can resume. No device, KVM, fuzz, equivalence, benchmark, API 36 diagnostic, ARM or M3-05 work is authorized by this transition.
 - M2-07 Ubuntu runner-lock maintenance is merged and complete. Official immutable ref `ubuntu24/20260816.277` remains fixed to commit `3b5f596ffecb076aa5f3c3ded95b145f6daeb016`; manifest blob `0023ec0741a8c708f9ba2e2bcfc1ee0d9fcb219c` is `15740` bytes with SHA-256 `50384bd5268bb03ae44ab93d621d9d9f20b30f8f0c8155ed49333a57c31a7d88`. Initial freeze `e8ed50a89c52fb8e66516ab6c4a4775c6fac1124` was rejected with `P0=0/P1=2/P2=0`; remediation freeze `da37f47958522986fd25086368dc5598193e4906` and evidence successor `81a1e5b6f9467d4ec1ae6b880c4be27024dde488` passed complete and incremental independent review with `P0=0/P1=0/P2=0`. Final PR head `2f48d5eae74dc753ff8b3370852ee23f2989e402` passed Ubuntu/Windows Build `32330793427` and Governance `32330793521`; PR #74 was made ready and merged with expected-head protection as `77e5148c5aa035fd450adffe9a09111d6b67f973`, and Issue #73 closed. Post-merge Build `32333998709` passed both platforms. Initial main Governance `32333998706` failed only because the merged HandOff still named the source branch; this coordination snapshot corrects it to `main`. Out-of-scope KVM/equivalence/fuzz were cancelled; no Runtime, Host, APK, benchmark, emulator or physical-device input changed.
@@ -209,7 +213,7 @@ Keep the merged M3-12 profile package retention boundary stable and leave M3-10 
 | M3-09 | `/root` | `main` | done | M3-08 | PR #69 merged as `886b49f`; Issue #68 closed; independent review and exact-head Ubuntu/Windows Build/Governance passed |
 | M3-11 | `/root` | `main` | done | M3-09 | PR #72 merged with expected-head protection as `98e652b3017df0255ba8be4869513698c18c9ce6`; Issue #71 closed |
 | M3-12 | `/root` | `main` | done | M3-11 | PR #76 merged as `c1d81fe`; Issue #75 closed; all-zero review, immutable asset lock and final dual-platform Build/Governance passed |
-| M3-10 | `runtime-security-agent` | `feat/m3-10-startup-attribution-diagnostic` | planned | M3-09, M3-11, M3-12 | Separately resume from the reviewed implementation, incorporate the merged retention lock, then add the unique API 36 workflow |
+| M3-10 | `/root` | `feat/m3-10-startup-attribution-diagnostic` | blocked | M3-09, M3-11, M3-12 | Preserve first-and-only run `32554806537` and terminal run `32554917303`; do not retry the consumed tuple |
 | M3-05 | `/root` | `chore/m3-05-performance-benchmarks` | blocked | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08, M3-09, M3-10 | Keep PR #63 blocked until M3-10 attribution and any selected owner remediation complete |
 | M3-03 | `/root` | `main` | done | M0-03, M1-05, M1-06, M2-06, M3-01 | PR #55 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | done | M2-02 | PR #54 merged; exact regression, ASan/UBSan, dual-platform Build/Governance and independent review passed |
@@ -432,6 +436,54 @@ Keep the merged M3-12 profile package retention boundary stable and leave M3-10 
 - M2-02 第三实现层已完成本地检查点：同一 `sourceDir` 只读文件映射、OS 只读 DEX commit、generation+slot 类型化 JNI handle、同 handle `AHMD` 认证 metadata、精确五 JNI 方法、Java primitive/finally 交接窗口、幂等 `LoadedPayload` owner，以及 M0-05 等价 Native 搜索路径和三参数 API 29 `InMemoryDexClassLoader` 已接通。Java 17 编译/lint、NDK 四 ABI warnings-as-errors 与离线根 `assembleRelease check` 284-task 均 PASS，四个 ELF 都含唯一 104-byte alloc/read-only `.ah_share_v1`，未启动设备或模拟器。证据更新于 `docs/evidence/M2-02/local-validation.md`；任务仍未完成或发布，下一步仅补 failure injection、Host sanitizer/fuzz/OOM 与已授权 KVM/arm64 验收，不启动 M2-03。
 
 ## Verification Evidence
+
+### M3-10 PR #79 Build-only policy correction review
+
+- task_id: M3-10
+- git_commit: `02102d249bb64b40626027bdb7c520c82d959394`
+- command: Node syntax; positive M0 toolchain validation; complete toolchain-policy tamper suite covering top-level write, nested permission, job write, quoted child, quoted header and existing dependency/Action mutations; diff check; independent bounded review
+- exit_code: 0
+- environment: Windows 10.0.19045 x64; Node.js v24.12.0; no workflow-file change, network, Gradle, device, emulator or benchmark
+- timestamp: 2026-08-22T14:05:46+08:00
+- artifact: `docs/evidence/M3-10/pr79-build-fix-read-only-review.md`
+- sha256: `369d509111724030b8d4d81f311e22b0f13fe97caf0c51e79c0466e54b8f3a4a`
+- result: PASS; P0=0/P1=0/P2=0, canonical permission ordering is accepted and all write/ambiguous override forms fail closed without modifying or retriggering the diagnostic workflow
+
+### M3-10 PR #79 CI-only correction independent review
+
+- task_id: M3-10
+- git_commit: `77d8fda7594c968556ebd9b581885543ffbf90f4`
+- command: bounded single-file review; Node syntax; M3-07 positive validator; M3-07 self-test with 10 production-surface and 20 report negatives plus exact M3-10 binding/escape assertions; project Governance; diff check
+- exit_code: 0
+- environment: Windows 10.0.19045 x64; Node.js v24.12.0; no network, Gradle, device, emulator or benchmark
+- timestamp: 2026-08-22T13:49:41+08:00
+- artifact: `docs/evidence/M3-10/pr79-ci-fix-read-only-review.md`
+- sha256: `a0ec06d28fe021a410ce3afc2e5faf63351a52fa7227cc0d547044da04403d68`
+- result: PASS; P0=0/P1=0/P2=0, exact M3-10 test-artifact bindings are accepted while wrong property/environment, HIGH/risk/M305, arbitrary profile control, other paths and trailing content remain rejected
+
+### M3-10 first-and-only terminal outcome
+
+- task_id: M3-10
+- git_commit: `415420223441578aa028a1687cb94ef79dfd1924`
+- command: GitHub Actions diagnostic run `32554806537` / job `96987186584`; exact direct-child terminal evidence run `32554917303` / job `96987454333`; official workflow-runs, jobs and artifacts API inspection
+- exit_code: 1
+- environment: GitHub `ubuntu-24.04`; pinned JDK/Node/API 36 r2/Emulator 37.1.11 preparation passed; failure occurred before AVD creation, APK installation, campaign execution or artifact upload
+- timestamp: 2026-08-22T13:40:48+08:00
+- artifact: `docs/evidence/M3-10/remote-validation.md`; diagnostic run `32554806537`; terminal evidence run `32554917303`
+- sha256: `95f8045bf5cd8d10eb04458f909f77981001cea8766ea46f4e7c57929b32cc7b`
+- result: BLOCKED; shallow checkout omitted required M3-12 ancestry, official artifact count is zero, no attribution result exists, eligibility is consumed, and no API 36 retry, ARM, API 29 or M3-05 action is allowed
+
+### M3-10 workflow successor independent review
+
+- task_id: M3-10
+- git_commit: `4c58759bb4e4e53eb56fc9d3cbd3c8d0929ba1d0`
+- command: canonical/profile actual-byte verification; 17 actual-file mutations; complete verifier 49 mutations; cleanup 8 mutations; collector redirect/archive-bound self-test; profile-freeze 13 mutations; M3-11/M3-12 actual retained inputs; project Governance; strict HandOff; diff check; independent complete and incremental read-only review
+- exit_code: 0
+- environment: Windows 10.0.19045 x64; Node.js 24.12.0; Temurin 17.0.19; Gradle 9.5.0; no emulator, device, KVM, benchmark, ARM, API 29, M3-05 or canonical diagnostic run
+- timestamp: 2026-08-22T13:34:16+08:00
+- artifact: `docs/evidence/M3-10/workflow-successor-read-only-review.md`
+- sha256: `63edab84755acf4d5ceb9b55159d72d9a9bbe17deef3e455acbb738654a2abda`
+- result: PASS; P0=0/P1=0/P2=0, exact reviewed executable hashes are frozen and the unique API 36 eligibility remains unused until the single branch push
 
 ### M3-12 CI-only correction independent review
 
@@ -1935,13 +1987,14 @@ Keep the merged M3-12 profile package retention boundary stable and leave M3-10 
 
 ## Blockers and Required Approvals
 
-None
+- M3-10 first-and-only eligibility for product tuple `883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd` was consumed by invalid run `32554806537`. The contract forbids a retry or replacement run. M3-05 remains blocked. Any future measurement requires a separately authorized ADR/task and a new identity boundary.
 
 ## Ordered Next Actions
 
-1. Keep M3-12 merged bytes and numeric asset identity unchanged.
-2. On a separate explicit M3-10 resume, merge current `main`, incorporate the M3-12 lock/verifier and add the one authorized API 36 workflow.
-3. Do not start ARM or M3-05 until the unique M3-10 diagnostic and its attribution decision complete.
+1. Commit and push the bounded PR #79 Build-policy correction, independent review evidence and this final HandOff snapshot.
+2. Keep PR #79 draft and blocked; do not make it ready or merge it as a completed diagnostic.
+3. Do not rerun the current tuple and do not start ARM, API 29 or M3-05.
+4. Await an explicit user decision before creating any separate ADR/task with a new identity boundary.
 
 ## Relevant Files and Artifacts
 
@@ -1989,6 +2042,31 @@ None
 - PR #76 final head `95a42b556374c92191d2511894fb2613afc187b9`; Build `32552469351`; Governance `32552469492`; merge commit `c1d81fe6c4257efecf8cbb0b23aa724034f6b3a1`; Issue #75 closed
 - `docs/tasks/M3-11-canonical-startup-artifact-contract.md`
 - `docs/tasks/M3-10-startup-attribution-diagnostic.md`
+- `docs/evidence/M3-10/remote-validation.md`
+- `docs/evidence/M3-10/pr79-ci-fix-read-only-review.md`
+- `docs/evidence/M3-10/pr79-build-fix-read-only-review.md`
+- `docs/evidence/M3-10/diagnostic-terminal-request.json`
+- `.github/workflows/m3-09-startup-attribution.yml`
+- `.github/workflows/m3-09-startup-attribution-evidence.yml`
+- `host/container/src/test/kotlin/ah/host/container/M310DexProfileTool.kt`
+- `host/container/src/test/kotlin/ah/host/container/M310CanonicalProfileDeriver.kt`
+- `host/container/src/test/kotlin/ah/host/container/M310CanonicalProfileVerifier.kt`
+- `tools/validation/m3-10/profile-src/ah/runtime/profile/M310StartupTimingObserver.java`
+- `tools/governance/verify-m3-10-profile-freeze.mjs`
+- `docs/evidence/M3-10/profile-derivation-local.md`
+- `docs/evidence/M3-10/read-only-review-1.md`
+- `docs/evidence/M3-10/review-remediation-local.md`
+- `docs/evidence/M3-10/review-2-remediation-local.md`
+- `docs/evidence/M3-10/review-3-remediation-local.md`
+- `docs/evidence/M3-10/review-4-remediation-local.md`
+- `docs/evidence/M3-10/read-only-review-5.md`
+- `tools/validation/m3-10/canonical-profile-lock.json`
+- `tools/validation/m3-10/release-artifact-lock.json`
+- `tools/validation/m3-10/api36-environment-lock.json`
+- `tools/validation/prepare-m3-10-profile-package.mjs`
+- `tools/validation/run-m3-10-startup-attribution.mjs`
+- `tools/validation/verify-m3-10-startup-attribution.mjs`
+- ignored `build/m3-10/` derived APKs and verification reports; temporary signing material deleted
 - `docs/evidence/M3-11/canonical-artifact-lock.json`
 - `docs/evidence/M3-11/provenance.md`
 - `tools/governance/verify-m3-11-canonical-artifact-contract.mjs`

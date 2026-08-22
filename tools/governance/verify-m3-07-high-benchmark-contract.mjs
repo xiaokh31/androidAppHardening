@@ -88,6 +88,24 @@ function overrideFindings(text) {
   return overridePatterns.filter(([, pattern]) => pattern.test(text)).map(([name]) => name);
 }
 
+function overrideScanText(relative, text) {
+  if (normalize(relative) !== "host/container/build.gradle.kts") return text;
+  const allowedBindings = new Map([
+    ["originalBaseline", "M310_ORIGINAL_BASELINE"],
+    ["originalProtected", "M310_ORIGINAL_PROTECTED"],
+    ["profileBaseline", "M310_PROFILE_BASELINE"],
+    ["profileProtected", "M310_PROFILE_PROTECTED"],
+    ["observerDex", "M310_OBSERVER_DEX"],
+    ["derivationManifest", "M310_DERIVATION_MANIFEST"],
+    ["profileLock", "M310_PROFILE_LOCK"],
+    ["report", "M310_VERIFICATION_REPORT"],
+  ]);
+  return text.split(/\r?\n/).filter(line => {
+    const match = /^\s*([A-Za-z][A-Za-z0-9]*)\.set\(providers\.environmentVariable\("([A-Z0-9_]+)"\)\)\s*$/.exec(line);
+    return match === null || allowedBindings.get(match[1]) !== match[2];
+  }).join("\n");
+}
+
 function walkFiles(root) {
   const output = [];
   if (!fs.existsSync(root)) return output;
@@ -109,7 +127,7 @@ function scanProductionTree(root) {
     for (const absolute of walkFiles(path.join(root, top))) {
       const relative = normalize(path.relative(root, absolute));
       if (!isProductionSurface(relative) || !relevantExtension(relative)) continue;
-      const text = fs.readFileSync(absolute, "utf8");
+      const text = overrideScanText(relative, fs.readFileSync(absolute, "utf8"));
       for (const finding of overrideFindings(text)) errors.push(`${relative}: prohibited ${finding}`);
     }
   }
@@ -296,6 +314,18 @@ function runSelfTest() {
       fs.writeFileSync(file, content, "utf8");
       if (scanProductionTree(root).length === 0) throw new Error(`production surface mutation escaped: ${relative}`);
     });
+
+    const m310Root = path.join(temp, "m310-test-artifact-bindings");
+    const m310Build = path.join(m310Root, "host/container/build.gradle.kts");
+    fs.mkdirSync(path.dirname(m310Build), { recursive: true });
+    fs.writeFileSync(m310Build, [
+      'profileBaseline.set(providers.environmentVariable("M310_PROFILE_BASELINE"))',
+      'profileProtected.set(providers.environmentVariable("M310_PROFILE_PROTECTED"))',
+      'profileLock.set(providers.environmentVariable("M310_PROFILE_LOCK"))',
+    ].join("\n"), "utf8");
+    if (scanProductionTree(m310Root).length !== 0) throw new Error("exact M3-10 test artifact bindings rejected");
+    fs.appendFileSync(m310Build, '\nprofileOverride.set(providers.environmentVariable("M310_FORCE_HIGH_PROFILE"))\n', "utf8");
+    if (scanProductionTree(m310Root).length === 0) throw new Error("M3-10-like HIGH override escaped");
 
     const positive = validReport();
     if (reportCliExit(positive, temp, "positive") !== 0) throw new Error("positive report CLI failed");

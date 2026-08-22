@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M3-10",
+  "fixtureId": "java-single-dex",
+  "productTupleSha256": "883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd",
+  "canonical": {
+    "baseline": {
+      "sizeBytes": 29962,
+      "sha256": "4607d3289e1fc3bd95282ab47791ec810a5d2d3ac0a69fc0f91388901e412dcf"
+    },
+    "protected": {
+      "sizeBytes": 1287876,
+      "sha256": "1eb159d7f0149a943fb2e1c4d8467f283d1cfbbfad670628402cfb0cd23390d9"
+    }
+  },
+  "observer": {
+    "sourceSha256": "8e1c462eb9fce09ec6d5579d7b5f45a7aca7b6abbe66186b187ca67cdc96c71c",
+    "dexSizeBytes": 4748,
+    "dexSha256": "537b1ba424961d3897d574c10ec155e7b01cfffa313d71a0ade1d0c06e26dc88",
+    "classDescriptor": "Lah/runtime/profile/M310StartupTimingObserver;"
+  },
+  "derivation": {
+    "manifestSizeBytes": 1161,
+    "manifestSha256": "878d092a3cae6f4aa73cb722ea0bb9aa2f1eb32917a19b8c83220502dbdf4de8",
+    "profileBaselineDexSha256": "1fadf33ce80e7212382081bb73a1a8f40d51562fef921edfc37640457bddf75a",
+    "profileProtectedPayloadDexSha256": "70d6cc0fb48c6b85b5b825416fe912528c1cc034d7c20d29807a5af1121a44eb",
+    "profileProtectedShellDexSha256": "d6099c7c71fb0dab22526583b43c5cacc10953ac87b3b5ea6d40d1790f63bf55"
+  },
+  "profileSigner": {
+    "commitmentAlgorithm": "SHA-256(UTF8('M3-10-PROFILE-SIGNER-V1\\0') || certificateSha256Bytes)",
+    "commitment": "e5dc8b0776b0569e54c1deb19d3a2e948d1bca6a780fff35ca0ee7c7fc5252c4",
+    "certificateSha256Prefix": "1e21b13e836d",
+    "signerCount": 1,
+    "requiredScheme": "v3",
+    "v1Allowed": false,
+    "v2Allowed": false,
+    "v4Allowed": false
+  },
+  "outputs": {
+    "unsignedBaseline": {
+      "sizeBytes": 23097,
+      "sha256": "423461bc1b900230021d2c950f5d5ce1b10f37911a8d63ea4f84a0b46e93fbe4"
+    },
+    "unsignedProtected": {
+      "sizeBytes": 1252546,
+      "sha256": "167c44aa4a15071b762fcec18fd4bfcc55087676577750dc0177f8734dad7b25"
+    },
+    "alignedBaseline": {
+      "sizeBytes": 25819,
+      "sha256": "8a39bf6e830e18d997ababe767f290bb3ee5489d31cafbb614aa5a625322b7d8"
+    },
+    "alignedProtected": {
+      "sizeBytes": 1279696,
+      "sha256": "ffcf606605ed7a13cd9f61aaa11076ff58bbe620308683ac93baa729d0c28c09"
+    },
+    "signedBaseline": {
+      "sizeBytes": 33971,
+      "sha256": "a062e0994482b1db417ff710c554364ec80e9f8d5fa84b5745ff5753308b764b"
+    },
+    "signedProtected": {
+      "sizeBytes": 1287848,
+      "sha256": "1ce941404d8e6105764d041c449a60016312bc9c9671a8f8eb97c4e8b6820a10"
+    }
+  },
+  "toolchain": {
+    "java": "17.0.19",
+    "buildTools": "36.1.0",
+    "dexlib2": "2.5.2",
+    "minSdk": 29,
+    "zipalignPageBytes": 4096
+  },
+  "retention": {
+    "trackedApks": false,
+    "ignoredRoot": "build/m3-10/canonical-profile-v2-a",
+    "privateKeyRetained": false,
+    "seedRetained": false,
+    "regenerationPermitted": false
+  }
+}

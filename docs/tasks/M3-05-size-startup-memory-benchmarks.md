@@ -12,7 +12,7 @@ depends_on:
   - M3-07
   - M3-08
   - M3-09
-  - M3-10
+  - M3-13
 required_skills:
   - validate-protected-apk
 security_sensitive: false
@@ -26,6 +26,8 @@ security_sensitive: false
 
 “APK 大小优化”只表示控制加固增量，不保证输出小于输入。基准必须同时报告原始值、加固值、绝对增量和百分比，且不得用单次测量或不同设备结果作结论。
 
+M3-10 run `32554806537` 在 Android 执行前终止且未产生归因。M3-13 只定义一个 successor diagnostic identity；它不运行测量，也不解除本任务。M3-05 remains blocked，直到该合同合并、后续独立实现产生有效 owner，且 owner remediation 完成。`UNATTRIBUTED` 或 successor 任意失败都不能用于恢复本任务。
+
 ## Inputs
 
 - M1-06 可发布 CLI。
@@ -34,7 +36,7 @@ security_sensitive: false
 - 锁定的 benchmark 环境与测试工具版本。
 - M3-07 与 ADR 0014 固定的真实冷启动/隔离 HIGH 增量测量边界。
 - M3-08 与 ADR 0015 固定的同 SHA、同 KVM job、同 emulator boot 双 campaign 测量稳定性边界。
-- M3-09 与 ADR 0016 固定的端到端归因边界、M3-11 固定的 PR #63 canonical APK 字节，以及完成后的 M3-10 归因结果；M2-10 的首轮且唯一内部诊断保留为有效但不足以定位端到端增量的证据。
+- M3-09 与 ADR 0016 固定的端到端归因边界、M3-11 固定的 PR #63 canonical APK 字节、M3-10 的 terminal zero-observation history，以及 ADR 0018 允许的有效 successor 归因结果；M2-10 的首轮且唯一内部诊断保留为有效但不足以定位端到端增量的证据。
 - M3-11 锁定 artifact `9260244215` 中产生 application delta P50 `331/432 ms` 的实际 `java-single-dex` pair；其约 `30.5%` variation 仍是 repeatability 失败，任何 rebuilt fixture 均不能替换该诊断来源。
 
 ## Expected Outputs
@@ -78,7 +80,7 @@ security_sensitive: false
 - API 36 release gate 必须在同一 exact-head KVM job 与同一 emulator boot 内运行恰好两个 campaign。`A` 使用正向 fixture 顺序与 `baseline_then_protected`；`B` 使用反向 fixture 顺序与 `protected_then_baseline`。每个 campaign/mode 均保留 5 次预热和 30 次测量，任何无效样本使整个 campaign 失败，不得补样、删异常值或启动第三个 campaign。
 - 两个 campaign 必须分别通过全部固定预算；三 fixture × 五 observed Android metric × `baselineP50`/`baselineP95`/`protectedP50`/`protectedP95`/`deltaP50`/`deltaP95` 共 90 行比较全部使用 `abs(A-B) / max(1, min(abs(A), abs(B))) <= 0.10`。不同 SHA、job、boot 或 artifact manifest 的报告仅可诊断，不得作为验收配对。
 - M3-05 只可修改 benchmark/test orchestration 以实现 ADR 0015。若稳定的双 campaign 仍超预算，必须另建 Runtime 优化任务与 ADR；不得在本任务修改生产 Runtime。
-- ADR 0016 生效后，PR #63 保持阻塞。M3-11 只固定原始字节，不授权诊断；只有 M3-10 使用该 exact pair 完成 `p0..p15` 与 protected `p0,h0,h1..h7,h8,p1` 归因、获得合格 owner 并完成相应复核后，协调者才能决定是否恢复本任务。
+- ADR 0016 生效后，PR #63 保持阻塞。M3-11 只固定原始字节，不授权诊断；terminal M3-10 只作为历史输入。只有 ADR 0018 的唯一 successor 使用该 exact pair 完成 `p0..p15` 与 protected `p0,h0,h1..h7,h8,p1` 归因、获得合格 owner，且对应 owner remediation 完成相应复核后，协调者才能决定是否恢复本任务。具体 successor implementation 与 remediation 任务 ID 必须在创建后加入本任务依赖，未创建的任务不得用占位 ID 冒充已满足依赖。
 
 ## Public Interfaces
 
@@ -143,7 +145,7 @@ security_sensitive: false
 
 ## Dependencies and Blockers
 
-M1-06、M2-04、M3-08、M3-09 或 M3-10 尚未形成已合并合同/结果时不得建立发布基线。M3-11 仅固定 canonical bytes；不得把治理合同或 rebuilt fixture 当作动态验收。任一安全控制导致预算失败时任务保持 blocked，并提交可量化优化任务；不得删除安全控制或放宽预算而不经 ADR 与安全评审。
+M1-06、M2-04、M3-08、M3-09 或 M3-13 尚未形成已合并合同时不得建立发布基线。Terminal M3-10 仅是历史输入，不是可完成的依赖；M3-11 仅固定 canonical bytes。ADR 0018 successor implementation 与所选 owner remediation 的具体任务 ID 必须在创建后加入依赖且完成，治理合同或 rebuilt fixture 不得冒充动态验收。任一安全控制导致预算失败时任务保持 blocked，并提交可量化优化任务；不得删除安全控制或放宽预算而不经 ADR 与安全评审。
 
 ## Agent Handoff Requirements
 

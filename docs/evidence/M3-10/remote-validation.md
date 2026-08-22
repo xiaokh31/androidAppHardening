@@ -27,6 +27,8 @@ This is the required permanent terminal state for the current tuple. The workflo
 
 Draft PR #79 Governance run `32555201566` failed on both platforms because the frozen M3-07 scanner treated M3-10's test-only profile artifact path bindings as a prohibited production HIGH control. This did not run or change the canonical diagnostic. Bounded successor `77d8fda` filters only eight exact whole-line M3-10 test-artifact property/environment pairs in `host/container/build.gradle.kts`; a new mutation proves an M3-10-like HIGH override still fails. Independent bounded review returned `P0=0/P1=0/P2=0`. Out-of-scope KVM, fuzz and equivalence runs were cancelled; the superseded PR-head jobs are not acceptance evidence.
 
+The next exact-head Build `32555451368` entered ordinary Ubuntu/Windows checks and failed only because the M0 toolchain parser required `contents: read` to be the first child of `permissions`; both canonical workflows instead put `actions: read` first. No diagnostic or device workflow ran. Successor `02102d2` accepts canonical child ordering but rejects missing/write contents, nested/job overrides, quoted keys/headers, merge/unknown syntax and duplicates. Its two-file diff passed a bounded independent review with `P0=0/P1=0/P2=0`; the canonical workflow files remain byte-identical.
+
 ## Links
 
 - [Diagnostic run 32554806537](https://github.com/xiaokh31/androidAppHardening/actions/runs/32554806537)

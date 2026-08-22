@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260822-135029
-updated_at: 2026-08-22T13:50:29+08:00
+handoff_id: HO-20260822-140546
+updated_at: 2026-08-22T14:05:46+08:00
 updated_by: /root
 state: blocked
 source_branch: feat/m3-10-startup-attribution-diagnostic
@@ -23,6 +23,7 @@ Record and publish the permanent blocked outcome of the M3-10 first-and-only ADR
 
 - M3-10 is terminally blocked. Workflow implementation `4c58759bb4e4e53eb56fc9d3cbd3c8d0929ba1d0` and reviewed publication head `790ae4579ce3562dc93f3c533ffb786a39517600` passed independent complete and bounded incremental review with `P0=0/P1=0/P2=0`. First-and-only run `32554806537`, job `96987186584`, failed before Native preparation, AVD creation or APK installation because the shallow checkout did not contain the M3-12 implementation-to-evidence ancestry; the exact retained asset itself downloaded and passed its byte lock. The run produced zero artifacts and no owner or `UNATTRIBUTED` result. Direct-child terminal request `415420223441578aa028a1687cb94ef79dfd1924` changed only its request JSON; terminal run `32554917303`, job `96987454333`, passed parent/diff binding and failed closed on the absent artifact. Eligibility is consumed, no replacement run is permitted, and ARM, API 29 and M3-05 were not started. Unique Issue #70 draft PR #79 records this blocked result and must remain draft.
 - PR #79's first final-head Governance run `32555201566` found one cross-contract scanner false positive: M3-07 treated exact M3-10 test-artifact profile path bindings as a production HIGH override. Bounded implementation `77d8fda7594c968556ebd9b581885543ffbf90f4` filters only eight exact whole-line M3-10 verification-task bindings and adds a fail-closed M3-10-like HIGH mutation. Independent bounded read-only review returned `P0=0/P1=0/P2=0`; local Node syntax, M3-07 positive/self-test, project Governance and diff checks pass. This correction does not change or rerun the diagnostic.
+- Exact-head Build `32555451368` then failed in the ordinary shared toolchain-policy parser because it required `contents: read` to precede `actions: read` in a workflow permissions mapping. Bounded implementation `02102d249bb64b40626027bdb7c520c82d959394` accepts canonical child ordering while rejecting missing/write contents, nested/job overrides, quoted keys/headers, merge/unknown syntax and duplicates. Its two-file diff passed independent bounded review with `P0=0/P1=0/P2=0`; the canonical workflows remain byte-identical, so no diagnostic was retriggered.
 - M3-10 implementation freeze `86ec37475fd7a96b4baf764530baefc3fe3d4cde` and evidence successor `7a384b321e9afa8df5f683ad1a2b78ba2cb31bd0` passed fifth independent review with `P0=0/P1=0/P2=0`. The later readiness audit at `ac2d969392556fd9b338399e6cc2e9c22c90daed` found only that GitHub runners could not obtain the exact reviewed profile package; it did not invalidate the implementation or consume API 36 eligibility.
 - M3-12 is merged and complete. Fourth independent review accepted implementation `3415e2826054b0ce31c32e8f934e973cb1a85cd0` and evidence `4cc8736d1de1f5b0d71ff5790bd9333849acccd8` with `P0=0/P1=0/P2=0`; the reviewed-main merge head `5a8c3a018cf875bc6c45b29a6bef05094143c58e` passed Build `32551730109` and Governance `32551730123`. Final evidence-only head `95a42b556374c92191d2511894fb2613afc187b9` passed Build `32552469351` and Governance `32552469492` on Ubuntu/Windows. PR #76 was converted to ready and merged with expected-head protection as `c1d81fe6c4257efecf8cbb0b23aa724034f6b3a1`; Issue #75 closed. The fixed release ID `374769776`, asset ID `524507375`, archive SHA-256 `21816d2a...27964` and ten member identities remain the sole accepted source. No profile was regenerated, no signing secret was retained, and no device, KVM, fuzz, equivalence, benchmark, API 36 diagnostic, ARM or M3-05 work ran.
 - M2-07 Windows runner maintenance is merged and complete. Final expected head `88f1c11ab137867a6b8ea07af5c136a4fdfbea0d` retained the all-zero independent review and passed Build `32549204828` plus Governance `32549204792` on Ubuntu/Windows. PR #78 was converted to ready and merged with expected-head protection as `28493ca0c572b2af45a107e0e77010f6ebe878c2`; Issue #77 closed. The reviewed `main` is now merged into PR #76 so only its final exact-head Build/Governance can resume. No device, KVM, fuzz, equivalence, benchmark, API 36 diagnostic, ARM or M3-05 work is authorized by this transition.
@@ -436,6 +437,18 @@ Record and publish the permanent blocked outcome of the M3-10 first-and-only ADR
 
 ## Verification Evidence
 
+### M3-10 PR #79 Build-only policy correction review
+
+- task_id: M3-10
+- git_commit: `02102d249bb64b40626027bdb7c520c82d959394`
+- command: Node syntax; positive M0 toolchain validation; complete toolchain-policy tamper suite covering top-level write, nested permission, job write, quoted child, quoted header and existing dependency/Action mutations; diff check; independent bounded review
+- exit_code: 0
+- environment: Windows 10.0.19045 x64; Node.js v24.12.0; no workflow-file change, network, Gradle, device, emulator or benchmark
+- timestamp: 2026-08-22T14:05:46+08:00
+- artifact: `docs/evidence/M3-10/pr79-build-fix-read-only-review.md`
+- sha256: `369d509111724030b8d4d81f311e22b0f13fe97caf0c51e79c0466e54b8f3a4a`
+- result: PASS; P0=0/P1=0/P2=0, canonical permission ordering is accepted and all write/ambiguous override forms fail closed without modifying or retriggering the diagnostic workflow
+
 ### M3-10 PR #79 CI-only correction independent review
 
 - task_id: M3-10
@@ -457,7 +470,7 @@ Record and publish the permanent blocked outcome of the M3-10 first-and-only ADR
 - environment: GitHub `ubuntu-24.04`; pinned JDK/Node/API 36 r2/Emulator 37.1.11 preparation passed; failure occurred before AVD creation, APK installation, campaign execution or artifact upload
 - timestamp: 2026-08-22T13:40:48+08:00
 - artifact: `docs/evidence/M3-10/remote-validation.md`; diagnostic run `32554806537`; terminal evidence run `32554917303`
-- sha256: `36742fe9dadbeee4f7d52581bda68b98512ff816b0b6c9787823c40e9711eba8`
+- sha256: `95f8045bf5cd8d10eb04458f909f77981001cea8766ea46f4e7c57929b32cc7b`
 - result: BLOCKED; shallow checkout omitted required M3-12 ancestry, official artifact count is zero, no attribution result exists, eligibility is consumed, and no API 36 retry, ARM, API 29 or M3-05 action is allowed
 
 ### M3-10 workflow successor independent review
@@ -1978,7 +1991,7 @@ Record and publish the permanent blocked outcome of the M3-10 first-and-only ADR
 
 ## Ordered Next Actions
 
-1. Commit and push the bounded PR #79 Governance correction, independent review evidence and this final HandOff snapshot.
+1. Commit and push the bounded PR #79 Build-policy correction, independent review evidence and this final HandOff snapshot.
 2. Keep PR #79 draft and blocked; do not make it ready or merge it as a completed diagnostic.
 3. Do not rerun the current tuple and do not start ARM, API 29 or M3-05.
 4. Await an explicit user decision before creating any separate ADR/task with a new identity boundary.
@@ -2031,6 +2044,7 @@ Record and publish the permanent blocked outcome of the M3-10 first-and-only ADR
 - `docs/tasks/M3-10-startup-attribution-diagnostic.md`
 - `docs/evidence/M3-10/remote-validation.md`
 - `docs/evidence/M3-10/pr79-ci-fix-read-only-review.md`
+- `docs/evidence/M3-10/pr79-build-fix-read-only-review.md`
 - `docs/evidence/M3-10/diagnostic-terminal-request.json`
 - `.github/workflows/m3-09-startup-attribution.yml`
 - `.github/workflows/m3-09-startup-attribution-evidence.yml`

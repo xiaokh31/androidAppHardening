@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260822-110948
-updated_at: 2026-08-22T11:09:48+08:00
+handoff_id: HO-20260822-111619
+updated_at: 2026-08-22T11:16:19+08:00
 updated_by: /root
 state: active
 source_branch: chore/m2-07-windows-runner-20260818
@@ -21,7 +21,7 @@ Independently lock GitHub Windows runner `20260818.207.1` to its immutable manif
 
 ## Current State
 
-- M2-07 Windows runner maintenance is active on Issue #77 and branch `chore/m2-07-windows-runner-20260818`. PR #76 exact-head Builds `32546997262` and `32547253855` both failed closed before compiler invocation because GitHub assigned new unreviewed `ImageOS=win25-vs2026`, `ImageVersion=20260818.207.1`; Governance `32547253820` passed Ubuntu/Windows after its separate M3-12 static corrections. Official lightweight tag `win25-vs2026/20260818.207` is fixed to commit `0900c002193dc2d3fade0cd9133ae70e7088eb05`, tree `4c1d1f41940febb68702c0ffc28fa84723097019`, manifest blob `4a994e86af753335ce0a1f7839414656048ac8d9`, `34156` bytes and SHA-256 `4cd6067bec8e0eb5ac04e1134fb71f23b99ca296caeab1cc5d30ca4838e218ba`. First review rejected freeze `b1895f6688482731f3c00fca1322ed55f0ade554` with `P0=0/P1=0/P2=2`. Remediation freeze `ecfbd3fc1b12fdf9166ef9f8553c5b8e5a0e74ca` consumes `clang_cl_version` from the machine lock and adds the matching workflow mutation; reviews 2 and 3 each rejected only stale HandOff timing claims. Fourth-round bounded review accepted documentation successor `765ae8986aa047883e5b828f0d0d803c71b1a2ec` with `P0=0/P1=0/P2=0`; all technical and coordination findings are closed. This evidence-only successor records that accepted result without changing workflow, lock, validator, runtime/ref, per-image VS/x64, SDK, `cl.exe`, product or test boundaries. No Android, Native, fixture, profile, device or benchmark input is in scope.
+- M2-07 Windows runner maintenance is active on Issue #77, draft PR #78 and branch `chore/m2-07-windows-runner-20260818`. Official lightweight tag `win25-vs2026/20260818.207` is fixed to commit `0900c002193dc2d3fade0cd9133ae70e7088eb05`, tree `4c1d1f41940febb68702c0ffc28fa84723097019`, manifest blob `4a994e86af753335ce0a1f7839414656048ac8d9`, `34156` bytes and SHA-256 `4cd6067bec8e0eb5ac04e1134fb71f23b99ca296caeab1cc5d30ca4838e218ba`. Evidence-only candidate `92ff8afcc44c4bd8cca8513b52504b834f859bd4` passed independent review and Governance `32548347230`, but Build `32548347250` Windows job `96970786197` failed closed after matching runtime/ref, VS `18.9.12112.369`, x64 tools `18.9.12009.112`, LLVM `20.1.8` and SDK `10.0.26100.0`: the image reported `cl.exe 19.51.36256`, while the first three reviewed images remain `19.51.36252`. That candidate is superseded. The replacement binds `cl.exe` inside each runtime record and derives both assertion and evidence output from the selected record; it requires a new independent all-zero review and replacement exact-head Build/Governance. KVM `32548347243`, fuzz `32548347237` and equivalence `32548347253` were cancelled as out of scope; no Android, Native, fixture, profile, device or benchmark input is in scope.
 - M2-07 Ubuntu runner-lock maintenance is merged and complete. Official immutable ref `ubuntu24/20260816.277` remains fixed to commit `3b5f596ffecb076aa5f3c3ded95b145f6daeb016`; manifest blob `0023ec0741a8c708f9ba2e2bcfc1ee0d9fcb219c` is `15740` bytes with SHA-256 `50384bd5268bb03ae44ab93d621d9d9f20b30f8f0c8155ed49333a57c31a7d88`. Initial freeze `e8ed50a89c52fb8e66516ab6c4a4775c6fac1124` was rejected with `P0=0/P1=2/P2=0`; remediation freeze `da37f47958522986fd25086368dc5598193e4906` and evidence successor `81a1e5b6f9467d4ec1ae6b880c4be27024dde488` passed complete and incremental independent review with `P0=0/P1=0/P2=0`. Final PR head `2f48d5eae74dc753ff8b3370852ee23f2989e402` passed Ubuntu/Windows Build `32330793427` and Governance `32330793521`; PR #74 was made ready and merged with expected-head protection as `77e5148c5aa035fd450adffe9a09111d6b67f973`, and Issue #73 closed. Post-merge Build `32333998709` passed both platforms. Initial main Governance `32333998706` failed only because the merged HandOff still named the source branch; this coordination snapshot corrects it to `main`. Out-of-scope KVM/equivalence/fuzz were cancelled; no Runtime, Host, APK, benchmark, emulator or physical-device input changed.
 - M3-11 is complete on `main`. Final PR head `b29c8c50a99ae1b4ea35926bd12337563c0dfe49` retained the all-zero independent review and passed required Ubuntu/Windows Build and Governance. PR #72 was converted to ready and merged with expected-head protection as `98e652b3017df0255ba8be4869513698c18c9ce6`; Issue #71 closed. Post-merge coordination head `445ea066cc3514b62ceede7beff87721bd9ab2c5` passed Windows Build and Ubuntu/Windows Governance, while Ubuntu Build `32323762679` correctly failed closed before project build on then-unreviewed image `ubuntu24/20260816.277.1`. M2-07 PR #74 has now independently reviewed and fixed that exact image, closing the toolchain provenance blocker without rerunning M3-11. No benchmark, KVM, emulator, ARM or canonical diagnostic ran. M3-10 and M3-05 remain blocked by their own contracts.
 - M3-09 is complete on `main`. Final PR head `613e61ac8d3e74f60219ee0d462fae635c3a663d` passed independent bounded review with `P0=0/P1=0/P2=0`, exact-head Ubuntu/Windows Build `32192033540`, and Governance `32192033589`. PR #69 was made ready and merged with expected-head protection as `886b49f001936edc5d1a090e14e626d6e8e3f3ab`; Issue #68 closed. ADR 0016 is accepted and the M3-09 validator remains synthetic-contract-only. No Runtime, Host, fixture, benchmark or diagnostic workflow implementation changed; no Gradle, KVM, emulator, ARM, benchmark, M3-05 or M2-10 retry ran. M3-05 PR #63 remains blocked until a separate ADR 0016 implementation task and any selected owner remediation complete.
@@ -199,7 +199,7 @@ Independently lock GitHub Windows runner `20260818.207.1` to its immutable manif
 
 | Task | Owner | Branch | Status | Dependencies | Next checkpoint |
 |---|---|---|---|---|---|
-| M2-07 | `/root` | `chore/m2-07-windows-runner-20260818` | in_progress | M0-03, M1-04 | Independent review is all-zero; publish the unique Issue #77 draft PR and run only exact-head Build/Governance |
+| M2-07 | `/root` | `chore/m2-07-windows-runner-20260818` | in_progress | M0-03, M1-04 | Freeze the per-image cl.exe correction, obtain independent all-zero review, then run replacement Build/Governance on PR #78 |
 | M2-09 | `/root` | `main` | done | M2-01 | PR #60 merged; exact-head review, dual-platform CI and API 29/36 KVM passed; README/evidence synchronized |
 | M3-06 | `/root` | `main` | done | M0-03, M2-04, M3-01, M3-02 | PR #57 merged as `a65433a`; claim-boundary contract is active |
 | M3-04 | `/root` | `main` | done | M0-03, M2-04, M2-09, M3-01, M3-02, M3-06 | PR #58 merged; mandatory real-process cells and final main gates passed |
@@ -1897,14 +1897,14 @@ Independently lock GitHub Windows runner `20260818.207.1` to its immutable manif
 
 ## Blockers and Required Approvals
 
-- PR #76 remains blocked until the independently accepted Issue #77 maintenance passes exact-head Build/Governance and merges, after which PR #76 must be updated with reviewed main. Owner: `/root`. Smallest next action: publish the unique draft PR and retain only the authorized Build/Governance runs.
+- PR #76 remains blocked until Issue #77/PR #78's per-image `cl.exe` correction passes a new independent `P0=0/P1=0/P2=0` review plus replacement exact-head Build/Governance and merges. Owner: `/root`. Smallest next action: validate and freeze the bounded correction, then run the independent review.
 - M3-10 unique API 36 diagnostic workflow, ARM and M3-05 remain blocked and unexecuted; this maintenance does not authorize them.
 
 ## Ordered Next Actions
 
-1. Push `chore/m2-07-windows-runner-20260818` and create the unique Issue #77 draft PR.
-2. Retain only exact-head Ubuntu/Windows Build and Governance; cancel KVM/equivalence/fuzz without using them as evidence.
-3. Require Build/Governance success before requesting expected-head ready/merge authorization.
+1. Validate and freeze the per-image `cl.exe 19.51.36252/19.51.36256` correction and its lock/workflow mutations.
+2. Obtain a new independent `P0=0/P1=0/P2=0` review before pushing the replacement PR #78 head.
+3. Run only replacement exact-head Ubuntu/Windows Build and Governance; cancel KVM/equivalence/fuzz and require both authorized workflows to pass before requesting ready/merge authorization.
 4. After authorized expected-head merge, resume PR #76 against reviewed main and rerun its final Build/Governance; keep API 36, ARM and M3-05 blocked.
 
 ## Relevant Files and Artifacts

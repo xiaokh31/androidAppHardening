@@ -148,7 +148,7 @@ export function validate(root, { requireEmptySkeleton = false } = {}) {
         errors.push(`${relative}: Action ${match[1]} must use a full commit SHA`);
       }
     }
-    if (!/permissions:\s*\r?\n\s+contents:\s+read/m.test(text)) {
+    if (!hasWorkflowContentsRead(text)) {
       errors.push(`${relative}: workflow must declare contents: read`);
     }
     if (relative === ".github/workflows/build.yml") {
@@ -180,6 +180,40 @@ export function validate(root, { requireEmptySkeleton = false } = {}) {
   }
 
   return errors;
+}
+
+function hasWorkflowContentsRead(text) {
+  const lines = text.split(/\r?\n/);
+  let topLevelBlocks = 0;
+  let topLevelContentsRead = false;
+  for (let index = 0; index < lines.length; index += 1) {
+    const header = /^(\s*)(?:(["'])permissions\2|permissions):\s*([^#]*?)(?:\s+#.*)?$/.exec(lines[index]);
+    if (header === null) continue;
+    if (header[1].includes("\t") || header[2] !== undefined || header[3].trim() !== "") return false;
+    const indentation = header[1].length;
+    let directContents = 0;
+    for (let child = index + 1; child < lines.length; child += 1) {
+      const line = lines[child];
+      if (line.trim() === "" || /^\s+#/.test(line)) continue;
+      const leading = /^(\s*)/.exec(line)[1];
+      if (leading.includes("\t")) return false;
+      if (leading.length <= indentation) break;
+      if (leading.length !== indentation + 2) return false;
+      const permission = /^\s*([a-z][a-z0-9-]*):\s*(read|write|none)\s*(?:#.*)?$/.exec(line);
+      if (permission === null) return false;
+      if (permission[1] === "contents") {
+        if (permission[2] !== "read") return false;
+        directContents += 1;
+        if (directContents > 1) return false;
+      }
+    }
+    if (indentation === 0) {
+      topLevelBlocks += 1;
+      if (directContents !== 1) return false;
+      topLevelContentsRead = true;
+    }
+  }
+  return topLevelBlocks === 1 && topLevelContentsRead;
 }
 
 function walk(directory) {

@@ -31,6 +31,48 @@ runTamperCase(
   "must use a full commit SHA",
 );
 runTamperCase(
+  "workflow contents permission escalation",
+  ".github/workflows/m3-09-startup-attribution.yml",
+  (text) => text.replace("  contents: read", "  contents: write"),
+  "workflow must declare contents: read",
+);
+runTamperCase(
+  "nested workflow contents permission",
+  ".github/workflows/m3-09-startup-attribution.yml",
+  (text) => text.replace(
+    "permissions:\n  actions: read\n  contents: read",
+    "permissions:\n  actions:\n    contents: read",
+  ),
+  "workflow must declare contents: read",
+);
+runTamperCase(
+  "job workflow contents permission escalation",
+  ".github/workflows/m3-09-startup-attribution.yml",
+  (text) => text.replace(
+    "  diagnostic:\n    name:",
+    "  diagnostic:\n    permissions:\n      contents: write\n    name:",
+  ),
+  "workflow must declare contents: read",
+);
+runTamperCase(
+  "quoted job workflow contents permission escalation",
+  ".github/workflows/m3-09-startup-attribution.yml",
+  (text) => text.replace(
+    "  diagnostic:\n    name:",
+    '  diagnostic:\n    permissions:\n      "contents": write\n    name:',
+  ),
+  "workflow must declare contents: read",
+);
+runTamperCase(
+  "quoted job workflow permissions header escalation",
+  ".github/workflows/m3-09-startup-attribution.yml",
+  (text) => text.replace(
+    "  diagnostic:\n    name:",
+    '  diagnostic:\n    "permissions":\n      contents: write\n    name:',
+  ),
+  "workflow must declare contents: read",
+);
+runTamperCase(
   "toolchain version drift",
   "gradle/libs.versions.toml",
   (text) => text.replace('kotlin = "2.4.10"', 'kotlin = "2.4.11"'),

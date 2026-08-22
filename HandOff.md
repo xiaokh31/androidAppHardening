@@ -1,27 +1,27 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260823-022500
-updated_at: 2026-08-23T02:25:00+08:00
+handoff_id: HO-20260823-063415
+updated_at: 2026-08-23T06:34:15+08:00
 updated_by: /root
-state: active
-source_branch: docs/m3-13-diagnostic-identity-contract
-base_commit: c9399b40884778f027ffbe33f96786197365acb3
+state: blocked
+source_branch: main
+base_commit: 621117dc5639bf4c9c9e8696c554bbd2ab821d8c
 working_tree: clean
 current_milestone: M3
-active_task: M3-13
-next_owner: /root
+active_task: NONE
+next_owner: unassigned
 ---
 
 # Project HandOff
 
 ## Objective
 
-Define ADR 0018 and M3-13 as the sole narrow successor diagnostic identity contract after terminal M3-10, without retrying M3-10 or running Android.
+Close M3-13 on `main` and preserve ADR 0018 as the sole narrow successor diagnostic identity contract after terminal M3-10, without retrying M3-10 or running Android.
 
 ## Current State
 
-- M3-13 is active on Issue #80 and branch `docs/m3-13-diagnostic-identity-contract`. The contract binds M3-10 run `32554806537` and terminal evidence run `32554917303`, permits a successor only after official evidence proves zero AVD creation, zero APK installation attempt, zero retained samples and zero artifacts, and fixes one future task key/run with `runAttempt=1` and no further renewal. No device, KVM, emulator, ARM, API 29 or benchmark is authorized or running. The canonical successor workflows remain absent.
+- M3-13 is merged and complete on `main`. Final exact head `f60543c4d5ca2891cbdcab3a028054bd41e0f7f7` retained independent review `P0=0/P1=0/P2=0` and passed Build `32590407762` plus Governance `32590407768` on Ubuntu/Windows. PR #81 was converted to ready and merged with expected-head protection as `621117dc5639bf4c9c9e8696c554bbd2ab821d8c`; Issue #80 closed. The contract binds M3-10 run `32554806537` and terminal evidence run `32554917303`, fixes one future task key/run with `runAttempt=1`, and permits no further renewal. Both canonical successor workflows remain absent and no Android, device, KVM, emulator, ARM, API 29 or benchmark ran.
 - M3-13 independent review 1 rejected implementation `55997e61a2f734ab3d7ed5f8a44a44064b526ac3` / evidence `bec3d0ddeccc356c31f69add2e37e197cd127531` with `P0=0/P1=3/P2=1`: execution-identity self-reference, missing retained raw official API pages, terminal M3-10 still listed as an M3-05 completion dependency, and incomplete local evidence fields. No push or PR occurred.
 - The bounded remediation freeze `7ea0f4198bfccf57808a4c976c46b2b1cb87bf6e` and evidence head `08a01822719c5a94a5d9f6947d64802557e3e076` passed independent review 2 with `P0=0/P1=0/P2=0`. It removes the self-reference, retains and parses six exact API pages, rehashes reviewed files from fixed historical Git objects, changes M3-10 to historical input, and rejects 65 named mutations including raw-page and sensitive vectors. The proof/preimage identities are `9e06abb3...f117` / `58056085...a419`; both canonical successor workflows remain absent.
 - Evidence-only review head `3226d9a3c9da02c00f638942068891560f634801` was pushed and unique draft PR #81 was created against `main`, correctly linking Issue #80. Initial Build `32590353149` and Governance `32590353196` started; automatically triggered out-of-scope equivalence `32590353152` and fuzz `32590353174` were cancelled. This coordination-only successor becomes the final exact head; it does not add a diagnostic workflow.
@@ -215,7 +215,7 @@ Define ADR 0018 and M3-13 as the sole narrow successor diagnostic identity contr
 | M3-11 | `/root` | `main` | done | M3-09 | PR #72 merged with expected-head protection as `98e652b3017df0255ba8be4869513698c18c9ce6`; Issue #71 closed |
 | M3-12 | `/root` | `main` | done | M3-11 | PR #76 merged as `c1d81fe`; Issue #75 closed; all-zero review, immutable asset lock and final dual-platform Build/Governance passed |
 | M3-10 | `/root` | `feat/m3-10-startup-attribution-diagnostic` | blocked | M3-09, M3-11, M3-12 | Run `32554806537` consumed the identity before Android setup; zero artifact; PR #79 remains draft and cannot rerun |
-| M3-13 | `/root` | `docs/m3-13-diagnostic-identity-contract` | in_progress | M3-09, M3-11, M3-12 | Define ADR 0018, immutable eligibility lock, fail-closed validator and zero-implementation-diff evidence for Issue #80 |
+| M3-13 | `/root` | `main` | done | M3-09, M3-11, M3-12 | PR #81 merged as `621117d`; Issue #80 closed; all-zero review and exact-head dual-platform Build/Governance passed without adding a diagnostic workflow |
 | M3-05 | `/root` | `chore/m3-05-performance-benchmarks` | blocked | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08, M3-09, M3-13 | Treat terminal M3-10 as history; keep PR #63 blocked until a separately authorized valid successor result and selected owner remediation complete, then add their concrete task IDs |
 | M3-03 | `/root` | `main` | done | M0-03, M1-05, M1-06, M2-06, M3-01 | PR #55 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | done | M2-02 | PR #54 merged; exact regression, ASan/UBSan, dual-platform Build/Governance and independent review passed |
@@ -438,6 +438,18 @@ Define ADR 0018 and M3-13 as the sole narrow successor diagnostic identity contr
 - M2-02 第三实现层已完成本地检查点：同一 `sourceDir` 只读文件映射、OS 只读 DEX commit、generation+slot 类型化 JNI handle、同 handle `AHMD` 认证 metadata、精确五 JNI 方法、Java primitive/finally 交接窗口、幂等 `LoadedPayload` owner，以及 M0-05 等价 Native 搜索路径和三参数 API 29 `InMemoryDexClassLoader` 已接通。Java 17 编译/lint、NDK 四 ABI warnings-as-errors 与离线根 `assembleRelease check` 284-task 均 PASS，四个 ELF 都含唯一 104-byte alloc/read-only `.ah_share_v1`，未启动设备或模拟器。证据更新于 `docs/evidence/M2-02/local-validation.md`；任务仍未完成或发布，下一步仅补 failure injection、Host sanitizer/fuzz/OOM 与已授权 KVM/arm64 验收，不启动 M2-03。
 
 ## Verification Evidence
+
+### M3-13 merger-ready and main merge
+
+- task_id: M3-13
+- git_commit: f60543c4d5ca2891cbdcab3a028054bd41e0f7f7
+- command: independent read-only review 2; exact-head Ubuntu/Windows Build 32590407762; exact-head Ubuntu/Windows Governance 32590407768; expected-head protected merge of PR #81
+- exit_code: 0
+- environment: Windows 10.0.19045 x64 with Node.js v24.12.0; GitHub ubuntu-24.04 and windows-2025; Android/JDK/API/ABI not applicable to the contract
+- timestamp: 2026-08-23T06:34:15+08:00
+- artifact: `docs/evidence/M3-13/review-1-remediation-local.md`; PR #81; merge commit `621117dc5639bf4c9c9e8696c554bbd2ab821d8c`
+- sha256: ec86aebabe85101fbbf23def3b8e01f5ac8187f6103355c5e18793ce374a0bdb
+- result: PASS; P0=0/P1=0/P2=0, exact-head required CI passed, expected-head merge succeeded, and both canonical successor workflows remain absent
 
 ### M3-13 successor diagnostic identity local freeze
 
@@ -1989,16 +2001,15 @@ Define ADR 0018 and M3-13 as the sole narrow successor diagnostic identity contr
 
 ## Blockers and Required Approvals
 
-- M3-13 publication prerequisites are satisfied and draft PR #81 is open. Merge remains blocked until the final exact-head Ubuntu/Windows Build and Governance pass and the user separately authorizes ready/merge.
-- No successor implementation or API 36 execution is authorized by this contract branch. It requires a later separately assigned task after M3-13 merges.
-- M3-05 remains blocked. The unlocked physical device does not satisfy or change the API 36 x86_64 successor identity.
+- The separately assigned successor implementation and its unique API 36 execution are not yet authorized. M3-13 completion does not itself create that task, branch, Issue, workflow or run.
+- M3-05 remains blocked until the authorized successor produces an eligible owner and the selected owner remediation completes. The unlocked physical device does not satisfy or change the API 36 x86_64 successor identity.
 
 ## Ordered Next Actions
 
-1. Push this HandOff-only coordination successor to PR #81.
-2. Require only its exact-head Ubuntu/Windows Build and Governance; cancel out-of-scope automatic workflows.
-3. After both required workflows pass, record exact run/job evidence and request ready/merge authorization.
-4. Do not add a successor workflow, retry M3-10, run API 36, ARM, API 29, KVM, emulator, physical device, benchmark or M3-05 in this task.
+1. Validate and publish this M3-13 post-merge README/HandOff coordination snapshot on `main`; require its Ubuntu/Windows Build and Governance and cancel out-of-scope automatic workflows.
+2. Wait for explicit assignment of the separate ADR 0018 successor implementation task, including its Issue and branch.
+3. Only that separately reviewed implementation may add the canonical successor workflow and consume the single API 36 `runAttempt=1` identity.
+4. Keep M3-05, ARM, API 29, physical-device work and any further diagnostic renewal blocked until the successor result selects an eligible owner and its bounded remediation completes.
 
 ## Relevant Files and Artifacts
 

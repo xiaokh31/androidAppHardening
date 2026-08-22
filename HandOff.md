@@ -443,6 +443,18 @@ Retain the already-reviewed M3-10 profile package as one fixed, content-verified
 - sha256: b6a571d60194e52444cc3734f57965c12ab6776684b21d0eb8fcee2fbd96046e
 - result: PASS; P0=0/P1=0/P2=0, the one-line M3-08 dependency sequence matches the approved M3-11 to M3-12 to M3-10 graph without weakening any M3-08 or M3-12 predicate
 
+### M3-12 second CI-only correction independent review
+
+- task_id: M3-12
+- git_commit: 5a88dcc66c53a34fd9303f3aedef88e7f74ecedf
+- command: bounded parent-to-candidate review; Node syntax; M3-09 positive and 58 mutations; M3-08 positive/self-test; M3-11 with 26 mutations; M3-12 verifier; project Governance; strict HandOff; diff/status checks
+- exit_code: 0
+- environment: Windows 10.0.19045 x64; Node.js v24.12.0; no network, Gradle, device, KVM, fuzz or benchmark
+- timestamp: 2026-08-22T10:46:31+08:00
+- artifact: `docs/evidence/M3-12/ci-fix-2-read-only-review.md`
+- sha256: fd3241f044bb086dbb0d1441d60b95d1cb088511e15da3a80e7b7fd60cc5817f
+- result: PASS; P0=0/P1=0/P2=0, the one-line M3-09 dependency sequence matches the approved M3-11 to M3-12 to M3-10 graph without weakening any M3-09 or M3-12 predicate
+
 ### M2-07 Ubuntu runner-lock initial freeze and review
 
 - task_id: M2-07
@@ -1945,6 +1957,7 @@ M3-10 workflow creation remains blocked until the current M3-12 freeze passes in
 - `docs/evidence/M3-12/review-3-remediation-local.md`
 - `docs/evidence/M3-12/read-only-review-4.md`
 - `docs/evidence/M3-12/ci-fix-read-only-review.md`
+- `docs/evidence/M3-12/ci-fix-2-read-only-review.md`
 - `tools/validation/create-m3-12-profile-package.mjs`
 - `tools/validation/fetch-m3-12-profile-package.mjs`
 - `tools/validation/m3-12-security-scan.mjs`

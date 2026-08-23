@@ -22,7 +22,7 @@ No API 36 run, emulator, Android device, ARM, API 29, M3-05 benchmark, profile r
 | Command | Exit | Result |
 | --- | ---: | --- |
 | repository-local Gradle `:host:container:testClasses :host:container:m310MetadataSelfTest --offline --no-daemon` with `JAVA_HOME` set to Temurin 17 | 0 | Kotlin test sources compile; 10 metadata/probe-adjacency mutations pass |
-| repository-local Gradle `:host:container:m310VerifyProfiles --offline --no-daemon` against exact retained M3-12 APKs and M3-11 originals | 0 | four-APK byte/signer/manifest/container/share/probe verification PASS |
+| repository-local Gradle `:host:container:m310VerifyProfiles --offline --no-daemon` with eight explicit `-Pm314...` test-only path properties against exact retained M3-12 APKs and M3-11 originals | 0 | four-APK byte/signer/manifest/container/share/probe verification PASS |
 | `node tools/governance/verify-m3-14-profile-freeze.mjs --self-test --base-ref 960eb9f406eb1a7b7c9b324598fb59936aa1c5b5` | 0 | 14 mutations PASS, including terminal deletion filtering; workflows absent; production observer absent |
 | `node tools/validation/verify-m3-14-startup-attribution.mjs self-test` | 0 | canonical model PASS; 59 rejected mutations, including 10 execution-ledger mutations |
 | `node tools/validation/run-m3-14-startup-attribution.mjs --cleanup-self-test` | 0 | 8 cleanup failure injections PASS |
@@ -46,7 +46,7 @@ The Kotlin compiler daemon could not create its default per-user cache marker; G
 - Read-only retained-profile support: `dc4e5459612d7a0fe0b6fff3a5d966d8e87d08aab862aade29cc2eb1b99a2bc9`
 - Workflow-absent freeze validator: `5394091a49d9a77d6a693fb82c543aeb2af1a3195b0b02051d39c8dbacd544bb`
 - Attribution verifier: `eb490d82c3c4d84e66c6bc48a4133740c9db8cfcd182073ef45724f68cb5c43c`
-- Runner: `194a2908f75b753416c6b3160e98485b8246b42dcb3a8702f16783fdc0390449`
+- Runner: `b379c17bf98c13dd6bf4217677e1615a59777b4d005682f06f6cae4a5cec7804`
 - Terminal collector: `7b329fa2d4d64c2723cd4a4f9a3a5f129a70e993da4bd5b7e6f14a97a4f39605`
 - Toolchain lock: `264d210c530bf4a4618a3d241c9b2c4600ac193053e9c782810bfdd743b78c68`
 - Qualification evidence: `ca8fa557e2ac6d5a4ec54f18850caeef31a20f299bc6ecd40f5229911d9378bd`

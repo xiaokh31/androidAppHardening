@@ -155,13 +155,16 @@ function preflight(options, output) {
   run(process.execPath, [verifier, "surface", "--dexdump", path.resolve(required(options, "dexdump")),
     "--apksigner", path.resolve(required(options, "apksigner")), ...common], { timeout: 180_000 });
   const report = path.join(output, "profile-verification.json");
-  const gradleEnv = { ...process.env, M310_ORIGINAL_BASELINE: path.join(output, "original-baseline.apk"),
-    M310_ORIGINAL_PROTECTED: path.join(output, "original-protected.apk"), M310_PROFILE_BASELINE: path.join(output, "profile-baseline.apk"),
-    M310_PROFILE_PROTECTED: path.join(output, "profile-protected.apk"), M310_OBSERVER_DEX: path.join(output, "observer.dex"),
-    M310_DERIVATION_MANIFEST: path.join(output, "derivation-manifest.json"), M310_PROFILE_LOCK: path.join(output, "profile-lock.json"),
-    M310_VERIFICATION_REPORT: report };
-  run(path.resolve(required(options, "gradle")), [":host:container:m310VerifyProfiles", "--offline", "--no-daemon"],
-    { timeout: 600_000, env: gradleEnv });
+  const gradleArguments = [":host:container:m310VerifyProfiles", "--offline", "--no-daemon",
+    `-Pm314OriginalBaseline=${path.join(output, "original-baseline.apk")}`,
+    `-Pm314OriginalProtected=${path.join(output, "original-protected.apk")}`,
+    `-Pm314ProfileBaseline=${path.join(output, "profile-baseline.apk")}`,
+    `-Pm314ProfileProtected=${path.join(output, "profile-protected.apk")}`,
+    `-Pm314ObserverDex=${path.join(output, "observer.dex")}`,
+    `-Pm314DerivationManifest=${path.join(output, "derivation-manifest.json")}`,
+    `-Pm314ProfileLock=${path.join(output, "profile-lock.json")}`,
+    `-Pm314VerificationReport=${report}`];
+  run(path.resolve(required(options, "gradle")), gradleArguments, { timeout: 600_000 });
   run(process.execPath, [verifier, "profile-report", "--report", report,
     "--original-baseline", path.join(output, "original-baseline.apk"), "--original-protected", path.join(output, "original-protected.apk"),
     "--profile-baseline", path.join(output, "profile-baseline.apk"), "--profile-protected", path.join(output, "profile-protected.apk"),

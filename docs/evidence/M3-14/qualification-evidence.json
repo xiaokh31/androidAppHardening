@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M3-14",
+  "issue": 82,
+  "implementationBaseSha": "960eb9f406eb1a7b7c9b324598fb59936aa1c5b5",
+  "requiredAncestors": [
+    "98e652b3017df0255ba8be4869513698c18c9ce6",
+    "c1d81fe6c4257efecf8cbb0b23aa724034f6b3a1",
+    "621117dc5639bf4c9c9e8696c554bbd2ab821d8c"
+  ],
+  "requiredHistoricalObjects": [
+    "86ec37475fd7a96b4baf764530baefc3fe3d4cde",
+    "790ae4579ce3562dc93f3c533ffb786a39517600",
+    "5fa20550b6f05fec8fa474df6947695f7f5f1937"
+  ],
+  "contracts": {
+    "contractIdentitySha256": "580560859af80418058a088c6be3f7ab221e0ab37e21d76f19bf9177be35a419",
+    "productTupleSha256": "883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd",
+    "profileArchiveSha256": "21816d2a843bb5c59902224c7bf786d546d52b4a5b2d1168ca0c449a2ca27964",
+    "m313EligibilityLockPath": "docs/evidence/M3-13/diagnostic-eligibility-lock.json",
+    "m313EligibilityLockBytes": 2564,
+    "m313EligibilityLockSha256": "d394b99d5060fcbb1e0ad93c179648cd0932128bfdb8030635f6299b2a0f9352",
+    "m313OfficialProofPath": "docs/evidence/M3-13/predecessor-official-proof.json",
+    "m313OfficialProofBytes": 8104,
+    "m313OfficialProofSha256": "95612fd9d52fa749066bcda5b6365f804227a2f47ccb8ce789f5df69366cbd7a",
+    "m312RetentionLockPath": "docs/evidence/M3-12/profile-package-retention-lock.json",
+    "m312RetentionLockBytes": 3520,
+    "m312RetentionLockSha256": "2e3d533362962b5cd537da2e6bfeb2d5f1de8f127ab13c616f257327f5783146"
+  },
+  "qualification": {
+    "fullHistoryRequired": true,
+    "beforeAndroidRequired": true,
+    "canonicalWorkflowAbsentAtFreeze": true,
+    "runLimit": 1,
+    "runAttempt": 1,
+    "furtherRenewalPermitted": false
+  }
+}

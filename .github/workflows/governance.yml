@@ -109,6 +109,16 @@ jobs:
           M313_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: node tools/governance/verify-m3-13-diagnostic-identity-contract.mjs --base-ref "$M313_BASE_SHA"
 
+      - name: Enforce M3-14 workflow-absent successor freeze
+        if: github.event_name == 'pull_request' && github.head_ref == 'feat/m3-14-successor-startup-diagnostic'
+        shell: bash
+        env:
+          M314_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          node tools/governance/verify-m3-14-profile-freeze.mjs --self-test --base-ref "$M314_BASE_SHA"
+          node tools/validation/verify-m3-14-startup-attribution.mjs self-test
+          node tools/validation/run-m3-14-startup-attribution.mjs --cleanup-self-test
+
       - name: Validate HandOff on pull request
         if: github.event_name == 'pull_request'
         shell: bash

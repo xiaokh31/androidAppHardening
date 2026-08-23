@@ -76,7 +76,7 @@ object M310CanonicalProfileVerifier {
                 scratch,
             )
         } finally {
-            M310CanonicalProfileDeriver.deleteTree(scratch)
+            M310RetainedProfileSupport.deleteTree(scratch)
         }
     }
 
@@ -185,18 +185,18 @@ object M310CanonicalProfileVerifier {
         requireLockedFile(lock, "derivation", derivationManifest, "manifestSizeBytes", "manifestSha256")
         requireLockedFile(lock, "signedBaseline", profileBaseline)
         requireLockedFile(lock, "signedProtected", profileProtected)
-        M310CanonicalProfileDeriver.requireExactOriginal(originalBaseline, 29_962L, BASELINE_SHA256, "baseline")
-        M310CanonicalProfileDeriver.requireExactOriginal(originalProtected, 1_287_876L, PROTECTED_SHA256, "protected")
-        require(M310CanonicalProfileDeriver.sha256(profileBaseline) != BASELINE_SHA256 &&
-            M310CanonicalProfileDeriver.sha256(profileProtected) != PROTECTED_SHA256
+        M310RetainedProfileSupport.requireExactOriginal(originalBaseline, 29_962L, BASELINE_SHA256, "baseline")
+        M310RetainedProfileSupport.requireExactOriginal(originalProtected, 1_287_876L, PROTECTED_SHA256, "protected")
+        require(M310RetainedProfileSupport.sha256(profileBaseline) != BASELINE_SHA256 &&
+            M310RetainedProfileSupport.sha256(profileProtected) != PROTECTED_SHA256
         ) { "a profile was mislabeled as an original" }
 
         val inspector = ApkInspector()
         val originalBaselineInspection = inspector.inspect(originalBaseline)
-        val originalBaselineEntries = M310CanonicalProfileDeriver.readEntries(originalBaseline)
-        val originalProtectedEntries = M310CanonicalProfileDeriver.readEntries(originalProtected)
-        val profileBaselineEntries = M310CanonicalProfileDeriver.readEntries(profileBaseline)
-        val profileProtectedEntries = M310CanonicalProfileDeriver.readEntries(profileProtected)
+        val originalBaselineEntries = M310RetainedProfileSupport.readEntries(originalBaseline)
+        val originalProtectedEntries = M310RetainedProfileSupport.readEntries(originalProtected)
+        val profileBaselineEntries = M310RetainedProfileSupport.readEntries(profileBaseline)
+        val profileProtectedEntries = M310RetainedProfileSupport.readEntries(profileProtected)
         val profileBaselineInspection = profileInspection(
             profileBaseline,
             originalBaselineInspection,
@@ -211,12 +211,12 @@ object M310CanonicalProfileVerifier {
         val originalBaselineSigner = signerVerifier.verify(originalBaseline, originalBaselineInspection)
         val originalProtectedSigner = signerVerifier.verify(
             originalProtected,
-            M310CanonicalProfileDeriver.signerOnlyInspection(originalProtected, originalBaselineInspection),
+            M310RetainedProfileSupport.signerOnlyInspection(originalProtected, originalBaselineInspection),
         )
         val profileBaselineSigner = signerVerifier.verify(profileBaseline, profileBaselineInspection)
         val profileProtectedSigner = signerVerifier.verify(
             profileProtected,
-            M310CanonicalProfileDeriver.signerOnlyInspection(profileProtected, profileBaselineInspection),
+            M310RetainedProfileSupport.signerOnlyInspection(profileProtected, profileBaselineInspection),
         )
         require(originalBaselineSigner.currentCertificateSha256.contentEquals(originalProtectedSigner.currentCertificateSha256)) {
             "original signer identity differs"
@@ -261,7 +261,7 @@ object M310CanonicalProfileVerifier {
 
         val profileConfig = profileProtectedEntries.getValue(CONFIG_ENTRY).bytes
         require(ConfigV2Codec.originalFactory(profileConfig) == null) { "profile config original Factory differs" }
-        val profileSlots = M310CanonicalProfileDeriver.readAllRuntimeSlots(profileProtectedEntries, profileConfig)
+        val profileSlots = M310RetainedProfileSupport.readAllRuntimeSlots(profileProtectedEntries, profileConfig)
         try {
             for (abi in RuntimeAbi.entries) {
                 val name = "lib/${abi.directoryName}/libah_runtime.so"
@@ -273,9 +273,9 @@ object M310CanonicalProfileVerifier {
             }
             val profileContainer = scratch.resolve("profile.ahdc")
             Files.write(profileContainer, profileProtectedEntries.getValue(CONTAINER_ENTRY).bytes)
-            val canonicalPackageDigest = M310CanonicalProfileDeriver.toContainerInspection(originalBaselineInspection)
+            val canonicalPackageDigest = M310RetainedProfileSupport.toContainerInspection(originalBaselineInspection)
                 .packageNameSha256
-            val decrypted = M310CanonicalProfileDeriver.decryptPayload(
+            val decrypted = M310RetainedProfileSupport.decryptPayload(
                 profileContainer,
                 profileConfig,
                 profileSlots.rNative,
@@ -294,12 +294,12 @@ object M310CanonicalProfileVerifier {
                 )
                 requireSyntheticLifecycleOverrides(decrypted.single())
                 val actualPayloadApk = scratch.resolve("actual-payload.apk")
-                M310CanonicalProfileDeriver.writeApk(
+                M310RetainedProfileSupport.writeApk(
                     originalBaselineEntries,
                     mapOf(DEX_ENTRY to decrypted.single()),
                     actualPayloadApk,
                 )
-                val actualPayloadInspection = M310CanonicalProfileDeriver.toContainerInspection(profileInspection(
+                val actualPayloadInspection = M310RetainedProfileSupport.toContainerInspection(profileInspection(
                     actualPayloadApk,
                     originalBaselineInspection,
                     decrypted.single(),
@@ -325,10 +325,10 @@ object M310CanonicalProfileVerifier {
               "status": "PASS",
               "canonicalBaselineSha256": "$BASELINE_SHA256",
               "canonicalProtectedSha256": "$PROTECTED_SHA256",
-              "profileBaselineSha256": "${M310CanonicalProfileDeriver.sha256(profileBaseline)}",
-              "profileProtectedSha256": "${M310CanonicalProfileDeriver.sha256(profileProtected)}",
+              "profileBaselineSha256": "${M310RetainedProfileSupport.sha256(profileBaseline)}",
+              "profileProtectedSha256": "${M310RetainedProfileSupport.sha256(profileProtected)}",
               "profileSignerSha256Prefix": "${profileBaselineSigner.currentCertificateSha256Hex.take(12)}",
-              "profileLockSha256": "${M310CanonicalProfileDeriver.sha256(profileLock)}",
+              "profileLockSha256": "${M310RetainedProfileSupport.sha256(profileLock)}",
               "profileV3Verified": true,
               "sameProfileSigner": true,
               "manifestBytesEqual": true,
@@ -343,14 +343,14 @@ object M310CanonicalProfileVerifier {
     }
 
     private fun compareEntrySets(
-        original: Map<String, M310CanonicalProfileDeriver.EntryData>,
-        profile: Map<String, M310CanonicalProfileDeriver.EntryData>,
+        original: Map<String, M310RetainedProfileSupport.EntryData>,
+        profile: Map<String, M310RetainedProfileSupport.EntryData>,
         allowedChanges: Set<String>,
         label: String,
     ) {
-        val originalNames = original.keys.filterNot(M310CanonicalProfileDeriver::isSignatureEntry).toSet()
-        val profileNames = profile.keys.filterNot(M310CanonicalProfileDeriver::isSignatureEntry).toSet()
-        require(originalNames == profileNames && profile.keys.none(M310CanonicalProfileDeriver::isSignatureEntry)) {
+        val originalNames = original.keys.filterNot(M310RetainedProfileSupport::isSignatureEntry).toSet()
+        val profileNames = profile.keys.filterNot(M310RetainedProfileSupport::isSignatureEntry).toSet()
+        require(originalNames == profileNames && profile.keys.none(M310RetainedProfileSupport::isSignatureEntry)) {
             "$label profile entry set/signature metadata differs"
         }
         for (name in originalNames - allowedChanges) {
@@ -365,8 +365,8 @@ object M310CanonicalProfileVerifier {
 
     private fun requireOnlyShareSlotChanged(original: ByteArray, profile: ByteArray, abi: RuntimeAbi) {
         require(original.size == profile.size) { "runtime size differs for ${abi.directoryName}" }
-        val originalOffset = M310CanonicalProfileDeriver.locateSlot(original, abi)
-        val profileOffset = M310CanonicalProfileDeriver.locateSlot(profile, abi)
+        val originalOffset = M310RetainedProfileSupport.locateSlot(original, abi)
+        val profileOffset = M310RetainedProfileSupport.locateSlot(profile, abi)
         require(originalOffset == profileOffset && original.indices.all { index ->
             index in originalOffset until originalOffset + SLOT_BYTES || original[index] == profile[index]
         }) { "runtime changed outside share slot for ${abi.directoryName}" }
@@ -665,7 +665,7 @@ object M310CanonicalProfileVerifier {
             .find(body)?.groupValues?.get(1)?.toLong() ?: error("profile lock size is missing: $objectName")
         val digest = Regex("\\\"${Regex.escape(hashName)}\\\"\\s*:\\s*\\\"([0-9a-f]{64})\\\"")
             .find(body)?.groupValues?.get(1) ?: error("profile lock digest is missing: $objectName")
-        require(Files.size(file) == size && M310CanonicalProfileDeriver.sha256(file) == digest) {
+        require(Files.size(file) == size && M310RetainedProfileSupport.sha256(file) == digest) {
             "profile lock file differs: $objectName"
         }
     }
@@ -673,7 +673,7 @@ object M310CanonicalProfileVerifier {
     private fun requireLockedDigest(lock: String, name: String, bytes: ByteArray) {
         val digest = Regex("\\\"${Regex.escape(name)}\\\"\\s*:\\s*\\\"([0-9a-f]{64})\\\"")
             .find(lock)?.groupValues?.get(1) ?: error("profile lock digest is missing: $name")
-        require(M310CanonicalProfileDeriver.sha256(bytes) == digest) { "profile lock DEX differs: $name" }
+        require(M310RetainedProfileSupport.sha256(bytes) == digest) { "profile lock DEX differs: $name" }
     }
 
     private fun requireLockedSigner(lock: String, certificateDigest: ByteArray) {

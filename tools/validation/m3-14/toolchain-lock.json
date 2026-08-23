@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M3-14",
+  "environmentId": "api36-r2-x86_64-emulator-37.1.11",
+  "runner": {
+    "imageOs": "ubuntu24",
+    "imageVersion": "20260816.277.1",
+    "manifestRef": "ubuntu24/20260816.277",
+    "gcc": "13.3.0"
+  },
+  "language": {
+    "jdk": "17.0.19+10",
+    "node": "24.12.0",
+    "gradle": "9.5.0",
+    "gradleDistributionSha256": "553c78f50dafcd54d65b9a444649057857469edf836431389695608536d6b746",
+    "agp": "9.3.0",
+    "kotlin": "2.4.10"
+  },
+  "android": {
+    "buildTools": "36.1.0",
+    "ndk": "29.0.14206865",
+    "cmake": "4.1.2",
+    "emulatorRevision": "37.1.11",
+    "emulatorBuildId": "15917651",
+    "emulatorArchiveBytes": 334378080,
+    "emulatorArchiveSha256": "95771e0ae431897b2a4bd2d97fa095f29a8b0624a7b216baf529f9306161c266",
+    "emulatorSourcePropertiesSha256": "ee589ca350515c29dc3bad30dd5ebe8efb11d1a50c17c8815125d3c4bd12a3a8",
+    "systemImagePackage": "system-images;android-36;default;x86_64",
+    "systemImageRevision": "2",
+    "systemImageArchiveBytes": 844217077,
+    "systemImageArchiveSha256": "e1b9d9fb665001ef27b16e57d8762a2d54aec6bff617e17506edb8676667b9da",
+    "systemImageSourcePropertiesSha256": "1a6e7c0b326c24c28ba501aa5ada247dd9fb0f087b662865f7bc649991fe74d1",
+    "systemImageBuildPropSha256": "565447ab254aa5f2b974186471c28d10cfcab25c346470673d9f7b4d3ac0ac0b"
+  },
+  "sources": {
+    "androidPackageLockPath": "tools/validation/m0-05-linux-kvm-packages.json",
+    "androidPackageLockBytes": 1846,
+    "androidPackageLockSha256": "310968f70786adab93e65d1ede9baf97e5968661f8092fef60aa961421a505dc",
+    "versionCatalogPath": "gradle/libs.versions.toml",
+    "versionCatalogBytes": 863,
+    "versionCatalogSha256": "344909b6cd82cae054136a74faf33dc51d410a4176a9d5d60550a376590f0ac5",
+    "gradleWrapperPropertiesPath": "gradle/wrapper/gradle-wrapper.properties",
+    "gradleWrapperPropertiesBytes": 368,
+    "gradleWrapperPropertiesSha256": "2cb0f9ddf992a26fc4947c91019136bff5e1ccfbf93bd905402b1abf69d15bc5"
+  }
+}

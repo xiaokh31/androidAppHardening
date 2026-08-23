@@ -13,9 +13,14 @@ import {
   centralRecord, isSignatureEntry, localRecord, normalizedEntry, readEntries as readMutableEntries,
 } from "./create-m0-04-tampered-apks.mjs";
 
-const TASK_KEY = "M3-09-DIAGNOSTIC-V1";
+const TASK_KEY = "M3-13-SUCCESSOR-DIAGNOSTIC-V1";
+const CONTRACT_IDENTITY = "580560859af80418058a088c6be3f7ab221e0ab37e21d76f19bf9177be35a419";
 const ENVIRONMENT = "api36-r2-x86_64-emulator-37.1.11";
 const PRODUCT_TUPLE = "883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd";
+const PROFILE_ARCHIVE = "21816d2a843bb5c59902224c7bf786d546d52b4a5b2d1168ca0c449a2ca27964";
+const RUN_NAME = `${TASK_KEY}-${CONTRACT_IDENTITY}-${PRODUCT_TUPLE}`;
+const MAX_ARTIFACT_BYTES = 64 * 1024 * 1024;
+const MAX_ENTRY_BYTES = 16 * 1024 * 1024;
 const TRACKED_LOCKS = Object.freeze({
   "profile-lock.json": "a9e130bb4e66e14443d83ea01ef0d60a95adddefa9dc92a9bdc980e5728dab4b",
   "release-artifact-lock.json": "9b84d0005892f8a77c2b4ca5041acc29d563cee0edec2ab7eb17488cbe2caead",
@@ -33,7 +38,8 @@ const PACKAGE_FILES = [
   "profile-baseline-aligned.apk", "profile-baseline-unsigned.apk", "profile-lock.json",
   "profile-protected.apk", "profile-protected-aligned.apk", "profile-protected-unsigned.apk",
   "profile-verification.json", "release-artifact-lock.json", "api36-environment-lock.json",
-  "current-job.json", "current-jobs-page-1.json", "release-bootstrap.aar", "release-fixture.apk", "release-native.aar",
+  "current-job.json", "current-jobs-page-1.json", "current-runs-page-1.json", "ledger.json",
+  "release-bootstrap.aar", "release-fixture.apk", "release-native.aar",
   "release-policy.aar", "result.json",
 ].sort();
 const MANIFESTED_FILES = PACKAGE_FILES.filter((name) => name !== "artifact-manifest.json");
@@ -48,7 +54,7 @@ const APP_BUDGET_NS = 300_000_000;
 const EXPECTED_EVENTS = ["provider.ready", "activity.create"];
 
 function fail(message) {
-  throw new Error(`M3-10 validation failed: ${message}`);
+  throw new Error(`M3-14 validation failed: ${message}`);
 }
 
 function optionsOf(values) {
@@ -136,7 +142,16 @@ function findEocd(bytes) {
   fail("ZIP EOCD is missing");
 }
 
+function archiveSize(total, compressedSize, size, label) {
+  if (!Number.isSafeInteger(compressedSize) || !Number.isSafeInteger(size) || compressedSize < 0 || size < 0 ||
+      compressedSize > MAX_ENTRY_BYTES || size > MAX_ENTRY_BYTES || total + size > MAX_ARTIFACT_BYTES) {
+    fail(`${label} exceeds fixed archive bounds`);
+  }
+  return total + size;
+}
+
 export function readZip(file) {
+  if (statSync(file).size > MAX_ARTIFACT_BYTES) fail(`${path.basename(file)} exceeds fixed archive bound`);
   const bytes = readFileSync(file);
   const eocd = findEocd(bytes);
   const entryCount = bytes.readUInt16LE(eocd + 10);
@@ -148,12 +163,14 @@ export function readZip(file) {
   if (centralOffset + centralSize > eocd) fail(`${path.basename(file)} central directory escapes file`);
   const entries = new Map();
   let cursor = centralOffset;
+  let totalSize = 0;
   for (let index = 0; index < entryCount; index++) {
     if (bytes.readUInt32LE(cursor) !== 0x02014b50) fail(`${path.basename(file)} central entry ${index} is malformed`);
     const flags = bytes.readUInt16LE(cursor + 8);
     const method = bytes.readUInt16LE(cursor + 10);
     const compressedSize = bytes.readUInt32LE(cursor + 20);
     const size = bytes.readUInt32LE(cursor + 24);
+    totalSize = archiveSize(totalSize, compressedSize, size, `${path.basename(file)} entry ${index}`);
     const nameLength = bytes.readUInt16LE(cursor + 28);
     const extraLength = bytes.readUInt16LE(cursor + 30);
     const commentLength = bytes.readUInt16LE(cursor + 32);
@@ -170,7 +187,7 @@ export function readZip(file) {
     const end = start + compressedSize;
     if (end > centralOffset) fail(`${path.basename(file)} entry ${name} escapes payload`);
     const compressed = bytes.subarray(start, end);
-    const content = method === 0 ? Buffer.from(compressed) : inflateRawSync(compressed);
+    const content = method === 0 ? Buffer.from(compressed) : inflateRawSync(compressed, { maxOutputLength: MAX_ENTRY_BYTES });
     if (content.length !== size) fail(`${path.basename(file)} entry ${name} size differs`);
     entries.set(name, content);
     cursor += 46 + nameLength + extraLength + commentLength;
@@ -344,14 +361,14 @@ function validateEnvironmentLock(lockFile, currentJobFile, currentJobsPageFile, 
   const job = json(currentJobFile);
   exactKeys(job, ["id", "run_id", "name", "status", "conclusion", "runner_name", "labels"], "current-job");
   if (String(job.id) !== String(identity.jobId) || String(job.run_id) !== String(identity.runId) ||
-      job.name !== "m3-09-startup-attribution" || job.status !== "in_progress" || job.conclusion !== null ||
+      job.name !== "m3-13-startup-attribution" || job.status !== "in_progress" || job.conclusion !== null ||
       typeof job.runner_name !== "string" || job.runner_name.length === 0 || !Array.isArray(job.labels) ||
       !job.labels.includes("ubuntu-24.04")) fail("current official GitHub job differs");
   const page = json(currentJobsPageFile);
   if (!Number.isSafeInteger(page.total_count) || page.total_count < 1 || page.total_count >= 100 ||
       !Array.isArray(page.jobs) || page.jobs.length !== page.total_count) fail("official jobs page is incomplete");
   const matches = page.jobs.filter((candidate) => String(candidate.id) === String(identity.jobId) &&
-    String(candidate.run_id) === String(identity.runId) && candidate.name === "m3-09-startup-attribution");
+    String(candidate.run_id) === String(identity.runId) && candidate.name === "m3-13-startup-attribution");
   if (matches.length !== 1) fail("official jobs page current job selection differs");
   const official = matches[0];
   for (const key of ["id", "run_id", "name", "status", "conclusion", "runner_name"]) {
@@ -362,6 +379,25 @@ function validateEnvironmentLock(lockFile, currentJobFile, currentJobsPageFile, 
   sensitiveScan(job, "current job");
   sensitiveScan(page, "official jobs page");
   return { lock, job };
+}
+
+function validateCurrentRunsPage(file, identity) {
+  const page = json(file);
+  if (!Number.isSafeInteger(page.total_count) || page.total_count < 1 || page.total_count >= 100 ||
+      !Array.isArray(page.workflow_runs) || page.workflow_runs.length !== page.total_count) {
+    fail("official branch runs page is incomplete");
+  }
+  const matches = page.workflow_runs.filter((run) =>
+    run.path === ".github/workflows/m3-13-startup-attribution.yml" &&
+    run.name === RUN_NAME && run.event === "push");
+  if (matches.length !== 1) fail("first-and-only workflow run history differs");
+  const run = matches[0];
+  if (String(run.id) !== String(identity.runId) || run.path !== ".github/workflows/m3-13-startup-attribution.yml" ||
+      run.head_sha !== identity.headSha || run.run_attempt !== 1 || run.event !== "push" ||
+      run.name !== RUN_NAME || run.status !== "in_progress" || run.conclusion !== null) {
+    fail("first-and-only current workflow run differs");
+  }
+  sensitiveScan(page, "official current runs page");
 }
 
 function validateProfileVerification(value, files) {
@@ -922,6 +958,7 @@ export function validatePackage(options) {
   const identity = identityOf(documents.result.identity, "result.identity");
   validateEnvironmentLock(path.join(root, "api36-environment-lock.json"), path.join(root, "current-job.json"),
     path.join(root, "current-jobs-page-1.json"), identity);
+  validateCurrentRunsPage(path.join(root, "current-runs-page-1.json"), identity);
   for (const key of ["campaign-a", "campaign-b", "artifact-manifest", "probe-manifest"]) {
     sameIdentity(identityOf(documents[key].identity, `${key}.identity`), identity, key);
   }
@@ -940,7 +977,7 @@ export function validatePackage(options) {
   exactKeys(probe, ["schemaVersion", "identity", "originalBaselineSha256", "originalProtectedSha256",
     "profileBaselineSha256", "profileProtectedSha256", "outerPoints", "innerPoints",
     "maximumProtectedProbeCount", "profileVerificationSha256", "environmentLockSha256", "currentJobSha256",
-    "currentJobsPageSha256",
+    "currentJobsPageSha256", "currentRunsPageSha256",
     "systemImageSourceSha256", "systemImageBuildPropSha256", "emulatorSourceSha256"], "probe-manifest");
   if (probe.schemaVersion !== 1 || probe.outerPoints !== 16 || probe.innerPoints !== 9 ||
       probe.maximumProtectedProbeCount !== MAX_PROTECTED_PROBES) fail("probe manifest fixed boundary differs");
@@ -966,6 +1003,7 @@ export function validatePackage(options) {
   if (probe.environmentLockSha256 !== sha256File(path.join(root, "api36-environment-lock.json")) ||
       probe.currentJobSha256 !== sha256File(path.join(root, "current-job.json")) ||
       probe.currentJobsPageSha256 !== sha256File(path.join(root, "current-jobs-page-1.json")) ||
+      probe.currentRunsPageSha256 !== sha256File(path.join(root, "current-runs-page-1.json")) ||
       probe.systemImageSourceSha256 !== environmentLock.systemImage.sourcePropertiesSha256 ||
       probe.systemImageBuildPropSha256 !== environmentLock.systemImage.buildPropSha256 ||
       probe.emulatorSourceSha256 !== environmentLock.emulator.sourcePropertiesSha256) {
@@ -1000,6 +1038,7 @@ export function validatePackage(options) {
   const computed = computeResult(campaignA, campaignB);
   validateResult(documents.result, identity, computed);
   validateCleanup(documents.cleanup);
+  validateLedger(json(path.join(root, "ledger.json")), identity);
   return { status: computed.status, selectedOwner: computed.selectedOwner, manifestSha256: sha256File(path.join(root, "artifact-manifest.json")) };
 }
 
@@ -1009,22 +1048,159 @@ function validateCleanup(value) {
       value.temporarySigningAbsent !== true) fail("cleanup is not complete");
 }
 
+const EXECUTION_IDENTITY_KEYS = [
+  "schemaVersion", "contractIdentitySha256", "productTupleSha256", "profileArchiveSha256",
+  "implementationFreezeSha", "diagnosticWorkflowCandidateSha256", "evidenceWorkflowCandidateSha256",
+  "runnerSha256", "verifierSha256", "environmentLockSha256", "toolchainLockSha256",
+  "qualificationEvidenceSha256",
+];
+const LEDGER_KEYS = [
+  "schemaVersion", "executionIdentity", "executionIdentitySha256", "taskKey", "workflowPath",
+  "workflowName", "jobName", "artifactName",
+];
+const EXECUTION_FILES = Object.freeze({
+  diagnosticWorkflowCandidateSha256: "tools/validation/m3-14/workflow-candidates/m3-13-startup-attribution.yml",
+  evidenceWorkflowCandidateSha256: "tools/validation/m3-14/workflow-candidates/m3-13-startup-attribution-evidence.yml",
+  runnerSha256: "tools/validation/run-m3-14-startup-attribution.mjs",
+  verifierSha256: "tools/validation/verify-m3-14-startup-attribution.mjs",
+  environmentLockSha256: "tools/validation/m3-10/api36-environment-lock.json",
+  toolchainLockSha256: "tools/validation/m3-14/toolchain-lock.json",
+  qualificationEvidenceSha256: "docs/evidence/M3-14/qualification-evidence.json",
+});
+
+function validateExecutionLedgerDocument(ledger) {
+  exactKeys(ledger, LEDGER_KEYS, "execution ledger");
+  if (JSON.stringify(Object.keys(ledger.executionIdentity ?? {})) !== JSON.stringify(EXECUTION_IDENTITY_KEYS)) {
+    fail("execution identity key order differs");
+  }
+  const identity = ledger.executionIdentity;
+  if (ledger.schemaVersion !== 1 || identity.schemaVersion !== 1 ||
+      identity.contractIdentitySha256 !== CONTRACT_IDENTITY ||
+      identity.productTupleSha256 !== PRODUCT_TUPLE || identity.profileArchiveSha256 !== PROFILE_ARCHIVE ||
+      !/^[0-9a-f]{40}$/u.test(identity.implementationFreezeSha)) {
+    fail("execution identity constants differ");
+  }
+  for (const key of EXECUTION_IDENTITY_KEYS.slice(5)) {
+    if (!/^[0-9a-f]{64}$/u.test(identity[key] ?? "")) fail(`execution identity hash differs: ${key}`);
+  }
+  const computed = sha256Bytes(Buffer.from(JSON.stringify(identity)));
+  if (ledger.executionIdentitySha256 !== computed ||
+      ledger.taskKey !== TASK_KEY || ledger.workflowPath !== ".github/workflows/m3-13-startup-attribution.yml" ||
+      ledger.workflowName !== RUN_NAME || ledger.jobName !== "m3-13-startup-attribution" ||
+      ledger.artifactName !== "m3-13-startup-attribution-raw") {
+    fail("execution ledger binding differs");
+  }
+  return identity;
+}
+
+function gitText(args, label) {
+  const result = spawnSync("git", args, { cwd: process.cwd(), encoding: "utf8", timeout: 30_000 });
+  if (result.status !== 0) fail(`${label} Git check failed`);
+  return result.stdout.trim();
+}
+
+function validateExecutionLedger(options) {
+  const ledgerPath = path.resolve(required(options, "ledger"));
+  const publicationHead = required(options, "publication-head");
+  if (!/^[0-9a-f]{40}$/u.test(publicationHead) || publicationHead !== gitText(["rev-parse", "HEAD"], "publication head")) {
+    fail("publication head differs");
+  }
+  const ledger = json(ledgerPath);
+  const identity = validateExecutionLedgerDocument(ledger);
+  const parents = gitText(["rev-list", "--parents", "-n", "1", publicationHead], "publication ancestry").split(/\s+/u);
+  if (parents.length !== 2 || parents[1] !== identity.implementationFreezeSha) fail("publication is not a direct child of the reviewed freeze");
+  const changed = gitText(["diff", "--name-only", `${identity.implementationFreezeSha}..${publicationHead}`], "publication diff")
+    .split(/\r?\n/u).filter(Boolean).sort();
+  const allowed = [
+    ".github/workflows/m3-13-startup-attribution-evidence.yml",
+    ".github/workflows/m3-13-startup-attribution.yml",
+    "docs/evidence/M3-14/pre-run-ledger.json",
+  ].sort();
+  if (JSON.stringify(changed) !== JSON.stringify(allowed)) fail("publication changed paths differ");
+  for (const [key, relative] of Object.entries(EXECUTION_FILES)) {
+    if (identity[key] !== sha256File(path.resolve(relative))) fail(`reviewed execution file differs: ${relative}`);
+  }
+  const qualification = json(path.resolve(EXECUTION_FILES.qualificationEvidenceSha256));
+  exactKeys(qualification, ["schemaVersion", "taskId", "issue", "implementationBaseSha", "requiredAncestors",
+    "requiredHistoricalObjects", "contracts", "qualification"], "qualification evidence");
+  if (qualification.schemaVersion !== 1 || qualification.taskId !== "M3-14" || qualification.issue !== 82 ||
+      qualification.implementationBaseSha !== "960eb9f406eb1a7b7c9b324598fb59936aa1c5b5" ||
+      qualification.contracts?.contractIdentitySha256 !== CONTRACT_IDENTITY ||
+      qualification.contracts?.productTupleSha256 !== PRODUCT_TUPLE ||
+      qualification.contracts?.profileArchiveSha256 !== PROFILE_ARCHIVE ||
+      qualification.qualification?.fullHistoryRequired !== true ||
+      qualification.qualification?.beforeAndroidRequired !== true ||
+      qualification.qualification?.runLimit !== 1 || qualification.qualification?.runAttempt !== 1 ||
+      qualification.qualification?.furtherRenewalPermitted !== false) fail("qualification evidence differs");
+  for (const ancestor of qualification.requiredAncestors ?? []) {
+    gitText(["cat-file", "-e", `${ancestor}^{commit}`], "required ancestor object");
+    gitText(["merge-base", "--is-ancestor", ancestor, qualification.implementationBaseSha], "required ancestor relation");
+  }
+  for (const historical of qualification.requiredHistoricalObjects ?? []) {
+    gitText(["cat-file", "-e", `${historical}^{commit}`], "required historical object");
+  }
+  gitText(["merge-base", "--is-ancestor", qualification.implementationBaseSha, identity.implementationFreezeSha], "implementation base relation");
+  for (const binding of [
+    [qualification.contracts.m313EligibilityLockPath, qualification.contracts.m313EligibilityLockBytes, qualification.contracts.m313EligibilityLockSha256],
+    [qualification.contracts.m313OfficialProofPath, qualification.contracts.m313OfficialProofBytes, qualification.contracts.m313OfficialProofSha256],
+    [qualification.contracts.m312RetentionLockPath, qualification.contracts.m312RetentionLockBytes, qualification.contracts.m312RetentionLockSha256],
+  ]) {
+    const file = path.resolve(binding[0]);
+    if (!statSync(file).isFile() || statSync(file).size !== binding[1] || sha256File(file) !== binding[2]) {
+      fail(`qualification source differs: ${binding[0]}`);
+    }
+  }
+  for (const [live, candidate] of [
+    [".github/workflows/m3-13-startup-attribution.yml", EXECUTION_FILES.diagnosticWorkflowCandidateSha256],
+    [".github/workflows/m3-13-startup-attribution-evidence.yml", EXECUTION_FILES.evidenceWorkflowCandidateSha256],
+  ]) {
+    if (!readFileSync(path.resolve(live)).equals(readFileSync(path.resolve(candidate)))) fail(`published workflow differs from candidate: ${live}`);
+  }
+  return { executionIdentitySha256: ledger.executionIdentitySha256, implementationFreezeSha: identity.implementationFreezeSha };
+}
+
+function validateLedger(ledger, identity) {
+  const executionIdentity = validateExecutionLedgerDocument(ledger);
+  if (executionIdentity.productTupleSha256 !== identity.productTuple) fail("ledger product tuple differs");
+}
+
+function jsonEntry(entries, name) {
+  try {
+    return JSON.parse(entries.get(name).toString("utf8"));
+  } catch {
+    fail(`downloaded artifact JSON differs: ${name}`);
+  }
+}
+
+function validateArchivedFileSetAndManifest(entries) {
+  if (JSON.stringify([...entries.keys()].sort()) !== JSON.stringify(PACKAGE_FILES)) {
+    fail("downloaded artifact member set differs");
+  }
+  const manifest = jsonEntry(entries, "artifact-manifest.json");
+  exactKeys(manifest, ["schemaVersion", "identity", "files"], "downloaded artifact manifest");
+  if (manifest.schemaVersion !== 1) fail("downloaded artifact manifest schema differs");
+  exactKeys(manifest.files, MANIFESTED_FILES, "downloaded artifact manifest files");
+  for (const name of MANIFESTED_FILES) {
+    exactKeys(manifest.files[name], ["sha256", "size"], `downloaded artifact manifest ${name}`);
+    const bytes = entries.get(name);
+    if (manifest.files[name].sha256 !== sha256Bytes(bytes) || manifest.files[name].size !== bytes.length) {
+      fail(`downloaded artifact manifest binding differs: ${name}`);
+    }
+  }
+  return manifest;
+}
+
 function validateGithubModel(ledger, runs, jobs, artifacts, identity, artifactSize) {
-  exactKeys(ledger, ["taskKey", "productTuple", "headSha", "workflowPath", "workflowName", "jobName", "artifactName"], "ledger");
-  if (ledger.taskKey !== TASK_KEY || ledger.productTuple !== identity.productTuple ||
-      ledger.headSha !== identity.headSha ||
-      ledger.workflowPath !== ".github/workflows/m3-09-startup-attribution.yml" ||
-      ledger.workflowName !== `${TASK_KEY}-${identity.productTuple}` ||
-      ledger.jobName !== "m3-09-startup-attribution" ||
-      ledger.artifactName !== "m3-09-startup-attribution-raw") fail("ledger differs");
+  validateLedger(ledger, identity);
   if (!Number.isSafeInteger(runs.total_count) || !Array.isArray(runs.workflow_runs) ||
       runs.total_count !== runs.workflow_runs.length || runs.total_count >= 100) fail("runs pagination is incomplete");
-  const matching = runs.workflow_runs.filter((run) =>
-    run.path === ledger.workflowPath && run.head_sha === identity.headSha &&
-    run.run_attempt === 1 && run.event === "push" &&
-    run.name === ledger.workflowName);
-  if (matching.length !== 1 || String(matching[0].id) !== String(identity.runId) ||
-      matching[0].status !== "completed" || matching[0].conclusion !== "success") fail("unique terminal diagnostic run differs");
+  const canonicalRuns = runs.workflow_runs.filter((run) =>
+    run.path === ledger.workflowPath && run.event === "push" && run.name === ledger.workflowName);
+  if (canonicalRuns.length !== 1 || canonicalRuns[0].head_sha !== identity.headSha ||
+      canonicalRuns[0].run_attempt !== 1 || String(canonicalRuns[0].id) !== String(identity.runId) ||
+      canonicalRuns[0].status !== "completed" || canonicalRuns[0].conclusion !== "success") {
+    fail("unique terminal diagnostic run differs");
+  }
   if (!Number.isSafeInteger(jobs.total_count) || !Array.isArray(jobs.jobs) ||
       jobs.total_count !== jobs.jobs.length || jobs.total_count >= 100) fail("jobs pagination is incomplete");
   const matchingJobs = jobs.jobs.filter((job) => job.name === ledger.jobName && String(job.run_id) === String(identity.runId));
@@ -1034,7 +1210,7 @@ function validateGithubModel(ledger, runs, jobs, artifacts, identity, artifactSi
       artifacts.total_count !== artifacts.artifacts.length || artifacts.total_count >= 100) fail("artifact pagination is incomplete");
   const matchingArtifacts = artifacts.artifacts.filter((artifact) =>
     artifact.name === ledger.artifactName && String(artifact.workflow_run?.id) === String(identity.runId));
-  if (matchingArtifacts.length !== 1 || matchingArtifacts[0].expired !== false ||
+  if (matchingArtifacts.length !== 1 || matchingArtifacts[0].expired !== false || artifactSize > MAX_ARTIFACT_BYTES ||
       matchingArtifacts[0].size_in_bytes !== artifactSize) fail("diagnostic artifact differs");
   return matchingArtifacts[0];
 }
@@ -1072,9 +1248,30 @@ export function validateGithubEvidence(options) {
   }
   const matchingArtifact = validateGithubModel(ledger, runs, jobs, artifacts, identity, statSync(artifactFile).size);
   const packageEntries = readZip(artifactFile);
-  if (!packageEntries.has("artifact-manifest.json") || !packageEntries.has("result.json") ||
-      sha256Bytes(packageEntries.get("result.json")) !== sha256File(path.resolve(required(options, "result")))) {
+  const archivedManifest = validateArchivedFileSetAndManifest(packageEntries);
+  const archivedResult = jsonEntry(packageEntries, "result.json");
+  const archivedCampaignA = jsonEntry(packageEntries, "campaign-a.json");
+  const archivedCampaignB = jsonEntry(packageEntries, "campaign-b.json");
+  const archivedCleanup = jsonEntry(packageEntries, "cleanup.json");
+  const archivedLedger = jsonEntry(packageEntries, "ledger.json");
+  sameIdentity(identityOf(archivedManifest.identity, "downloaded manifest identity"), identity, "downloaded manifest");
+  const computed = computeResult(
+    validateCampaign(archivedCampaignA, "A", ["baseline", "protected"], identity),
+    validateCampaign(archivedCampaignB, "B", ["protected", "baseline"], identity),
+  );
+  validateResult(archivedResult, identity, computed);
+  validateCleanup(archivedCleanup);
+  validateLedger(archivedLedger, identity);
+  for (const [name, digest] of Object.entries(TRACKED_LOCKS)) {
+    if (sha256Bytes(packageEntries.get(name)) !== digest) fail(`downloaded tracked lock differs: ${name}`);
+  }
+  if (sha256Bytes(packageEntries.get("result.json")) !== sha256File(path.resolve(required(options, "result"))) ||
+      !packageEntries.get("ledger.json").equals(readFileSync(path.join(root, "ledger.json")))) {
     fail("downloaded artifact does not bind the validated result");
+  }
+  for (const [name, value] of [["manifest", archivedManifest], ["campaign-a", archivedCampaignA],
+    ["campaign-b", archivedCampaignB], ["cleanup", archivedCleanup], ["result", archivedResult]]) {
+    sensitiveScan(value, `downloaded artifact ${name}`);
   }
   sensitiveScan({ ledger, runs, jobs, artifacts }, "GitHub evidence");
   return { runId: String(identity.runId), jobId: String(identity.jobId), artifactId: String(matchingArtifact.id) };
@@ -1201,14 +1398,21 @@ function selfTest() {
       archiveSha256: "95771e0ae431897b2a4bd2d97fa095f29a8b0624a7b216baf529f9306161c266",
       sourcePropertiesSha256: "ee589ca350515c29dc3bad30dd5ebe8efb11d1a50c17c8815125d3c4bd12a3a8" },
   };
-  const currentJob = { id: 2002, run_id: 1001, name: "m3-09-startup-attribution", status: "in_progress",
+  const currentJob = { id: 2002, run_id: 1001, name: "m3-13-startup-attribution", status: "in_progress",
     conclusion: null, runner_name: "GitHub Actions 1", labels: ["ubuntu-24.04"] };
   const environmentFile = path.join(environmentRoot, "environment.json");
   const currentJobFile = path.join(environmentRoot, "job.json");
   const currentJobsPageFile = path.join(environmentRoot, "jobs-page.json");
+  const currentRunsPageFile = path.join(environmentRoot, "runs-page.json");
   writeFileSync(environmentFile, JSON.stringify(environmentValue)); writeFileSync(currentJobFile, JSON.stringify(currentJob));
   writeFileSync(currentJobsPageFile, JSON.stringify({ total_count: 1, jobs: [currentJob] }));
   validateEnvironmentLock(environmentFile, currentJobFile, currentJobsPageFile, identity);
+  const unrelatedRun = { id: 999, path: ".github/workflows/build.yml", head_sha: identity.headSha,
+    run_attempt: 1, event: "push", name: "Build", status: "completed", conclusion: "success" };
+  const currentRun = { id: 1001, path: ".github/workflows/m3-13-startup-attribution.yml", head_sha: identity.headSha,
+    run_attempt: 1, event: "push", name: RUN_NAME, status: "in_progress", conclusion: null };
+  writeFileSync(currentRunsPageFile, JSON.stringify({ total_count: 2, workflow_runs: [unrelatedRun, currentRun] }));
+  validateCurrentRunsPage(currentRunsPageFile, identity);
   const environmentMutations = [
     ["environment-fingerprint", (environment) => { environment.systemImage.fingerprint += "-changed"; }],
     ["system-image-revision", (environment) => { environment.systemImage.revision = "3"; }],
@@ -1229,12 +1433,53 @@ function selfTest() {
     writeFileSync(currentJobsPageFile, JSON.stringify(page));
     return expectRejected(name, () => validateEnvironmentLock(environmentFile, currentJobFile, currentJobsPageFile, identity));
   });
+  const currentRunPageMutations = [
+    ["current-run-page-duplicate", { total_count: 3, workflow_runs: [unrelatedRun, currentRun, structuredClone(currentRun)] }],
+    ["current-run-page-head", { total_count: 2, workflow_runs: [unrelatedRun, { ...currentRun, head_sha: "c".repeat(40) }] }],
+    ["current-run-page-name", { total_count: 2, workflow_runs: [unrelatedRun, { ...currentRun, name: `${TASK_KEY}-changed` }] }],
+    ["current-run-page-terminal", { total_count: 2, workflow_runs: [unrelatedRun, { ...currentRun, status: "completed", conclusion: "success" }] }],
+    ["current-run-page-incomplete", { total_count: 3, workflow_runs: [unrelatedRun, currentRun] }],
+  ].map(([name, page]) => {
+    writeFileSync(currentRunsPageFile, JSON.stringify(page));
+    return expectRejected(name, () => validateCurrentRunsPage(currentRunsPageFile, identity));
+  });
   rmSync(environmentRoot, { recursive: true, force: true });
 
-  const ledger = { taskKey: TASK_KEY, productTuple: identity.productTuple, headSha: identity.headSha,
-    workflowPath: ".github/workflows/m3-09-startup-attribution.yml",
-    workflowName: `${TASK_KEY}-${identity.productTuple}`, jobName: "m3-09-startup-attribution",
-    artifactName: "m3-09-startup-attribution-raw" };
+  const testExecutionIdentity = {
+    schemaVersion: 1,
+    contractIdentitySha256: CONTRACT_IDENTITY,
+    productTupleSha256: PRODUCT_TUPLE,
+    profileArchiveSha256: PROFILE_ARCHIVE,
+    implementationFreezeSha: "f".repeat(40),
+    diagnosticWorkflowCandidateSha256: "1".repeat(64),
+    evidenceWorkflowCandidateSha256: "2".repeat(64),
+    runnerSha256: "3".repeat(64),
+    verifierSha256: "4".repeat(64),
+    environmentLockSha256: "5".repeat(64),
+    toolchainLockSha256: "6".repeat(64),
+    qualificationEvidenceSha256: "7".repeat(64),
+  };
+  const ledger = { schemaVersion: 1, executionIdentity: testExecutionIdentity,
+    executionIdentitySha256: sha256Bytes(Buffer.from(JSON.stringify(testExecutionIdentity))), taskKey: TASK_KEY,
+    workflowPath: ".github/workflows/m3-13-startup-attribution.yml",
+    workflowName: RUN_NAME, jobName: "m3-13-startup-attribution", artifactName: "m3-13-startup-attribution-raw" };
+  validateExecutionLedgerDocument(ledger);
+  const executionLedgerMutations = [
+    ["execution-contract", (value) => { value.executionIdentity.contractIdentitySha256 = "8".repeat(64); }],
+    ["execution-product", (value) => { value.executionIdentity.productTupleSha256 = "8".repeat(64); }],
+    ["execution-profile", (value) => { value.executionIdentity.profileArchiveSha256 = "8".repeat(64); }],
+    ["execution-freeze", (value) => { value.executionIdentity.implementationFreezeSha = "8".repeat(39); }],
+    ["execution-candidate", (value) => { value.executionIdentity.diagnosticWorkflowCandidateSha256 = "z".repeat(64); }],
+    ["execution-runner", (value) => { value.executionIdentity.runnerSha256 = "z".repeat(64); }],
+    ["execution-toolchain", (value) => { value.executionIdentity.toolchainLockSha256 = "z".repeat(64); }],
+    ["execution-qualification", (value) => { value.executionIdentity.qualificationEvidenceSha256 = "z".repeat(64); }],
+    ["execution-hash", (value) => { value.executionIdentitySha256 = "8".repeat(64); }],
+    ["execution-run-name", (value) => { value.workflowName += "-retry"; }],
+  ].map(([name, mutate]) => {
+    const value = structuredClone(ledger); mutate(value);
+    if (name !== "execution-hash") value.executionIdentitySha256 = sha256Bytes(Buffer.from(JSON.stringify(value.executionIdentity)));
+    return expectRejected(name, () => validateExecutionLedgerDocument(value));
+  });
   const runs = { total_count: 1, workflow_runs: [{ id: 1001, path: ledger.workflowPath, head_sha: identity.headSha,
     run_attempt: 1, event: "push", name: ledger.workflowName, status: "completed", conclusion: "success" }] };
   const jobs = { total_count: 1, jobs: [{ id: 2002, run_id: 1001, name: ledger.jobName,
@@ -1242,15 +1487,34 @@ function selfTest() {
   const artifacts = { total_count: 1, artifacts: [{ id: 3003, name: ledger.artifactName, expired: false,
     size_in_bytes: 4004, workflow_run: { id: 1001 } }] };
   validateGithubModel(ledger, runs, jobs, artifacts, identity, 4004);
+  const archiveEntries = new Map(PACKAGE_FILES.map((name) => [name, Buffer.from(`archive:${name}`, "utf8")]));
+  const archiveManifest = { schemaVersion: 1, identity, files: Object.fromEntries(MANIFESTED_FILES.map((name) => [name, {
+    sha256: sha256Bytes(archiveEntries.get(name)), size: archiveEntries.get(name).length,
+  }])) };
+  archiveEntries.set("artifact-manifest.json", Buffer.from(JSON.stringify(archiveManifest), "utf8"));
+  validateArchivedFileSetAndManifest(archiveEntries);
+  const archiveMutations = [
+    expectRejected("github-artifact-missing-member", () => {
+      const value = new Map(archiveEntries); value.delete("campaign-a.json"); validateArchivedFileSetAndManifest(value);
+    }),
+    expectRejected("github-artifact-manifest-hash", () => {
+      const value = new Map(archiveEntries); value.set("campaign-a.json", Buffer.from("changed", "utf8"));
+      validateArchivedFileSetAndManifest(value);
+    }),
+    expectRejected("github-artifact-entry-size", () => archiveSize(0, 1, MAX_ENTRY_BYTES + 1, "mutation")),
+  ];
   const githubMutations = [
-    ["github-ledger-tuple", (l) => { l.productTuple = "d".repeat(64); }],
+    ["github-ledger-tuple", (l) => { l.executionIdentity.productTupleSha256 = "d".repeat(64); }],
     ["github-run-pagination", (_l, r) => { r.total_count = 100; }],
     ["github-run-duplicate", (_l, r) => { r.workflow_runs.push(structuredClone(r.workflow_runs[0])); r.total_count = 2; }],
+    ["github-run-other-head", (_l, r) => { r.workflow_runs.push({ ...structuredClone(r.workflow_runs[0]),
+      id: 1002, head_sha: "c".repeat(40) }); r.total_count = 2; }],
     ["github-run-name", (_l, r) => { r.workflow_runs[0].name += "-suffix"; }],
     ["github-run-attempt", (_l, r) => { r.workflow_runs[0].run_attempt = 2; }],
     ["github-job-pagination", (_l, _r, j) => { j.total_count = 100; }],
     ["github-job-id", (_l, _r, j) => { j.jobs[0].id = 9999; }],
     ["github-artifact-expired", (_l, _r, _j, ar) => { ar.artifacts[0].expired = true; }],
+    ["github-artifact-oversize", (_l, _r, _j, ar) => { ar.artifacts[0].size_in_bytes = MAX_ARTIFACT_BYTES + 1; }],
     ["github-artifact-size", (_l, _r, _j, ar) => { ar.artifacts[0].size_in_bytes = 1; }],
   ].map(([name, mutate]) => {
     const values = [structuredClone(ledger), structuredClone(runs), structuredClone(jobs), structuredClone(artifacts)];
@@ -1269,9 +1533,9 @@ function selfTest() {
     return expectRejected(`tracked-${name}`, () => requireTrackedLockCopy(copy, tracked, digest, name));
   });
   rmSync(lockRoot, { recursive: true, force: true });
-  return { canonical: 1, rejectedMutations: rejected + cleanupMutations.length + githubMutations.length + resultMutations.length + environmentMutations.length + officialPageMutations.length + trackedLockMutations.length + 1,
+  return { canonical: 1, rejectedMutations: rejected + cleanupMutations.length + githubMutations.length + archiveMutations.length + resultMutations.length + environmentMutations.length + officialPageMutations.length + currentRunPageMutations.length + trackedLockMutations.length + executionLedgerMutations.length + 1,
     reportMutations: rejected, resultMutations, thresholdMutations, cleanupMutations, environmentMutations,
-    officialPageMutations, trackedLockMutations, tupleMutation, githubMutations,
+    officialPageMutations, currentRunPageMutations, trackedLockMutations, executionLedgerMutations, tupleMutation, githubMutations, archiveMutations,
     owner: expected.selectedOwner };
 }
 
@@ -1288,7 +1552,7 @@ function profileSelfTest(options) {
     "profile-lock": options.lock });
   const scratch = path.resolve(required(options, "scratch"));
   const allowed = path.resolve(process.cwd(), "build", "m3-10") + path.sep;
-  if (!(scratch + path.sep).startsWith(allowed)) fail("profile self-test scratch must remain under build/m3-10");
+  if (!(scratch + path.sep).startsWith(allowed)) fail("profile self-test scratch must remain under build/m3-14");
   rmSync(scratch, { recursive: true, force: true });
   mkdirSync(scratch, { recursive: true });
   const mutations = [];
@@ -1387,7 +1651,8 @@ try {
   else if (command === "summarize") result = summarize(options);
   else if (command === "package") result = validatePackage(options);
   else if (command === "github-evidence") result = validateGithubEvidence(options);
-  else fail("usage: self-test | profile-self-test | profile-lock | surface | apk-pair | signed-copy | summarize | package | github-evidence");
+  else if (command === "execution-ledger") result = validateExecutionLedger(options);
+  else fail("usage: self-test | profile-self-test | profile-lock | surface | apk-pair | signed-copy | summarize | package | github-evidence | execution-ledger");
   process.stdout.write(`${JSON.stringify({ status: "PASS", ...result })}\n`);
 } catch (error) {
   process.stderr.write(`${error.message}\n`);

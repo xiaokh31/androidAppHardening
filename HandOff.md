@@ -21,7 +21,7 @@ Implement the sole ADR 0018 successor diagnostic as M3-14, freeze it without can
 
 ## Current State
 
-- M3-14 is active on `feat/m3-14-successor-startup-diagnostic` from `main@960eb9f406eb1a7b7c9b324598fb59936aa1c5b5`; Issue #82 is the unique task issue. The authorized first phase may add only the task contract, retained-asset/profile verifier, runner, locks, mutation gates and non-executable workflow candidates. Both canonical ADR 0018 workflows remain absent and no API 36, emulator, device, ARM, API 29, M3-05 or owner-remediation work has run. An exact workflow-absent implementation freeze must receive independent read-only `P0=0/P1=0/P2=0` before any direct-child workflow publication or `runAttempt=1` consumption.
+- M3-14 is active on `feat/m3-14-successor-startup-diagnostic` from `main@960eb9f406eb1a7b7c9b324598fb59936aa1c5b5`; Issue #82 is the unique task issue. The workflow-absent implementation now contains retained M3-12 profile verification, exact M3-11 product binding, ADR 0018 execution-ledger validation, fail-closed runner/terminal evidence logic, fixed environment/toolchain locks, and two non-executable workflow candidates. The former profile derivation/signing entry point has been removed; only read-only retained-package verification and scratch negative-mutation ZIP writing remain. Local targeted Kotlin compilation, retained four-APK verification, 13 profile-freeze mutations, 59 attribution mutations, 8 cleanup injections, Node syntax, governance and strict HandOff pass. Both canonical ADR 0018 workflows remain absent and no API 36, emulator, device, ARM, API 29, M3-05 or owner-remediation work has run. The exact workflow-absent freeze still requires independent read-only `P0=0/P1=0/P2=0` before any direct-child workflow publication or `runAttempt=1` consumption.
 - M3-13 is merged and complete on `main`. Final exact head `f60543c4d5ca2891cbdcab3a028054bd41e0f7f7` retained independent review `P0=0/P1=0/P2=0` and passed Build `32590407762` plus Governance `32590407768` on Ubuntu/Windows. PR #81 was converted to ready and merged with expected-head protection as `621117dc5639bf4c9c9e8696c554bbd2ab821d8c`; Issue #80 closed. The contract binds M3-10 run `32554806537` and terminal evidence run `32554917303`, fixes one future task key/run with `runAttempt=1`, and permits no further renewal. Both canonical successor workflows remain absent. No device, KVM, emulator, ARM, API 29 or benchmark ran; Android was not invoked.
 - Initial post-merge Governance `32602883324` exposed one coordination-only lifecycle defect: the M3-13 validator accepted only the pre-merge `active_task: M3-13` state. Commit `e2259f5821ee0c53897a2b450735e111612b082f` now accepts exactly either the reviewed active branch tuple or the merged-main `done` tuple, rejects a 66th invalid-lifecycle mutation, and keeps both successor workflows forbidden.
 - M3-13 independent review 1 rejected implementation `55997e61a2f734ab3d7ed5f8a44a44064b526ac3` / evidence `bec3d0ddeccc356c31f69add2e37e197cd127531` with `P0=0/P1=3/P2=1`: execution-identity self-reference, missing retained raw official API pages, terminal M3-10 still listed as an M3-05 completion dependency, and incomplete local evidence fields. No push or PR occurred.
@@ -2022,11 +2022,10 @@ Implement the sole ADR 0018 successor diagnostic as M3-14, freeze it without can
 
 ## Ordered Next Actions
 
-1. Implement M3-14 on Issue #82 using the M3-11/M3-12 exact bytes and ADR 0018 identity; keep both canonical workflow paths absent.
-2. Freeze and locally validate candidates, runner, verifier, locks, deterministic profile/package proof, mutations, governance and strict HandOff.
-3. Start an independent read-only M3-14 security review on that exact freeze and remediate until `P0=0/P1=0/P2=0`.
-4. Only after all-zero review, create the exact direct-child ledger/publication commit, copy candidates unchanged to the canonical paths, and execute the sole API 36 `runAttempt=1` workflow.
-5. Collect terminal official evidence, update README/HandOff, and keep M3-05/ARM/API 29/physical-device work blocked until a valid owner and separate remediation are complete.
+1. Freeze the locally validated M3-14 implementation/evidence while keeping both canonical workflow paths absent.
+2. Start an independent read-only M3-14 security review on that exact freeze and remediate until `P0=0/P1=0/P2=0`.
+3. Only after all-zero review, create the exact direct-child ledger/publication commit, copy candidates unchanged to the canonical paths, and execute the sole API 36 `runAttempt=1` workflow.
+4. Collect terminal official evidence, update README/HandOff, and keep M3-05/ARM/API 29/physical-device work blocked until a valid owner and separate remediation are complete.
 
 ## Relevant Files and Artifacts
 
@@ -2035,6 +2034,8 @@ Implement the sole ADR 0018 successor diagnostic as M3-14, freeze it without can
 - `docs/tasks/M3-14-successor-startup-diagnostic.md`
 - `docs/evidence/M3-13/diagnostic-eligibility-lock.json`
 - `docs/evidence/M3-13/predecessor-official-proof.json`
+- `docs/evidence/M3-14/qualification-evidence.json`
+- `docs/evidence/M3-14/local-validation.md`
 - `tools/governance/verify-m3-13-diagnostic-identity-contract.mjs`
 - Issue #82; Issue #80; M3-10 draft PR #79; predecessor run `32554806537`; terminal evidence run `32554917303`
 - `docs/evidence/M2-07/ubuntu-runner-20260816-maintenance.md`
@@ -2082,11 +2083,17 @@ Implement the sole ADR 0018 successor diagnostic as M3-14, freeze it without can
 - `docs/tasks/M3-11-canonical-startup-artifact-contract.md`
 - `docs/tasks/M3-10-startup-attribution-diagnostic.md`
 - `host/container/src/test/kotlin/ah/host/container/M310DexProfileTool.kt`
-- `host/container/src/test/kotlin/ah/host/container/M310CanonicalProfileDeriver.kt`
 - `host/container/src/test/kotlin/ah/host/container/M310CanonicalProfileVerifier.kt`
+- `host/container/src/test/kotlin/ah/host/container/M310RetainedProfileSupport.kt`
 - `tools/validation/m3-10/profile-src/ah/runtime/profile/M310StartupTimingObserver.java`
-- `tools/governance/verify-m3-10-profile-freeze.mjs`
-- ignored `build/m3-10/` derived APKs and verification reports; temporary signing material deleted
+- `tools/governance/verify-m3-14-profile-freeze.mjs`
+- `tools/validation/run-m3-14-startup-attribution.mjs`
+- `tools/validation/verify-m3-14-startup-attribution.mjs`
+- `tools/validation/collect-m3-14-github-evidence.mjs`
+- `tools/validation/m3-14/toolchain-lock.json`
+- `tools/validation/m3-14/workflow-candidates/m3-13-startup-attribution.yml`
+- `tools/validation/m3-14/workflow-candidates/m3-13-startup-attribution-evidence.yml`
+- ignored `build/m3-14/local-freeze/profile-verification.json`; no profile regeneration or signing material
 - `docs/evidence/M3-11/canonical-artifact-lock.json`
 - `docs/evidence/M3-11/provenance.md`
 - `tools/governance/verify-m3-11-canonical-artifact-contract.mjs`

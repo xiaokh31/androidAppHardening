@@ -19,6 +19,7 @@ if (baseRefIndex >= 0 && (!baseRef || baseRef.startsWith("--"))) {
 const paths = {
   adr: "docs/adr/0018-successor-diagnostic-execution-identity.md",
   task: "docs/tasks/M3-13-successor-diagnostic-identity-contract.md",
+  m314: "docs/tasks/M3-14-successor-startup-diagnostic.md",
   m310: "docs/tasks/M3-10-startup-attribution-diagnostic.md",
   m305: "docs/tasks/M3-05-size-startup-memory-benchmarks.md",
   lock: "docs/evidence/M3-13/diagnostic-eligibility-lock.json",
@@ -42,6 +43,9 @@ const RAW_PAGE_SPECS = {
 
 const DIAGNOSTIC_WORKFLOW = ".github/workflows/m3-13-startup-attribution.yml";
 const EVIDENCE_WORKFLOW = ".github/workflows/m3-13-startup-attribution-evidence.yml";
+const DIAGNOSTIC_CANDIDATE = "tools/validation/m3-14/workflow-candidates/m3-13-startup-attribution.yml";
+const EVIDENCE_CANDIDATE = "tools/validation/m3-14/workflow-candidates/m3-13-startup-attribution-evidence.yml";
+const PRE_RUN_LEDGER = "docs/evidence/M3-14/pre-run-ledger.json";
 const CONTRACT_HASH = "580560859af80418058a088c6be3f7ab221e0ab37e21d76f19bf9177be35a419";
 const OFFICIAL_PROOF_HASH = "9e06abb32d9e0a933e4254bea6fd781cd2a2a95d2980835fd79956e4b315f117";
 const PRODUCT_TUPLE = "883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd";
@@ -326,13 +330,14 @@ function validateState(state) {
       "Independent review returns `P0=0/P1=0/P2=0` before push/PR publication",
     ],
     m310: ["32554806537", "terminally blocked", "must remain draft"],
-    m305: ["M3-13", "successor", "remains blocked", "Terminal M3-10 仅是历史输入", "具体 successor implementation 与 remediation 任务 ID 必须在创建后加入本任务依赖"],
-    index: ["M3-13-successor-diagnostic-identity-contract.md", "#80", "M3-10 → M3-13"],
-    roadmap: ["M3-13", "successor diagnostic identity"],
-    plan: ["M3-13", "successor diagnostic identity"],
+    m314: ["Issue #82", "M3-13-SUCCESSOR-DIAGNOSTIC-V1", "P0=0/P1=0/P2=0", "runAttempt=1"],
+    m305: ["M3-13", "M3-14", "successor", "remains blocked", "Terminal M3-10 仅是历史输入"],
+    index: ["M3-13-successor-diagnostic-identity-contract.md", "M3-14-successor-startup-diagnostic.md", "#80", "#82", "M3-10 → M3-13 → M3-14"],
+    roadmap: ["M3-13", "M3-14", "successor diagnostic identity"],
+    plan: ["M3-13", "M3-14", "successor diagnostic identity"],
     strategy: ["ADR 0018", "zero device observation", "no further renewal"],
-    readme: ["M3-13", "ADR 0018", "32554806537"],
-    handoff: ["Issue #80", "No device, KVM, emulator, ARM, API 29 or benchmark"],
+    readme: ["M3-13", "M3-14", "ADR 0018", "32554806537"],
+    handoff: ["Issue #80", "Issue #82", "No device, KVM, emulator, ARM, API 29 or benchmark"],
   };
   for (const [key, required] of Object.entries(phrases)) {
     for (const phrase of required) requirePhrase(texts[key], phrase, paths[key] ?? key, errors);
@@ -343,12 +348,20 @@ function validateState(state) {
   const handoffDone = texts.handoff.includes("active_task: NONE")
     && texts.handoff.includes("| M3-13 | `/root` | `main` | done |")
     && texts.handoff.includes("PR #81 merged");
-  if (!handoffActive && !handoffDone) {
+  const successorActive = texts.handoff.includes("active_task: M3-14")
+    && texts.handoff.includes("| M3-13 | `/root` | `main` | done |")
+    && texts.handoff.includes("| M3-14 | `/root` | `feat/m3-14-successor-startup-diagnostic` | in_progress |");
+  if (!handoffActive && !handoffDone && !successorActive) {
     errors.push(`${paths.handoff}: M3-13 lifecycle must be the exact active branch state or the exact merged-main done state`);
   }
 
-  if (workflowPresence.diagnostic) errors.push(`${DIAGNOSTIC_WORKFLOW}: contract task must not add executable diagnostic workflow`);
-  if (workflowPresence.evidence) errors.push(`${EVIDENCE_WORKFLOW}: contract task must not add executable evidence workflow`);
+  if (successorActive) {
+    if (workflowPresence.diagnostic !== workflowPresence.evidence) errors.push("successor canonical workflow pair is incomplete");
+    if (workflowPresence.diagnostic && !workflowPresence.reviewedPublication) errors.push("successor publication differs from reviewed candidates/ledger");
+  } else {
+    if (workflowPresence.diagnostic) errors.push(`${DIAGNOSTIC_WORKFLOW}: contract task must not add executable diagnostic workflow`);
+    if (workflowPresence.evidence) errors.push(`${EVIDENCE_WORKFLOW}: contract task must not add executable evidence workflow`);
+  }
   return errors;
 }
 
@@ -380,6 +393,11 @@ function loadState() {
     workflowPresence: {
       diagnostic: fs.existsSync(path.join(root, DIAGNOSTIC_WORKFLOW)),
       evidence: fs.existsSync(path.join(root, EVIDENCE_WORKFLOW)),
+      reviewedPublication: fs.existsSync(path.join(root, DIAGNOSTIC_WORKFLOW)) &&
+        fs.existsSync(path.join(root, EVIDENCE_WORKFLOW)) && fs.existsSync(path.join(root, PRE_RUN_LEDGER)) &&
+        fs.existsSync(path.join(root, DIAGNOSTIC_CANDIDATE)) && fs.existsSync(path.join(root, EVIDENCE_CANDIDATE)) &&
+        readBuffer(DIAGNOSTIC_WORKFLOW).equals(readBuffer(DIAGNOSTIC_CANDIDATE)) &&
+        readBuffer(EVIDENCE_WORKFLOW).equals(readBuffer(EVIDENCE_CANDIDATE)),
     },
   };
 }

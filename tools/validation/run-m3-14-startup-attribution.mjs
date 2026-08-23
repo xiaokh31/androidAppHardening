@@ -6,14 +6,18 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, wr
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
-const TASK_KEY = "M3-09-DIAGNOSTIC-V1";
+const TASK_KEY = "M3-13-SUCCESSOR-DIAGNOSTIC-V1";
+const CONTRACT_IDENTITY = "580560859af80418058a088c6be3f7ab221e0ab37e21d76f19bf9177be35a419";
 const ENVIRONMENT = "api36-r2-x86_64-emulator-37.1.11";
 const PRODUCT_TUPLE = "883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd";
+const RUN_NAME = `${TASK_KEY}-${CONTRACT_IDENTITY}-${PRODUCT_TUPLE}`;
 const PACKAGE = "ah.fixtures.android.m301.java_single";
 const ACTIVITY = "ah.fixtures.android.m301.FixtureActivity";
 const EXPECTED_EVENTS = ["provider.ready", "activity.create"];
 const RELEASE_ROLES = ["release-bootstrap", "release-policy", "release-native", "release-fixture", "cli", "distribution"];
 const REPOSITORY = "xiaokh31/androidAppHardening";
+const DIAGNOSTIC_BRANCH = "feat/m3-14-successor-startup-diagnostic";
+const MAX_GITHUB_PAGE_BYTES = 4 * 1024 * 1024;
 const TRACKED_LOCK_INPUTS = {
   "profile-lock.json": "tools/validation/m3-10/canonical-profile-lock.json",
   "release-artifact-lock.json": "tools/validation/m3-10/release-artifact-lock.json",
@@ -32,7 +36,7 @@ const COPY_INPUTS = {
   "cli.zip": "cli", "distribution.jar": "distribution",
 };
 
-function fail(message) { throw new Error(`M3-10 diagnostic failed: ${message}`); }
+function fail(message) { throw new Error(`M3-14 diagnostic failed: ${message}`); }
 function sha256(value) { return createHash("sha256").update(value).digest("hex"); }
 function sha256File(file) { return sha256(readFileSync(file)); }
 function json(file) { try { return JSON.parse(readFileSync(file, "utf8")); } catch (error) { fail(`${path.basename(file)} invalid JSON: ${error.message}`); } }
@@ -72,27 +76,54 @@ function lockedFile(file, expected, label) {
   }
 }
 
-function fetchOfficialJobsPage(runId) {
+function fetchOfficialPage(url, label) {
   const token = process.env.GITHUB_TOKEN;
   if (!token || process.env.GITHUB_REPOSITORY !== REPOSITORY) fail("official GitHub API identity is unavailable");
-  const url = new URL(`https://api.github.com/repos/${REPOSITORY}/actions/runs/${runId}/jobs?per_page=100&page=1`);
   return new Promise((resolve, reject) => {
     const call = request(url, { method: "GET", headers: {
       Accept: "application/vnd.github+json", Authorization: `Bearer ${token}`,
-      "User-Agent": "androidAppHardening-M3-10", "X-GitHub-Api-Version": "2022-11-28",
+      "User-Agent": "androidAppHardening-M3-14", "X-GitHub-Api-Version": "2022-11-28",
     } }, (response) => {
       const chunks = [];
-      response.on("data", (chunk) => chunks.push(chunk));
+      let total = 0;
+      let bounded = true;
+      const declared = response.headers["content-length"];
+      if (declared !== undefined && (!/^[0-9]+$/u.test(declared) || Number(declared) > MAX_GITHUB_PAGE_BYTES)) {
+        bounded = false;
+        response.destroy();
+        reject(new Error(`${label} API response length differs`));
+        return;
+      }
+      response.on("data", (chunk) => {
+        total += chunk.length;
+        if (total > MAX_GITHUB_PAGE_BYTES) {
+          bounded = false;
+          response.destroy();
+          reject(new Error(`${label} API response exceeds fixed bound`));
+          return;
+        }
+        chunks.push(chunk);
+      });
       response.on("end", () => {
-        const bytes = Buffer.concat(chunks);
-        if (response.statusCode !== 200) return reject(new Error(`official jobs API returned ${response.statusCode}`));
-        resolve(bytes);
+        if (!bounded) return;
+        if (response.statusCode !== 200) return reject(new Error(`official ${label} API returned ${response.statusCode}`));
+        resolve(Buffer.concat(chunks, total));
       });
     });
-    call.setTimeout(30_000, () => call.destroy(new Error("official jobs API timed out")));
+    call.setTimeout(30_000, () => call.destroy(new Error(`official ${label} API timed out`)));
     call.on("error", reject);
     call.end();
   });
+}
+
+function fetchOfficialJobsPage(runId) {
+  const url = new URL(`https://api.github.com/repos/${REPOSITORY}/actions/runs/${runId}/jobs?per_page=100&page=1`);
+  return fetchOfficialPage(url, "jobs");
+}
+
+function fetchOfficialRunsPage() {
+  const url = new URL(`https://api.github.com/repos/${REPOSITORY}/actions/runs?branch=${encodeURIComponent(DIAGNOSTIC_BRANCH)}&event=push&per_page=100&page=1`);
+  return fetchOfficialPage(url, "runs");
 }
 
 function releaseArgs(output) {
@@ -102,7 +133,7 @@ function releaseArgs(output) {
 }
 
 function preflight(options, output) {
-  const verifier = path.resolve("tools/validation/verify-m3-10-startup-attribution.mjs");
+  const verifier = path.resolve("tools/validation/verify-m3-14-startup-attribution.mjs");
   const common = ["--release-lock", path.join(output, "release-artifact-lock.json"),
     "--build-tools-source", path.resolve(required(options, "build-tools-source")), ...releaseArgs(output)];
   run(process.execPath, [path.resolve("tools/governance/verify-m3-11-canonical-artifact-contract.mjs"),
@@ -145,13 +176,31 @@ async function identity(options, adb, output) {
   if (value.headSha !== process.env.GITHUB_SHA || value.runId !== process.env.GITHUB_RUN_ID || value.runAttempt !== 1 ||
       String(process.env.GITHUB_RUN_ATTEMPT) !== "1" || !/^[0-9a-f]{40}$/.test(value.headSha) ||
       !/^[1-9][0-9]*$/.test(value.runId)) fail("GitHub identity differs");
+  const runsPageBytes = await fetchOfficialRunsPage();
+  writeFileSync(path.join(output, "current-runs-page-1.json"), runsPageBytes);
+  const runsPage = json(path.join(output, "current-runs-page-1.json"));
+  if (!Number.isSafeInteger(runsPage.total_count) || runsPage.total_count < 1 || runsPage.total_count >= 100 ||
+      !Array.isArray(runsPage.workflow_runs) || runsPage.workflow_runs.length !== runsPage.total_count) {
+    fail("official branch runs page is incomplete");
+  }
+  const runMatches = runsPage.workflow_runs.filter((run) =>
+    run.path === ".github/workflows/m3-13-startup-attribution.yml" &&
+    run.name === RUN_NAME && run.event === "push");
+  if (runMatches.length !== 1) fail("first-and-only workflow run history differs");
+  const currentRun = runMatches[0];
+  if (String(currentRun.id) !== value.runId || currentRun.path !== ".github/workflows/m3-13-startup-attribution.yml" ||
+      currentRun.head_sha !== value.headSha || currentRun.run_attempt !== 1 || currentRun.event !== "push" ||
+      currentRun.name !== RUN_NAME || currentRun.status !== "in_progress" ||
+      currentRun.conclusion !== null) {
+    fail("first-and-only current workflow run differs");
+  }
   const pageBytes = await fetchOfficialJobsPage(value.runId);
   writeFileSync(path.join(output, "current-jobs-page-1.json"), pageBytes);
   const page = json(path.join(output, "current-jobs-page-1.json"));
   if (!Number.isSafeInteger(page.total_count) || page.total_count < 1 || page.total_count >= 100 ||
       !Array.isArray(page.jobs) || page.jobs.length !== page.total_count) fail("official jobs API page is incomplete");
   const matches = page.jobs.filter((candidate) => String(candidate.run_id) === value.runId &&
-    candidate.name === "m3-09-startup-attribution");
+    candidate.name === "m3-13-startup-attribution");
   if (matches.length !== 1) fail("official current job selection differs");
   const official = matches[0];
   value.jobId = String(official.id);
@@ -160,7 +209,7 @@ async function identity(options, adb, output) {
     .map((key) => [key, official[key]]));
   writeFileSync(path.join(output, "current-job.json"), `${JSON.stringify(job, null, 2)}\n`);
   if (Object.keys(job).sort().join(",") !== ["conclusion", "id", "labels", "name", "run_id", "runner_name", "status"].sort().join(",") ||
-      String(job.id) !== value.jobId || String(job.run_id) !== value.runId || job.name !== "m3-09-startup-attribution" ||
+      String(job.id) !== value.jobId || String(job.run_id) !== value.runId || job.name !== "m3-13-startup-attribution" ||
       job.status !== "in_progress" || job.conclusion !== null || !Array.isArray(job.labels) || !job.labels.includes("ubuntu-24.04")) {
     fail("official current job identity differs");
   }
@@ -307,8 +356,8 @@ function campaign(adb, name, order, inputs, exactIdentity) {
 
 async function main(options) {
   const output = path.resolve(required(options, "output"));
-  const allowed = path.resolve("build", "m3-10") + path.sep;
-  if (!(output + path.sep).startsWith(allowed) || existsSync(output)) fail("output must be a new build/m3-10 directory");
+  const allowed = path.resolve("build", "m3-14") + path.sep;
+  if (!(output + path.sep).startsWith(allowed) || existsSync(output)) fail("output must be a new build/m3-14 directory");
   mkdirSync(output, { recursive: true });
   let complete = false;
   let exactIdentity = null;
@@ -325,13 +374,17 @@ async function main(options) {
     }
     preflight(options, output);
     exactIdentity = await identity(options, adb, output);
+    const ledger = path.resolve(required(options, "execution-ledger"));
+    run(process.execPath, [path.resolve("tools/validation/verify-m3-14-startup-attribution.mjs"),
+      "execution-ledger", "--ledger", ledger, "--publication-head", exactIdentity.headSha]);
+    copyFileSync(ledger, path.join(output, "ledger.json"));
     deviceTouched = true;
     const inputs = { baseline: path.join(output, "profile-baseline.apk"), protected: path.join(output, "profile-protected.apk") };
     const campaignA = campaign(adb, "A", ["baseline", "protected"], inputs, exactIdentity);
     const campaignB = campaign(adb, "B", ["protected", "baseline"], inputs, exactIdentity);
     writeFileSync(path.join(output, "campaign-a.json"), `${JSON.stringify(campaignA, null, 2)}\n`);
     writeFileSync(path.join(output, "campaign-b.json"), `${JSON.stringify(campaignB, null, 2)}\n`);
-    const verifier = path.resolve("tools/validation/verify-m3-10-startup-attribution.mjs");
+    const verifier = path.resolve("tools/validation/verify-m3-14-startup-attribution.mjs");
     run(process.execPath, [verifier, "summarize", "--campaign-a", path.join(output, "campaign-a.json"),
       "--campaign-b", path.join(output, "campaign-b.json"), "--output", path.join(output, "result.json")]);
     const probe = { schemaVersion: 1, identity: exactIdentity,
@@ -343,6 +396,7 @@ async function main(options) {
       environmentLockSha256: sha256File(path.join(output, "api36-environment-lock.json")),
       currentJobSha256: sha256File(path.join(output, "current-job.json")),
       currentJobsPageSha256: sha256File(path.join(output, "current-jobs-page-1.json")),
+      currentRunsPageSha256: sha256File(path.join(output, "current-runs-page-1.json")),
       systemImageSourceSha256: sha256File(path.resolve(required(options, "system-image-source"))),
       systemImageBuildPropSha256: sha256File(path.resolve(required(options, "system-image-build-prop"))),
       emulatorSourceSha256: sha256File(path.resolve(required(options, "emulator-source"))) };
@@ -351,6 +405,7 @@ async function main(options) {
     writeFileSync(path.join(output, "cleanup.json"), `${JSON.stringify({ schemaVersion: 1, packagesAbsent: true,
       remoteFilesAbsent: true, temporarySigningAbsent: true }, null, 2)}\n`);
     const files = [...Object.keys(COPY_INPUTS), ...Object.keys(TRACKED_LOCK_INPUTS), "current-job.json", "current-jobs-page-1.json",
+      "current-runs-page-1.json", "ledger.json",
       "profile-verification.json", "campaign-a.json", "campaign-b.json",
       "cleanup.json", "probe-manifest.json", "result.json"].sort();
     const manifest = { schemaVersion: 1, identity: exactIdentity, files: Object.fromEntries(files.map((name) =>

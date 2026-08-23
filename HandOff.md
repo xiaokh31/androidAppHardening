@@ -1,13 +1,13 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260823-091359
-updated_at: 2026-08-23T09:13:59+08:00
+handoff_id: HO-20260823-091700
+updated_at: 2026-08-23T09:17:00+08:00
 updated_by: /root
 state: active
 source_branch: feat/m3-14-successor-startup-diagnostic
 base_commit: 960eb9f406eb1a7b7c9b324598fb59936aa1c5b5
-working_tree: dirty
+working_tree: clean
 current_milestone: M3
 active_task: M3-14
 next_owner: /root
@@ -21,7 +21,7 @@ Implement the sole ADR 0018 successor diagnostic as M3-14, freeze it without can
 
 ## Current State
 
-- M3-14 is active on `feat/m3-14-successor-startup-diagnostic` from `main@960eb9f406eb1a7b7c9b324598fb59936aa1c5b5`; Issue #82 is the unique task issue. Workflow-absent reviewed head `2ba90618734bf4f509eb6052a3ce649e50aca71a` passed independent `P0=0/P1=0/P2=0`, was pushed, and opened unique draft PR #83. Initial Governance `32609765769` failed on both platforms before the M3-14 gate because the inherited M3-07 scanner treated the eight exact test-only M310 artifact/report environment bindings as a HIGH control; outdated Build `32609765737` and automatically triggered KVM/fuzz/equivalence runs were cancelled. The bounded CI fix allows only the exact field-to-variable mappings in `host/container/build.gradle.kts`, while a wrong/override HIGH binding remains rejected. This code change invalidates the prior exact-head review and requires a new frozen independent all-zero review before replacement push. Both canonical ADR 0018 workflows remain absent; no API 36 diagnostic, emulator, device, ARM, API 29, M3-05 or owner-remediation work has run, and `runAttempt=1` remains unconsumed.
+- M3-14 is active on `feat/m3-14-successor-startup-diagnostic` from `main@960eb9f406eb1a7b7c9b324598fb59936aa1c5b5`; Issue #82 is the unique task issue. Workflow-absent reviewed head `2ba90618734bf4f509eb6052a3ce649e50aca71a` passed independent `P0=0/P1=0/P2=0`, was pushed, and opened unique draft PR #83. Initial Governance `32609765769` failed on both platforms before the M3-14 gate because the inherited M3-07 scanner treated the eight exact test-only M310 artifact/report environment bindings as a HIGH control; outdated Build `32609765737` and automatically triggered KVM/fuzz/equivalence runs were cancelled. Bounded fix implementation `ca64e2c5d5dca972f9e3ef43b55b605e1dc8560d` allows only the exact field-to-variable mappings in `host/container/build.gradle.kts`, while wrong/override HIGH bindings remain rejected; M3-07, M3-14, Governance, strict HandOff and diff gates pass locally. This evidence successor is the replacement workflow-absent review input. Both canonical ADR 0018 workflows remain absent; no API 36 diagnostic, emulator, device, ARM, API 29, M3-05 or owner-remediation work has run, and `runAttempt=1` remains unconsumed.
 - M3-13 is merged and complete on `main`. Final exact head `f60543c4d5ca2891cbdcab3a028054bd41e0f7f7` retained independent review `P0=0/P1=0/P2=0` and passed Build `32590407762` plus Governance `32590407768` on Ubuntu/Windows. PR #81 was converted to ready and merged with expected-head protection as `621117dc5639bf4c9c9e8696c554bbd2ab821d8c`; Issue #80 closed. The contract binds M3-10 run `32554806537` and terminal evidence run `32554917303`, fixes one future task key/run with `runAttempt=1`, and permits no further renewal. Both canonical successor workflows remain absent. No device, KVM, emulator, ARM, API 29 or benchmark ran; Android was not invoked.
 - Initial post-merge Governance `32602883324` exposed one coordination-only lifecycle defect: the M3-13 validator accepted only the pre-merge `active_task: M3-13` state. Commit `e2259f5821ee0c53897a2b450735e111612b082f` now accepts exactly either the reviewed active branch tuple or the merged-main `done` tuple, rejects a 66th invalid-lifecycle mutation, and keeps both successor workflows forbidden.
 - M3-13 independent review 1 rejected implementation `55997e61a2f734ab3d7ed5f8a44a44064b526ac3` / evidence `bec3d0ddeccc356c31f69add2e37e197cd127531` with `P0=0/P1=3/P2=1`: execution-identity self-reference, missing retained raw official API pages, terminal M3-10 still listed as an M3-05 completion dependency, and incomplete local evidence fields. No push or PR occurred.

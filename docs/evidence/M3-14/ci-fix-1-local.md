@@ -1,6 +1,7 @@
 # M3-14 PR #83 Governance CI fix 1
 
 - Rejected exact head: `2ba90618734bf4f509eb6052a3ce649e50aca71a`
+- Fix implementation: `ca64e2c5d5dca972f9e3ef43b55b605e1dc8560d`
 - Draft PR: `#83`
 - Governance run: `32609765769`
 - Build run cancelled after supersession: `32609765737`

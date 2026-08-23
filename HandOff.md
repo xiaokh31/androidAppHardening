@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260823-104035
-updated_at: 2026-08-23T10:40:35+08:00
+handoff_id: HO-20260823-104215
+updated_at: 2026-08-23T10:42:15+08:00
 updated_by: /root
 state: blocked
 source_branch: feat/m3-14-successor-startup-diagnostic
@@ -21,7 +21,7 @@ Record the terminally failed sole ADR 0018 successor diagnostic without retry or
 
 ## Current State
 
-- M3-14 is terminally blocked on `feat/m3-14-successor-startup-diagnostic`; Issue #82 and Draft PR #83 remain its unique workstream. The workflow-absent freeze and all bounded CI remediations passed independent review with `P0=0/P1=0/P2=0`; exact qualified head `50a831b5275ac53846924dbf4d4c9d10d1b25b35` passed Ubuntu/Windows Build `32611183901` and Governance `32611183890`. Direct-child publication `9fe48737d97853d1566cc2e642009d8ff1b8ab52` consumed the sole API 36 successor in run `32611656930`, job `97125597267`, attempt `1`. Official API pages prove that setup through Release build passed, diagnostic step 13 failed, upload step 14 was skipped and artifact count is zero; they do not prove a narrower boundary inside step 13. Direct-child terminal request `b0771d4853e0a7de7fb9db802cac719e34c67229` triggered only terminal evidence run `32612414400`, job `97127412040`; steps 2-5 passed, step 6 failed, step 7 was skipped and artifact count is zero, without a provable narrower boundary inside step 6. Terminal-state freeze `7f04c213c9d425e03f7fb517ebf35ba1b635cc6c` was independently rejected with `P0=0/P1=2/P2=1`; remediation freeze `530a7d644bc6d3007e8b1dc80f60d880062c82fa` closed those findings but second review found `P0=0/P1=2/P2=0`: current terminal-request bytes were not yet locked and the step-internal preflight/sample narrative exceeded retained official evidence. Freeze `4b06702dd9fc4cefbd96d84a578b3ff325bfaf09` closed both P1 findings but third review found one P2 because terminal step 6's internal cause remained overstated. The current bounded remediation removes that final unsupported inference; another independent review is required before push. ADR 0018 forbids retry, replacement or further renewal. No eligible owner was selected; M3-05, ARM, API 29 and physical-device work remain blocked.
+- M3-14 is terminally blocked on `feat/m3-14-successor-startup-diagnostic`; Issue #82 and Draft PR #83 remain its unique workstream. The workflow-absent freeze and all bounded CI remediations passed independent review with `P0=0/P1=0/P2=0`; exact qualified head `50a831b5275ac53846924dbf4d4c9d10d1b25b35` passed Ubuntu/Windows Build `32611183901` and Governance `32611183890`. Direct-child publication `9fe48737d97853d1566cc2e642009d8ff1b8ab52` consumed the sole API 36 successor in run `32611656930`, job `97125597267`, attempt `1`. Official API pages prove that setup through Release build passed, diagnostic step 13 failed, upload step 14 was skipped and artifact count is zero; they do not prove a narrower boundary inside step 13. Direct-child terminal request `b0771d4853e0a7de7fb9db802cac719e34c67229` triggered only terminal evidence run `32612414400`, job `97127412040`; steps 2-5 passed, step 6 failed, step 7 was skipped and artifact count is zero, without a provable narrower boundary inside step 6. Terminal-state freeze `7f04c213c9d425e03f7fb517ebf35ba1b635cc6c` was independently rejected with `P0=0/P1=2/P2=1`; remediation freeze `530a7d644bc6d3007e8b1dc80f60d880062c82fa` closed those findings but second review found `P0=0/P1=2/P2=0`: current terminal-request bytes were not yet locked and the step-internal preflight/sample narrative exceeded retained official evidence. Freeze `4b06702dd9fc4cefbd96d84a578b3ff325bfaf09` closed both P1 findings but third review found one P2 because terminal step 6's internal cause remained overstated. Final documentation successor `75e89f4e192820b8cd7f28b1c7264ea0155f16f0` passed the fourth independent bounded review with `P0=0/P1=0/P2=0`; the cumulative terminal chain is all zero and now awaits separate push authorization. ADR 0018 forbids retry, replacement or further renewal. No eligible owner was selected; M3-05, ARM, API 29 and physical-device work remain blocked.
 - M3-13 is merged and complete on `main`. Final exact head `f60543c4d5ca2891cbdcab3a028054bd41e0f7f7` retained independent review `P0=0/P1=0/P2=0` and passed Build `32590407762` plus Governance `32590407768` on Ubuntu/Windows. PR #81 was converted to ready and merged with expected-head protection as `621117dc5639bf4c9c9e8696c554bbd2ab821d8c`; Issue #80 closed. The contract binds M3-10 run `32554806537` and terminal evidence run `32554917303`, fixes one future task key/run with `runAttempt=1`, and permits no further renewal. Both canonical successor workflows were absent when M3-13 merged; M3-14 later published their independently reviewed bytes and consumed the successor. No device, KVM, emulator, ARM, API 29 or benchmark ran in M3-13.
 - Initial post-merge Governance `32602883324` exposed one coordination-only lifecycle defect: the M3-13 validator accepted only the pre-merge `active_task: M3-13` state. Commit `e2259f5821ee0c53897a2b450735e111612b082f` now accepts exactly either the reviewed active branch tuple or the merged-main `done` tuple, rejects a 66th invalid-lifecycle mutation, and keeps both successor workflows forbidden.
 - M3-13 independent review 1 rejected implementation `55997e61a2f734ab3d7ed5f8a44a44064b526ac3` / evidence `bec3d0ddeccc356c31f69add2e37e197cd127531` with `P0=0/P1=3/P2=1`: execution-identity self-reference, missing retained raw official API pages, terminal M3-10 still listed as an M3-05 completion dependency, and incomplete local evidence fields. No push or PR occurred.
@@ -2016,14 +2016,14 @@ Record the terminally failed sole ADR 0018 successor diagnostic without retry or
 
 ## Blockers and Required Approvals
 
-- M3-14 run `32611656930` consumed the only API 36 x86_64 `runAttempt=1`; its diagnostic step failed, upload was skipped and artifact count is zero. Terminal evidence run `32612414400` independently rejected that missing artifact.
+- M3-14 run `32611656930` consumed the only API 36 x86_64 `runAttempt=1`; its diagnostic step failed, upload was skipped and artifact count is zero. Terminal evidence run `32612414400` had steps 2-5 pass, step 6 fail, step 7 skip and artifact count zero; retained pages do not prove the internal step 6 boundary.
 - ADR 0018 permits no retry, replacement result or further renewal. Canonical workflow files remain as historical reviewed execution surfaces but must not be changed to trigger another run.
 - M3-05 remains blocked because the successor selected no eligible owner. ARM, API 29 and the unlocked physical device cannot substitute for the consumed identity.
 
 ## Ordered Next Actions
 
-1. Freeze and independently review this terminal-state documentation plus the bounded M3-13 published-workflow self-test correction.
-2. Push only the reviewed terminal-state successor; verify that neither canonical diagnostic nor terminal evidence workflow reruns.
+1. Await explicit authorization, then push only the final independently reviewed terminal-state successor.
+2. Verify that neither canonical diagnostic nor terminal evidence workflow reruns; cancel unrelated automatically triggered workflows if any.
 3. Keep PR #83 Draft, M3-14/M3-05 blocked, and require a new project-level decision before any unrelated next task; no diagnostic renewal is available.
 
 ## Relevant Files and Artifacts
@@ -2057,6 +2057,7 @@ Record the terminally failed sole ADR 0018 successor diagnostic without retry or
 - `docs/evidence/M3-14/terminal-read-only-review-1.md`
 - `docs/evidence/M3-14/terminal-read-only-review-2.md`
 - `docs/evidence/M3-14/terminal-read-only-review-3.md`
+- `docs/evidence/M3-14/terminal-read-only-review-4.md`
 - `tools/governance/verify-m3-13-diagnostic-identity-contract.mjs`
 - Issue #82; Issue #80; M3-10 draft PR #79; predecessor run `32554806537`; predecessor terminal run `32554917303`; successor run/job `32611656930`/`97125597267`; successor terminal run/job `32612414400`/`97127412040`
 - `docs/evidence/M2-07/ubuntu-runner-20260816-maintenance.md`

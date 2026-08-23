@@ -20,7 +20,7 @@
 
 - Direct-child request changed only `docs/evidence/M3-14/diagnostic-terminal-request.json` and bound diagnostic run `32611656930` to the reviewed publication bytes.
 - Workflow run: `32612414400`; job: `97127412040`; event: `push`; attempt: `1`; conclusion: `failure`.
-- Direct-child binding, pinned runner and Node setup passed. The collector then failed closed with `M3-14 evidence collection failed: terminal artifact selection differs` because the canonical diagnostic had no artifact; upload was skipped.
+- Direct-child binding, pinned runner and Node setup steps 2-5 passed. Collection step 6 failed, upload step 7 was skipped and artifact count is zero. The retained official pages do not prove a narrower failure boundary inside step 6.
 - Official terminal-run artifacts response: `{"total_count":0,"artifacts":[]}`.
 
 ## Commands and conclusion

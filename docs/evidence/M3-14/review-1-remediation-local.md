@@ -1,6 +1,7 @@
 # M3-14 independent review 1 remediation
 
 - Rejected freeze: `3adde9d909d47719115deffd9fd19e74aa696236`
+- Remediation implementation: `2751581cebaed5a0b91681d7b638dbe4aa9e10f1`
 - Independent result: `FAIL — P0=0/P1=2/P2=2`
 - Remediation timestamp: `2026-08-23T09:03:59+08:00`
 - Scope: workflow-absent static implementation only

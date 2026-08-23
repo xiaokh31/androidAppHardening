@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260823-113012
-updated_at: 2026-08-23T11:30:12+08:00
+handoff_id: HO-20260823-114306
+updated_at: 2026-08-23T11:43:06+08:00
 updated_by: /root
 state: active
 source_branch: docs/m3-15-terminal-disposition-contract
@@ -22,6 +22,7 @@ Define and independently freeze the terminal disposition for the consumed ADR 00
 ## Current State
 
 - M3-15 / Issue #84 is active on `docs/m3-15-terminal-disposition-contract` from `main@960eb9f406eb1a7b7c9b324598fb59936aa1c5b5`. ADR 0019 fixes decision `STOP_CURRENT_V0_1_RELEASE_LINE`, binds Draft PR #83 head `a112e4469699125a32d80e3c652cda7d4b6b7cf1`, canonical run `32611656930` and terminal run `32612414400`, and forbids retry, replacement, renewal, platform substitution, M3-05 resume and M4 start. This task is governance-only: no workflow, Android, KVM, emulator, device, benchmark, profile download or product implementation is executed.
+- First local freeze `2611111288fea99bbb70841b928b7df029cb610b` passed positive/local gates but independent read-only review 1 returned `P0=0/P1=2/P2=2`. It is rejected: phrase-only contradiction checks, path-only allowance of Governance/M3-08/M3-09/M3-13 validators, incomplete leaf mutations and stale pre-freeze HandOff wording must all be closed before a second freeze. The bounded remediation now adds document contradiction negatives, exact governed-file hashes and automatic every-leaf mutations; no terminal fact or product/release boundary changes.
 - PR #83/Issue #82 and PR #63/Issue #22 remain open and unmerged during M3-15 review. Only after ADR 0019 merges may they be closed as terminally blocked without merging. No close, push or PR action has yet been taken for M3-15.
 - M3-13 is merged and complete on `main`. Final exact head `f60543c4d5ca2891cbdcab3a028054bd41e0f7f7` retained independent review `P0=0/P1=0/P2=0` and passed Build `32590407762` plus Governance `32590407768` on Ubuntu/Windows. PR #81 was converted to ready and merged with expected-head protection as `621117dc5639bf4c9c9e8696c554bbd2ab821d8c`; Issue #80 closed. The contract binds M3-10 run `32554806537` and terminal evidence run `32554917303`, fixes one future task key/run with `runAttempt=1`, and permits no further renewal. Both canonical successor workflows remain absent. No device, KVM, emulator, ARM, API 29 or benchmark ran; Android was not invoked.
 - Initial post-merge Governance `32602883324` exposed one coordination-only lifecycle defect: the M3-13 validator accepted only the pre-merge `active_task: M3-13` state. Commit `e2259f5821ee0c53897a2b450735e111612b082f` now accepts exactly either the reviewed active branch tuple or the merged-main `done` tuple, rejects a 66th invalid-lifecycle mutation, and keeps both successor workflows forbidden.
@@ -442,6 +443,18 @@ Define and independently freeze the terminal disposition for the consumed ADR 00
 - M2-02 第三实现层已完成本地检查点：同一 `sourceDir` 只读文件映射、OS 只读 DEX commit、generation+slot 类型化 JNI handle、同 handle `AHMD` 认证 metadata、精确五 JNI 方法、Java primitive/finally 交接窗口、幂等 `LoadedPayload` owner，以及 M0-05 等价 Native 搜索路径和三参数 API 29 `InMemoryDexClassLoader` 已接通。Java 17 编译/lint、NDK 四 ABI warnings-as-errors 与离线根 `assembleRelease check` 284-task 均 PASS，四个 ELF 都含唯一 104-byte alloc/read-only `.ah_share_v1`，未启动设备或模拟器。证据更新于 `docs/evidence/M2-02/local-validation.md`；任务仍未完成或发布，下一步仅补 failure injection、Host sanitizer/fuzz/OOM 与已授权 KVM/arm64 验收，不启动 M2-03。
 
 ## Verification Evidence
+
+### M3-15 independent read-only review 1
+
+- task_id: M3-15
+- git_commit: 2611111288fea99bbb70841b928b7df029cb610b
+- command: independent strict read-only review of base-to-freeze diff, terminal facts, release disposition, validator bypasses, mutations and HandOff truthfulness
+- exit_code: 1
+- environment: Windows read-only repository review; no network, Gradle, Android, KVM, benchmark or workflow execution
+- timestamp: 2026-08-23T11:43:06+08:00
+- artifact: reviewer report retained in the M3-15 task conversation; remediation is limited to its four findings
+- sha256: cde70adcf655c23d576ddd8e0898871bb66084b263f7e23b4d8fe584f9703981
+- result: FAIL; P0=0/P1=2/P2=2, freeze rejected pending contradiction semantics, governed-file byte locks, complete leaf mutations and truthful HandOff lifecycle
 
 ### M3-13 merger-ready and main merge
 
@@ -2017,14 +2030,14 @@ Define and independently freeze the terminal disposition for the consumed ADR 00
 
 ## Blockers and Required Approvals
 
-- M3-15 must first pass local positive/mutation/governance/strict/diff validation and be committed as an exact freeze.
-- Because M3-15 is security-sensitive release governance, an independent read-only review with `P0=0/P1=0/P2=0` is required before push or draft PR creation. Push/PR is not yet authorized by the current request.
+- Freeze `2611111` is rejected by review 1. The four bounded remediation findings must pass local positive/mutation/governance/strict/diff validation and be committed as a new exact freeze.
+- Because M3-15 is security-sensitive release governance, a second independent read-only review with `P0=0/P1=0/P2=0` is required before push or draft PR creation. Push/PR is not yet authorized by the current request.
 - M3-05 and M4 are terminally blocked for the current v0.1 tuple; no device state or alternate platform can unblock them.
 
 ## Ordered Next Actions
 
-1. Complete the M3-15 validator, document synchronization and local governance-only validation.
-2. Commit the exact local freeze and request an independent read-only review; do not push before all-zero findings.
+1. Complete only review-1 remediation: contradiction negatives, governed-file hashes, every-leaf mutation coverage and HandOff truthfulness.
+2. Run local governance-only validation, commit the second exact freeze and request independent read-only review 2; do not push before all-zero findings.
 3. After separate push/PR authorization, create the unique Issue #84 draft PR and run only Build/Governance required by the task contract.
 4. Only after ADR 0019 merges, close PR #83/Issue #82 and PR #63/Issue #22 without merging either draft; keep M4 unstarted.
 

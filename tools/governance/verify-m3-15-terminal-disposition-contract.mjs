@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import childProcess from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -52,8 +53,8 @@ if (errors.length > 0) {
   process.exit(1);
 }
 
-if (selfTest) runSelfTest();
-console.log(`OK: M3-15 terminal disposition contract${selfTest ? " and 31 named mutations" : ""}`);
+const mutationCount = selfTest ? runSelfTest() : 0;
+console.log(`OK: M3-15 terminal disposition contract${selfTest ? ` and ${mutationCount} named mutations` : ""}`);
 
 function validate(candidate, docs) {
   const found = [];
@@ -103,6 +104,12 @@ function validate(candidate, docs) {
       terminalJobs: "d7f8bda3c7ca1cef6a504ec7fefab08897b10d4695b81cc1c1cbbef63e18d4b3",
       terminalArtifacts: "d3ad979d01443a9d7342e7fbe39064b41ebdb340029293f1b099bcfb6c493c42",
     },
+    governedFileSha256: {
+      ".github/workflows/governance.yml": "6e12ac72f285f35aaa74f6cf70ec685817d2f38d3b1a94f40a606c2dbceecf22",
+      "tools/governance/verify-m3-08-startup-stability-contract.mjs": "23303430315e6bd97ec0201e5c979df5207d8af9a31084d996ee0230c855dbea",
+      "tools/governance/verify-m3-09-startup-attribution-contract.mjs": "7d0ec5ccc7b37b55fe9f6e43a10924bece57158ef31f21537e78cb15111bb5bb",
+      "tools/governance/verify-m3-13-diagnostic-identity-contract.mjs": "e5a4b6a3a53633615fd08e1ea3c9e8a3b3054afc7174ba2233e4008a9c0093ec",
+    },
     permissions: {
       retryPermitted: false,
       replacementPermitted: false,
@@ -126,6 +133,10 @@ function validate(candidate, docs) {
     },
   };
   if (stable(candidate) !== stable(expected)) found.push(`${lockPath}: exact contract mismatch`);
+  for (const [relative, expectedHash] of Object.entries(expected.governedFileSha256)) {
+    const actualHash = crypto.createHash("sha256").update(fs.readFileSync(path.join(root, relative))).digest("hex");
+    if (actualHash !== expectedHash) found.push(`${relative}: governed byte hash mismatch`);
+  }
 
   const requiredPhrases = {
     adr: [
@@ -155,32 +166,52 @@ function validate(candidate, docs) {
       if (!docs[key].includes(phrase)) found.push(`${key}: missing phrase ${phrase}`);
     }
   }
+  const contradictoryClaims = [
+    ["successor retry authorization", /(?:M3-14|successor).{0,48}(?:retry|rerun|renewal|replacement).{0,24}(?:is\s+)?(?:permitted|allowed|authorized)/iu],
+    ["Chinese retry authorization", /(?:允许|授权|可以).{0,12}(?:重试|重跑|续期).{0,12}M3-14/u],
+    ["Chinese retry authorization reversed", /(?:允许|授权|可以).{0,12}M3-14.{0,12}(?:重试|重跑|续期)/u],
+    ["M3-05 resume authorization", /M3-05.{0,48}(?:resume|unblock).{0,24}(?:is\s+)?(?:permitted|allowed|authorized|may|can)/iu],
+    ["Chinese M3-05 resume authorization", /M3-05.{0,32}(?:可恢复|可解除|允许恢复|解除阻塞)/u],
+    ["M4 start authorization", /(?<!no )M4.{0,32}(?:is\s+startable|may\s+start|can\s+start|start\s+is\s+(?:permitted|allowed))/iu],
+    ["Chinese M4 start authorization", /(?:允许|可以|可).{0,20}(?:启动|开始)\s*M4/u],
+    ["v0.1 release authorization", /v0\.1.{0,32}release.{0,20}(?:is\s+)?(?:permitted|allowed|authorized)/iu],
+    ["PR 83 merge action", /PR\s*#83.{0,32}(?:action\s+is\s+MERGE|may\s+be\s+merged|can\s+be\s+merged)/iu],
+    ["PR 63 merge action", /PR\s*#63.{0,32}(?:action\s+is\s+MERGE|may\s+be\s+merged|can\s+be\s+merged)/iu],
+  ];
+  for (const [key, text] of Object.entries(docs)) {
+    for (const [label, pattern] of contradictoryClaims) {
+      if (pattern.test(text)) found.push(`${key}: contradictory claim: ${label}`);
+    }
+  }
   return found;
 }
 
 function runSelfTest() {
-  const mutations = [
-    ["schemaVersion", 2], ["taskId", "M3-14"], ["issueNumber", 85],
-    ["decision", "CONTINUE"], ["baseCommit", "0".repeat(40)],
-    ["source.issueNumber", 83], ["source.draftPrNumber", 84],
-    ["source.reviewedHeadSha", "0".repeat(40)], ["source.terminalReviewSha", "0".repeat(40)],
-    ["source.publicationHeadSha", "0".repeat(40)], ["source.terminalRequestHeadSha", "0".repeat(40)],
-    ["source.executionIdentitySha256", "0".repeat(64)], ["source.productTupleSha256", "0".repeat(64)],
-    ["diagnostic.runId", 1], ["diagnostic.jobId", 1], ["diagnostic.runAttempt", 2],
-    ["diagnostic.failedStepNumber", 12], ["diagnostic.artifactCount", 1],
-    ["terminalEvidence.runId", 1], ["terminalEvidence.jobId", 1], ["terminalEvidence.runAttempt", 2],
-    ["terminalEvidence.failedStepNumber", 5], ["terminalEvidence.artifactCount", 1],
-    ["officialPageSha256.diagnosticRun", "0".repeat(64)],
-    ["officialPageSha256.terminalRun", "0".repeat(64)],
-    ["permissions.retryPermitted", true], ["permissions.m305ResumePermitted", true],
-    ["permissions.m4StartPermitted", true], ["permissions.v01ReleasePermitted", true],
-    ["postMergeActions.pr83", "MERGE"], ["futureWork.currentTupleReusable", true],
-  ];
-  for (const [field, value] of mutations) {
+  let count = 0;
+  for (const [parts, original] of leafEntries(lock)) {
+    const field = parts.join(".");
     const changed = structuredClone(lock);
-    setPath(changed, field, value);
+    setPath(changed, parts, alternate(original));
     if (validate(changed, documents).length === 0) fail(`self-test mutation accepted: ${field}`);
+    count += 1;
   }
+  const documentMutations = [
+    ["adr", "\nM3-14 retry is permitted.\n"],
+    ["task", "\n允许重试 M3-14。\n"],
+    ["m305", "\nM3-05 resume is permitted.\n"],
+    ["m305", "\nM3-05 可恢复。\n"],
+    ["m401", "\nM4 is startable.\n"],
+    ["roadmap", "\n允许启动 M4。\n"],
+    ["requirements", "\nv0.1 release is permitted.\n"],
+    ["readme", "\nPR #83 action is MERGE.\n"],
+    ["handoff", "\nPR #63 may be merged.\n"],
+  ];
+  for (const [documentKey, addition] of documentMutations) {
+    const changedDocuments = { ...documents, [documentKey]: `${documents[documentKey]}${addition}` };
+    if (validate(lock, changedDocuments).length === 0) fail(`self-test contradictory document accepted: ${documentKey}`);
+    count += 1;
+  }
+  return count;
 }
 
 function validateDiff(revision, targetErrors) {
@@ -235,12 +266,29 @@ function stable(value) {
   return JSON.stringify(value);
 }
 
-function setPath(object, dotted, value) {
-  const parts = dotted.split(".");
+function setPath(object, pathParts, value) {
+  const parts = [...pathParts];
   const leaf = parts.pop();
   let current = object;
   for (const part of parts) current = current[part];
   current[leaf] = value;
+}
+
+function leafEntries(value, prefix = []) {
+  const result = [];
+  for (const [key, child] of Object.entries(value)) {
+    const field = [...prefix, key];
+    if (child && typeof child === "object" && !Array.isArray(child)) result.push(...leafEntries(child, field));
+    else result.push([field, child]);
+  }
+  return result;
+}
+
+function alternate(value) {
+  if (typeof value === "boolean") return !value;
+  if (typeof value === "number") return value + 1;
+  if (typeof value === "string") return `${value}-MUTATED`;
+  throw new Error(`unsupported mutation type: ${typeof value}`);
 }
 
 function fail(message) {

@@ -44,6 +44,12 @@
     "terminalJobs": "d7f8bda3c7ca1cef6a504ec7fefab08897b10d4695b81cc1c1cbbef63e18d4b3",
     "terminalArtifacts": "d3ad979d01443a9d7342e7fbe39064b41ebdb340029293f1b099bcfb6c493c42"
   },
+  "governedFileSha256": {
+    ".github/workflows/governance.yml": "6e12ac72f285f35aaa74f6cf70ec685817d2f38d3b1a94f40a606c2dbceecf22",
+    "tools/governance/verify-m3-08-startup-stability-contract.mjs": "23303430315e6bd97ec0201e5c979df5207d8af9a31084d996ee0230c855dbea",
+    "tools/governance/verify-m3-09-startup-attribution-contract.mjs": "7d0ec5ccc7b37b55fe9f6e43a10924bece57158ef31f21537e78cb15111bb5bb",
+    "tools/governance/verify-m3-13-diagnostic-identity-contract.mjs": "e5a4b6a3a53633615fd08e1ea3c9e8a3b3054afc7174ba2233e4008a9c0093ec"
+  },
   "permissions": {
     "retryPermitted": false,
     "replacementPermitted": false,

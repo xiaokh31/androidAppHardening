@@ -45,7 +45,8 @@ M2-07 Ubuntu runner 精确锁维护已关闭先前工具链阻塞；PR #74 的 e
 | [M3-12](docs/tasks/M3-12-profile-package-retention.md) | 已完成 | PR #76/Issue #75；固定已复核 profile package 的 numeric release/asset ID、archive/member SHA-256；全零复核、双平台 Build/Governance 与 expected-head 合并已关闭 |
 | [M3-10](docs/tasks/M3-10-startup-attribution-diagnostic.md) | 已阻塞 | first-and-only run `32554806537` 在 Android 前失败且零 artifact；identity 已消耗，PR #79 必须保持 Draft |
 | [M3-13](docs/tasks/M3-13-successor-diagnostic-identity-contract.md) | 已完成 | PR #81/Issue #80；ADR 0018 固定唯一 successor identity、全历史 qualification 与不可再次续期；独立全零复核和双平台 Build/Governance 通过，本任务未运行 Android |
-| [M3-05](docs/tasks/M3-05-size-startup-memory-benchmarks.md) | 已阻塞 | PR #63 暂不运行 API 36 A/B 或 ARM；等待 M3-13、后续 successor result 与 owner remediation 完成 |
+| [M3-14](docs/tasks/M3-14-successor-startup-diagnostic.md) | 执行中 | Issue #82；独立复核全零前 canonical workflow 保持不存在，之后才允许运行唯一 API 36 `runAttempt=1` |
+| [M3-05](docs/tasks/M3-05-size-startup-memory-benchmarks.md) | 已阻塞 | PR #63 暂不运行 API 36 A/B 或 ARM；等待 M3-14 successor result 与 owner remediation 完成 |
 | M4 | 未启动 | 发布阶段继续按任务依赖顺序执行 |
 
 任务按 [`docs/tasks/INDEX.md`](docs/tasks/INDEX.md) 的依赖顺序执行。每个任务只有在 PR 合并、合并后门禁与证据完成后才在本表标记“已完成”；每个任务的收尾协调提交必须同步本 README，避免公开进度长期滞后。

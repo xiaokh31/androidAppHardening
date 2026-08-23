@@ -54,6 +54,7 @@ const expectedTasks = [
   "M3-11-canonical-startup-artifact-contract.md",
   "M3-12-profile-package-retention.md",
   "M3-13-successor-diagnostic-identity-contract.md",
+  "M3-14-successor-startup-diagnostic.md",
 ];
 
 const taskHeadings = [
@@ -212,6 +213,8 @@ if (!fs.existsSync(indexFile)) {
             ? "75"
           : id === "M3-13"
             ? "80"
+          : id === "M3-14"
+            ? "82"
           : String(expectedTasks.indexOf(expectedFile) + 1);
     if (!issueMatch || issueMatch[1] !== issueMatch[2] || issueMatch[1] !== expectedIssue) {
       errors.push(`docs/tasks/INDEX.md: ${id} must link its GitHub Issue`);

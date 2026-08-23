@@ -13,6 +13,7 @@ depends_on:
   - M3-08
   - M3-09
   - M3-13
+  - M3-14
 required_skills:
   - validate-protected-apk
 security_sensitive: false
@@ -26,7 +27,7 @@ security_sensitive: false
 
 “APK 大小优化”只表示控制加固增量，不保证输出小于输入。基准必须同时报告原始值、加固值、绝对增量和百分比，且不得用单次测量或不同设备结果作结论。
 
-M3-10 run `32554806537` 在 Android 执行前终止且未产生归因。M3-13 只定义一个 successor diagnostic identity；它不运行测量，也不解除本任务。M3-05 remains blocked，直到该合同合并、后续独立实现产生有效 owner，且 owner remediation 完成。`UNATTRIBUTED` 或 successor 任意失败都不能用于恢复本任务。
+M3-10 run `32554806537` 在 Android 执行前终止且未产生归因。M3-13 只定义 successor identity；M3-14 实现并在全零复核后消耗该唯一诊断资格。M3-05 remains blocked，直到 M3-14 产生有效 owner，且单独的 owner remediation 完成。`UNATTRIBUTED` 或 successor 任意失败都不能用于恢复本任务。
 
 ## Inputs
 
@@ -145,7 +146,7 @@ M3-10 run `32554806537` 在 Android 执行前终止且未产生归因。M3-13 �
 
 ## Dependencies and Blockers
 
-M1-06、M2-04、M3-08、M3-09 或 M3-13 尚未形成已合并合同时不得建立发布基线。Terminal M3-10 仅是历史输入，不是可完成的依赖；M3-11 仅固定 canonical bytes。ADR 0018 successor implementation 与所选 owner remediation 的具体任务 ID 必须在创建后加入依赖且完成，治理合同或 rebuilt fixture 不得冒充动态验收。任一安全控制导致预算失败时任务保持 blocked，并提交可量化优化任务；不得删除安全控制或放宽预算而不经 ADR 与安全评审。
+M1-06、M2-04、M3-08、M3-09、M3-13 或 M3-14 尚未完成时不得建立发布基线。Terminal M3-10 仅是历史输入，不是可完成的依赖；M3-11 仅固定 canonical bytes。M3-14 与所选 owner remediation 必须完成，治理合同或 rebuilt fixture 不得冒充动态验收。任一安全控制导致预算失败时任务保持 blocked，并提交可量化优化任务；不得删除安全控制或放宽预算而不经 ADR 与安全评审。
 
 ## Agent Handoff Requirements
 

@@ -10,6 +10,21 @@ const args = new Set(process.argv.slice(2));
 const baseIndex = process.argv.indexOf("--base-ref");
 const baseRef = baseIndex >= 0 ? process.argv[baseIndex + 1] : undefined;
 const reviewedWorkflowSuccessor = args.has("--allow-reviewed-workflows");
+const IMPLEMENTATION_FREEZE_SHA = "50a831b5275ac53846924dbf4d4c9d10d1b25b35";
+const PUBLICATION_SHA = "9fe48737d97853d1566cc2e642009d8ff1b8ab52";
+const TERMINAL_REQUEST_SHA = "b0771d4853e0a7de7fb9db802cac719e34c67229";
+const EXECUTION_IDENTITY_SHA = "96837a115f89e3866d56c315928314c9532b4b635859b6f5860c8d1c442e5357";
+const DIAGNOSTIC_WORKFLOW_SHA = "cbe4eca5667415c3712d54c9ceeef56967f7a268c089d1cfa091f122412f4bf6";
+const EVIDENCE_WORKFLOW_SHA = "cd91fb59f4905cb13639da43887de53bdbc5ff958e9bd023c3bcc7126493d704";
+const TERMINAL_PROOF = "docs/evidence/M3-14/terminal-official-proof.json";
+const TERMINAL_PAGE_SPECS = {
+  diagnosticRun: ["docs/evidence/M3-14/raw/diagnostic-run.json", "/repos/xiaokh31/androidAppHardening/actions/runs/32611656930", 13584, "95d174a5c369dd89cb31d345620aca06111a879b78b3e4dd29bbd2dbacd54a11"],
+  diagnosticJobs: ["docs/evidence/M3-14/raw/diagnostic-jobs-page-1.json", "/repos/xiaokh31/androidAppHardening/actions/runs/32611656930/jobs?per_page=100&page=1", 4490, "3e2e36ed673982b61deccfc1ace4f37dd90d1edf2debe9b1204e8dc9dc113219"],
+  diagnosticArtifacts: ["docs/evidence/M3-14/raw/diagnostic-artifacts-page-1.json", "/repos/xiaokh31/androidAppHardening/actions/runs/32611656930/artifacts?per_page=100&page=1", 33, "d3ad979d01443a9d7342e7fbe39064b41ebdb340029293f1b099bcfb6c493c42"],
+  terminalRun: ["docs/evidence/M3-14/raw/terminal-run.json", "/repos/xiaokh31/androidAppHardening/actions/runs/32612414400", 13365, "5862c875de76e180374c5a7279dad28360a06de7530a4e9846e376188fab6343"],
+  terminalJobs: ["docs/evidence/M3-14/raw/terminal-jobs-page-1.json", "/repos/xiaokh31/androidAppHardening/actions/runs/32612414400/jobs?per_page=100&page=1", 2738, "d7f8bda3c7ca1cef6a504ec7fefab08897b10d4695b81cc1c1cbbef63e18d4b3"],
+  terminalArtifacts: ["docs/evidence/M3-14/raw/terminal-artifacts-page-1.json", "/repos/xiaokh31/androidAppHardening/actions/runs/32612414400/artifacts?per_page=100&page=1", 33, "d3ad979d01443a9d7342e7fbe39064b41ebdb340029293f1b099bcfb6c493c42"],
+};
 
 function fail(message) {
   throw new Error(`M3-14 profile freeze: ${message}`);
@@ -42,6 +57,16 @@ function read(relative) {
   return fs.readFileSync(file, "utf8");
 }
 
+function readBytes(relative) {
+  const file = path.join(root, relative);
+  if (!fs.statSync(file, { throwIfNoEntry: false })?.isFile()) fail(`missing ${relative}`);
+  return fs.readFileSync(file);
+}
+
+function sha256Bytes(value) {
+  return crypto.createHash("sha256").update(value).digest("hex");
+}
+
 function digest(relative) {
   return crypto.createHash("sha256").update(fs.readFileSync(path.join(root, relative))).digest("hex");
 }
@@ -49,6 +74,165 @@ function digest(relative) {
 function gitOk(args, label) {
   const result = spawnSync("git", args, { cwd: root, encoding: "utf8", timeout: 30_000 });
   if (result.status !== 0) fail(`qualification ${label} differs`);
+}
+
+function gitOutput(args, label, encoding = "utf8") {
+  const result = spawnSync("git", args, { cwd: root, encoding, timeout: 30_000 });
+  if (result.status !== 0) fail(`${label} differs`);
+  return result.stdout;
+}
+
+function validatePublicationTopology(parent, changedFiles) {
+  if (parent !== IMPLEMENTATION_FREEZE_SHA) fail("publication parent differs");
+  const expected = [
+    ".github/workflows/m3-13-startup-attribution-evidence.yml",
+    ".github/workflows/m3-13-startup-attribution.yml",
+    "docs/evidence/M3-14/pre-run-ledger.json",
+  ];
+  if (JSON.stringify([...changedFiles].sort()) !== JSON.stringify(expected)) fail("publication changed-file set differs");
+}
+
+function validatePublicationBinding(model) {
+  const { ledger, diagnosticCandidate, evidenceCandidate, diagnostic, evidence } = model;
+  if (ledger.schemaVersion !== 1 || ledger.taskKey !== "M3-13-SUCCESSOR-DIAGNOSTIC-V1" ||
+      ledger.executionIdentitySha256 !== EXECUTION_IDENTITY_SHA ||
+      sha256Bytes(Buffer.from(JSON.stringify(ledger.executionIdentity))) !== EXECUTION_IDENTITY_SHA ||
+      ledger.executionIdentity?.implementationFreezeSha !== IMPLEMENTATION_FREEZE_SHA ||
+      ledger.executionIdentity?.diagnosticWorkflowCandidateSha256 !== DIAGNOSTIC_WORKFLOW_SHA ||
+      ledger.executionIdentity?.evidenceWorkflowCandidateSha256 !== EVIDENCE_WORKFLOW_SHA) {
+    fail("publication ledger identity differs");
+  }
+  if (sha256Bytes(diagnosticCandidate) !== DIAGNOSTIC_WORKFLOW_SHA ||
+      sha256Bytes(evidenceCandidate) !== EVIDENCE_WORKFLOW_SHA ||
+      !diagnostic.equals(diagnosticCandidate) || !evidence.equals(evidenceCandidate)) {
+    fail("published workflow bytes differ from immutable ledger candidates");
+  }
+}
+
+function verifyReviewedPublication() {
+  const ledgerPath = "docs/evidence/M3-14/pre-run-ledger.json";
+  const diagnosticCandidatePath = "tools/validation/m3-14/workflow-candidates/m3-13-startup-attribution.yml";
+  const evidenceCandidatePath = "tools/validation/m3-14/workflow-candidates/m3-13-startup-attribution-evidence.yml";
+  const diagnosticPath = ".github/workflows/m3-13-startup-attribution.yml";
+  const evidencePath = ".github/workflows/m3-13-startup-attribution-evidence.yml";
+  const ledgerBytes = readBytes(ledgerPath);
+  const model = {
+    ledger: JSON.parse(ledgerBytes.toString("utf8")),
+    diagnosticCandidate: readBytes(diagnosticCandidatePath),
+    evidenceCandidate: readBytes(evidenceCandidatePath),
+    diagnostic: readBytes(diagnosticPath),
+    evidence: readBytes(evidencePath),
+  };
+  validatePublicationBinding(model);
+  const parent = gitOutput(["rev-parse", `${PUBLICATION_SHA}^`], "publication parent").trim();
+  const changed = gitOutput(["diff", "--name-only", `${IMPLEMENTATION_FREEZE_SHA}..${PUBLICATION_SHA}`], "publication diff")
+    .trim().split(/\r?\n/u).filter(Boolean).map((value) => value.replaceAll("\\", "/"));
+  validatePublicationTopology(parent, changed);
+  for (const relative of [ledgerPath, diagnosticPath, evidencePath]) {
+    const published = gitOutput(["show", `${PUBLICATION_SHA}:${relative}`], `published ${relative}`, null);
+    if (!readBytes(relative).equals(published)) fail(`current ${relative} differs from immutable publication`);
+  }
+}
+
+function validateRun(run, expected) {
+  for (const [key, value] of Object.entries(expected)) {
+    if (key === "label") continue;
+    if (run?.[key] !== value) fail(`${expected.label} ${key} differs`);
+  }
+}
+
+function requireStep(job, number, name, conclusion, label) {
+  const matches = (job.steps ?? []).filter((step) => step.number === number);
+  if (matches.length !== 1 || matches[0].name !== name || matches[0].conclusion !== conclusion) {
+    fail(`${label} step ${number} differs`);
+  }
+}
+
+function validateTerminalSemantics(pages) {
+  validateRun(pages.diagnosticRun, {
+    label: "diagnostic run", id: 32611656930,
+    name: "M3-13-SUCCESSOR-DIAGNOSTIC-V1-580560859af80418058a088c6be3f7ab221e0ab37e21d76f19bf9177be35a419-883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd",
+    path: ".github/workflows/m3-13-startup-attribution.yml", head_sha: PUBLICATION_SHA,
+    event: "push", run_attempt: 1, status: "completed", conclusion: "failure",
+  });
+  validateRun(pages.terminalRun, {
+    label: "terminal run", id: 32612414400, name: "M3-13 successor startup attribution terminal evidence",
+    path: ".github/workflows/m3-13-startup-attribution-evidence.yml", head_sha: TERMINAL_REQUEST_SHA,
+    event: "push", run_attempt: 1, status: "completed", conclusion: "failure",
+  });
+  for (const [page, id, name, label] of [
+    [pages.diagnosticJobs, 97125597267, "m3-13-startup-attribution", "diagnostic job"],
+    [pages.terminalJobs, 97127412040, "m3-13-startup-attribution-terminal-evidence", "terminal job"],
+  ]) {
+    if (page.total_count !== 1 || page.jobs?.length !== 1 || page.jobs[0].id !== id ||
+        page.jobs[0].name !== name || page.jobs[0].status !== "completed" || page.jobs[0].conclusion !== "failure") {
+      fail(`${label} identity differs`);
+    }
+  }
+  const diagnosticJob = pages.diagnosticJobs.jobs[0];
+  for (const [number, name] of [
+    [2, "Check out exact diagnostic head"], [3, "Verify reviewed successor publication and full-history qualification"],
+    [4, "Prove first-and-only successor identity before Android setup"], [5, "Verify pinned Ubuntu runner"],
+    [9, "Prepare pinned API 36 r2 and Emulator 37.1.11"],
+    [10, "Download and verify canonical originals and retained profile package"],
+    [11, "Prepare verified M2-07 Native crypto source"], [12, "Build exact Release surfaces"],
+  ]) requireStep(diagnosticJob, number, name, "success", "diagnostic");
+  requireStep(diagnosticJob, 13, "Execute first-and-only API 36 attribution diagnostic", "failure", "diagnostic");
+  requireStep(diagnosticJob, 14, "Upload immutable raw diagnostic package", "skipped", "diagnostic");
+  const terminalJob = pages.terminalJobs.jobs[0];
+  for (const [number, name] of [
+    [2, "Check out terminal evidence head"], [3, "Bind terminal request to reviewed diagnostic bytes"],
+    [4, "Verify pinned Ubuntu runner"], [5, "Set up Node.js"],
+  ]) requireStep(terminalJob, number, name, "success", "terminal");
+  requireStep(terminalJob, 6, "Collect and verify official terminal evidence", "failure", "terminal");
+  requireStep(terminalJob, 7, "Upload terminal evidence", "skipped", "terminal");
+  for (const [page, label] of [[pages.diagnosticArtifacts, "diagnostic artifacts"], [pages.terminalArtifacts, "terminal artifacts"]]) {
+    if (page.total_count !== 0 || !Array.isArray(page.artifacts) || page.artifacts.length !== 0) fail(`${label} differ`);
+  }
+}
+
+function validateTerminalPageBindings(proof, rawPages) {
+  const pages = {};
+  for (const [key, [relative, endpoint, bytes, hash]] of Object.entries(TERMINAL_PAGE_SPECS)) {
+    const entry = proof.pages?.[key];
+    if (entry?.path !== relative || entry?.endpoint !== endpoint || entry?.bytes !== bytes || entry?.sha256 !== hash) {
+      fail(`terminal proof page ${key} differs`);
+    }
+    const raw = rawPages[key];
+    if (!Buffer.isBuffer(raw) || raw.length !== bytes || sha256Bytes(raw) !== hash) fail(`terminal raw page ${key} differs`);
+    pages[key] = JSON.parse(raw.toString("utf8"));
+  }
+  return pages;
+}
+
+function verifyTerminalEvidence() {
+  const proofText = read(TERMINAL_PROOF).replaceAll("\r\n", "\n");
+  const proof = JSON.parse(proofText);
+  if (proofText !== `${JSON.stringify(proof, null, 2)}\n`) fail("terminal proof is not canonical JSON");
+  if (proof.schemaVersion !== 1 || proof.taskId !== "M3-14" || proof.taskKey !== "M3-13-SUCCESSOR-DIAGNOSTIC-V1" ||
+      proof.executionIdentitySha256 !== EXECUTION_IDENTITY_SHA ||
+      proof.productTupleSha256 !== "883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd" ||
+      proof.publicationHeadSha !== PUBLICATION_SHA ||
+      proof.terminalRequestHeadSha !== TERMINAL_REQUEST_SHA || proof.retryPermitted !== false ||
+      proof.replacementPermitted !== false || proof.furtherRenewalPermitted !== false) fail("terminal proof contract differs");
+  const rawPages = Object.fromEntries(Object.entries(TERMINAL_PAGE_SPECS)
+    .map(([key, [relative]]) => [key, readBytes(relative)]));
+  const pages = validateTerminalPageBindings(proof, rawPages);
+  validateTerminalSemantics(pages);
+  if (proof.diagnostic?.runId !== 32611656930 || proof.diagnostic?.jobId !== 97125597267 ||
+      proof.diagnostic?.runAttempt !== 1 || proof.diagnostic?.failedStepNumber !== 13 ||
+      proof.diagnostic?.event !== "push" || proof.diagnostic?.status !== "completed" || proof.diagnostic?.conclusion !== "failure" ||
+      proof.diagnostic?.artifactCount !== 0 || proof.diagnostic?.retainedSamples !== 0 ||
+      proof.terminalEvidence?.runId !== 32612414400 || proof.terminalEvidence?.jobId !== 97127412040 ||
+      proof.terminalEvidence?.runAttempt !== 1 || proof.terminalEvidence?.failedStepNumber !== 6 ||
+      proof.terminalEvidence?.event !== "push" || proof.terminalEvidence?.status !== "completed" || proof.terminalEvidence?.conclusion !== "failure" ||
+      proof.terminalEvidence?.artifactCount !== 0) fail("terminal proof summary differs");
+  const parent = gitOutput(["rev-parse", `${TERMINAL_REQUEST_SHA}^`], "terminal request parent").trim();
+  const changed = gitOutput(["diff", "--name-only", `${PUBLICATION_SHA}..${TERMINAL_REQUEST_SHA}`], "terminal request diff")
+    .trim().split(/\r?\n/u).filter(Boolean).map((value) => value.replaceAll("\\", "/"));
+  if (parent !== PUBLICATION_SHA || JSON.stringify(changed) !== JSON.stringify(["docs/evidence/M3-14/diagnostic-terminal-request.json"])) {
+    fail("terminal request topology differs");
+  }
 }
 
 function verifyQualificationEvidence() {
@@ -302,12 +486,83 @@ function selfTest() {
       if (!rejected) fail(`workflow self-test mutation was accepted: ${name}`);
     }
   }
-  console.log(`M3-14 profile freeze self-test PASS mutations=${mutations.length + 6}`);
+  {
+    const loadPublicationModel = () => ({
+      ledger: JSON.parse(read("docs/evidence/M3-14/pre-run-ledger.json")),
+      diagnosticCandidate: readBytes("tools/validation/m3-14/workflow-candidates/m3-13-startup-attribution.yml"),
+      evidenceCandidate: readBytes("tools/validation/m3-14/workflow-candidates/m3-13-startup-attribution-evidence.yml"),
+      diagnostic: readBytes(".github/workflows/m3-13-startup-attribution.yml"),
+      evidence: readBytes(".github/workflows/m3-13-startup-attribution-evidence.yml"),
+    });
+    for (const [name, mutate] of [
+      ["publication-coordinated-workflow-drift", (model) => {
+        model.diagnosticCandidate = Buffer.concat([model.diagnosticCandidate, Buffer.from("# drift\n")]);
+        model.diagnostic = Buffer.from(model.diagnosticCandidate);
+      }],
+      ["publication-ledger-drift", (model) => {
+        model.ledger.executionIdentity.diagnosticWorkflowCandidateSha256 = "0".repeat(64);
+        model.ledger.executionIdentitySha256 = sha256Bytes(Buffer.from(JSON.stringify(model.ledger.executionIdentity)));
+      }],
+    ]) {
+      const model = loadPublicationModel();
+      mutate(model);
+      let rejected = false;
+      try { validatePublicationBinding(model); } catch { rejected = true; }
+      if (!rejected) fail(`publication mutation was accepted: ${name}`);
+    }
+    for (const [name, parent, files] of [
+      ["publication-parent", "0".repeat(40), [
+        ".github/workflows/m3-13-startup-attribution-evidence.yml",
+        ".github/workflows/m3-13-startup-attribution.yml",
+        "docs/evidence/M3-14/pre-run-ledger.json",
+      ]],
+      ["publication-path-set", IMPLEMENTATION_FREEZE_SHA, [
+        ".github/workflows/m3-13-startup-attribution-evidence.yml",
+        ".github/workflows/m3-13-startup-attribution.yml",
+        "docs/evidence/M3-14/pre-run-ledger.json",
+        "README.md",
+      ]],
+    ]) {
+      let rejected = false;
+      try { validatePublicationTopology(parent, files); } catch { rejected = true; }
+      if (!rejected) fail(`publication topology mutation was accepted: ${name}`);
+    }
+  }
+  {
+    const proof = JSON.parse(read(TERMINAL_PROOF));
+    proof.pages.diagnosticRun.sha256 = "0".repeat(64);
+    const rawPages = Object.fromEntries(Object.entries(TERMINAL_PAGE_SPECS)
+      .map(([key, [relative]]) => [key, readBytes(relative)]));
+    let rejected = false;
+    try { validateTerminalPageBindings(proof, rawPages); } catch { rejected = true; }
+    if (!rejected) fail("terminal proof hash mutation was accepted");
+
+    const loadPages = () => Object.fromEntries(Object.entries(TERMINAL_PAGE_SPECS)
+      .map(([key, [relative]]) => [key, JSON.parse(read(relative))]));
+    for (const [name, mutate] of [
+      ["terminal-diagnostic-run", (pages) => { pages.diagnosticRun.id += 1; }],
+      ["terminal-diagnostic-job", (pages) => { pages.diagnosticJobs.jobs[0].id += 1; }],
+      ["terminal-diagnostic-failed-step", (pages) => { pages.diagnosticJobs.jobs[0].steps.find((step) => step.number === 13).conclusion = "success"; }],
+      ["terminal-diagnostic-artifact", (pages) => { pages.diagnosticArtifacts.total_count = 1; }],
+      ["terminal-evidence-run", (pages) => { pages.terminalRun.id += 1; }],
+      ["terminal-evidence-job", (pages) => { pages.terminalJobs.jobs[0].id += 1; }],
+      ["terminal-evidence-artifact", (pages) => { pages.terminalArtifacts.total_count = 1; }],
+    ]) {
+      const pages = loadPages();
+      mutate(pages);
+      let rejected = false;
+      try { validateTerminalSemantics(pages); } catch { rejected = true; }
+      if (!rejected) fail(`terminal evidence mutation was accepted: ${name}`);
+    }
+  }
+  console.log(`M3-14 profile freeze self-test PASS mutations=${mutations.length + 18}`);
 }
 
 verifyProductionSurface();
 verifyQualificationEvidence();
 verifyTrackedDesign();
+if (reviewedWorkflowSuccessor) verifyReviewedPublication();
+verifyTerminalEvidence();
 verifyDiff();
 if (args.has("--self-test")) selfTest();
 console.log(`M3-14 profile freeze PASS workflows=${reviewedWorkflowSuccessor ? "reviewed" : "absent"} productionObserver=absent`);

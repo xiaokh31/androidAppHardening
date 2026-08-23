@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M3-14",
+  "taskKey": "M3-13-SUCCESSOR-DIAGNOSTIC-V1",
+  "executionIdentitySha256": "96837a115f89e3866d56c315928314c9532b4b635859b6f5860c8d1c442e5357",
+  "productTupleSha256": "883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd",
+  "publicationHeadSha": "9fe48737d97853d1566cc2e642009d8ff1b8ab52",
+  "terminalRequestHeadSha": "b0771d4853e0a7de7fb9db802cac719e34c67229",
+  "pages": {
+    "diagnosticRun": {
+      "path": "docs/evidence/M3-14/raw/diagnostic-run.json",
+      "endpoint": "/repos/xiaokh31/androidAppHardening/actions/runs/32611656930",
+      "bytes": 13584,
+      "sha256": "95d174a5c369dd89cb31d345620aca06111a879b78b3e4dd29bbd2dbacd54a11"
+    },
+    "diagnosticJobs": {
+      "path": "docs/evidence/M3-14/raw/diagnostic-jobs-page-1.json",
+      "endpoint": "/repos/xiaokh31/androidAppHardening/actions/runs/32611656930/jobs?per_page=100&page=1",
+      "bytes": 4490,
+      "sha256": "3e2e36ed673982b61deccfc1ace4f37dd90d1edf2debe9b1204e8dc9dc113219"
+    },
+    "diagnosticArtifacts": {
+      "path": "docs/evidence/M3-14/raw/diagnostic-artifacts-page-1.json",
+      "endpoint": "/repos/xiaokh31/androidAppHardening/actions/runs/32611656930/artifacts?per_page=100&page=1",
+      "bytes": 33,
+      "sha256": "d3ad979d01443a9d7342e7fbe39064b41ebdb340029293f1b099bcfb6c493c42"
+    },
+    "terminalRun": {
+      "path": "docs/evidence/M3-14/raw/terminal-run.json",
+      "endpoint": "/repos/xiaokh31/androidAppHardening/actions/runs/32612414400",
+      "bytes": 13365,
+      "sha256": "5862c875de76e180374c5a7279dad28360a06de7530a4e9846e376188fab6343"
+    },
+    "terminalJobs": {
+      "path": "docs/evidence/M3-14/raw/terminal-jobs-page-1.json",
+      "endpoint": "/repos/xiaokh31/androidAppHardening/actions/runs/32612414400/jobs?per_page=100&page=1",
+      "bytes": 2738,
+      "sha256": "d7f8bda3c7ca1cef6a504ec7fefab08897b10d4695b81cc1c1cbbef63e18d4b3"
+    },
+    "terminalArtifacts": {
+      "path": "docs/evidence/M3-14/raw/terminal-artifacts-page-1.json",
+      "endpoint": "/repos/xiaokh31/androidAppHardening/actions/runs/32612414400/artifacts?per_page=100&page=1",
+      "bytes": 33,
+      "sha256": "d3ad979d01443a9d7342e7fbe39064b41ebdb340029293f1b099bcfb6c493c42"
+    }
+  },
+  "diagnostic": {
+    "runId": 32611656930,
+    "jobId": 97125597267,
+    "runAttempt": 1,
+    "event": "push",
+    "status": "completed",
+    "conclusion": "failure",
+    "failedStepNumber": 13,
+    "artifactCount": 0,
+    "retainedSamples": 0
+  },
+  "terminalEvidence": {
+    "runId": 32612414400,
+    "jobId": 97127412040,
+    "runAttempt": 1,
+    "event": "push",
+    "status": "completed",
+    "conclusion": "failure",
+    "failedStepNumber": 6,
+    "artifactCount": 0
+  },
+  "retryPermitted": false,
+  "replacementPermitted": false,
+  "furtherRenewalPermitted": false
+}

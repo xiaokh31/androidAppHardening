@@ -1,8 +1,8 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260823-114703
-updated_at: 2026-08-23T11:47:03+08:00
+handoff_id: HO-20260823-115043
+updated_at: 2026-08-23T11:50:43+08:00
 updated_by: /root
 state: active
 source_branch: docs/m3-15-terminal-disposition-contract
@@ -24,6 +24,7 @@ Define and independently freeze the terminal disposition for the consumed ADR 00
 - M3-15 / Issue #84 is active on `docs/m3-15-terminal-disposition-contract` from `main@960eb9f406eb1a7b7c9b324598fb59936aa1c5b5`. ADR 0019 fixes decision `STOP_CURRENT_V0_1_RELEASE_LINE`, binds Draft PR #83 head `a112e4469699125a32d80e3c652cda7d4b6b7cf1`, canonical run `32611656930` and terminal run `32612414400`, and forbids retry, replacement, renewal, platform substitution, M3-05 resume and M4 start. This task is governance-only: no workflow, Android, KVM, emulator, device, benchmark, profile download or product implementation is executed.
 - First local freeze `2611111288fea99bbb70841b928b7df029cb610b` passed positive/local gates but independent read-only review 1 returned `P0=0/P1=2/P2=2`. It is rejected: phrase-only contradiction checks, path-only allowance of Governance/M3-08/M3-09/M3-13 validators, incomplete leaf mutations and stale pre-freeze HandOff wording must all be closed before a second freeze. The bounded remediation now adds document contradiction negatives, exact governed-file hashes and automatic every-leaf mutations; no terminal fact or product/release boundary changes.
 - Second freeze `399b4276bbff127349727cbf95fb8a9850277c22` closed the governed workflow/history-validator hashes and all 56 lock-leaf plus 9 document mutations, but independent read-only review 2 returned `P0=0/P1=1/P2=1`. It is rejected because finite natural-language regexes still allowed equivalent contradictory wording and HandOff had not recorded the second freeze. The final bounded remediation replaces semantic keyword enumeration with exact byte hashes for every changed contract/coordination file other than the self-validating lock and M3-15 validator, and records this lifecycle without changing the disposition.
+- Third contract freeze `fc81ed869ce6ad33404aff8b10976fe15daff611` fixed all 16 non-self contract/coordination files by exact SHA-256 and passed 68 every-leaf plus 9 document mutations. Independent read-only review 3 confirmed every technical, terminal and release boundary, returning only `P0=0/P1=0/P2=1` because HandOff had not yet named that already-submitted freeze and its next actions were stale. This coordination-only successor records that result and updates only HandOff plus its lock/validator hash binding; `fc81ed8` remains the reviewed contract freeze.
 - PR #83/Issue #82 and PR #63/Issue #22 remain open and unmerged during M3-15 review. Only after ADR 0019 merges may they be closed as terminally blocked without merging. No close, push or PR action has yet been taken for M3-15.
 - M3-13 is merged and complete on `main`. Final exact head `f60543c4d5ca2891cbdcab3a028054bd41e0f7f7` retained independent review `P0=0/P1=0/P2=0` and passed Build `32590407762` plus Governance `32590407768` on Ubuntu/Windows. PR #81 was converted to ready and merged with expected-head protection as `621117dc5639bf4c9c9e8696c554bbd2ab821d8c`; Issue #80 closed. The contract binds M3-10 run `32554806537` and terminal evidence run `32554917303`, fixes one future task key/run with `runAttempt=1`, and permits no further renewal. Both canonical successor workflows remain absent. No device, KVM, emulator, ARM, API 29 or benchmark ran; Android was not invoked.
 - Initial post-merge Governance `32602883324` exposed one coordination-only lifecycle defect: the M3-13 validator accepted only the pre-merge `active_task: M3-13` state. Commit `e2259f5821ee0c53897a2b450735e111612b082f` now accepts exactly either the reviewed active branch tuple or the merged-main `done` tuple, rejects a 66th invalid-lifecycle mutation, and keeps both successor workflows forbidden.
@@ -468,6 +469,18 @@ Define and independently freeze the terminal disposition for the consumed ADR 00
 - artifact: reviewer report retained in the M3-15 task conversation; final remediation is limited to exact contract-file hashing and HandOff lifecycle
 - sha256: 32641f4ec742ac6df06aba80f746ae41bb2618b4d5bd34eb50e19ebc1ad064ef
 - result: FAIL; P0=0/P1=1/P2=1, second freeze rejected because equivalent contradictory prose bypassed finite regexes and HandOff omitted the new freeze
+
+### M3-15 independent read-only review 3
+
+- task_id: M3-15
+- git_commit: fc81ed869ce6ad33404aff8b10976fe15daff611
+- command: independent strict read-only review of exact governed contract bytes, 77 mutations, terminal/release boundaries, base diff and HandOff lifecycle
+- exit_code: 1
+- environment: Windows read-only repository review; no network, Gradle, Android, KVM, benchmark or workflow execution
+- timestamp: 2026-08-23T11:50:43+08:00
+- artifact: reviewer report retained in the M3-15 task conversation; the sole remaining change is this coordination lifecycle record and its exact hash binding
+- sha256: 095f27481ab9b7c247300c3ec49603b32eb9320e92390db9ff3bf32019cab34a
+- result: FAIL; P0=0/P1=0/P2=1, all technical and governance boundaries passed but HandOff had not named the third freeze and still described already-completed actions
 
 ### M3-13 merger-ready and main merge
 
@@ -2043,14 +2056,14 @@ Define and independently freeze the terminal disposition for the consumed ADR 00
 
 ## Blockers and Required Approvals
 
-- Freezes `2611111` and `399b427` are rejected. The final bounded remediation must hash every controlled contract/coordination byte, pass local gates and become a third exact freeze.
-- Because M3-15 is security-sensitive release governance, an independent read-only review of the third freeze with `P0=0/P1=0/P2=0` is required before push or draft PR creation. Push/PR is not yet authorized by the current request.
+- Freezes `2611111` and `399b427` are rejected; third contract freeze `fc81ed8` closed all technical findings. Its only remaining P2 is addressed by this coordination-only lifecycle successor.
+- Because M3-15 is security-sensitive release governance, the current coordination successor must receive independent read-only `P0=0/P1=0/P2=0` confirmation before push or draft PR creation. Push/PR is not yet authorized by the current request.
 - M3-05 and M4 are terminally blocked for the current v0.1 tuple; no device state or alternate platform can unblock them.
 
 ## Ordered Next Actions
 
-1. Replace finite contradictory-prose matching with exact hashes for every controlled changed file and retain the lock/validator as the only self-validating exceptions.
-2. Run local governance-only validation, commit the third exact freeze and request independent read-only review 3; do not push before all-zero findings.
+1. Commit this coordination-only review-3 lifecycle record and its HandOff byte-hash binding without changing any contract decision or product/workflow file.
+2. Run one independent read-only review limited to the review-3 P2 closure; if it returns all zero, stop and wait for separate push/draft-PR authorization.
 3. After separate push/PR authorization, create the unique Issue #84 draft PR and run only Build/Governance required by the task contract.
 4. Only after ADR 0019 merges, close PR #83/Issue #82 and PR #63/Issue #22 without merging either draft; keep M4 unstarted.
 

@@ -46,7 +46,7 @@
   },
   "governedFileSha256": {
     ".github/workflows/governance.yml": "6e12ac72f285f35aaa74f6cf70ec685817d2f38d3b1a94f40a606c2dbceecf22",
-    "HandOff.md": "5a52a33952b40cc6dce8d9a44ad9cc279487fff65151a7c0096917da665bab7c",
+    "HandOff.md": "12bb7ed3eaf03ecdd6361dfa686821b2473861c2e8582c9ab7dd5eb098d7e222",
     "README.md": "c7331f4e1a007ebad8f5fb9f2e9200f63f1078919aa74c09f2799717fa223eae",
     "docs/PRODUCT_REQUIREMENTS.md": "4873fb18733a66618291056ea683e98101974e221e3d062b6dcbe342db54ce21",
     "docs/PROJECT_PLAN.md": "41c2620fe56bcc7e38b3405b9047cfc4a62966bd49bc7bb97bdf78748afb32c2",

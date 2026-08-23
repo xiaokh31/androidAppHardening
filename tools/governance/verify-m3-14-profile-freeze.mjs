@@ -27,7 +27,8 @@ function validateReviewedWorkflows(diagnostic, evidence) {
   for (const phrase of [
     "diagnostic-terminal-request.json", "collect-m3-14-github-evidence.mjs",
     "verify-m3-14-startup-attribution.mjs github-evidence", "m3-13-startup-attribution-terminal-evidence",
-    "fetch-depth: 0", "git rev-list --parents -n 1 HEAD", "git rev-parse HEAD^", "git diff --name-only",
+    "fetch-depth: 0", "git rev-list --parents -n 1 HEAD", "git rev-parse HEAD^",
+    "git diff --name-only \"$diagnostic_head\"..HEAD",
     "cancel-in-progress: false", "actions: read", "contents: read",
   ]) if (!evidence.includes(phrase)) fail(`evidence workflow missing ${phrase}`);
   for (const forbidden of ["workflow_dispatch", "pull_request", "schedule:"]) {
@@ -136,7 +137,6 @@ function verifyTrackedDesign() {
 
   const verifier = read("host/container/src/test/kotlin/ah/host/container/M310CanonicalProfileVerifier.kt");
   const retainedSupport = read("host/container/src/test/kotlin/ah/host/container/M310RetainedProfileSupport.kt");
-  const transformer = read("host/container/src/test/kotlin/ah/host/container/M310DexProfileTool.kt");
   const runner = read("tools/validation/run-m3-14-startup-attribution.mjs");
   const evidenceVerifier = read("tools/validation/verify-m3-14-startup-attribution.mjs");
   const profileLock = read("tools/validation/m3-10/canonical-profile-lock.json");
@@ -151,6 +151,7 @@ function verifyTrackedDesign() {
   validateContractText(m305, adr);
   for (const forbidden of [
     "host/container/src/test/kotlin/ah/host/container/M310CanonicalProfileDeriver.kt",
+    "host/container/src/test/kotlin/ah/host/container/M310DexProfileTool.kt",
     "tools/validation/prepare-m3-14-profile-package.mjs",
   ]) if (fs.existsSync(path.join(root, forbidden))) fail(`profile regeneration surface exists: ${forbidden}`);
   for (const phrase of [
@@ -182,9 +183,6 @@ function verifyTrackedDesign() {
     "h7-wrong-value",
     "VerifiedScheme.V3",
   ]) if (!verifier.includes(phrase)) fail(`verifier missing ${phrase}`);
-  for (const phrase of ["payload-baseline", "payload-protected", "shell", "h0", "h8", "p15"]) {
-    if (!transformer.includes(phrase)) fail(`transformer missing ${phrase}`);
-  }
   for (const phrase of ["validateProfileLock", "runDexdump", "recursiveArchiveContainsAny", "validateGithubEvidence",
     "validateReleaseArtifactLock", "validateProfileVerification", "validateEnvironmentLock", "EXPECTED_EVENTS",
     "requireTrackedLockCopy", "result.productTuple !== PRODUCT_TUPLE", "keys.slice(8)"]) {
@@ -296,13 +294,15 @@ function selfTest() {
       ["terminal-shallow-checkout", evidence.replace("fetch-depth: 0", "fetch-depth: 1")],
       ["terminal-parent-binding", evidence.replace("git rev-parse HEAD^", "git rev-parse HEAD")],
       ["terminal-diff-binding", evidence.replace("git diff --name-only", "git show --name-only")],
+      ["terminal-deletion-filter", evidence.replace("git diff --name-only \"$diagnostic_head\"..HEAD",
+        "git diff --name-only --diff-filter=ACMRTUXB \"$diagnostic_head\"..HEAD")],
     ]) {
       let rejected = false;
       try { validateReviewedWorkflows(diagnostic, mutated); } catch { rejected = true; }
       if (!rejected) fail(`workflow self-test mutation was accepted: ${name}`);
     }
   }
-  console.log(`M3-14 profile freeze self-test PASS mutations=${mutations.length + 5}`);
+  console.log(`M3-14 profile freeze self-test PASS mutations=${mutations.length + 6}`);
 }
 
 verifyProductionSurface();

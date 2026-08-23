@@ -36,7 +36,7 @@ jobs:
           git cat-file -e "$diagnostic_head^{commit}"
           test "$(git rev-list --parents -n 1 HEAD | wc -w)" -eq 2
           test "$(git rev-parse HEAD^)" = "$diagnostic_head"
-          mapfile -t changed < <(git diff --name-only --diff-filter=ACMRTUXB "$diagnostic_head"..HEAD)
+          mapfile -t changed < <(git diff --name-only "$diagnostic_head"..HEAD)
           test "${#changed[@]}" -eq 1
           test "${changed[0]}" = "$request"
           test -z "$(git status --porcelain)"

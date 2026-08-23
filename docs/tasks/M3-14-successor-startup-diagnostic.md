@@ -43,7 +43,7 @@ M3-10 run `32554806537` consumed its original identity during provenance preflig
 - Terminal verifier binding official run/job/artifact pages, exact package bytes, execution identity, first-and-only history and owner arithmetic.
 - Two non-executable workflow-candidate files outside `.github/workflows/`.
 - Workflow-absent implementation freeze, local evidence and independent read-only review.
-- Only after all-zero review: one direct-child publication that copies candidate bytes unchanged to the canonical paths, records the pre-run ledger, and consumes exactly one `runAttempt=1` API 36 execution.
+- Only after all-zero review: publish the unchanged workflow-absent freeze, create its unique draft PR, and require exact-head Ubuntu/Windows Build plus Governance to pass. Keep that reviewed/qualified HEAD unchanged until one direct-child publication copies candidate bytes unchanged to the canonical paths, records the pre-run ledger, and consumes exactly one `runAttempt=1` API 36 execution.
 
 ## In Scope
 
@@ -64,7 +64,7 @@ M3-10 run `32554806537` consumed its original identity during provenance preflig
 
 - The workflow-absent freeze contains candidates, runner, verifier, locks and evidence but neither canonical workflow path.
 - Independent review is read-only and must cover the exact frozen Git object. Any code or contract change after review invalidates the review and requires another frozen review.
-- Publication is an exact direct child of the reviewed implementation freeze. Before Android setup it proves ancestry, candidate byte hashes, implementation/runner/verifier/lock hashes, qualification evidence and the pre-run execution-identity ledger.
+- Publication is an exact direct child of the independently reviewed and exact-head Build/Governance-qualified workflow-absent freeze. Before Android setup it proves ancestry, candidate byte hashes, implementation/runner/verifier/lock hashes, qualification evidence and the pre-run execution-identity ledger.
 - The diagnostic run name excludes candidate hashes to avoid self-reference; the ledger binds the complete ordered execution identity.
 - The workflow checks the complete repository run history for exact path/name/event/branch uniqueness before environment setup, then requires its own run ID and `runAttempt=1`.
 - Success, `UNATTRIBUTED`, failure, cancellation, missing/invalid artifact and cleanup failure all consume the entitlement.
@@ -99,6 +99,7 @@ M3-10 run `32554806537` consumed its original identity during provenance preflig
 - ADR 0016 owner arithmetic reconciles every retained ordinal and returns exactly one eligible owner or `UNATTRIBUTED` without tie-breaking or result shopping.
 - Local validation, governance, strict HandOff, diff/sensitive/UTF-8 checks and named mutations pass on a clean freeze.
 - An independent read-only Agent reports `P0=0/P1=0/P2=0` on that exact freeze before canonical publication.
+- That same unchanged workflow-absent freeze is pushed, becomes the unique Issue #82 draft PR head, and passes exact-head Ubuntu/Windows Build plus Governance before publication.
 - After publication, the sole API 36 run has `runAttempt=1`; no second diagnostic run is accepted or attempted.
 
 ## Required Tests
@@ -117,7 +118,7 @@ M3-10 run `32554806537` consumed its original identity during provenance preflig
 - Exact profile release/asset/archive/member identities and the four APK/package verifier report hashes.
 - Named mutation inventory and exact pass/fail counts.
 - Independent read-only review report bound to the frozen commit.
-- If and only if review is all zero: publication commit, execution identity/ledger hashes, official API 36 run/job/artifact metadata and terminal evidence.
+- If and only if review is all zero: exact-freeze draft PR and Ubuntu/Windows Build/Governance evidence; only after those pass, publication commit, execution identity/ledger hashes, official API 36 run/job/artifact metadata and terminal evidence.
 - README/task/HandOff update and later owner-remediation decision; `UNATTRIBUTED` or any invalid execution leaves M3-05 blocked.
 
 ## Likely Files
@@ -135,8 +136,8 @@ M3-10 run `32554806537` consumed its original identity during provenance preflig
 
 ## Dependencies and Blockers
 
-M3-14 depends on completed M3-09, M3-11, M3-12 and M3-13. Its implementation freeze is blocked from canonical workflow publication until an independent read-only review returns all zero. M3-05 remains blocked until the sole valid successor result selects one eligible owner and a separate owner-remediation task completes; an invalid, failed or `UNATTRIBUTED` result does not authorize M3-05.
+M3-14 depends on completed M3-09, M3-11, M3-12 and M3-13. Its implementation freeze is blocked from canonical workflow publication until an independent read-only review returns all zero and that unchanged workflow-absent head passes exact-head Ubuntu/Windows Build plus Governance through the unique draft PR. M3-05 remains blocked until the sole valid successor result selects one eligible owner and a separate owner-remediation task completes; an invalid, failed or `UNATTRIBUTED` result does not authorize M3-05.
 
 ## Agent Handoff Requirements
 
-Use branch `feat/m3-14-successor-startup-diagnostic`, Issue #82 and one PR. Distinguish implementation freeze, all-zero review, workflow publication, run consumption and terminal evidence as separate commits/states. Explicitly state whether either canonical workflow exists and whether the one-time execution entitlement has been consumed.
+Use branch `feat/m3-14-successor-startup-diagnostic`, Issue #82 and one PR. Distinguish implementation freeze, all-zero review, unchanged exact-freeze draft-PR CI qualification, workflow publication, run consumption and terminal evidence as separate states. Explicitly state whether either canonical workflow exists and whether the one-time execution entitlement has been consumed.

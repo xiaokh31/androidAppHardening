@@ -22,9 +22,10 @@ No API 36 run, emulator, Android device, ARM, API 29, M3-05 benchmark, profile r
 | --- | ---: | --- |
 | repository-local Gradle `:host:container:testClasses :host:container:m310MetadataSelfTest --offline --no-daemon` with `JAVA_HOME` set to Temurin 17 | 0 | Kotlin test sources compile; 10 metadata/probe-adjacency mutations pass |
 | repository-local Gradle `:host:container:m310VerifyProfiles --offline --no-daemon` against exact retained M3-12 APKs and M3-11 originals | 0 | four-APK byte/signer/manifest/container/share/probe verification PASS |
-| `node tools/governance/verify-m3-14-profile-freeze.mjs --self-test --base-ref 960eb9f406eb1a7b7c9b324598fb59936aa1c5b5` | 0 | 13 mutations PASS; workflows absent; production observer absent |
+| `node tools/governance/verify-m3-14-profile-freeze.mjs --self-test --base-ref 960eb9f406eb1a7b7c9b324598fb59936aa1c5b5` | 0 | 14 mutations PASS, including terminal deletion filtering; workflows absent; production observer absent |
 | `node tools/validation/verify-m3-14-startup-attribution.mjs self-test` | 0 | canonical model PASS; 59 rejected mutations, including 10 execution-ledger mutations |
 | `node tools/validation/run-m3-14-startup-attribution.mjs --cleanup-self-test` | 0 | 8 cleanup failure injections PASS |
+| `node tools/validation/collect-m3-14-github-evidence.mjs --self-test` | 0 | 5 redirect cases plus 1 archive-bound case PASS |
 | Node syntax checks for the freeze, runner, verifier and collector | 0 | PASS |
 | `node tools/governance/validate-project-package.mjs` | 0 | 39 task cards, 11 core docs, 18 ADRs |
 | strict HandOff validation with the documented pending-clean allowance | 0 | PASS before freeze commit |
@@ -42,7 +43,7 @@ The Kotlin compiler daemon could not create its default per-user cache marker; G
 - Retained profile archive: `21816d2a843bb5c59902224c7bf786d546d52b4a5b2d1168ca0c449a2ca27964`
 - Profile verifier: `622c1ef1047aeeac4fb34c275747c181fb68dee6c5edf01daa3cf86b98df0468`
 - Read-only retained-profile support: `dc4e5459612d7a0fe0b6fff3a5d966d8e87d08aab862aade29cc2eb1b99a2bc9`
-- Workflow-absent freeze validator: `7b7da497c3b67da40645d8f1c9a0e42fdba29c5cada8f064fb49b1975729b564`
+- Workflow-absent freeze validator: `5394091a49d9a77d6a693fb82c543aeb2af1a3195b0b02051d39c8dbacd544bb`
 - Attribution verifier: `eb490d82c3c4d84e66c6bc48a4133740c9db8cfcd182073ef45724f68cb5c43c`
 - Runner: `194a2908f75b753416c6b3160e98485b8246b42dcb3a8702f16783fdc0390449`
 - Terminal collector: `7b329fa2d4d64c2723cd4a4f9a3a5f129a70e993da4bd5b7e6f14a97a4f39605`

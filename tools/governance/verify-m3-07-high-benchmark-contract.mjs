@@ -88,21 +88,35 @@ function overrideFindings(text) {
   return overridePatterns.filter(([, pattern]) => pattern.test(text)).map(([name]) => name);
 }
 
+const allowedArtifactBindings = new Map([
+  ["originalBaseline", "M310_ORIGINAL_BASELINE"],
+  ["originalProtected", "M310_ORIGINAL_PROTECTED"],
+  ["profileBaseline", "M310_PROFILE_BASELINE"],
+  ["profileProtected", "M310_PROFILE_PROTECTED"],
+  ["observerDex", "M310_OBSERVER_DEX"],
+  ["derivationManifest", "M310_DERIVATION_MANIFEST"],
+  ["profileLock", "M310_PROFILE_LOCK"],
+  ["report", "M310_VERIFICATION_REPORT"],
+]);
+
+const artifactBindingPattern = /^\s*([A-Za-z][A-Za-z0-9]*)\.set\(providers\.environmentVariable\("([A-Z0-9_]+)"\)\)\s*$/;
+
+function artifactBindingFindings(relative, text) {
+  if (normalize(relative) !== "host/container/build.gradle.kts") return [];
+  const fieldPattern = new RegExp(`\\b(?:${[...allowedArtifactBindings.keys()].join("|")})\\.set\\(`);
+  return text.split(/\r?\n/).flatMap((line, index) => {
+    if (!fieldPattern.test(line) && !/environmentVariable\("M310_[A-Z0-9_]+"\)/.test(line)) return [];
+    const match = artifactBindingPattern.exec(line);
+    if (match !== null && allowedArtifactBindings.get(match[1]) === match[2]) return [];
+    return [`line ${index + 1}: invalid M310 artifact binding`];
+  });
+}
+
 function overrideScanText(relative, text) {
   if (normalize(relative) !== "host/container/build.gradle.kts") return text;
-  const allowedBindings = new Map([
-    ["originalBaseline", "M310_ORIGINAL_BASELINE"],
-    ["originalProtected", "M310_ORIGINAL_PROTECTED"],
-    ["profileBaseline", "M310_PROFILE_BASELINE"],
-    ["profileProtected", "M310_PROFILE_PROTECTED"],
-    ["observerDex", "M310_OBSERVER_DEX"],
-    ["derivationManifest", "M310_DERIVATION_MANIFEST"],
-    ["profileLock", "M310_PROFILE_LOCK"],
-    ["report", "M310_VERIFICATION_REPORT"],
-  ]);
   return text.split(/\r?\n/).filter(line => {
-    const match = /^\s*([A-Za-z][A-Za-z0-9]*)\.set\(providers\.environmentVariable\("([A-Z0-9_]+)"\)\)\s*$/.exec(line);
-    return match === null || allowedBindings.get(match[1]) !== match[2];
+    const match = artifactBindingPattern.exec(line);
+    return match === null || allowedArtifactBindings.get(match[1]) !== match[2];
   }).join("\n");
 }
 
@@ -127,7 +141,9 @@ function scanProductionTree(root) {
     for (const absolute of walkFiles(path.join(root, top))) {
       const relative = normalize(path.relative(root, absolute));
       if (!isProductionSurface(relative) || !relevantExtension(relative)) continue;
-      const text = overrideScanText(relative, fs.readFileSync(absolute, "utf8"));
+      const raw = fs.readFileSync(absolute, "utf8");
+      for (const finding of artifactBindingFindings(relative, raw)) errors.push(`${relative}: ${finding}`);
+      const text = overrideScanText(relative, raw);
       for (const finding of overrideFindings(text)) errors.push(`${relative}: prohibited ${finding}`);
     }
   }
@@ -318,14 +334,25 @@ function runSelfTest() {
     const m310Root = path.join(temp, "m310-test-artifact-bindings");
     const m310Build = path.join(m310Root, "host/container/build.gradle.kts");
     fs.mkdirSync(path.dirname(m310Build), { recursive: true });
-    fs.writeFileSync(m310Build, [
-      'profileBaseline.set(providers.environmentVariable("M310_PROFILE_BASELINE"))',
-      'profileProtected.set(providers.environmentVariable("M310_PROFILE_PROTECTED"))',
-      'profileLock.set(providers.environmentVariable("M310_PROFILE_LOCK"))',
-    ].join("\n"), "utf8");
-    if (scanProductionTree(m310Root).length !== 0) throw new Error("exact M3-14 test artifact bindings rejected");
-    fs.appendFileSync(m310Build, '\nprofileOverride.set(providers.environmentVariable("M310_FORCE_HIGH_PROFILE"))\n', "utf8");
-    if (scanProductionTree(m310Root).length === 0) throw new Error("M3-14-like HIGH override escaped");
+    const exactBindings = [...allowedArtifactBindings].map(([field, variable]) =>
+      `${field}.set(providers.environmentVariable("${variable}"))`);
+    for (const [name, separator] of [["lf", "\n"], ["crlf", "\r\n"]]) {
+      fs.writeFileSync(m310Build, exactBindings.join(separator), "utf8");
+      if (scanProductionTree(m310Root).length !== 0) throw new Error(`exact M3-14 ${name} test artifact bindings rejected`);
+    }
+    const invalidBindings = [
+      'unknownField.set(providers.environmentVariable("M310_PROFILE_BASELINE"))',
+      'originalBaseline.set(providers.environmentVariable("M310_ORIGINAL_PROTECTED"))',
+      'originalBaseline.set(providers.environmentVariable("OTHER_ORIGINAL_BASELINE"))',
+      'originalBaseline.set(providers.environmentVariable("M310_ORIGINAL_BASELINE")) // trailing',
+      'profileOverride.set(providers.environmentVariable("M310_FORCE_HIGH_PROFILE"))',
+      'profileRisk.set(providers.environmentVariable("M310_RISK_PROFILE"))',
+      'productProfile.set(providers.environmentVariable("M310_PRODUCT_PROFILE"))',
+    ];
+    invalidBindings.forEach((content, index) => {
+      fs.writeFileSync(m310Build, content, "utf8");
+      if (scanProductionTree(m310Root).length === 0) throw new Error(`M3-14-like artifact binding mutation ${index} escaped`);
+    });
 
     const positive = validReport();
     if (reportCliExit(positive, temp, "positive") !== 0) throw new Error("positive report CLI failed");

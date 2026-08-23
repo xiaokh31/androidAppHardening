@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "executionIdentity": {
+    "schemaVersion": 1,
+    "contractIdentitySha256": "580560859af80418058a088c6be3f7ab221e0ab37e21d76f19bf9177be35a419",
+    "productTupleSha256": "883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd",
+    "profileArchiveSha256": "21816d2a843bb5c59902224c7bf786d546d52b4a5b2d1168ca0c449a2ca27964",
+    "implementationFreezeSha": "50a831b5275ac53846924dbf4d4c9d10d1b25b35",
+    "diagnosticWorkflowCandidateSha256": "cbe4eca5667415c3712d54c9ceeef56967f7a268c089d1cfa091f122412f4bf6",
+    "evidenceWorkflowCandidateSha256": "cd91fb59f4905cb13639da43887de53bdbc5ff958e9bd023c3bcc7126493d704",
+    "runnerSha256": "b379c17bf98c13dd6bf4217677e1615a59777b4d005682f06f6cae4a5cec7804",
+    "verifierSha256": "eb490d82c3c4d84e66c6bc48a4133740c9db8cfcd182073ef45724f68cb5c43c",
+    "environmentLockSha256": "6e8fe036b3eadc7dad0fd1eed90178d96feae569ab8cbbac5f94717e21f34a1f",
+    "toolchainLockSha256": "264d210c530bf4a4618a3d241c9b2c4600ac193053e9c782810bfdd743b78c68",
+    "qualificationEvidenceSha256": "ca8fa557e2ac6d5a4ec54f18850caeef31a20f299bc6ecd40f5229911d9378bd"
+  },
+  "executionIdentitySha256": "96837a115f89e3866d56c315928314c9532b4b635859b6f5860c8d1c442e5357",
+  "taskKey": "M3-13-SUCCESSOR-DIAGNOSTIC-V1",
+  "workflowPath": ".github/workflows/m3-13-startup-attribution.yml",
+  "workflowName": "M3-13-SUCCESSOR-DIAGNOSTIC-V1-580560859af80418058a088c6be3f7ab221e0ab37e21d76f19bf9177be35a419-883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd",
+  "jobName": "m3-13-startup-attribution",
+  "artifactName": "m3-13-startup-attribution-raw"
+}

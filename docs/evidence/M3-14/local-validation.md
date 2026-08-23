@@ -3,7 +3,7 @@
 - Task: M3-14 / Issue #82
 - Branch: `feat/m3-14-successor-startup-diagnostic`
 - Base: `960eb9f406eb1a7b7c9b324598fb59936aa1c5b5`
-- Candidate parent before the implementation freeze: `69b978cddb015a1d7c9d4877b4dbc1184f63eeac`
+- Implementation commit: `2367e8fdd8ce4eae753647475fdf3f2fe9abdc86`
 - Timestamp: `2026-08-23T08:49:03+08:00`
 - Environment: Windows 10 amd64; Git `2.52.0.windows.1`; Node.js `24.12.0`; repository-local Temurin JDK `17.0.19+10`; repository-local Gradle `9.5.0`
 

@@ -1,13 +1,13 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260823-082055
-updated_at: 2026-08-23T08:20:55+08:00
+handoff_id: HO-20260823-085042
+updated_at: 2026-08-23T08:50:42+08:00
 updated_by: /root
 state: active
 source_branch: feat/m3-14-successor-startup-diagnostic
 base_commit: 960eb9f406eb1a7b7c9b324598fb59936aa1c5b5
-working_tree: dirty
+working_tree: clean
 current_milestone: M3
 active_task: M3-14
 next_owner: /root
@@ -21,7 +21,7 @@ Implement the sole ADR 0018 successor diagnostic as M3-14, freeze it without can
 
 ## Current State
 
-- M3-14 is active on `feat/m3-14-successor-startup-diagnostic` from `main@960eb9f406eb1a7b7c9b324598fb59936aa1c5b5`; Issue #82 is the unique task issue. The workflow-absent implementation now contains retained M3-12 profile verification, exact M3-11 product binding, ADR 0018 execution-ledger validation, fail-closed runner/terminal evidence logic, fixed environment/toolchain locks, and two non-executable workflow candidates. The former profile derivation/signing entry point has been removed; only read-only retained-package verification and scratch negative-mutation ZIP writing remain. Local targeted Kotlin compilation, retained four-APK verification, 13 profile-freeze mutations, 59 attribution mutations, 8 cleanup injections, Node syntax, governance and strict HandOff pass. Both canonical ADR 0018 workflows remain absent and no API 36, emulator, device, ARM, API 29, M3-05 or owner-remediation work has run. The exact workflow-absent freeze still requires independent read-only `P0=0/P1=0/P2=0` before any direct-child workflow publication or `runAttempt=1` consumption.
+- M3-14 is active on `feat/m3-14-successor-startup-diagnostic` from `main@960eb9f406eb1a7b7c9b324598fb59936aa1c5b5`; Issue #82 is the unique task issue. Implementation commit `2367e8fdd8ce4eae753647475fdf3f2fe9abdc86` contains retained M3-12 profile verification, exact M3-11 product binding, ADR 0018 execution-ledger validation, fail-closed runner/terminal evidence logic, fixed environment/toolchain locks, and two non-executable workflow candidates. The former profile derivation/signing entry point has been removed; only read-only retained-package verification and scratch negative-mutation ZIP writing remain. Local targeted Kotlin compilation, retained four-APK verification, 13 profile-freeze mutations, 59 attribution mutations, 8 cleanup injections, Node syntax, governance and strict HandOff pass. Both canonical ADR 0018 workflows remain absent and no API 36, emulator, device, ARM, API 29, M3-05 or owner-remediation work has run. The exact workflow-absent evidence successor still requires independent read-only `P0=0/P1=0/P2=0` before any direct-child workflow publication or `runAttempt=1` consumption.
 - M3-13 is merged and complete on `main`. Final exact head `f60543c4d5ca2891cbdcab3a028054bd41e0f7f7` retained independent review `P0=0/P1=0/P2=0` and passed Build `32590407762` plus Governance `32590407768` on Ubuntu/Windows. PR #81 was converted to ready and merged with expected-head protection as `621117dc5639bf4c9c9e8696c554bbd2ab821d8c`; Issue #80 closed. The contract binds M3-10 run `32554806537` and terminal evidence run `32554917303`, fixes one future task key/run with `runAttempt=1`, and permits no further renewal. Both canonical successor workflows remain absent. No device, KVM, emulator, ARM, API 29 or benchmark ran; Android was not invoked.
 - Initial post-merge Governance `32602883324` exposed one coordination-only lifecycle defect: the M3-13 validator accepted only the pre-merge `active_task: M3-13` state. Commit `e2259f5821ee0c53897a2b450735e111612b082f` now accepts exactly either the reviewed active branch tuple or the merged-main `done` tuple, rejects a 66th invalid-lifecycle mutation, and keeps both successor workflows forbidden.
 - M3-13 independent review 1 rejected implementation `55997e61a2f734ab3d7ed5f8a44a44064b526ac3` / evidence `bec3d0ddeccc356c31f69add2e37e197cd127531` with `P0=0/P1=3/P2=1`: execution-identity self-reference, missing retained raw official API pages, terminal M3-10 still listed as an M3-05 completion dependency, and incomplete local evidence fields. No push or PR occurred.

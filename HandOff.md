@@ -1,10 +1,10 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260823-094432
-updated_at: 2026-08-23T09:44:32+08:00
+handoff_id: HO-20260823-101845
+updated_at: 2026-08-23T10:18:45+08:00
 updated_by: /root
-state: active
+state: blocked
 source_branch: feat/m3-14-successor-startup-diagnostic
 base_commit: 960eb9f406eb1a7b7c9b324598fb59936aa1c5b5
 working_tree: clean
@@ -17,11 +17,11 @@ next_owner: /root
 
 ## Objective
 
-Implement the sole ADR 0018 successor diagnostic as M3-14, freeze it without canonical workflows, obtain an independent all-zero review, and only then publish and consume the one API 36 `runAttempt=1` entitlement.
+Record the terminally failed sole ADR 0018 successor diagnostic without retry or substitution, preserve its zero-artifact evidence, and keep M3-05 blocked because no eligible performance owner was selected.
 
 ## Current State
 
-- M3-14 is active on `feat/m3-14-successor-startup-diagnostic` from `main@960eb9f406eb1a7b7c9b324598fb59936aa1c5b5`; Issue #82 is the unique task issue. Draft PR #83 initial Governance failed before the M3-14 gate because M3-07 rejected M310 test-only environment bindings. Two scanner-exception attempts were independently rejected (`0a2e19a`: `P1=1`; `feb794b`: `P1=1`). Root-fix implementation `70b6fd6758ae88bc8f4afa452eb12d1a07bc57c9`, clean freeze `8220cbf52615ccfee0d18f39825ea40bae7ceb6d`, and evidence child `018f5fe499e99687059e2260154b819faae04fa7` remove the exception entirely and passed independent review with `P0=0/P1=0/P2=0`. Exact-head Governance `32610524766` then exposed one stale M3-08 INDEX assertion; bounded fix `0146342e7aad12bb7199b9d8c8b662fcd1a16c7e` and evidence child `dc894f042778bc79deb85b86585180514fe4e0a4` synchronized it and passed independent strict review with `P0=0/P1=0/P2=0`. Replacement Governance `32610885085` reached M3-09 and exposed its two analogous pre-M3-14 INDEX assertions: the route omitted `M3-14 → owner remediation`, and the M3-05 dependency token omitted M3-14. Bounded M3-09 correction `49c8d5eeadc2bb35de7df660e5b977ff38cd4597` updates those two assertions and the existing `m305_dependency_removed` mutation to the current exact dependency list; its independent strict review reports `P0=0/P1=0/P2=0`, and the complete CI Governance command sequence passes through M3-07/08/09/11/13 plus M3-14 workflow-absent validation. Old Builds `32610524678` and `32610885081` were cancelled after Governance made their heads ineligible; all automatically triggered KVM/fuzz/equivalence runs were cancelled. Both canonical ADR 0018 workflows remain absent; no API 36 diagnostic, emulator, device, ARM, API 29, M3-05 or owner-remediation work has run, and `runAttempt=1` remains unconsumed.
+- M3-14 is terminally blocked on `feat/m3-14-successor-startup-diagnostic`; Issue #82 and Draft PR #83 remain its unique workstream. The workflow-absent freeze and all bounded CI remediations passed independent review with `P0=0/P1=0/P2=0`; exact qualified head `50a831b5275ac53846924dbf4d4c9d10d1b25b35` passed Ubuntu/Windows Build `32611183901` and Governance `32611183890`. Direct-child publication `9fe48737d97853d1566cc2e642009d8ff1b8ab52` consumed the sole API 36 successor in run `32611656930`, job `97125597267`, attempt `1`. API 36/AVD setup, fixed-input retrieval, Native preparation and Release build passed, then profile-lock preflight failed before any campaign or retained sample; artifact count is zero. Direct-child terminal request `b0771d4853e0a7de7fb9db802cac719e34c67229` triggered only terminal evidence run `32612414400`, job `97127412040`; it failed closed on `terminal artifact selection differs`, also with zero artifacts. ADR 0018 forbids retry, replacement or further renewal. No eligible owner was selected; M3-05, ARM, API 29 and physical-device work remain blocked.
 - M3-13 is merged and complete on `main`. Final exact head `f60543c4d5ca2891cbdcab3a028054bd41e0f7f7` retained independent review `P0=0/P1=0/P2=0` and passed Build `32590407762` plus Governance `32590407768` on Ubuntu/Windows. PR #81 was converted to ready and merged with expected-head protection as `621117dc5639bf4c9c9e8696c554bbd2ab821d8c`; Issue #80 closed. The contract binds M3-10 run `32554806537` and terminal evidence run `32554917303`, fixes one future task key/run with `runAttempt=1`, and permits no further renewal. Both canonical successor workflows remain absent. No device, KVM, emulator, ARM, API 29 or benchmark ran; Android was not invoked.
 - Initial post-merge Governance `32602883324` exposed one coordination-only lifecycle defect: the M3-13 validator accepted only the pre-merge `active_task: M3-13` state. Commit `e2259f5821ee0c53897a2b450735e111612b082f` now accepts exactly either the reviewed active branch tuple or the merged-main `done` tuple, rejects a 66th invalid-lifecycle mutation, and keeps both successor workflows forbidden.
 - M3-13 independent review 1 rejected implementation `55997e61a2f734ab3d7ed5f8a44a44064b526ac3` / evidence `bec3d0ddeccc356c31f69add2e37e197cd127531` with `P0=0/P1=3/P2=1`: execution-identity self-reference, missing retained raw official API pages, terminal M3-10 still listed as an M3-05 completion dependency, and incomplete local evidence fields. No push or PR occurred.
@@ -218,7 +218,7 @@ Implement the sole ADR 0018 successor diagnostic as M3-14, freeze it without can
 | M3-12 | `/root` | `main` | done | M3-11 | PR #76 merged as `c1d81fe`; Issue #75 closed; all-zero review, immutable asset lock and final dual-platform Build/Governance passed |
 | M3-10 | `/root` | `feat/m3-10-startup-attribution-diagnostic` | blocked | M3-09, M3-11, M3-12 | Run `32554806537` consumed the identity before Android setup; zero artifact; PR #79 remains draft and cannot rerun |
 | M3-13 | `/root` | `main` | done | M3-09, M3-11, M3-12 | PR #81 merged as `621117d`; Issue #80 closed; all-zero review and exact-head dual-platform Build/Governance passed without adding a diagnostic workflow |
-| M3-14 | `/root` | `feat/m3-14-successor-startup-diagnostic` | in_progress | M3-09, M3-11, M3-12, M3-13 | Freeze workflow-absent implementation, obtain independent all-zero review, then publish and execute the sole API 36 `runAttempt=1` successor |
+| M3-14 | `/root` | `feat/m3-14-successor-startup-diagnostic` | blocked | M3-09, M3-11, M3-12, M3-13 | Run `32611656930` consumed attempt 1 before campaigns and produced zero artifacts; terminal run `32612414400` rejected the missing artifact; no retry or renewal |
 | M3-05 | `/root` | `chore/m3-05-performance-benchmarks` | blocked | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08, M3-09, M3-13, M3-14 | Treat terminal M3-10 as history; keep PR #63 blocked until M3-14 yields a valid owner and the selected owner remediation completes |
 | M3-03 | `/root` | `main` | done | M0-03, M1-05, M1-06, M2-06, M3-01 | PR #55 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | done | M2-02 | PR #54 merged; exact regression, ASan/UBSan, dual-platform Build/Governance and independent review passed |
@@ -2016,16 +2016,15 @@ Implement the sole ADR 0018 successor diagnostic as M3-14, freeze it without can
 
 ## Blockers and Required Approvals
 
-- M3-14 implementation is authorized, but both canonical workflows remain forbidden until its exact workflow-absent freeze passes independent read-only review with `P0=0/P1=0/P2=0`.
-- After that all-zero review, the existing authorization permits exactly one direct-child publication and one API 36 x86_64 `runAttempt=1`; success, failure, cancellation, invalid evidence or `UNATTRIBUTED` consumes the entitlement and no renewal is allowed.
-- M3-05 remains blocked until the successor produces an eligible owner and the selected owner remediation completes. The unlocked physical device does not satisfy or change the API 36 x86_64 successor identity.
+- M3-14 run `32611656930` consumed the only API 36 x86_64 `runAttempt=1` and failed before campaigns with zero artifacts; terminal evidence run `32612414400` independently rejected that missing artifact.
+- ADR 0018 permits no retry, replacement result or further renewal. Canonical workflow files remain as historical reviewed execution surfaces but must not be changed to trigger another run.
+- M3-05 remains blocked because the successor selected no eligible owner. ARM, API 29 and the unlocked physical device cannot substitute for the consumed identity.
 
 ## Ordered Next Actions
 
-1. Freeze and independently review the bounded stale M3-09 INDEX-assertion CI fix until the replacement workflow-absent head again reaches `P0=0/P1=0/P2=0`.
-2. Push the reviewed replacement to draft PR #83 and require its exact-head Ubuntu/Windows Build plus Governance to pass.
-3. Without changing the qualified freeze, create its exact direct-child ledger/publication commit, copy candidates unchanged to the canonical paths, and execute the sole API 36 `runAttempt=1` workflow.
-4. Collect terminal official evidence, update README/HandOff, and keep M3-05/ARM/API 29/physical-device work blocked until a valid owner and separate remediation are complete.
+1. Freeze and independently review this terminal-state documentation plus the bounded M3-13 published-workflow self-test correction.
+2. Push only the reviewed terminal-state successor; verify that neither canonical diagnostic nor terminal evidence workflow reruns.
+3. Keep PR #83 Draft, M3-14/M3-05 blocked, and require a new project-level decision before any unrelated next task; no diagnostic renewal is available.
 
 ## Relevant Files and Artifacts
 
@@ -2046,6 +2045,8 @@ Implement the sole ADR 0018 successor diagnostic as M3-14, freeze it without can
 - `docs/evidence/M3-14/ci-fix-2-read-only-review.md`
 - `docs/evidence/M3-14/ci-fix-3-local.md`
 - `docs/evidence/M3-14/ci-fix-3-read-only-review.md`
+- `docs/evidence/M3-14/diagnostic-terminal-request.json`
+- `docs/evidence/M3-14/terminal-blocked.md`
 - `tools/governance/verify-m3-13-diagnostic-identity-contract.mjs`
 - Issue #82; Issue #80; M3-10 draft PR #79; predecessor run `32554806537`; terminal evidence run `32554917303`
 - `docs/evidence/M2-07/ubuntu-runner-20260816-maintenance.md`

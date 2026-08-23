@@ -138,6 +138,10 @@ M3-10 run `32554806537` consumed its original identity during provenance preflig
 
 M3-14 depends on completed M3-09, M3-11, M3-12 and M3-13. Its implementation freeze is blocked from canonical workflow publication until an independent read-only review returns all zero and that unchanged workflow-absent head passes exact-head Ubuntu/Windows Build plus Governance through the unique draft PR. M3-05 remains blocked until the sole valid successor result selects one eligible owner and a separate owner-remediation task completes; an invalid, failed or `UNATTRIBUTED` result does not authorize M3-05.
 
+## Terminal Outcome
+
+The reviewed publication consumed the only successor entitlement in GitHub Actions run `32611656930` at exact head `9fe48737d97853d1566cc2e642009d8ff1b8ab52`, `runAttempt=1`. API 36 setup, AVD boot, fixed-input retrieval and Release-surface build completed, but the diagnostic stopped fail-closed in profile-lock preflight before either campaign produced a retained sample. The run uploaded no artifact. Direct-child terminal request `b0771d4853e0a7de7fb9db802cac719e34c67229` triggered terminal evidence run `32612414400`; the collector rejected the missing diagnostic artifact and also uploaded no artifact. This is a failed/invalid terminal outcome under ADR 0018, so M3-14 is blocked, no retry or renewal is permitted, no owner remediation is selected, and M3-05 remains blocked.
+
 ## Agent Handoff Requirements
 
 Use branch `feat/m3-14-successor-startup-diagnostic`, Issue #82 and one PR. Distinguish implementation freeze, all-zero review, unchanged exact-freeze draft-PR CI qualification, workflow publication, run consumption and terminal evidence as separate states. Explicitly state whether either canonical workflow exists and whether the one-time execution entitlement has been consumed.

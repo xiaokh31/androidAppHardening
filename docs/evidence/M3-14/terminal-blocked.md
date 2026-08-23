@@ -1,0 +1,32 @@
+# M3-14 terminal blocked evidence
+
+- Task: M3-14 / Issue #82 / Draft PR #83
+- Execution identity: `96837a115f89e3866d56c315928314c9532b4b635859b6f5860c8d1c442e5357`
+- Product tuple: `883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd`
+- Publication head: `9fe48737d97853d1566cc2e642009d8ff1b8ab52`
+- Terminal request head: `b0771d4853e0a7de7fb9db802cac719e34c67229`
+- Timestamp verified: `2026-08-23T10:18:45+08:00`
+
+## Canonical diagnostic
+
+- Workflow run: `32611656930`; job: `97125597267`; event: `push`; attempt: `1`; conclusion: `failure`.
+- Publication/ancestry, first-and-only history, pinned Ubuntu runner, JDK/Node, pinned API 36 r2 plus Emulator 37.1.11, canonical input retrieval, Native crypto preparation and exact Release-surface build all completed successfully.
+- Step 13, `Execute first-and-only API 36 attribution diagnostic`, failed in `run-m3-14-startup-attribution.mjs` preflight when its first `verify-m3-14-startup-attribution.mjs` subprocess exited `1`. The retained log identifies the preflight boundary but does not retain that subprocess's stderr, so no narrower cause is claimed.
+- The AVD had booted, but no A/B campaign completed, no retained sample was produced, and upload step 14 was skipped.
+- Official artifacts response: `{"total_count":0,"artifacts":[]}`.
+- Cleanup trap terminated the emulator. No retry, replacement run or ARM/API 29/physical-device substitute is permitted.
+
+## Terminal evidence
+
+- Direct-child request changed only `docs/evidence/M3-14/diagnostic-terminal-request.json` and bound diagnostic run `32611656930` to the reviewed publication bytes.
+- Workflow run: `32612414400`; job: `97127412040`; event: `push`; attempt: `1`; conclusion: `failure`.
+- Direct-child binding, pinned runner and Node setup passed. The collector then failed closed with `M3-14 evidence collection failed: terminal artifact selection differs` because the canonical diagnostic had no artifact; upload was skipped.
+- Official terminal-run artifacts response: `{"total_count":0,"artifacts":[]}`.
+
+## Commands and conclusion
+
+The coordinator queried the two immutable run/job records with `gh run view <run-id> --json databaseId,headSha,event,status,conclusion,attempt,jobs,url`, read failed-step logs with `gh run view <run-id> --log-failed`, and queried each `/actions/runs/<run-id>/artifacts` endpoint. All queries completed with exit code `0` on Windows 10, GitHub CLI `2.96.0`, at the timestamp above. These were read-only queries and triggered no workflow.
+
+ADR 0018 defines failure, invalid/missing artifact and terminal-evidence rejection as entitlement-consuming outcomes. Therefore `runAttempt=1` is permanently consumed, M3-14 is blocked rather than complete, no performance owner was selected, and M3-05 remains blocked.
+
+The terminal-state coordination also corrects two post-publication governance assumptions without changing either canonical workflow: the M3-13 workflow-presence mutations now toggle the actual state instead of assigning an already-true value, and the PR M3-14 gate explicitly permits only the reviewed workflow pair through `--allow-reviewed-workflows`. Both continue to reject incomplete or byte-drifted publication.

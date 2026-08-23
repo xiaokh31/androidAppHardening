@@ -351,11 +351,17 @@ function validateState(state) {
   const successorActive = texts.handoff.includes("active_task: M3-14")
     && texts.handoff.includes("| M3-13 | `/root` | `main` | done |")
     && texts.handoff.includes("| M3-14 | `/root` | `feat/m3-14-successor-startup-diagnostic` | in_progress |");
-  if (!handoffActive && !handoffDone && !successorActive) {
-    errors.push(`${paths.handoff}: M3-13 lifecycle must be the exact active branch state or the exact merged-main done state`);
+  const successorBlocked = texts.handoff.includes("state: blocked")
+    && texts.handoff.includes("active_task: M3-14")
+    && texts.handoff.includes("| M3-13 | `/root` | `main` | done |")
+    && texts.handoff.includes("| M3-14 | `/root` | `feat/m3-14-successor-startup-diagnostic` | blocked |")
+    && texts.handoff.includes("32611656930")
+    && texts.handoff.includes("32612414400");
+  if (!handoffActive && !handoffDone && !successorActive && !successorBlocked) {
+    errors.push(`${paths.handoff}: M3-13 lifecycle must be active, merged-main done, or the exact terminal M3-14 blocked state`);
   }
 
-  if (successorActive) {
+  if (successorActive || successorBlocked) {
     if (workflowPresence.diagnostic !== workflowPresence.evidence) errors.push("successor canonical workflow pair is incomplete");
     if (workflowPresence.diagnostic && !workflowPresence.reviewedPublication) errors.push("successor publication differs from reviewed candidates/ledger");
   } else {
@@ -476,8 +482,8 @@ function runSelfTest(baseState) {
       .replace("active_task: NONE", "active_task: M3-05")
       .replace("| M3-13 | `/root` | `main` | done |", "| M3-13 | `/root` | `main` | review |");
   } });
-  cases.push({ name: "diagnostic-workflow-present", mutate: (state) => { state.workflowPresence.diagnostic = true; } });
-  cases.push({ name: "evidence-workflow-present", mutate: (state) => { state.workflowPresence.evidence = true; } });
+  cases.push({ name: "diagnostic-workflow-pair-incomplete", mutate: (state) => { state.workflowPresence.diagnostic = !state.workflowPresence.diagnostic; } });
+  cases.push({ name: "evidence-workflow-pair-incomplete", mutate: (state) => { state.workflowPresence.evidence = !state.workflowPresence.evidence; } });
 
   for (const testCase of cases) {
     const mutated = clone(baseState);

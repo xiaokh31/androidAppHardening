@@ -115,7 +115,7 @@ jobs:
         env:
           M314_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          node tools/governance/verify-m3-14-profile-freeze.mjs --self-test --base-ref "$M314_BASE_SHA"
+          node tools/governance/verify-m3-14-profile-freeze.mjs --self-test --base-ref "$M314_BASE_SHA" --allow-reviewed-workflows
           node tools/validation/verify-m3-14-startup-attribution.mjs self-test
           node tools/validation/run-m3-14-startup-attribution.mjs --cleanup-self-test
           node tools/validation/collect-m3-14-github-evidence.mjs --self-test

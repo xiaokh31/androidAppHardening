@@ -10,11 +10,11 @@
 ## Canonical diagnostic
 
 - Workflow run: `32611656930`; job: `97125597267`; event: `push`; attempt: `1`; conclusion: `failure`.
-- Publication/ancestry, first-and-only history, pinned Ubuntu runner, JDK/Node, pinned API 36 r2 plus Emulator 37.1.11, canonical input retrieval, Native crypto preparation and exact Release-surface build all completed successfully.
-- Step 13, `Execute first-and-only API 36 attribution diagnostic`, failed in `run-m3-14-startup-attribution.mjs` preflight when its first `verify-m3-14-startup-attribution.mjs` subprocess exited `1`. The retained log identifies the preflight boundary but does not retain that subprocess's stderr, so no narrower cause is claimed.
-- The AVD had booted, but no A/B campaign completed, no retained sample was produced, and upload step 14 was skipped.
+- Publication/ancestry, first-and-only history, pinned Ubuntu runner, JDK/Node, pinned API 36 r2 plus Emulator 37.1.11 preparation, canonical input retrieval, Native crypto preparation and exact Release-surface build steps all completed successfully.
+- Step 13, `Execute first-and-only API 36 attribution diagnostic`, failed. The retained official API pages do not expose a more precise boundary inside that monolithic step, so no preflight, campaign, sample or cleanup detail is claimed.
+- Upload step 14 was skipped.
 - Official artifacts response: `{"total_count":0,"artifacts":[]}`.
-- Cleanup trap terminated the emulator. No retry, replacement run or ARM/API 29/physical-device substitute is permitted.
+- No retry, replacement run or ARM/API 29/physical-device substitute is permitted.
 
 ## Terminal evidence
 
@@ -40,4 +40,4 @@ The six raw official API response bodies are retained byte-for-byte under `docs/
 
 ADR 0018 defines failure, invalid/missing artifact and terminal-evidence rejection as entitlement-consuming outcomes. Therefore `runAttempt=1` is permanently consumed, M3-14 is blocked rather than complete, no performance owner was selected, and M3-05 remains blocked.
 
-The terminal-state coordination also corrects two post-publication governance assumptions without changing either canonical workflow: the M3-13 workflow-presence mutations now toggle the actual state instead of assigning an already-true value, and the PR M3-14 gate explicitly permits only the ledger-bound reviewed workflow pair through `--allow-reviewed-workflows`. Candidate/live hashes, the recomputed execution identity, the fixed publication parent and its exact three-path diff are all required; incomplete, coordinated-drifted or ledger-drifted publication is rejected.
+The terminal-state coordination also corrects two post-publication governance assumptions without changing either canonical workflow or the terminal request: the M3-13 workflow-presence mutations now toggle the actual state instead of assigning an already-true value, and the PR M3-14 gate explicitly permits only the ledger-bound reviewed workflow pair through `--allow-reviewed-workflows`. Candidate/live hashes, the recomputed execution identity, the fixed publication parent and its exact three-path diff, and the immutable current terminal-request blob are all required; incomplete, coordinated-drifted, ledger-drifted or request-drifted publication is rejected.

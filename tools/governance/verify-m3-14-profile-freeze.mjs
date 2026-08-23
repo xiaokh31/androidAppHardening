@@ -13,6 +13,7 @@ const reviewedWorkflowSuccessor = args.has("--allow-reviewed-workflows");
 const IMPLEMENTATION_FREEZE_SHA = "50a831b5275ac53846924dbf4d4c9d10d1b25b35";
 const PUBLICATION_SHA = "9fe48737d97853d1566cc2e642009d8ff1b8ab52";
 const TERMINAL_REQUEST_SHA = "b0771d4853e0a7de7fb9db802cac719e34c67229";
+const TERMINAL_REQUEST_PATH = "docs/evidence/M3-14/diagnostic-terminal-request.json";
 const EXECUTION_IDENTITY_SHA = "96837a115f89e3866d56c315928314c9532b4b635859b6f5860c8d1c442e5357";
 const DIAGNOSTIC_WORKFLOW_SHA = "cbe4eca5667415c3712d54c9ceeef56967f7a268c089d1cfa091f122412f4bf6";
 const EVIDENCE_WORKFLOW_SHA = "cd91fb59f4905cb13639da43887de53bdbc5ff958e9bd023c3bcc7126493d704";
@@ -205,6 +206,23 @@ function validateTerminalPageBindings(proof, rawPages) {
   return pages;
 }
 
+function validateTerminalRequest(value) {
+  if (JSON.stringify(Object.keys(value)) !== JSON.stringify([
+    "schemaVersion", "taskKey", "productTuple", "executionIdentitySha256", "diagnosticHeadSha", "diagnosticRunId",
+  ]) || value.schemaVersion !== 1 || value.taskKey !== "M3-13-SUCCESSOR-DIAGNOSTIC-V1" ||
+      value.productTuple !== "883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd" ||
+      value.executionIdentitySha256 !== EXECUTION_IDENTITY_SHA || value.diagnosticHeadSha !== PUBLICATION_SHA ||
+      value.diagnosticRunId !== 32611656930) fail("terminal request fields differ");
+}
+
+function validateTerminalRequestBytes(current, published) {
+  if (!current.equals(published)) fail("current terminal request differs from immutable triggering request");
+  const text = current.toString("utf8").replaceAll("\r\n", "\n");
+  const value = JSON.parse(text);
+  if (text !== `${JSON.stringify(value, null, 2)}\n`) fail("terminal request is not canonical JSON");
+  validateTerminalRequest(value);
+}
+
 function verifyTerminalEvidence() {
   const proofText = read(TERMINAL_PROOF).replaceAll("\r\n", "\n");
   const proof = JSON.parse(proofText);
@@ -222,15 +240,18 @@ function verifyTerminalEvidence() {
   if (proof.diagnostic?.runId !== 32611656930 || proof.diagnostic?.jobId !== 97125597267 ||
       proof.diagnostic?.runAttempt !== 1 || proof.diagnostic?.failedStepNumber !== 13 ||
       proof.diagnostic?.event !== "push" || proof.diagnostic?.status !== "completed" || proof.diagnostic?.conclusion !== "failure" ||
-      proof.diagnostic?.artifactCount !== 0 || proof.diagnostic?.retainedSamples !== 0 ||
+      proof.diagnostic?.artifactCount !== 0 ||
       proof.terminalEvidence?.runId !== 32612414400 || proof.terminalEvidence?.jobId !== 97127412040 ||
       proof.terminalEvidence?.runAttempt !== 1 || proof.terminalEvidence?.failedStepNumber !== 6 ||
       proof.terminalEvidence?.event !== "push" || proof.terminalEvidence?.status !== "completed" || proof.terminalEvidence?.conclusion !== "failure" ||
       proof.terminalEvidence?.artifactCount !== 0) fail("terminal proof summary differs");
+  const currentRequest = readBytes(TERMINAL_REQUEST_PATH);
+  const publishedRequest = gitOutput(["show", `${TERMINAL_REQUEST_SHA}:${TERMINAL_REQUEST_PATH}`], "immutable terminal request", null);
+  validateTerminalRequestBytes(currentRequest, publishedRequest);
   const parent = gitOutput(["rev-parse", `${TERMINAL_REQUEST_SHA}^`], "terminal request parent").trim();
   const changed = gitOutput(["diff", "--name-only", `${PUBLICATION_SHA}..${TERMINAL_REQUEST_SHA}`], "terminal request diff")
     .trim().split(/\r?\n/u).filter(Boolean).map((value) => value.replaceAll("\\", "/"));
-  if (parent !== PUBLICATION_SHA || JSON.stringify(changed) !== JSON.stringify(["docs/evidence/M3-14/diagnostic-terminal-request.json"])) {
+  if (parent !== PUBLICATION_SHA || JSON.stringify(changed) !== JSON.stringify([TERMINAL_REQUEST_PATH])) {
     fail("terminal request topology differs");
   }
 }
@@ -529,6 +550,17 @@ function selfTest() {
     }
   }
   {
+    const currentRequest = readBytes(TERMINAL_REQUEST_PATH);
+    const publishedRequest = Buffer.from(currentRequest);
+    let requestBytesRejected = false;
+    try { validateTerminalRequestBytes(Buffer.concat([currentRequest, Buffer.from(" ")]), publishedRequest); } catch { requestBytesRejected = true; }
+    if (!requestBytesRejected) fail("terminal request byte mutation was accepted");
+    const requestValue = JSON.parse(currentRequest.toString("utf8"));
+    requestValue.diagnosticRunId += 1;
+    let requestFieldRejected = false;
+    try { validateTerminalRequest(requestValue); } catch { requestFieldRejected = true; }
+    if (!requestFieldRejected) fail("terminal request field mutation was accepted");
+
     const proof = JSON.parse(read(TERMINAL_PROOF));
     proof.pages.diagnosticRun.sha256 = "0".repeat(64);
     const rawPages = Object.fromEntries(Object.entries(TERMINAL_PAGE_SPECS)
@@ -555,7 +587,7 @@ function selfTest() {
       if (!rejected) fail(`terminal evidence mutation was accepted: ${name}`);
     }
   }
-  console.log(`M3-14 profile freeze self-test PASS mutations=${mutations.length + 18}`);
+  console.log(`M3-14 profile freeze self-test PASS mutations=${mutations.length + 20}`);
 }
 
 verifyProductionSurface();

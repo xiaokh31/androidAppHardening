@@ -52,8 +52,7 @@
     "status": "completed",
     "conclusion": "failure",
     "failedStepNumber": 13,
-    "artifactCount": 0,
-    "retainedSamples": 0
+    "artifactCount": 0
   },
   "terminalEvidence": {
     "runId": 32612414400,

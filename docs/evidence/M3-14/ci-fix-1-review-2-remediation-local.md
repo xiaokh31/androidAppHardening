@@ -1,6 +1,7 @@
 # M3-14 CI fix 1 second review remediation
 
 - Rejected freeze: `feb794b450825dddb1c295add8a8448217e74fa3`
+- Root-fix implementation: `70b6fd6758ae88bc8f4afa452eb12d1a07bc57c9`
 - Independent result: `FAIL — P0=0/P1=1/P2=0`
 - Timestamp: `2026-08-23T09:25:24+08:00`
 

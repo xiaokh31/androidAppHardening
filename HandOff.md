@@ -1,13 +1,13 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260823-091916
-updated_at: 2026-08-23T09:19:16+08:00
+handoff_id: HO-20260823-092100
+updated_at: 2026-08-23T09:21:00+08:00
 updated_by: /root
 state: active
 source_branch: feat/m3-14-successor-startup-diagnostic
 base_commit: 960eb9f406eb1a7b7c9b324598fb59936aa1c5b5
-working_tree: dirty
+working_tree: clean
 current_milestone: M3
 active_task: M3-14
 next_owner: /root
@@ -21,7 +21,7 @@ Implement the sole ADR 0018 successor diagnostic as M3-14, freeze it without can
 
 ## Current State
 
-- M3-14 is active on `feat/m3-14-successor-startup-diagnostic` from `main@960eb9f406eb1a7b7c9b324598fb59936aa1c5b5`; Issue #82 is the unique task issue. Workflow-absent reviewed head `2ba90618734bf4f509eb6052a3ce649e50aca71a` passed independent `P0=0/P1=0/P2=0`, was pushed, and opened unique draft PR #83. Initial Governance `32609765769` failed before the M3-14 gate because the inherited M3-07 scanner rejected exact test-only M310 bindings; outdated Build and automatically triggered KVM/fuzz/equivalence runs were cancelled. First CI-fix freeze `0a2e19a1e1c9201b968a0d7a3c7b674339947b6d` failed bounded review with `P0=0/P1=1/P2=0` because wrong non-profile swaps and trailing text did not reach the generic HIGH regex. Current remediation adds an explicit fail-closed M310 binding parser, 8/8 LF and CRLF positive mappings, and separate wrong-field, swapped/wrong-variable, trailing, HIGH, risk and product-profile negatives. Both canonical ADR 0018 workflows remain absent; no API 36 diagnostic, emulator, device, ARM, API 29, M3-05 or owner-remediation work has run, and `runAttempt=1` remains unconsumed. A new exact freeze and all-zero independent review are required before replacement push.
+- M3-14 is active on `feat/m3-14-successor-startup-diagnostic` from `main@960eb9f406eb1a7b7c9b324598fb59936aa1c5b5`; Issue #82 is the unique task issue. Workflow-absent reviewed head `2ba90618734bf4f509eb6052a3ce649e50aca71a` opened draft PR #83, whose initial Governance failed before the M3-14 gate because M3-07 rejected exact test-only bindings. First CI-fix freeze `0a2e19a1e1c9201b968a0d7a3c7b674339947b6d` then failed bounded review because swapped non-profile mappings and trailing text could escape the generic HIGH regex. Remediation implementation `62fc6007ceefb088fe75b831ff872cc42beb79e7` adds an explicit fail-closed M310 binding parser, 8/8 LF and CRLF positive mappings, and separate wrong-field, swapped/wrong-variable, trailing, HIGH, risk and product-profile negatives; all short M3-07/M3-14/governance/strict gates pass. This clean evidence successor is the new exact workflow-absent review input. Both canonical ADR 0018 workflows remain absent; no API 36 diagnostic, emulator, device, ARM, API 29, M3-05 or owner-remediation work has run, and `runAttempt=1` remains unconsumed.
 - M3-13 is merged and complete on `main`. Final exact head `f60543c4d5ca2891cbdcab3a028054bd41e0f7f7` retained independent review `P0=0/P1=0/P2=0` and passed Build `32590407762` plus Governance `32590407768` on Ubuntu/Windows. PR #81 was converted to ready and merged with expected-head protection as `621117dc5639bf4c9c9e8696c554bbd2ab821d8c`; Issue #80 closed. The contract binds M3-10 run `32554806537` and terminal evidence run `32554917303`, fixes one future task key/run with `runAttempt=1`, and permits no further renewal. Both canonical successor workflows remain absent. No device, KVM, emulator, ARM, API 29 or benchmark ran; Android was not invoked.
 - Initial post-merge Governance `32602883324` exposed one coordination-only lifecycle defect: the M3-13 validator accepted only the pre-merge `active_task: M3-13` state. Commit `e2259f5821ee0c53897a2b450735e111612b082f` now accepts exactly either the reviewed active branch tuple or the merged-main `done` tuple, rejects a 66th invalid-lifecycle mutation, and keeps both successor workflows forbidden.
 - M3-13 independent review 1 rejected implementation `55997e61a2f734ab3d7ed5f8a44a44064b526ac3` / evidence `bec3d0ddeccc356c31f69add2e37e197cd127531` with `P0=0/P1=3/P2=1`: execution-identity self-reference, missing retained raw official API pages, terminal M3-10 still listed as an M3-05 completion dependency, and incomplete local evidence fields. No push or PR occurred.

@@ -205,6 +205,8 @@ API 36 启动重复性按 ADR 0015 使用同一 exact head、同一 KVM job 与�
 
 M3-10 run `32554806537` 在 provenance preflight 中失败并具有 zero device observation：未创建 AVD、未尝试安装、未保留样本且 artifact count 为零。ADR 0018 只允许在仓库保留的官方 run/job-step/artifact API 原始页面与 reviewed workflow bytes 共同证明该边界时固定一个不同的 successor execution identity；raw logs 因非必要且可能含路径而不进入证据。它必须绑定全历史 qualification、reviewed implementation/candidate workflow/runner/verifier/lock hashes，并在任何 Android setup 前复核；execution identity 只进入 pre-run ledger/artifact manifest，run name 仅绑定预先已知的 task/contract/product tuple，避免 candidate hash 自引用。改名 workflow 或 task 不能产生资格。Successor 无论成功、`UNATTRIBUTED`、取消或失败均终结资格，no further renewal；ARM、API 29、真机和完整 M3-05 矩阵不属于该诊断。
 
+M3-14 successor run `32611656930` / job `97125597267` / `runAttempt=1` 的诊断步骤失败、上传跳过且 artifact count 为零；terminal evidence run `32612414400` / job `97127412040` / `runAttempt=1` 也失败、上传跳过且 artifact count 为零。保留官方页面不能证明两项失败步骤内部的更窄边界，因此不得声称获得 sample、owner 或可恢复的局部结果。ADR 0019 选择 `STOP_CURRENT_V0_1_RELEASE_LINE`：禁止补测、重跑、替代平台和 M3-05/M4 继续，文档验证不构成性能证据。
+
 ## 8. 测试证据格式
 
 每项任务的证据至少记录：

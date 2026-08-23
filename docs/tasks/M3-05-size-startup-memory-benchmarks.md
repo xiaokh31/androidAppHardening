@@ -26,7 +26,7 @@ security_sensitive: false
 
 “APK 大小优化”只表示控制加固增量，不保证输出小于输入。基准必须同时报告原始值、加固值、绝对增量和百分比，且不得用单次测量或不同设备结果作结论。
 
-M3-10 run `32554806537` 在 Android 执行前终止且未产生归因。M3-13 只定义一个 successor diagnostic identity；它不运行测量，也不解除本任务。M3-05 remains blocked，直到该合同合并、后续独立实现产生有效 owner，且 owner remediation 完成。`UNATTRIBUTED` 或 successor 任意失败都不能用于恢复本任务。
+M3-10 run `32554806537` 在 Android 执行前终止且未产生归因。M3-13 只定义一个 successor diagnostic identity；M3-14 的唯一 successor run `32611656930` 与 terminal run `32612414400` 均失败且 artifact 为零，没有选择 owner。ADR 0018 禁止再次续期，ADR 0019 以 `STOP_CURRENT_V0_1_RELEASE_LINE` 固定终态。因此当前 v0.1 的 M3-05 remains blocked 且永久保持阻塞；PR #63 在 M3-15 合并后关闭且不得合并。`UNATTRIBUTED`、失败或替代平台都不能用于恢复本任务。
 
 ## Inputs
 
@@ -63,6 +63,7 @@ M3-10 run `32554806537` 在 Android 执行前终止且未产生归因。M3-13 �
 - 用 debug build 或开启 profiler 的数值作为发布门禁。
 - 为通过预算而关闭完整性、四 ABI 或内存保护。
 - 在独立归因实现任务完成前恢复 API 36 A/B、运行 ARM，或把未测平台/生命周期残差归因给 Runtime。
+- 在 ADR 0019 后恢复 PR #63、创建替代 benchmark、把 M3-15 文档当作性能证据或进入 M4。
 
 ## Implementation Decisions
 
@@ -81,6 +82,7 @@ M3-10 run `32554806537` 在 Android 执行前终止且未产生归因。M3-13 �
 - 两个 campaign 必须分别通过全部固定预算；三 fixture × 五 observed Android metric × `baselineP50`/`baselineP95`/`protectedP50`/`protectedP95`/`deltaP50`/`deltaP95` 共 90 行比较全部使用 `abs(A-B) / max(1, min(abs(A), abs(B))) <= 0.10`。不同 SHA、job、boot 或 artifact manifest 的报告仅可诊断，不得作为验收配对。
 - M3-05 只可修改 benchmark/test orchestration 以实现 ADR 0015。若稳定的双 campaign 仍超预算，必须另建 Runtime 优化任务与 ADR；不得在本任务修改生产 Runtime。
 - ADR 0016 生效后，PR #63 保持阻塞。M3-11 只固定原始字节，不授权诊断；terminal M3-10 只作为历史输入。只有 ADR 0018 的唯一 successor 使用该 exact pair 完成 `p0..p15` 与 protected `p0,h0,h1..h7,h8,p1` 归因、获得合格 owner，且对应 owner remediation 完成相应复核后，协调者才能决定是否恢复本任务。具体 successor implementation 与 remediation 任务 ID 必须在创建后加入本任务依赖，未创建的任务不得用占位 ID 冒充已满足依赖。
+- M3-14 已消耗 ADR 0018 唯一 successor 且未获得合格 owner，上述恢复前提已不可满足。ADR 0019 不提供 waiver；新版本必须使用新的 product tuple、ADR 和任务图，不能复用本任务或 PR #63。
 
 ## Public Interfaces
 

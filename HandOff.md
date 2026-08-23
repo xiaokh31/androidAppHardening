@@ -1,26 +1,28 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260823-063753
-updated_at: 2026-08-23T06:37:53+08:00
+handoff_id: HO-20260823-113012
+updated_at: 2026-08-23T11:30:12+08:00
 updated_by: /root
-state: blocked
-source_branch: main
-base_commit: 621117dc5639bf4c9c9e8696c554bbd2ab821d8c
+state: active
+source_branch: docs/m3-15-terminal-disposition-contract
+base_commit: 960eb9f406eb1a7b7c9b324598fb59936aa1c5b5
 working_tree: clean
 current_milestone: M3
-active_task: NONE
-next_owner: unassigned
+active_task: M3-15
+next_owner: /root
 ---
 
 # Project HandOff
 
 ## Objective
 
-Close M3-13 on `main` and preserve ADR 0018 as the sole narrow successor diagnostic identity contract after terminal M3-10, without retrying M3-10 or running Android.
+Define and independently freeze the terminal disposition for the consumed ADR 0018 successor: stop the current v0.1 release line without retrying M3-14, weakening M3-05/M4 gates or running Android.
 
 ## Current State
 
+- M3-15 / Issue #84 is active on `docs/m3-15-terminal-disposition-contract` from `main@960eb9f406eb1a7b7c9b324598fb59936aa1c5b5`. ADR 0019 fixes decision `STOP_CURRENT_V0_1_RELEASE_LINE`, binds Draft PR #83 head `a112e4469699125a32d80e3c652cda7d4b6b7cf1`, canonical run `32611656930` and terminal run `32612414400`, and forbids retry, replacement, renewal, platform substitution, M3-05 resume and M4 start. This task is governance-only: no workflow, Android, KVM, emulator, device, benchmark, profile download or product implementation is executed.
+- PR #83/Issue #82 and PR #63/Issue #22 remain open and unmerged during M3-15 review. Only after ADR 0019 merges may they be closed as terminally blocked without merging. No close, push or PR action has yet been taken for M3-15.
 - M3-13 is merged and complete on `main`. Final exact head `f60543c4d5ca2891cbdcab3a028054bd41e0f7f7` retained independent review `P0=0/P1=0/P2=0` and passed Build `32590407762` plus Governance `32590407768` on Ubuntu/Windows. PR #81 was converted to ready and merged with expected-head protection as `621117dc5639bf4c9c9e8696c554bbd2ab821d8c`; Issue #80 closed. The contract binds M3-10 run `32554806537` and terminal evidence run `32554917303`, fixes one future task key/run with `runAttempt=1`, and permits no further renewal. Both canonical successor workflows remain absent. No device, KVM, emulator, ARM, API 29 or benchmark ran; Android was not invoked.
 - Initial post-merge Governance `32602883324` exposed one coordination-only lifecycle defect: the M3-13 validator accepted only the pre-merge `active_task: M3-13` state. Commit `e2259f5821ee0c53897a2b450735e111612b082f` now accepts exactly either the reviewed active branch tuple or the merged-main `done` tuple, rejects a 66th invalid-lifecycle mutation, and keeps both successor workflows forbidden.
 - M3-13 independent review 1 rejected implementation `55997e61a2f734ab3d7ed5f8a44a44064b526ac3` / evidence `bec3d0ddeccc356c31f69add2e37e197cd127531` with `P0=0/P1=3/P2=1`: execution-identity self-reference, missing retained raw official API pages, terminal M3-10 still listed as an M3-05 completion dependency, and incomplete local evidence fields. No push or PR occurred.
@@ -217,7 +219,8 @@ Close M3-13 on `main` and preserve ADR 0018 as the sole narrow successor diagnos
 | M3-12 | `/root` | `main` | done | M3-11 | PR #76 merged as `c1d81fe`; Issue #75 closed; all-zero review, immutable asset lock and final dual-platform Build/Governance passed |
 | M3-10 | `/root` | `feat/m3-10-startup-attribution-diagnostic` | blocked | M3-09, M3-11, M3-12 | Run `32554806537` consumed the identity before Android setup; zero artifact; PR #79 remains draft and cannot rerun |
 | M3-13 | `/root` | `main` | done | M3-09, M3-11, M3-12 | PR #81 merged as `621117d`; Issue #80 closed; all-zero review and exact-head dual-platform Build/Governance passed without adding a diagnostic workflow |
-| M3-05 | `/root` | `chore/m3-05-performance-benchmarks` | blocked | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08, M3-09, M3-13 | Treat terminal M3-10 as history; keep PR #63 blocked until a separately authorized valid successor result and selected owner remediation complete, then add their concrete task IDs |
+| M3-15 | `/root` | `docs/m3-15-terminal-disposition-contract` | in_progress | M3-13 | Freeze ADR 0019, terminal lock and governance validator; then obtain independent P0/P1/P2 all-zero review before any push or PR |
+| M3-05 | `/root` | `chore/m3-05-performance-benchmarks` | blocked | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08, M3-09, M3-13 | ADR 0018 entitlement is consumed without owner; ADR 0019 keeps PR #63 terminally blocked and requires close-unmerged only after M3-15 merges |
 | M3-03 | `/root` | `main` | done | M0-03, M1-05, M1-06, M2-06, M3-01 | PR #55 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | done | M2-02 | PR #54 merged; exact regression, ASan/UBSan, dual-platform Build/Governance and independent review passed |
 | M3-02 | `/root` | `main` | done | M1-03, M1-04, M1-06, M2-02, M2-03, M2-06, M2-08, M3-01 | PR #52 merged; README/evidence synchronized; wait for next task selection |
@@ -2014,18 +2017,24 @@ Close M3-13 on `main` and preserve ADR 0018 as the sole narrow successor diagnos
 
 ## Blockers and Required Approvals
 
-- The separately assigned successor implementation and its unique API 36 execution are not yet authorized. M3-13 completion does not itself create that task, branch, Issue, workflow or run.
-- M3-05 remains blocked until the authorized successor produces an eligible owner and the selected owner remediation completes. The unlocked physical device does not satisfy or change the API 36 x86_64 successor identity.
+- M3-15 must first pass local positive/mutation/governance/strict/diff validation and be committed as an exact freeze.
+- Because M3-15 is security-sensitive release governance, an independent read-only review with `P0=0/P1=0/P2=0` is required before push or draft PR creation. Push/PR is not yet authorized by the current request.
+- M3-05 and M4 are terminally blocked for the current v0.1 tuple; no device state or alternate platform can unblock them.
 
 ## Ordered Next Actions
 
-1. Validate and publish this M3-13 post-merge README/HandOff coordination snapshot on `main`; require its Ubuntu/Windows Build and Governance and cancel out-of-scope automatic workflows.
-2. Wait for explicit assignment of the separate ADR 0018 successor implementation task, including its Issue and branch.
-3. Only that separately reviewed implementation may add the canonical successor workflow and consume the single API 36 `runAttempt=1` identity.
-4. Keep M3-05, ARM, API 29, physical-device work and any further diagnostic renewal blocked until the successor result selects an eligible owner and its bounded remediation completes.
+1. Complete the M3-15 validator, document synchronization and local governance-only validation.
+2. Commit the exact local freeze and request an independent read-only review; do not push before all-zero findings.
+3. After separate push/PR authorization, create the unique Issue #84 draft PR and run only Build/Governance required by the task contract.
+4. Only after ADR 0019 merges, close PR #83/Issue #82 and PR #63/Issue #22 without merging either draft; keep M4 unstarted.
 
 ## Relevant Files and Artifacts
 
+- `docs/adr/0019-terminal-diagnostic-disposition.md`
+- `docs/tasks/M3-15-terminal-diagnostic-disposition.md`
+- `docs/evidence/M3-15/terminal-disposition-lock.json`
+- `tools/governance/verify-m3-15-terminal-disposition-contract.mjs`
+- Issue #84; Draft PR #83; blocked PR #63; runs `32611656930` and `32612414400`
 - `docs/adr/0018-successor-diagnostic-execution-identity.md`
 - `docs/tasks/M3-13-successor-diagnostic-identity-contract.md`
 - `docs/evidence/M3-13/diagnostic-eligibility-lock.json`

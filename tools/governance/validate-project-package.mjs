@@ -54,6 +54,7 @@ const expectedTasks = [
   "M3-11-canonical-startup-artifact-contract.md",
   "M3-12-profile-package-retention.md",
   "M3-13-successor-diagnostic-identity-contract.md",
+  "M3-15-terminal-diagnostic-disposition.md",
 ];
 
 const taskHeadings = [
@@ -212,6 +213,8 @@ if (!fs.existsSync(indexFile)) {
             ? "75"
           : id === "M3-13"
             ? "80"
+          : id === "M3-15"
+            ? "84"
           : String(expectedTasks.indexOf(expectedFile) + 1);
     if (!issueMatch || issueMatch[1] !== issueMatch[2] || issueMatch[1] !== expectedIssue) {
       errors.push(`docs/tasks/INDEX.md: ${id} must link its GitHub Issue`);
@@ -453,6 +456,7 @@ for (const tool of [
   "tools/governance/verify-m3-11-canonical-artifact-contract.mjs",
   "tools/governance/verify-m3-12-profile-retention.mjs",
   "tools/governance/verify-m3-13-diagnostic-identity-contract.mjs",
+  "tools/governance/verify-m3-15-terminal-disposition-contract.mjs",
   "tools/validation/create-m3-12-profile-package.mjs",
   "tools/validation/fetch-m3-12-profile-package.mjs",
   "tools/validation/m3-12-security-scan.mjs",
@@ -496,6 +500,7 @@ const expectedAdrs = [
   "docs/adr/0016-end-to-end-startup-attribution-boundary.md",
   "docs/adr/0017-profile-package-retention-boundary.md",
   "docs/adr/0018-successor-diagnostic-execution-identity.md",
+  "docs/adr/0019-terminal-diagnostic-disposition.md",
 ];
 const adrHeadings = [
   "## Status",

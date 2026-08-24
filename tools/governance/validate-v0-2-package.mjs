@@ -758,6 +758,7 @@ function validateDiff(revision, found) {
     "tools/governance/verify-m3-13-diagnostic-identity-contract.mjs",
     "tools/governance/verify-m3-15-terminal-disposition-contract.mjs",
     ".agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs",
+    ".agents/skills/coordinate-project-handoff/SKILL.md",
     ".agents/skills/coordinate-project-handoff/references/handoff-schema.md",
     ".agents/skills/coordinate-project-handoff/assets/worker-handoff-template.md",
     ".agents/skills/plan-apk-hardening-change/SKILL.md",

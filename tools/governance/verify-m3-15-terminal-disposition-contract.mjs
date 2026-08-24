@@ -106,8 +106,8 @@ function validate(candidate, docs) {
     },
     governedFileSha256: {
       ".github/workflows/governance.yml": "6e12ac72f285f35aaa74f6cf70ec685817d2f38d3b1a94f40a606c2dbceecf22",
-      "HandOff.md": "12bb7ed3eaf03ecdd6361dfa686821b2473861c2e8582c9ab7dd5eb098d7e222",
-      "README.md": "c7331f4e1a007ebad8f5fb9f2e9200f63f1078919aa74c09f2799717fa223eae",
+      "HandOff.md": "93586e6d81c1ef9daffb470324046bc2bd911b1d08928c6c67d25d3ae53c54e5",
+      "README.md": "d23fb6cd1f00cfa81db1aad37bf50b8fd21871dcb18d3bc7e17d6f0e839a0ca9",
       "docs/PRODUCT_REQUIREMENTS.md": "4873fb18733a66618291056ea683e98101974e221e3d062b6dcbe342db54ce21",
       "docs/PROJECT_PLAN.md": "41c2620fe56bcc7e38b3405b9047cfc4a62966bd49bc7bb97bdf78748afb32c2",
       "docs/ROADMAP.md": "59ae73e72343a8154660da5024086f0417112e3b18d91fb7d4c76726554ea9c2",
@@ -171,7 +171,15 @@ function validate(candidate, docs) {
     requirements: ["STOP_CURRENT_V0_1_RELEASE_LINE", "不得生成 v0.1 Release Candidate"],
     strategy: ["32611656930", "32612414400", "artifact count 为零"],
     readme: ["M3-15", "STOP_CURRENT_V0_1_RELEASE_LINE"],
-    handoff: ["active_task: M3-15", "Issue #84", "PR #83", "PR #63"],
+    handoff: [
+      "state: blocked",
+      "source_branch: main",
+      "active_task: NONE",
+      "| M3-15 | `/root` | `main` | done |",
+      "Issue #84",
+      "PR #83",
+      "PR #63",
+    ],
   };
   for (const [key, phrases] of Object.entries(requiredPhrases)) {
     for (const phrase of phrases) {

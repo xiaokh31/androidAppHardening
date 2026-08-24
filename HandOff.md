@@ -1,31 +1,31 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260823-115043
-updated_at: 2026-08-23T11:50:43+08:00
+handoff_id: HO-20260824-100747
+updated_at: 2026-08-24T10:07:47+08:00
 updated_by: /root
-state: active
-source_branch: docs/m3-15-terminal-disposition-contract
-base_commit: 960eb9f406eb1a7b7c9b324598fb59936aa1c5b5
+state: blocked
+source_branch: main
+base_commit: 1f85035113f986a1914f34dae0d72b2e71588b72
 working_tree: clean
 current_milestone: M3
-active_task: M3-15
-next_owner: /root
+active_task: NONE
+next_owner: unassigned
 ---
 
 # Project HandOff
 
 ## Objective
 
-Define and independently freeze the terminal disposition for the consumed ADR 0018 successor: stop the current v0.1 release line without retrying M3-14, weakening M3-05/M4 gates or running Android.
+Preserve the accepted `STOP_CURRENT_V0_1_RELEASE_LINE` disposition on `main`: the current v0.1 tuple stays terminally blocked unless a separately authorized new versioned product tuple, ADR and task graph are created.
 
 ## Current State
 
-- M3-15 / Issue #84 is active on `docs/m3-15-terminal-disposition-contract` from `main@960eb9f406eb1a7b7c9b324598fb59936aa1c5b5`. ADR 0019 fixes decision `STOP_CURRENT_V0_1_RELEASE_LINE`, binds Draft PR #83 head `a112e4469699125a32d80e3c652cda7d4b6b7cf1`, canonical run `32611656930` and terminal run `32612414400`, and forbids retry, replacement, renewal, platform substitution, M3-05 resume and M4 start. This task is governance-only: no workflow, Android, KVM, emulator, device, benchmark, profile download or product implementation is executed.
+- M3-15 / Issue #84 is complete in the merger-target state prepared for `main`. ADR 0019 fixes decision `STOP_CURRENT_V0_1_RELEASE_LINE`, binds Draft PR #83 head `a112e4469699125a32d80e3c652cda7d4b6b7cf1`, canonical run `32611656930` and terminal run `32612414400`, and forbids retry, replacement, renewal, platform substitution, M3-05 resume and M4 start. Exact reviewed head `1f85035113f986a1914f34dae0d72b2e71588b72` passed independent review `P0=0/P1=0/P2=0`, Build `32681301084` and Governance `32681301062` on Ubuntu/Windows; PR #85 has separate user authorization for ready and expected-head merge. This task remains governance-only: no Android, KVM, emulator, device, benchmark, profile download or diagnostic workflow executed.
 - First local freeze `2611111288fea99bbb70841b928b7df029cb610b` passed positive/local gates but independent read-only review 1 returned `P0=0/P1=2/P2=2`. It is rejected: phrase-only contradiction checks, path-only allowance of Governance/M3-08/M3-09/M3-13 validators, incomplete leaf mutations and stale pre-freeze HandOff wording must all be closed before a second freeze. The bounded remediation now adds document contradiction negatives, exact governed-file hashes and automatic every-leaf mutations; no terminal fact or product/release boundary changes.
 - Second freeze `399b4276bbff127349727cbf95fb8a9850277c22` closed the governed workflow/history-validator hashes and all 56 lock-leaf plus 9 document mutations, but independent read-only review 2 returned `P0=0/P1=1/P2=1`. It is rejected because finite natural-language regexes still allowed equivalent contradictory wording and HandOff had not recorded the second freeze. The final bounded remediation replaces semantic keyword enumeration with exact byte hashes for every changed contract/coordination file other than the self-validating lock and M3-15 validator, and records this lifecycle without changing the disposition.
 - Third contract freeze `fc81ed869ce6ad33404aff8b10976fe15daff611` fixed all 16 non-self contract/coordination files by exact SHA-256 and passed 68 every-leaf plus 9 document mutations. Independent read-only review 3 confirmed every technical, terminal and release boundary, returning only `P0=0/P1=0/P2=1` because HandOff had not yet named that already-submitted freeze and its next actions were stale. This coordination-only successor records that result and updates only HandOff plus its lock/validator hash binding; `fc81ed8` remains the reviewed contract freeze.
-- PR #83/Issue #82 and PR #63/Issue #22 remain open and unmerged during M3-15 review. Only after ADR 0019 merges may they be closed as terminally blocked without merging. No close, push or PR action has yet been taken for M3-15.
+- ADR 0019 requires PR #83/Issue #82 and PR #63/Issue #22 to close as terminally blocked without merging after PR #85 lands. This merger-target snapshot records that final disposition; neither blocked draft contributes bytes to `main`, and their retained GitHub history remains the audit record.
 - M3-13 is merged and complete on `main`. Final exact head `f60543c4d5ca2891cbdcab3a028054bd41e0f7f7` retained independent review `P0=0/P1=0/P2=0` and passed Build `32590407762` plus Governance `32590407768` on Ubuntu/Windows. PR #81 was converted to ready and merged with expected-head protection as `621117dc5639bf4c9c9e8696c554bbd2ab821d8c`; Issue #80 closed. The contract binds M3-10 run `32554806537` and terminal evidence run `32554917303`, fixes one future task key/run with `runAttempt=1`, and permits no further renewal. Both canonical successor workflows remain absent. No device, KVM, emulator, ARM, API 29 or benchmark ran; Android was not invoked.
 - Initial post-merge Governance `32602883324` exposed one coordination-only lifecycle defect: the M3-13 validator accepted only the pre-merge `active_task: M3-13` state. Commit `e2259f5821ee0c53897a2b450735e111612b082f` now accepts exactly either the reviewed active branch tuple or the merged-main `done` tuple, rejects a 66th invalid-lifecycle mutation, and keeps both successor workflows forbidden.
 - M3-13 independent review 1 rejected implementation `55997e61a2f734ab3d7ed5f8a44a44064b526ac3` / evidence `bec3d0ddeccc356c31f69add2e37e197cd127531` with `P0=0/P1=3/P2=1`: execution-identity self-reference, missing retained raw official API pages, terminal M3-10 still listed as an M3-05 completion dependency, and incomplete local evidence fields. No push or PR occurred.
@@ -222,7 +222,7 @@ Define and independently freeze the terminal disposition for the consumed ADR 00
 | M3-12 | `/root` | `main` | done | M3-11 | PR #76 merged as `c1d81fe`; Issue #75 closed; all-zero review, immutable asset lock and final dual-platform Build/Governance passed |
 | M3-10 | `/root` | `feat/m3-10-startup-attribution-diagnostic` | blocked | M3-09, M3-11, M3-12 | Run `32554806537` consumed the identity before Android setup; zero artifact; PR #79 remains draft and cannot rerun |
 | M3-13 | `/root` | `main` | done | M3-09, M3-11, M3-12 | PR #81 merged as `621117d`; Issue #80 closed; all-zero review and exact-head dual-platform Build/Governance passed without adding a diagnostic workflow |
-| M3-15 | `/root` | `docs/m3-15-terminal-disposition-contract` | in_progress | M3-13 | Freeze ADR 0019, terminal lock and governance validator; then obtain independent P0/P1/P2 all-zero review before any push or PR |
+| M3-15 | `/root` | `main` | done | M3-13 | PR #85; ADR 0019, exact lock, 77 mutations, all-zero independent review and Ubuntu/Windows Build/Governance passed; current v0.1 release line stopped |
 | M3-05 | `/root` | `chore/m3-05-performance-benchmarks` | blocked | M1-06, M2-04, M2-06, M3-01, M3-07, M3-08, M3-09, M3-13 | ADR 0018 entitlement is consumed without owner; ADR 0019 keeps PR #63 terminally blocked and requires close-unmerged only after M3-15 merges |
 | M3-03 | `/root` | `main` | done | M0-03, M1-05, M1-06, M2-06, M3-01 | PR #55 merged; post-merge Build/Governance and README/evidence synchronization passed |
 | M2-08 | `/root` | `fix/m2-08-native-parser-bounds` | done | M2-02 | PR #54 merged; exact regression, ASan/UBSan, dual-platform Build/Governance and independent review passed |
@@ -481,6 +481,18 @@ Define and independently freeze the terminal disposition for the consumed ADR 00
 - artifact: reviewer report retained in the M3-15 task conversation; the sole remaining change is this coordination lifecycle record and its exact hash binding
 - sha256: 095f27481ab9b7c247300c3ec49603b32eb9320e92390db9ff3bf32019cab34a
 - result: FAIL; P0=0/P1=0/P2=1, all technical and governance boundaries passed but HandOff had not named the third freeze and still described already-completed actions
+
+### M3-15 reviewed exact-head publication
+
+- task_id: M3-15
+- git_commit: 1f85035113f986a1914f34dae0d72b2e71588b72
+- command: independent bounded read-only review 4; GitHub Actions Build 32681301084; GitHub Actions Governance 32681301062
+- exit_code: 0
+- environment: Windows read-only repository review; GitHub ubuntu-24.04 and windows-2025 with pinned repository toolchains; Android/JDK/API/ABI not applicable to this governance-only contract
+- timestamp: 2026-08-24T10:01:21+08:00
+- artifact: reviewer report retained in the M3-15 task conversation; https://github.com/xiaokh31/androidAppHardening/pull/85 ; https://github.com/xiaokh31/androidAppHardening/actions/runs/32681301084 ; https://github.com/xiaokh31/androidAppHardening/actions/runs/32681301062
+- sha256: 383fb91ba34f9ddb24fea2ec621b3a930ae9a06573c73595e1c9e41576e8b0bf
+- result: PASS; P0=0/P1=0/P2=0, exact contract bytes and 77 mutations passed, Ubuntu/Windows Build and Governance passed, and automatically triggered equivalence/fuzz runs were cancelled without executing task acceptance work
 
 ### M3-13 merger-ready and main merge
 
@@ -2056,16 +2068,15 @@ Define and independently freeze the terminal disposition for the consumed ADR 00
 
 ## Blockers and Required Approvals
 
-- Freezes `2611111` and `399b427` are rejected; third contract freeze `fc81ed8` closed all technical findings. Its only remaining P2 is addressed by this coordination-only lifecycle successor.
-- Because M3-15 is security-sensitive release governance, the current coordination successor must receive independent read-only `P0=0/P1=0/P2=0` confirmation before push or draft PR creation. Push/PR is not yet authorized by the current request.
-- M3-05 and M4 are terminally blocked for the current v0.1 tuple; no device state or alternate platform can unblock them.
+- The current v0.1 tuple is terminally blocked. M3-05 and M4 cannot be resumed by a retry, replacement run, platform substitution, waiver, device state or alternate branch.
+- Any future restart requires a separately authorized new versioned product tuple, ADR and task graph; no such work is active or implied by M3-15.
 
 ## Ordered Next Actions
 
-1. Commit this coordination-only review-3 lifecycle record and its HandOff byte-hash binding without changing any contract decision or product/workflow file.
-2. Run one independent read-only review limited to the review-3 P2 closure; if it returns all zero, stop and wait for separate push/draft-PR authorization.
-3. After separate push/PR authorization, create the unique Issue #84 draft PR and run only Build/Governance required by the task contract.
-4. Only after ADR 0019 merges, close PR #83/Issue #82 and PR #63/Issue #22 without merging either draft; keep M4 unstarted.
+1. After PR #85 merges with expected-head protection, close PR #83 unmerged and close Issue #82 as terminally blocked.
+2. Close PR #63 unmerged and close Issue #22 as terminally blocked; do not start M4 or retry either diagnostic identity.
+3. Synchronize `main`, record the four closures in a post-merge coordination snapshot, and run strict HandOff plus Ubuntu/Windows Build/Governance.
+4. Then wait for explicit authorization of a new versioned product tuple, ADR and task graph before starting any successor release work.
 
 ## Relevant Files and Artifacts
 
@@ -2462,6 +2473,8 @@ Define and independently freeze the terminal disposition for the consumed ADR 00
 - [x] 对当前 clean 冻结提交完成新的独立 parser/security 复核；P0/P1/P2 全零。
 
 ## Handoff Sign-off
+
+- `/root` verified M3-15 exact reviewed head `1f85035113f986a1914f34dae0d72b2e71588b72`, independent `P0=0/P1=0/P2=0`, Ubuntu/Windows Build `32681301084`, Governance `32681301062`, cancelled out-of-scope equivalence/fuzz runs and the user's separate ready/expected-head merge authorization for PR #85. This merger-target coordination successor changes only README/HandOff lifecycle state and their exact M3-15 hash bindings; it adds no workflow, product, Android, KVM, device or benchmark input.
 
 - `/root` verified M3-12 final head `95a42b556374c92191d2511894fb2613afc187b9`, all-zero independent review, final Ubuntu/Windows Build `32552469351`, Governance `32552469492` and the user's expected-head authorization. PR #76 merged normally as `c1d81fe6c4257efecf8cbb0b23aa724034f6b3a1`, Issue #75 closed, and this main coordination changes only completion status/README/HandOff. M3-10 has not started and its unique API 36 workflow remains absent.
 

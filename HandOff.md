@@ -1,12 +1,12 @@
 ---
 schema_version: 1
 project: androidAppHardening
-handoff_id: HO-20260824-102648
-updated_at: 2026-08-24T10:26:48+08:00
+handoff_id: HO-20260824-103151
+updated_at: 2026-08-24T10:31:51+08:00
 updated_by: /root
 state: blocked
 source_branch: main
-base_commit: 2065800f93037298a3070eb30ba79f6fe2a13713
+base_commit: c48bfdd7dbad659db38c5c8c34befe7235f25a62
 working_tree: clean
 current_milestone: M3
 active_task: NONE
@@ -26,6 +26,7 @@ Preserve the accepted `STOP_CURRENT_V0_1_RELEASE_LINE` disposition on `main`: th
 - Second freeze `399b4276bbff127349727cbf95fb8a9850277c22` closed the governed workflow/history-validator hashes and all 56 lock-leaf plus 9 document mutations, but independent read-only review 2 returned `P0=0/P1=1/P2=1`. It is rejected because finite natural-language regexes still allowed equivalent contradictory wording and HandOff had not recorded the second freeze. The final bounded remediation replaces semantic keyword enumeration with exact byte hashes for every changed contract/coordination file other than the self-validating lock and M3-15 validator, and records this lifecycle without changing the disposition.
 - Third contract freeze `fc81ed869ce6ad33404aff8b10976fe15daff611` fixed all 16 non-self contract/coordination files by exact SHA-256 and passed 68 every-leaf plus 9 document mutations. Independent read-only review 3 confirmed every technical, terminal and release boundary, returning only `P0=0/P1=0/P2=1` because HandOff had not yet named that already-submitted freeze and its next actions were stale. This coordination-only successor records that result and updates only HandOff plus its lock/validator hash binding; `fc81ed8` remains the reviewed contract freeze.
 - PR #83/Issue #82 and PR #63/Issue #22 are closed as terminally blocked under accepted ADR 0019. Both draft PRs were closed without merge, contribute no bytes to `main`, and remain preserved as audit records.
+- First final-main Governance `32683194365` failed on both platforms because the historical M3-09 validator still required the obsolete present-tense phrase `M3-05 PR #63 remains blocked`; local M3-15-only checks did not execute that compatibility validator. The bounded correction requires the exact historical checkpoint plus ADR 0019 closed-unmerged successor text, updates its M3-15 byte lock, and changes no product or workflow input. Obsolete-head Build `32683194358` was cancelled after the Governance failure invalidated that head.
 - M3-13 is merged and complete on `main`. Final exact head `f60543c4d5ca2891cbdcab3a028054bd41e0f7f7` retained independent review `P0=0/P1=0/P2=0` and passed Build `32590407762` plus Governance `32590407768` on Ubuntu/Windows. PR #81 was converted to ready and merged with expected-head protection as `621117dc5639bf4c9c9e8696c554bbd2ab821d8c`; Issue #80 closed. The contract binds M3-10 run `32554806537` and terminal evidence run `32554917303`, fixes one future task key/run with `runAttempt=1`, and permits no further renewal. Both canonical successor workflows remain absent. No device, KVM, emulator, ARM, API 29 or benchmark ran; Android was not invoked.
 - Initial post-merge Governance `32602883324` exposed one coordination-only lifecycle defect: the M3-13 validator accepted only the pre-merge `active_task: M3-13` state. Commit `e2259f5821ee0c53897a2b450735e111612b082f` now accepts exactly either the reviewed active branch tuple or the merged-main `done` tuple, rejects a 66th invalid-lifecycle mutation, and keeps both successor workflows forbidden.
 - M3-13 independent review 1 rejected implementation `55997e61a2f734ab3d7ed5f8a44a44064b526ac3` / evidence `bec3d0ddeccc356c31f69add2e37e197cd127531` with `P0=0/P1=3/P2=1`: execution-identity self-reference, missing retained raw official API pages, terminal M3-10 still listed as an M3-05 completion dependency, and incomplete local evidence fields. No push or PR occurred.

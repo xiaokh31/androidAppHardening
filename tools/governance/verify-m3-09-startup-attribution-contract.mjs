@@ -542,7 +542,11 @@ function validateDocuments(bundle) {
   requirePhrases(bundle.index, ["| M3-09 | [#68]", "M3-08 → M3-09 → M3-11 → M3-12 → M3-10 → M3-13 → M3-15 → STOP_CURRENT_V0_1_RELEASE_LINE", ", M3-09, M3-13 |"], "task index");
   requirePhrases(bundle.roadmap, ["| M3-09 |", "M3-08, M3-09"], "roadmap");
   requirePhrases(bundle.plan, ["M3-09：端到端启动性能归因边界合同"], "project plan");
-  requirePhrases(bundle.handoff, ["M3-09 is complete on `main`", "M3-05 PR #63 remains blocked"], "HandOff");
+  requirePhrases(bundle.handoff, [
+    "M3-09 is complete on `main`",
+    "At that checkpoint PR #63 remained blocked",
+    "ADR 0019 has since closed it unmerged",
+  ], "HandOff");
 }
 
 function validateDiff(base) {

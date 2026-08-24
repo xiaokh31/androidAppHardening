@@ -46,7 +46,7 @@
   },
   "governedFileSha256": {
     ".github/workflows/governance.yml": "6e12ac72f285f35aaa74f6cf70ec685817d2f38d3b1a94f40a606c2dbceecf22",
-    "HandOff.md": "d291bb398807e2f81ab23004c69d4ff94fb91bc4ed7df5335a3394fba624cfbd",
+    "HandOff.md": "2a81467e03af240e7ba378df77c1e11818f5e17c74a10f8bf4fdcd695c7173ed",
     "README.md": "b4f2ecf489a58fd4c21eb9b71331c2513fe7e6af259a1d1e127658ce7b768f1f",
     "docs/PRODUCT_REQUIREMENTS.md": "4873fb18733a66618291056ea683e98101974e221e3d062b6dcbe342db54ce21",
     "docs/PROJECT_PLAN.md": "41c2620fe56bcc7e38b3405b9047cfc4a62966bd49bc7bb97bdf78748afb32c2",
@@ -59,7 +59,7 @@
     "docs/tasks/M4-01-security-and-supply-chain-review.md": "ade14358d819447539b59eec3d17c42f4e0aacaf732828ba542f712d1c9793c6",
     "tools/governance/validate-project-package.mjs": "521c62b135413250f3cd7602f3aed4a00da55b0d1a14b8e8ccaf65d10dbd1077",
     "tools/governance/verify-m3-08-startup-stability-contract.mjs": "23303430315e6bd97ec0201e5c979df5207d8af9a31084d996ee0230c855dbea",
-    "tools/governance/verify-m3-09-startup-attribution-contract.mjs": "7d0ec5ccc7b37b55fe9f6e43a10924bece57158ef31f21537e78cb15111bb5bb",
+    "tools/governance/verify-m3-09-startup-attribution-contract.mjs": "3e11ec3adaf6e496aaaf8ddfbe6f129b6238ad3c49419a5f8e76dab09d43574d",
     "tools/governance/verify-m3-13-diagnostic-identity-contract.mjs": "e5a4b6a3a53633615fd08e1ea3c9e8a3b3054afc7174ba2233e4008a9c0093ec"
   },
   "permissions": {

@@ -8,33 +8,41 @@
 
 ## 2. 根 HandOff frontmatter
 
-根文件以 UTF-8 YAML frontmatter 开始，字段与顺序固定：
+根文件以 UTF-8 YAML frontmatter 开始。Schema 1 仅用于读取既有 v0.1 历史交接；Schema 2 是 v0.2 当前交接的格式。两种 schema 都要求字段完整且顺序固定，不能混用字段或任务命名空间。
+
+Schema 2 frontmatter：
 
 ```yaml
 ---
-schema_version: 1
+schema_version: 2
 project: androidAppHardening
-handoff_id: HO-20260731-120000
-updated_at: 2026-07-31T12:00:00+08:00
+release_line: v0.2
+product_tuple_sha256: 5fb0205d9fc0c2523cd33734145bf23a901303f4f563eef866e5883ca81fd4c2
+handoff_id: HO-20260824-120000
+updated_at: 2026-08-24T12:00:00+08:00
 updated_by: /root
 state: ready
 source_branch: main
 base_commit: 0123456789abcdef0123456789abcdef01234567
 working_tree: clean
-current_milestone: M0
-active_task: M0-03
+current_milestone: V2-M0
+active_task: V2-M0-02
 next_owner: unassigned
 ---
 ```
 
-示例值用于说明格式；实际文件必须使用生成时的真实时间、目标恢复分支和 commit。
+示例使用当前不可发布的 v0.2 development tuple。实际文件必须使用状态机在当时允许的 exact tuple、生成时的真实时间、目标恢复分支和 commit，且不得复用 ADR 0019 已终结的 v0.1 tuple。
+
+Schema 1 保持原有字段顺序：`schema_version`、`project`、`handoff_id`、`updated_at`、`updated_by`、`state`、`source_branch`、`base_commit`、`working_tree`、`current_milestone`、`active_task`、`next_owner`。Schema 1 继续接受 `M0`～`M4` 和 `Mx-nn`，只用于兼容既有历史；不得用 Schema 1 表示 v0.2 当前状态。
 
 字段规则：
 
 | 字段 | 规则 |
 | --- | --- |
-| `schema_version` | 整数 `1` |
+| `schema_version` | 整数 `1` 或 `2`；v0.2 必须为 `2` |
 | `project` | 固定为 `androidAppHardening` |
+| `release_line` | 仅 Schema 2 存在，固定为 `v0.2`，紧跟 `project` |
+| `product_tuple_sha256` | 仅 Schema 2 存在，紧跟 `release_line`；pre-candidate validator只接受 exact development tuple并在发现RC lock时失败；V2-M3-01冻结的 exact aggregate verifier和candidate adapter验证两freeze locks、七manifests、ancestry/workflows后，V2-M3-02原子切换为 exact `productTupleSha256`；不得等于终态v0.1 tuple、任意第三tuple或自证lock |
 | `handoff_id` | `HO-YYYYMMDD-HHMMSS`，使用 `updated_at` 对应的本地时间 |
 | `updated_at` | 带时区的 ISO-8601 |
 | `updated_by` | 固定为 `/root` |
@@ -42,11 +50,20 @@ next_owner: unassigned
 | `source_branch` | 本快照合并后作为恢复入口的目标分支；普通任务等于生成分支，merger-ready 根快照固定为 PR 的真实 base branch |
 | `base_commit` | 40 位小写 Git SHA，尚无提交时才允许 `UNBORN` |
 | `working_tree` | `clean` 或 `dirty`，必须与生成时状态一致 |
-| `current_milestone` | `M0`、`M1`、`M2`、`M3` 或 `M4` |
-| `active_task` | 合法任务 ID 或 `NONE` |
+| `current_milestone` | Schema 1 为 `M0`～`M4`；Schema 2 为 `V2-M0`～`V2-M4` |
+| `active_task` | Schema 1 为 `Mx-nn` 或 `NONE`；Schema 2 为 `V2-Mx-nn` 或 `NONE` |
 | `next_owner` | 已定义角色、Agent 名或 `unassigned` |
 
 `base_commit` 必须是当前 `HEAD` 的祖先。`working_tree` 必须通过 Git 读取，不得凭记忆填写。普通任务的 `source_branch` 必须等于当前分支；只有 `/root` 为即将合并的最终根快照设置 PR 的真实 base branch 时，才可在 PR 校验中显式使用 `--allow-pending-branch`。合并到目标分支后的 push 校验不允许该豁免。
+
+`active_task` 非 `NONE` 时，Schema 1 任务卡必须位于 `docs/tasks/`，Schema 2 任务卡必须位于 `docs/v0.2/tasks/`。Schema 2 的活动任务前缀必须与 `current_milestone` 完全一致（例如 `V2-M2-03` 只能用于 `V2-M2`），且该任务必须在 `Active Workstreams` 章节内有同 ID 行；正文其他章节出现任务 ID 不能替代该行。同一 HandOff 可以保留旧任务的历史 workstream 或 Verification Evidence，但 v0.2 的当前 milestone 和 active task 不得回退到旧命名空间。
+
+Schema 2 tuple 状态机只有两个状态：
+
+1. `development`：`docs/v0.2/evidence/V2-M3-02/product-tuple-lock.json` 不存在，frontmatter 必须使用 `docs/v0.2/development-product-tuple.json` 的 exact `tuple_sha256`。当前 V2-M0-01 package/HandOff validator是pre-candidate版本；任何lock（包括格式和hash自洽的`VERIFIED` lock）都必须被拒绝。
+2. `candidate`：V2-M3-01 必须先在 `validationFreezeSha` 内实现并冻结 candidate-neutral aggregate verifier和package/HandOff adapter。该 verifier从两个 official post-merge freeze locks、七个manifest Git blobs、component baseline、ancestry和五组workflow重算通过后，V2-M3-02才可写lock并把frontmatter切换为exact `productTupleSha256`；development tuple随后失效。
+
+candidate 字段与三份 lock 必须在同一协调变更中原子提交。缺 lock 的 candidate、存在 lock 仍使用 development tuple、任意第三 tuple、旧 v0.1 tuple、自洽但虚假 freeze/manifest、lock/hash 不匹配都必须 fail closed。Tuple field order 由 ADR 0020 固定，并包含独立的 `validationManifestSha256`；七个 manifest preimage 必须逐一匹配 `docs/v0.2/IDENTITY_MANIFESTS.md` 和 `identity-path-policy-v1.json`。V2-M3-01 冻结的通用 adapter 必须调用同一个 exact verifier，V2-M3-02 不得修改 validator；Governance 必须先运行 exact tuple 与 post-freeze HEAD verifier，再运行 strict HandOff。
 
 ## 3. 根 HandOff 正文章节
 
@@ -105,6 +122,8 @@ sha256
 result
 ```
 
+`task_id` 接受既有 `Mx-nn` 与 v0.2 `V2-Mx-nn`。旧任务证据可作为历史记录保留，但不能仅凭旧 evidence 把 v0.2 任务标记为完成。
+
 没有产物的文档校验将 `artifact` 和 `sha256` 写为 `not_applicable` 并说明校验对象。
 
 ### Blockers and Required Approvals
@@ -129,7 +148,7 @@ result
 
 ## 4. 状态语义
 
-- `active`：存在已分配且正在进行的任务；`active_task` 必须为该任务。
+- `active`：存在已分配且正在进行的任务；`active_task` 必须为该 release line 的任务，并在对应任务目录中存在。
 - `ready`：没有未解决阻塞，下一项工作可以领取；`active_task` 可指向首个待执行任务。
 - `blocked`：存在阻止关键路径继续的明确条件；阻塞章节必须非空。
 
@@ -150,9 +169,9 @@ result
 
 并行 PR 必须逐个更新到最新 `main`、验证、合并。最后一个内容 PR 的 `/root` 可在同一 PR 最后提交 merger-ready 根快照：以最新 `main` 为基线、`source_branch` 写真实 base branch、内容只陈述提交树已经具备的事实，不预称 PR 已合并。PR 使用 `--allow-pending-branch`，合并后的目标分支 push 必须无豁免通过 strict；失败即视为合并后治理阻塞。
 
-## 6. 初始 ready 状态
+## 6. 历史 Schema 1 初始 ready 状态
 
-项目文本包合并后，根 HandOff 的业务状态必须为：
+以下内容仅记录 v0.1 项目文本包合并后的历史 Schema 1 状态，不是 v0.2 初始化模板：
 
 ```yaml
 state: ready
@@ -188,7 +207,7 @@ Worker 返回 Markdown，章节固定为：
 
 要求：
 
-- `Task` 包含任务 ID、分支和 commit。
+- `Task` 包含任务 ID、release line、product tuple（Schema 1 历史任务可写 `not_applicable`）、分支和 commit。任务 ID 接受 `Mx-nn` 或 `V2-Mx-nn`。
 - `Outcome` 只能使用 `done` 或 `blocked`，并给出一句可验证摘要。
 - `Scope` 对照任务卡列出完成与未完成事项。
 - `Files Changed` 使用仓库相对路径并说明每个文件用途。
@@ -204,6 +223,7 @@ Worker 返回 Markdown，章节固定为：
 `coordinate-project-handoff/scripts/validate-handoff.mjs` 必须检查：
 
 - frontmatter 字段、顺序、类型和枚举；
+- Schema 1/Schema 2 字段集合互不混用，Schema 2 固定 `release_line: v0.2` 且遵循 development→verified candidate tuple 状态机；
 - 标题唯一、完整且顺序正确；
 - UTF-8 解码成功且不含 Unicode replacement character；
 - 不含模糊占位语；
@@ -211,7 +231,8 @@ Worker 返回 Markdown，章节固定为：
 - 不含私钥、token、密码值、客户 APK 路径或 DEX 明文；
 - `base_commit` 格式及其为 `HEAD` 祖先；
 - 分支和工作树状态与 Git 一致；仅 merger-ready PR 可显式允许目标分支尚未成为当前分支；
-- `active_task` 存在于任务索引；
+- Schema 1 `active_task` 存在于 `docs/tasks/`，Schema 2 `active_task` 存在于 `docs/v0.2/tasks/`；
+- v0.2 不使用旧 milestone 或旧 task ID，Verification Evidence 同时接受旧、新任务 ID；
 - `done` 证据具备命令、退出码、环境和 SHA-256；
 - 相对路径存在，或被明确标记为预期后续产物。
 

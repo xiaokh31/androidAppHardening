@@ -6,16 +6,21 @@
 
 ## 当前状态
 
-M0 基础建设与可行性验证、M1 Host、M2 Runtime 及大部分 M3 验证已经完成。M3-10 原始诊断在 Android 前失败；M3-13/ADR 0018 随后只允许一个 successor。M3-14 已在 Draft PR #83 消耗该唯一资格：canonical run `32611656930` 与 terminal run `32612414400` 均失败且 artifact 为零，保留页面不能证明更窄失败边界，也没有选择性能 owner。ADR 0018 禁止重试、替换或进一步续期。M3-15/Issue #84 与已合并 PR #85 以 `STOP_CURRENT_V0_1_RELEASE_LINE` 固定终态：M3-05 与 M4 不可继续，不生成 v0.1 Release Candidate 或发布包；PR #83/Issue #82 与 PR #63/Issue #22 已按 ADR 0019 关闭且未合并。现有源码和历史验证仍可审计，但不得称为已完成 v0.1 发布。任何未来重启都必须建立新的版本化产品 tuple、ADR 和任务图。这些控制只提高攻击成本，不承诺阻止 root、注入或进程控制攻击者。
+v0.2 规划线已经启动并完成文本落地。[V2-M0-01](docs/v0.2/tasks/V2-M0-01-product-baseline-version-isolation.md) 的治理内容位于提交 `102cb775b205e1b592934e74a6d5d19e73ad2b3f` 和 PR #95，独立只读终审为 `P0=0/P1=0/P2=0`；它只建立版本隔离、任务图和治理门禁，不实现或修改 Host、Runtime、benchmark、distribution 或发布业务代码。PR #95 exact-head 与合并后门禁通过后，下一任务是 [V2-M0-02](docs/v0.2/tasks/V2-M0-02-versioned-candidate-baseline.md)，同时可开始 [V2-M3-01](docs/v0.2/tasks/V2-M3-01-fresh-performance-harness.md) 的并行开发，但必须先合并 V2-M0-02，再把 V2-M3-01 刷新到该 `main` 后合并。开发基线 tuple 为 `5fb0205d9fc0c2523cd33734145bf23a901303f4f563eef866e5883ca81fd4c2`，其 `tuple_kind=development_baseline`、`releasable=false`，不是 Release Candidate。v0.2 的必读入口是 [`docs/v0.2/README_FIRST.md`](docs/v0.2/README_FIRST.md)，任务总表是 [`docs/v0.2/tasks/INDEX.md`](docs/v0.2/tasks/INDEX.md)，版本隔离决定见 [ADR 0020](docs/adr/0020-v0-2-product-baseline-and-version-isolation.md)。
+
+v0.1 的 M0 基础建设与可行性验证、M1 Host、M2 Runtime 及大部分 M3 验证已经完成。M3-10 原始诊断在 Android 前失败；M3-13/ADR 0018 随后只允许一个 successor。M3-14 已在 Draft PR #83 消耗该唯一资格：canonical run `32611656930` 与 terminal run `32612414400` 均失败且 artifact 为零，保留页面不能证明更窄失败边界，也没有选择性能 owner。ADR 0018 禁止重试、替换或进一步续期。M3-15/Issue #84 与已合并 PR #85 以 `STOP_CURRENT_V0_1_RELEASE_LINE` 固定终态：M3-05 与 M4 不可继续，不生成 v0.1 Release Candidate 或发布包；PR #83/Issue #82 与 PR #63/Issue #22 已按 ADR 0019 关闭且未合并。现有源码和历史验证仍可审计，但不得称为已完成 v0.1 发布。ADR 0020 已按“新版本化产品 tuple、ADR 和任务图”的要求建立独立 v0.2 发布线，但没有恢复、替换或重命名旧任务。这些控制只提高攻击成本，不承诺阻止 root、注入或进程控制攻击者。
 
 M2-07 Ubuntu runner 精确锁维护已关闭先前工具链阻塞；PR #74 的 exact-head 及合并后 `main` Build 均在 Ubuntu/Windows 通过。GitHub 后续分配的 Windows `20260818.207.1` 已由 Issue #77/PR #78 精确固定 runtime/ref 与逐镜像 VS/x64 tools/`cl.exe`；最终 head `88f1c11` 通过独立全零复核及双平台 Build/Governance，并确认新镜像 `cl.exe 19.51.36256`。PR #78 已以 expected-head 保护合并，PR #76 现只恢复最终 Ubuntu/Windows Build/Governance，不运行设备、KVM、fuzz、equivalence、benchmark 或 API 36 诊断。
 
-开发者和 Agent 从 [`docs/README_FIRST.md`](docs/README_FIRST.md) 开始。项目统筹状态以 [`HandOff.md`](HandOff.md) 为准。
+开发者和 Agent 先读取 [`HandOff.md`](HandOff.md) 的 `release_line`：v0.1 历史工作使用 [`docs/README_FIRST.md`](docs/README_FIRST.md)，v0.2 使用 [`docs/v0.2/README_FIRST.md`](docs/v0.2/README_FIRST.md)。
 
 ### 任务进度
 
 | 阶段/任务 | 状态 | 说明 |
 | --- | --- | --- |
+| [V2-M0-01](docs/v0.2/tasks/V2-M0-01-product-baseline-version-isolation.md) | PR #95 merger-ready | Issue #86；内容、本地门禁与全零独立审查完成，仍须 exact-head 双平台 CI 和 post-merge PASS |
+| [V2-M0-02](docs/v0.2/tasks/V2-M0-02-versioned-candidate-baseline.md) | 待领取 | PR #95 post-merge PASS 后由 `host-pipeline-agent` 开始；不得在任务 PR 内自称 freeze SHA |
+| [V2-M3-01](docs/v0.2/tasks/V2-M3-01-fresh-performance-harness.md) | 待并行领取 | 可与 V2-M0-02 并行开发，但必须在 V2-M0-02 合并后刷新、重验并后合并 |
 | M0-01 ～ M0-06 | 已完成 | 仓库、治理、工具链、CI、API 29/36 ClassLoader 与早期启动/Factory/JNI 可行性验证均已合并并通过门禁 |
 | [M1-01](docs/tasks/M1-01-untrusted-apk-inspector.md) | 已完成 | 不可信 APK 只读检查器，PR #33 |
 | [M1-02](docs/tasks/M1-02-signer-policy.md) | 已完成 | signer policy，PR #34 |
@@ -50,7 +55,7 @@ M2-07 Ubuntu runner 精确锁维护已关闭先前工具链阻塞；PR #74 的 e
 | [M3-05](docs/tasks/M3-05-size-startup-memory-benchmarks.md) | 终态阻塞 | PR #63/Issue #22 已关闭且未合并；不再运行 API 36 A/B 或 ARM，当前 v0.1 tuple 无豁免恢复路径 |
 | M4 | 不可启动 | 当前 v0.1 缺少 M3-05 有效性能证据，不得生成 Release Candidate、发布包或发布就绪声明 |
 
-任务按 [`docs/tasks/INDEX.md`](docs/tasks/INDEX.md) 的依赖顺序执行。每个任务只有在 PR 合并、合并后门禁与证据完成后才在本表标记“已完成”；每个任务的收尾协调提交必须同步本 README，避免公开进度长期滞后。
+v0.1 历史任务保留在 [`docs/tasks/INDEX.md`](docs/tasks/INDEX.md)，v0.2 活动任务按 [`docs/v0.2/tasks/INDEX.md`](docs/v0.2/tasks/INDEX.md) 的依赖与固定合并顺序执行。每个任务只有在 PR 合并、合并后门禁与证据完成后才在本表标记“已完成”；每个任务的收尾协调提交必须同步本 README，避免公开进度长期滞后。
 
 ## v0.1 边界
 

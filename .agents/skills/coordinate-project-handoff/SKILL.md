@@ -11,7 +11,7 @@ Only `/root` may edit root `HandOff.md`. Worker agents must return the packet in
 
 ## Workflow
 
-1. Read `references/handoff-schema.md`, root `AGENTS.md`, the current `HandOff.md`, affected task cards, and worker packets.
+1. Read `references/handoff-schema.md`, root `AGENTS.md`, the current `HandOff.md`, affected task cards, and worker packets. For v0.2 freeze or evidence transitions, also read `docs/v0.2/identity-path-policy-v1.json` and `docs/v0.2/post-freeze-path-policy-v1.json` before accepting any tuple, stage, phase, path or evidence claim.
 2. Verify the branch, base commit, worktree, changed files, commands, exit codes, and artifacts directly. Do not treat chat claims as evidence.
 3. Reconcile parallel work in merge order. Update ownership, status, decisions, blockers, verification, and ordered next actions without turning the file into a historical log.
 4. Use repository-relative paths and artifact hashes. Remove secrets, private paths, customer APK details, and plaintext DEX information.

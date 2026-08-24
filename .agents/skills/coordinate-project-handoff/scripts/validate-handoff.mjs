@@ -48,7 +48,7 @@ if (!frontmatterMatch) {
   finish();
 }
 
-const expectedKeys = [
+const schema1Keys = [
   "schema_version",
   "project",
   "handoff_id",
@@ -62,12 +62,34 @@ const expectedKeys = [
   "active_task",
   "next_owner",
 ];
+const schema2Keys = [
+  "schema_version",
+  "project",
+  "release_line",
+  "product_tuple_sha256",
+  "handoff_id",
+  "updated_at",
+  "updated_by",
+  "state",
+  "source_branch",
+  "base_commit",
+  "working_tree",
+  "current_milestone",
+  "active_task",
+  "next_owner",
+];
+const oldV01ProductTuple = "883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd";
+const developmentV02ProductTuple = "5fb0205d9fc0c2523cd33734145bf23a901303f4f563eef866e5883ca81fd4c2";
+const candidateLockRelative = "docs/v0.2/evidence/V2-M3-02/product-tuple-lock.json";
+const legacyTaskPattern = /^M[0-4]-\d{2}$/;
+const v2TaskPattern = /^V2-M[0-4]-\d{2}$/;
+const anyTaskPattern = /^(?:M[0-4]|V2-M[0-4])-\d{2}$/;
 
 const values = new Map();
 const actualKeys = [];
 for (const rawLine of frontmatterMatch[1].split(/\r?\n/)) {
   if (!rawLine.trim()) continue;
-  const match = rawLine.match(/^([a-z_]+):\s*(.*?)\s*$/);
+  const match = rawLine.match(/^([a-z0-9_]+):\s*(.*?)\s*$/);
   if (!match) {
     errors.push(`Invalid frontmatter line: ${rawLine}`);
     continue;
@@ -76,12 +98,27 @@ for (const rawLine of frontmatterMatch[1].split(/\r?\n/)) {
   values.set(match[1], match[2].replace(/^["']|["']$/g, ""));
 }
 
+const schemaVersion = values.get("schema_version");
+const isSchema2 = schemaVersion === "2";
+const expectedKeys = isSchema2 ? schema2Keys : schema1Keys;
 if (actualKeys.join("|") !== expectedKeys.join("|")) {
   errors.push(`Frontmatter keys must appear exactly in this order: ${expectedKeys.join(", ")}`);
 }
 
-check("schema_version", (v) => v === "1", "must be 1");
+check("schema_version", (v) => v === "1" || v === "2", "must be 1 or 2");
 check("project", (v) => v === "androidAppHardening", "must be androidAppHardening");
+if (isSchema2) {
+  check("release_line", (v) => v === "v0.2", "must be v0.2 for schema_version 2");
+  check(
+    "product_tuple_sha256",
+    (v) => /^[0-9a-f]{64}$/.test(v) && !/^0{64}$/.test(v),
+    "must be a non-zero 64-character lowercase SHA-256 for schema_version 2",
+  );
+  if (values.get("product_tuple_sha256") === oldV01ProductTuple) {
+    errors.push("product_tuple_sha256 must not reuse the terminal v0.1 product tuple.");
+  }
+  validateV02TupleBinding(values.get("product_tuple_sha256"));
+}
 check("handoff_id", (v) => /^HO-\d{8}-\d{6}$/.test(v), "must match HO-YYYYMMDD-HHMMSS");
 check(
   "updated_at",
@@ -93,9 +130,38 @@ check("state", (v) => ["active", "ready", "blocked"].includes(v), "must be activ
 check("source_branch", (v) => /^[A-Za-z0-9._/-]+$/.test(v), "contains invalid branch characters");
 check("base_commit", (v) => v === "UNBORN" || /^[0-9a-f]{40}$/.test(v), "must be UNBORN or a full lowercase SHA");
 check("working_tree", (v) => ["clean", "dirty"].includes(v), "must be clean or dirty");
-check("current_milestone", (v) => /^M[0-4]$/.test(v), "must be M0 through M4");
-check("active_task", (v) => v === "NONE" || /^M[0-4]-\d{2}$/.test(v), "must be NONE or a task ID");
+if (isSchema2) {
+  check("current_milestone", (v) => /^V2-M[0-4]$/.test(v), "must be V2-M0 through V2-M4 for v0.2");
+  check("active_task", (v) => v === "NONE" || v2TaskPattern.test(v), "must be NONE or a V2-Mx-nn task ID for v0.2");
+} else {
+  check("current_milestone", (v) => /^M[0-4]$/.test(v), "must be M0 through M4 for schema_version 1");
+  check("active_task", (v) => v === "NONE" || legacyTaskPattern.test(v), "must be NONE or an Mx-nn task ID for schema_version 1");
+}
 check("next_owner", (v) => v.length > 0, "must not be empty");
+
+function validateV02TupleBinding(handoffTuple) {
+  const rootResult = spawnSync("git", ["rev-parse", "--show-toplevel"], {
+    cwd: path.dirname(target),
+    encoding: "utf8",
+    windowsHide: true,
+  });
+  if (rootResult.status !== 0) {
+    errors.push("Cannot resolve repository root for the Schema 2 tuple state machine.");
+    return;
+  }
+  const lockPath = path.join(rootResult.stdout.trim(), candidateLockRelative);
+  if (!fs.existsSync(lockPath)) {
+    if (handoffTuple !== developmentV02ProductTuple) {
+      errors.push(`product_tuple_sha256 must equal the exact development tuple while ${candidateLockRelative} is absent.`);
+    }
+    return;
+  }
+  errors.push(
+    `${candidateLockRelative} is forbidden by the V2-M0-01 pre-candidate validator. `
+    + "V2-M3-01 must freeze an exact aggregate verifier and candidate-state adapter before any candidate lock exists; "
+    + "a self-declared VERIFIED lock is not trusted.",
+  );
+}
 
 const requiredHeadings = [
   "# Project HandOff",
@@ -159,13 +225,24 @@ if (/(?:[A-Za-z]:[\\/](?:Users|Documents|works)[\\/]|\/(?:Users|home)\/[^/\s]+)/
 
 const activeTask = values.get("active_task");
 if (activeTask && activeTask !== "NONE") {
-  const tasksDir = path.join(path.dirname(target), "docs", "tasks");
+  if (isSchema2 && v2TaskPattern.test(activeTask)) {
+    const activeMilestone = activeTask.match(/^(V2-M[0-4])-/)?.[1];
+    if (activeMilestone !== values.get("current_milestone")) {
+      errors.push(
+        `active_task ${activeTask} must match current_milestone ${values.get("current_milestone")}.`,
+      );
+    }
+  }
+  const tasksDir = v2TaskPattern.test(activeTask)
+    ? path.join(path.dirname(target), "docs", "v0.2", "tasks")
+    : path.join(path.dirname(target), "docs", "tasks");
   const exists = fs.existsSync(tasksDir)
     && fs.readdirSync(tasksDir).some((name) => name.startsWith(`${activeTask}-`) && name.endsWith(".md"));
   if (!exists) {
     errors.push(`No task card exists for active_task ${activeTask}.`);
   }
-  if (!text.includes(`| ${activeTask} |`)) {
+  const activeWorkstreams = section("## Active Workstreams", "## Decisions and Invariants");
+  if (!activeWorkstreams.includes(`| ${activeTask} |`)) {
     errors.push(`Active workstreams must contain a row for ${activeTask}.`);
   }
 }
@@ -219,7 +296,7 @@ function validateEvidence() {
       }
     }
     const taskId = valuesByField.get("task_id");
-    if (taskId && !/^M[0-4]-\d{2}$/.test(taskId)) {
+    if (taskId && !anyTaskPattern.test(taskId)) {
       errors.push(`Verification evidence has invalid task_id: ${taskId}`);
     } else if (taskId) {
       evidencedTasks.add(taskId);
@@ -248,7 +325,7 @@ function validateEvidence() {
 
   const activeWorkstreams = section("## Active Workstreams", "## Decisions and Invariants");
   for (const row of activeWorkstreams.split(/\r?\n/)) {
-    const match = row.match(/^\|\s*(M[0-4]-\d{2})\s*\|.*\|\s*(?:done|completed)\s*\|/i);
+    const match = row.match(/^\|\s*((?:V2-)?M[0-4]-\d{2})\s*\|.*\|\s*(?:done|completed)\s*\|/i);
     if (match && !evidencedTasks.has(match[1])) {
       errors.push(`Completed task ${match[1]} has no Verification Evidence block.`);
     }
@@ -259,7 +336,7 @@ function validateWorkstreams() {
   const activeWorkstreams = section("## Active Workstreams", "## Decisions and Invariants");
   const allowedStatuses = new Set(["planned", "in_progress", "blocked", "review", "done"]);
   for (const row of activeWorkstreams.split(/\r?\n/)) {
-    if (!/^\|\s*M[0-4]-\d{2}\s*\|/.test(row)) continue;
+    if (!/^\|\s*(?:V2-)?M[0-4]-\d{2}\s*\|/.test(row)) continue;
     const cells = row.split("|").slice(1, -1).map((cell) => cell.trim().replaceAll("`", ""));
     if (cells.length < 6) {
       errors.push(`Invalid Active Workstreams row: ${row}`);

@@ -4,7 +4,7 @@
 
 ## 开始
 
-1. 读取 `AGENTS.md`、`HandOff.md`、`docs/README_FIRST.md` 和 `docs/tasks/INDEX.md`。
+1. 读取 `AGENTS.md`、`HandOff.md`，再按 `release_line` 选择 `docs/README_FIRST.md`/`docs/tasks/INDEX.md` 或 `docs/v0.2/README_FIRST.md`/`docs/v0.2/tasks/INDEX.md`。
 2. 核验当前分支、HEAD、远程、工作区和开放 PR/Issue。
 3. 只分配依赖已满足且没有所有者的任务。
 4. 并行任务必须拥有互不重叠的文件或模块；共享合同先由 ADR 冻结。
@@ -16,6 +16,7 @@
 - 安全敏感工作必须取得独立安全审阅。
 - 并行 PR 按依赖顺序更新到最新 `main`，再由你整合 HandOff。
 - 证据不足时保持 `review` 或 `blocked`，不得标记 `done`。
+- v0.2 只接受绑定新 product tuple 与精确候选提交的 fresh 发布证据；v0.1 的终态运行、APK、profile、PR 和结论只能作为历史背景。
 
 ## 结束
 

@@ -2,8 +2,10 @@
 
 ## Task
 
-- task_id: `<M0-00>`
-- branch: `<allowed-prefix/m0-00-short-name>`
+- task_id: `<M0-00-or-V2-M0-00>`
+- release_line: `<v0.1-or-v0.2>`
+- product_tuple_sha256: `<64-lowercase-hex-or-not_applicable-for-schema1-history>`
+- branch: `<allowed-prefix/task-id-short-name>`
 - commit: `<40-character-lowercase-sha-or-UNCOMMITTED>`
 - owner_role: `<task-card-owner-role>`
 
@@ -27,12 +29,15 @@ None
 
 ## Verification Evidence
 
+- task_id: `<M0-00-or-V2-M0-00>`
+- git_commit: `<40-character-lowercase-sha>`
 - command: `<exact-command>`
 - exit_code: `<integer>`
 - environment: `<os-and-toolchain>`
 - timestamp: `<ISO-8601-with-timezone>`
 - artifact: `<repository-relative-path-or-controlled-artifact-id>`
 - sha256: `<64-lowercase-hex-or-not_applicable>`
+- result: `<observable-pass-or-blocked-result>`
 
 ## Security and Compatibility
 

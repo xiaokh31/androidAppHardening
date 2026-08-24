@@ -1,0 +1,316 @@
+{
+  "schemaVersion": 1,
+  "releaseLine": "v0.2",
+  "pathEncoding": "repository-relative-posix-utf8-nfc",
+  "sortOrder": "unsigned-utf8-bytes",
+  "allowedModes": [
+    "100644",
+    "100755"
+  ],
+  "roleEnum": [
+    "product-source",
+    "product-build",
+    "distribution-source",
+    "distribution-contract",
+    "toolchain-wrapper",
+    "toolchain-lock",
+    "toolchain-contract",
+    "product-contract",
+    "public-schema",
+    "fixture-source",
+    "validation-source",
+    "validation-schema",
+    "validation-workflow-candidate",
+    "validation-canary-workflow",
+    "identity-validator",
+    "performance-contract",
+    "release-gate-contract"
+  ],
+  "canonicalPaths": {
+    "manifestPreimages": {
+      "implementation": "docs/v0.2/evidence/V2-M0-02/implementation-manifest.json",
+      "toolchain": "docs/v0.2/evidence/V2-M0-02/toolchain-manifest.json",
+      "product-contract": "docs/v0.2/evidence/V2-M0-02/product-contract-manifest.json",
+      "fixture-source": "docs/v0.2/evidence/V2-M3-01/fixture-source-manifest.json",
+      "validation": "docs/v0.2/evidence/V2-M3-01/validation-manifest.json",
+      "performance-contract": "docs/v0.2/evidence/V2-M3-01/performance-contract-manifest.json",
+      "release-gate-contract": "docs/v0.2/evidence/V2-M3-01/release-gate-contract-manifest.json"
+    },
+    "workflowCandidates": {
+      "performance": "tools/validation/workflows/v02-performance.yml",
+      "release-validation": "tools/validation/workflows/v02-release-validation.yml",
+      "security-review": "tools/validation/workflows/v02-security-review.yml",
+      "release-packaging": "tools/validation/workflows/v02-release-packaging.yml",
+      "release-evidence": "tools/validation/workflows/v02-release-evidence.yml"
+    },
+    "liveWorkflows": {
+      "performance": ".github/workflows/v02-performance.yml",
+      "release-validation": ".github/workflows/v02-release-validation.yml",
+      "security-review": ".github/workflows/v02-security-review.yml",
+      "release-packaging": ".github/workflows/v02-release-packaging.yml",
+      "release-evidence": ".github/workflows/v02-release-evidence.yml"
+    },
+    "lockSchemas": {
+      "performance-run": "tools/validation/schemas/v02-performance-run-lock-v1.schema.json",
+      "validation-run": "tools/validation/schemas/v02-validation-run-lock-v1.schema.json",
+      "security-run": "tools/security-review-v02/schemas/security-run-lock-v1.schema.json",
+      "release-artifact": "tools/release-evidence-v02/schemas/release-artifact-lock-v1.schema.json",
+      "implementation-freeze": "tools/validation/schemas/v02-implementation-freeze-lock-v1.schema.json",
+      "validation-freeze": "tools/validation/schemas/v02-validation-freeze-lock-v1.schema.json"
+    },
+    "lockValidators": {
+      "performance-run": "tools/validation/verify-v02-performance-run-lock.mjs",
+      "validation-run": "tools/validation/verify-v02-validation-run-lock.mjs",
+      "security-run": "tools/security-review-v02/verify-security-run-lock.mjs",
+      "release-artifact": "tools/release-evidence-v02/verify-release-artifact-lock.mjs",
+      "implementation-freeze": "tools/validation/verify-v02-implementation-freeze-lock.mjs",
+      "validation-freeze": "tools/validation/verify-v02-validation-freeze-lock.mjs"
+    },
+    "freezeLocks": {
+      "implementation": "docs/v0.2/evidence/V2-M0-02/implementation-freeze-lock.json",
+      "validation": "docs/v0.2/evidence/V2-M3-01/validation-freeze-lock.json"
+    },
+    "componentBaseline": "docs/v0.2/evidence/V2-M0-02/v02-component-baseline.json",
+    "componentBaselineSchema": "distribution/src/main/resources/v0.2/schemas/component-baseline-v1.schema.json",
+    "candidateLock": "docs/v0.2/evidence/V2-M3-02/product-tuple-lock.json",
+    "candidateVerifier": "tools/governance/verify-v02-product-tuple.mjs",
+    "postFreezePolicy": "docs/v0.2/post-freeze-path-policy-v1.json",
+    "postFreezeVerifier": "tools/governance/verify-v02-post-freeze-head.mjs",
+    "handoffValidator": ".agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs",
+    "packageValidator": "tools/governance/validate-v0-2-package.mjs",
+    "canaryWorkflow": ".github/workflows/v02-performance-canary.yml",
+    "artifactManifestSchemas": {
+      "performance": "tools/validation/schemas/v02-performance-artifact-manifest-v1.schema.json",
+      "release-validation": "tools/validation/schemas/v02-release-validation-artifact-manifest-v1.schema.json",
+      "security": "tools/security-review-v02/schemas/security-artifact-manifest-v1.schema.json",
+      "release-packaging": "tools/release-evidence-v02/schemas/release-packaging-artifact-manifest-v1.schema.json",
+      "release-evidence": "tools/release-evidence-v02/schemas/release-evidence-artifact-manifest-v1.schema.json"
+    },
+    "artifactManifestValidators": {
+      "release-packaging": "tools/release-evidence-v02/verify-release-packaging-artifact-manifest.mjs",
+      "release-evidence": "tools/release-evidence-v02/verify-release-evidence-artifact-manifest.mjs"
+    }
+  },
+  "manifestPolicies": [
+    {
+      "manifestKind": "implementation",
+      "ownerTask": "V2-M0-02",
+      "recursivePrefixes": [
+        "distribution/",
+        "host/",
+        "runtime/"
+      ],
+      "exactPaths": [
+        "LICENSE",
+        "THIRD_PARTY_NOTICES.md",
+        "build.gradle.kts",
+        "gradle.properties",
+        "settings.gradle.kts"
+      ],
+      "suffixSelectors": [],
+      "roleRules": [
+        "exact:LICENSE=distribution-contract",
+        "exact:THIRD_PARTY_NOTICES.md=distribution-contract",
+        "exact:build.gradle.kts=product-build",
+        "exact:gradle.properties=product-build",
+        "exact:settings.gradle.kts=product-build",
+        "prefix:distribution/src/main/resources/v0.2/schemas/=distribution-contract",
+        "prefix:distribution/=distribution-source",
+        "prefix:host/=product-source",
+        "prefix:runtime/=product-source"
+      ]
+    },
+    {
+      "manifestKind": "toolchain",
+      "ownerTask": "V2-M0-02",
+      "recursivePrefixes": [
+        "gradle/",
+        "tools/supply-chain-v02/"
+      ],
+      "exactPaths": [
+        "docs/TOOLCHAIN_AND_PROVENANCE.md",
+        "tools/validation/v02-supply-chain-tools.json"
+      ],
+      "suffixSelectors": [
+        "prefixes:benchmarks/,distribution/,fixtures/,host/,integration-tests/,runtime/,tools/validation/;suffix:/build.gradle.kts;role:toolchain-contract",
+        "prefixes:benchmarks/,distribution/,fixtures/,host/,integration-tests/,runtime/,tools/validation/;suffix:/gradle.lockfile;role:toolchain-lock"
+      ],
+      "roleRules": [
+        "exact:docs/TOOLCHAIN_AND_PROVENANCE.md=toolchain-contract",
+        "exact:tools/validation/v02-supply-chain-tools.json=toolchain-lock",
+        "prefix:gradle/wrapper/=toolchain-wrapper",
+        "prefix:gradle/=toolchain-lock",
+        "prefix:tools/supply-chain-v02/=toolchain-contract",
+        "suffix:/build.gradle.kts=toolchain-contract",
+        "suffix:/gradle.lockfile=toolchain-lock"
+      ]
+    },
+    {
+      "manifestKind": "product-contract",
+      "ownerTask": "V2-M0-02",
+      "recursivePrefixes": [
+        "docs/specs/"
+      ],
+      "exactPaths": [
+        "docs/adr/0001-apk-postprocessing-only.md",
+        "docs/adr/0002-unsigned-output-only.md",
+        "docs/adr/0003-api29-public-classloader-hook.md",
+        "docs/adr/0004-versioned-encrypted-dex-container.md",
+        "docs/adr/0005-runtime-abi-policy.md",
+        "docs/adr/0006-offline-key-protection-boundary.md",
+        "docs/adr/0007-source-dir-startup-configuration.md",
+        "docs/adr/0008-chunk-authenticated-dex-container.md",
+        "docs/adr/0009-native-cryptography-backend.md",
+        "docs/adr/0010-environment-risk-policy.md",
+        "docs/adr/0011-memory-exposure-controls.md",
+        "docs/adr/0012-api-abi-validation-claim-boundary.md",
+        "docs/adr/0013-shell-factory-relaunch-lifecycle.md",
+        "docs/adr/0014-test-only-high-benchmark-boundary.md",
+        "docs/adr/0015-startup-performance-measurement-stability.md",
+        "docs/adr/0020-v0-2-product-baseline-and-version-isolation.md",
+        "docs/v0.2/ARCHITECTURE.md",
+        "docs/v0.2/COMPATIBILITY_MATRIX.md",
+        "docs/v0.2/IDENTITY_MANIFESTS.md",
+        "docs/v0.2/PRODUCT_BASELINE.md",
+        "docs/v0.2/PRODUCT_REQUIREMENTS.md",
+        "docs/v0.2/SUPPLY_CHAIN_TOOLCHAIN.md",
+        "docs/v0.2/THREAT_MODEL.md",
+        "docs/v0.2/identity-path-policy-v1.json",
+        "docs/v0.2/post-freeze-path-policy-v1.json"
+      ],
+      "suffixSelectors": [],
+      "roleRules": [
+        "prefix:docs/specs/=public-schema",
+        "prefix:docs/=product-contract"
+      ]
+    },
+    {
+      "manifestKind": "fixture-source",
+      "ownerTask": "V2-M3-01",
+      "recursivePrefixes": [
+        "fixtures/"
+      ],
+      "exactPaths": [],
+      "suffixSelectors": [],
+      "roleRules": [
+        "prefix:fixtures/=fixture-source"
+      ]
+    },
+    {
+      "manifestKind": "validation",
+      "ownerTask": "V2-M3-01",
+      "recursivePrefixes": [
+        "benchmarks/",
+        "integration-tests/",
+        "tools/release-evidence-v02/",
+        "tools/security-review-v02/",
+        "tools/validation/"
+      ],
+      "exactPaths": [
+        ".agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs",
+        ".github/workflows/v02-performance-canary.yml",
+        "tools/governance/test-handoff-validator.mjs",
+        "tools/governance/validate-v0-2-package.mjs",
+        "tools/governance/verify-v02-post-freeze-head.mjs",
+        "tools/governance/verify-v02-product-tuple.mjs"
+      ],
+      "suffixSelectors": [],
+      "roleRules": [
+        "exact:.github/workflows/v02-performance-canary.yml=validation-canary-workflow",
+        "prefix:tools/validation/workflows/=validation-workflow-candidate",
+        "prefix:tools/validation/schemas/=validation-schema",
+        "prefix:tools/security-review-v02/schemas/=validation-schema",
+        "prefix:tools/release-evidence-v02/schemas/=validation-schema",
+        "prefix:tools/governance/=identity-validator",
+        "exact:.agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs=identity-validator",
+        "prefix:benchmarks/=validation-source",
+        "prefix:integration-tests/=validation-source",
+        "prefix:tools/=validation-source"
+      ]
+    },
+    {
+      "manifestKind": "performance-contract",
+      "ownerTask": "V2-M3-01",
+      "recursivePrefixes": [],
+      "exactPaths": [
+        "docs/v0.2/TEST_STRATEGY.md",
+        "docs/v0.2/tasks/V2-M3-03-size-startup-memory-gate.md",
+        "tools/validation/render-v02-performance-summary.mjs",
+        "tools/validation/schemas/v02-apk-byte-accounting-v1.schema.json",
+        "tools/validation/schemas/v02-environment-v1.schema.json",
+        "tools/validation/schemas/v02-performance-artifact-manifest-v1.schema.json",
+        "tools/validation/schemas/v02-performance-report-v1.schema.json",
+        "tools/validation/schemas/v02-performance-run-lock-v1.schema.json",
+        "tools/validation/verify-v02-apk-byte-accounting.mjs",
+        "tools/validation/verify-v02-performance-run-lock.mjs",
+        "tools/validation/verify-v02-performance.mjs",
+        "tools/validation/workflows/v02-performance.yml"
+      ],
+      "suffixSelectors": [],
+      "roleRules": [
+        "exact:docs/v0.2/TEST_STRATEGY.md=performance-contract",
+        "exact:docs/v0.2/tasks/V2-M3-03-size-startup-memory-gate.md=performance-contract",
+        "prefix:tools/validation/=performance-contract"
+      ]
+    },
+    {
+      "manifestKind": "release-gate-contract",
+      "ownerTask": "V2-M3-01",
+      "recursivePrefixes": [],
+      "exactPaths": [
+        ".agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs",
+        "docs/v0.2/COMPATIBILITY_MATRIX.md",
+        "docs/v0.2/SUPPLY_CHAIN_TOOLCHAIN.md",
+        "docs/v0.2/tasks/V2-M3-04-exact-tuple-release-validation.md",
+        "docs/v0.2/tasks/V2-M4-01-security-supply-chain-review.md",
+        "docs/v0.2/tasks/V2-M4-02-reproducible-release-packaging.md",
+        "docs/v0.2/tasks/V2-M4-03-release-evidence-decision.md",
+        "tools/governance/test-handoff-validator.mjs",
+        "tools/governance/validate-v0-2-package.mjs",
+        "tools/governance/verify-v02-post-freeze-head.mjs",
+        "tools/governance/verify-v02-product-tuple.mjs",
+        "tools/release-evidence-v02/schemas/release-artifact-lock-v1.schema.json",
+        "tools/release-evidence-v02/schemas/release-evidence-artifact-manifest-v1.schema.json",
+        "tools/release-evidence-v02/schemas/release-packaging-artifact-manifest-v1.schema.json",
+        "tools/release-evidence-v02/verify-release-artifact-lock.mjs",
+        "tools/release-evidence-v02/verify-release-evidence-artifact-manifest.mjs",
+        "tools/release-evidence-v02/verify-release-evidence.mjs",
+        "tools/release-evidence-v02/verify-release-packaging-artifact-manifest.mjs",
+        "tools/security-review-v02/config/osv-scanner-empty-v2.5.1.toml",
+        "tools/security-review-v02/schemas/security-artifact-manifest-v1.schema.json",
+        "tools/security-review-v02/schemas/security-run-lock-v1.schema.json",
+        "tools/security-review-v02/verify-security-review.mjs",
+        "tools/security-review-v02/verify-security-run-lock.mjs",
+        "tools/validation/schemas/v02-release-validation-artifact-manifest-v1.schema.json",
+        "tools/validation/schemas/v02-validation-run-lock-v1.schema.json",
+        "tools/validation/verify-v02-release-package.mjs",
+        "tools/validation/verify-v02-release-validation.mjs",
+        "tools/validation/verify-v02-validation-run-lock.mjs",
+        "tools/validation/workflows/v02-release-evidence.yml",
+        "tools/validation/workflows/v02-release-packaging.yml",
+        "tools/validation/workflows/v02-release-validation.yml",
+        "tools/validation/workflows/v02-security-review.yml"
+      ],
+      "suffixSelectors": [],
+      "roleRules": [
+        "prefix:docs/=release-gate-contract",
+        "prefix:tools/=release-gate-contract",
+        "prefix:.agents/=release-gate-contract"
+      ]
+    }
+  ],
+  "resolutionRules": {
+    "selectorUnion": true,
+    "regularTrackedFilesOnly": true,
+    "exactPathMustExistAtFreeze": true,
+    "recursivePrefixMustExistAtFreeze": true,
+    "firstMatchingRoleRuleWins": true,
+    "exactlyOneRoleRequired": true,
+    "unmatchedPathFails": true,
+    "matchedPathOutsideSelectorFails": true,
+    "duplicatePathFails": true,
+    "caseFoldCollisionFails": true,
+    "nfcCollisionFails": true,
+    "manifestSelfReferenceFails": true
+  }
+}

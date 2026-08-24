@@ -14,12 +14,14 @@ description: Validate an authorized protected APK and its reports against reposi
 
 ## Validation Mode
 
+Read `HandOff.md` first and route by its `release_line`. A v0.1 task uses `docs/tasks/`; a v0.2 task uses `docs/v0.2/tasks/`. Before a v0.2 freeze or evidence task, read `docs/v0.2/identity-path-policy-v1.json` and `docs/v0.2/post-freeze-path-policy-v1.json`, then invoke the frozen verifier with the task's exact `--stage` and `--phase`; never infer either value. V2 tasks deliberately do not name old task IDs as dependencies: verify the exact `baseline_inputs` Git commit instead of adding M1-06 to `depends_on`.
+
 Select exactly one mode before running commands and record it in the evidence:
 
-- `pre-cli`: use when the current task neither implements nor depends on M1-06 and the release CLI does not yet exist. Run only the task card's pinned Gradle/module/PoC entry points. M0-03 validates the toolchain and module graph; M0-04/M0-05 validate their Android PoC flavors; M1-05 validates its internal assembler/repacker harness; M2 tasks use their test-only integration driver. Do not invent, stub, or prematurely expose a product CLI.
-- `full-flow`: use only for M1-06 or a task whose satisfied dependency set includes M1-06 and whose built distribution actually provides `android-app-hardening`. The sole business command is `android-app-hardening protect --input <apk> --output <unsigned-apk> --report <json>`.
+- `pre-cli`: for v0.1, use when the current task neither implements nor depends on M1-06 and the release CLI does not yet exist. Run only the task card's pinned Gradle/module/PoC entry points. M0-03 validates the toolchain and module graph; M0-04/M0-05 validate their Android PoC flavors; M1-05 validates its internal assembler/repacker harness; M2 tasks use their test-only integration driver. Do not invent, stub, or prematurely expose a product CLI.
+- `full-flow`: for v0.1, use for M1-06 or a task whose satisfied dependency set includes M1-06. For v0.2, use when every `baseline_inputs` commit is verified, the referenced merged baseline contains the M1-06 CLI capability, and the current clean build actually provides `android-app-hardening`; M1-06 remains historical baseline provenance, not a V2 dependency. The sole business command is `android-app-hardening protect --input <apk> --output <unsigned-apk> --report <json>`.
 
-If the task requires an artifact that its dependencies cannot produce in the selected mode, stop with a structured blocker. Do not silently run a later task's interface.
+If the task requires an artifact that its dependencies or verified V2 baseline cannot produce in the selected mode, stop with a structured blocker. Do not silently run a later task's interface.
 
 ## Validation Flow
 

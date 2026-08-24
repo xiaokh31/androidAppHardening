@@ -6,24 +6,27 @@
 
 1. `AGENTS.md`
 2. `HandOff.md`
-3. `docs/README_FIRST.md`
-4. 当前 `docs/tasks/<task>.md`
+3. 当前发布线的必读入口：v0.1 使用 `docs/README_FIRST.md`，v0.2 使用 `docs/v0.2/README_FIRST.md`
+4. 当前任务卡：v0.1 使用 `docs/tasks/<task>.md`，v0.2 使用 `docs/v0.2/tasks/<task>.md`
 5. 任务引用的架构、威胁模型、测试文档与 ADR
 6. `required_skills` 指定的 `.agents/skills/<skill>/SKILL.md`
 
 ## 产品不变量
 
-- v0.1 只处理独立 APK。AAB、APKS、split、dynamic feature、Flutter、Unity、React Native、热修复、插件框架和已有加固壳均不在范围内。
+- v0.1 与 v0.2 只处理独立 APK。AAB、APKS、split、dynamic feature、Flutter、Unity、React Native、热修复、插件框架和已有加固壳均不在范围内。
 - 输入 APK 只读；不得原地覆盖、改名替换或在失败后留下冒充成功的输出。
 - 输出必须未签名。生产模块不得接收、读取或传递私钥、keystore、alias、签名密码，也不得调用签名工具。
 - 集成测试可在忽略的构建目录生成一次性非生产测试证书，只用于安装测试副本；该能力不得进入产品模块、分发包或版本库。
-- v0.1 要求输入 `minSdk >= 29`，不得静默提高输入的最低 SDK。
+- v0.1 与 v0.2 要求输入 `minSdk >= 29`，不得静默提高输入的最低 SDK。
 - Runtime 可构建四个 ABI，但不得把壳的 x86 能力宣传为客户 ARM-only 应用的 x86 兼容能力。
 - 反 dump、反调试、环境检测、签名校验和离线密钥隐藏均为成本防御，不得使用“无法破解”“绝对防护”等表述。
+- v0.1 的 `STOP_CURRENT_V0_1_RELEASE_LINE`、M3-05 终态阻塞和不可启动的 M4 永久保留；v0.2 不得重试、替换、续期、改名复用或把旧运行和产物作为发布通过证据。
+- v0.2 只允许复用已合并源码、测试资产和安全合同；所有发布 `PASS` 必须绑定新的 v0.2 product tuple、精确候选提交和新生成的证据。
 
 ## 工作范围
 
 - 一个 Agent 同时只领取一个任务卡；除 M0-01 对全空远程直接创建首个 `main` 的一次性引导例外外，一个任务对应一个 Issue、一个工作分支和一个 PR。M0-01 必须补建 Issue 并链接种子提交，不得虚构分支或 PR；M0-02 的首个治理文本包按用户预先批准的 `docs/m0-project-package` 分支执行，此后不得援引这两个引导例外。
+- v0.2 任务使用 `V2-M0-01` 一类版本化 ID，并只允许依赖 `docs/v0.2/tasks/INDEX.md` 中的其他 V2 任务；v0.1 终态资料只能作为 `baseline_inputs`，不得作为任务依赖或完成证据。
 - 不实现相邻任务，不借安全修复进行无关重构，不改变任务卡外的公共接口。
 - 发现任务缺失关键决策、依赖不成立或真实环境冲突时，提交 `blocked` 交接包，不自行扩大范围。
 - 跨模块、容器格式、签名、ABI、兼容性、安全策略或难以撤销的决策必须先新增或更新 ADR。
@@ -56,6 +59,7 @@
 
 ```text
 node tools/governance/validate-project-package.mjs
+node tools/governance/validate-v0-2-package.mjs
 ```
 
 ## 交接

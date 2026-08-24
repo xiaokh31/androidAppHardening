@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "tuple_kind": "development_baseline",
+  "release_line": "v0.2",
+  "target_version": "0.2.0",
+  "source_version": "0.1.0-dev",
+  "releasable": false,
+  "terminal_v0_1_commit": "7c838d7051e8eedb1607e57b6e81e7a6f3db4523",
+  "predecessor_product_tuple_sha256": "883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd",
+  "source_trees": {
+    "root": "1f8a4c387b4715443df31457fa498c7463b1f23f",
+    "host": "0785d697f3e406219462c1cd3e14fbcd77d46cca",
+    "runtime": "38c07c0954127fb60f990e03974b2f457ab646bf",
+    "fixtures": "8d23ea087ce17f0dd935acc5d0516ea1270e69fd",
+    "integration_tests": "cf54d499a239fc79727120286cde84b2eb1e6288",
+    "tools_validation": "c130a3f03ec4eaafdbc421524433570f73e2deb7",
+    "benchmarks": "c8bdf317566f151c942da932a4e2bb514044354e",
+    "distribution": "9330b45cdd46cccf803e80f24e3dcf62411887c8"
+  },
+  "contracts": {
+    "ahdc": 2,
+    "config_v2": 2,
+    "spv": 1,
+    "report": 1,
+    "min_sdk": 29,
+    "abis": [
+      "armeabi-v7a",
+      "arm64-v8a",
+      "x86",
+      "x86_64"
+    ]
+  },
+  "evidence_policy": "fresh_release_evidence_required",
+  "tuple_sha256": "5fb0205d9fc0c2523cd33734145bf23a901303f4f563eef866e5883ca81fd4c2"
+}

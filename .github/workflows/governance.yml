@@ -52,6 +52,8 @@ jobs:
           node --check tools/governance/validate-project-package.mjs
           node --check tools/governance/hash-project-package.mjs
           node --check tools/governance/test-handoff-validator.mjs
+          node --check tools/governance/active-governance-policy-surfaces.mjs
+          node --check tools/governance/validate-v0-2-package.mjs
           node --check tools/governance/verify-m3-07-high-benchmark-contract.mjs
           node --check tools/governance/verify-m3-08-startup-stability-contract.mjs
           node --check tools/governance/verify-m3-09-startup-attribution-contract.mjs
@@ -64,6 +66,8 @@ jobs:
         shell: bash
         run: |
           node tools/governance/validate-project-package.mjs
+          node tools/governance/validate-v0-2-package.mjs
+          node tools/governance/validate-v0-2-package.mjs --self-test
           node tools/governance/verify-m3-07-high-benchmark-contract.mjs
           node tools/governance/verify-m3-07-high-benchmark-contract.mjs --self-test
           node tools/governance/verify-m3-08-startup-stability-contract.mjs
@@ -118,6 +122,25 @@ jobs:
         env:
           M315_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: node tools/governance/verify-m3-15-terminal-disposition-contract.mjs --base-ref "$M315_BASE_SHA"
+
+      - name: Enforce V2-M0-01 branch and governance-only diff
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          V2_M0_01_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          V2_M0_01_HEAD_REF: ${{ github.head_ref }}
+        run: |
+          introduces_v02=false
+          if ! git cat-file -e "$V2_M0_01_BASE_SHA:docs/v0.2/development-product-tuple.json" 2>/dev/null; then
+            introduces_v02=true
+          fi
+          if grep -Fxq "active_task: V2-M0-01" HandOff.md || [ "$introduces_v02" = "true" ]; then
+            if [ "$V2_M0_01_HEAD_REF" != "docs/v2-m0-01-versioned-baseline" ]; then
+              echo "V2-M0-01 must use docs/v2-m0-01-versioned-baseline, got: $V2_M0_01_HEAD_REF" >&2
+              exit 1
+            fi
+            node tools/governance/validate-v0-2-package.mjs --base-ref "$V2_M0_01_BASE_SHA"
+          fi
 
       - name: Validate HandOff on pull request
         if: github.event_name == 'pull_request'

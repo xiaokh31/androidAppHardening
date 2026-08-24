@@ -1,0 +1,224 @@
+{
+  "schemaVersion": 1,
+  "releaseLine": "v0.2",
+  "identityPolicyPath": "docs/v0.2/identity-path-policy-v1.json",
+  "validationFreezeLockPath": "docs/v0.2/evidence/V2-M3-01/validation-freeze-lock.json",
+  "candidateLockPath": "docs/v0.2/evidence/V2-M3-02/product-tuple-lock.json",
+  "stageOrder": [
+    "V2-M3-02",
+    "V2-M3-03",
+    "V2-M3-04",
+    "V2-M4-01",
+    "V2-M4-02",
+    "V2-M4-03"
+  ],
+  "phaseEnum": [
+    "pre-run",
+    "evidence-pr",
+    "post-merge"
+  ],
+  "phaseRules": {
+    "pre-run": {
+      "headMustEqualAcceptedPredecessorMainHead": true,
+      "completedStagesEndAtImmediatePredecessor": true,
+      "currentStageRequiredOutputsMustBeAbsent": true,
+      "currentStageAllowedPathsMustBeUnchanged": true
+    },
+    "evidence-pr": {
+      "headMustEqualReviewedPrHead": true,
+      "completedStagesIncludeCurrentStage": true,
+      "currentStageRequiredOutputsMustExist": true,
+      "diffAgainstAcceptedPredecessorUsesCurrentStageAllowlist": true
+    },
+    "post-merge": {
+      "headMustEqualMergedMainHead": true,
+      "completedStagesIncludeCurrentStage": true,
+      "currentStageRequiredOutputsMustExist": true,
+      "uniqueMergedPrAndOfficialPostMergeRunRequired": true
+    }
+  },
+  "frozenChecks": {
+    "validationFreezeIsAncestor": true,
+    "allSevenManifestPreimagesAndEntriesMatchFreezeBlobs": true,
+    "allFiveWorkflowCandidateLivePairsAreByteEqual": true,
+    "candidateAndLiveWorkflowSetIsExact": true,
+    "candidateTupleRecomputesFromFreezeLocksAndManifests": true,
+    "firstParentMainHistoryOnly": true,
+    "githubMergedPrAndOfficialRunIdentityRequired": true,
+    "previousStagePathsImmutableAfterAcceptedMerge": true,
+    "pathOutsideCompletedStageUnionFails": true
+  },
+  "stages": [
+    {
+      "taskId": "V2-M3-02",
+      "dependsOn": [
+        "V2-M0-02",
+        "V2-M3-01"
+      ],
+      "requiredTrackedOutputs": [
+        "docs/v0.2/evidence/V2-M0-02/implementation-freeze-ancestry-report.json",
+        "docs/v0.2/evidence/V2-M0-02/implementation-freeze-changed-path-report.json",
+        "docs/v0.2/evidence/V2-M0-02/implementation-freeze-lock.json",
+        "docs/v0.2/evidence/V2-M3-01/validation-freeze-ancestry-report.json",
+        "docs/v0.2/evidence/V2-M3-01/validation-freeze-changed-path-report.json",
+        "docs/v0.2/evidence/V2-M3-01/validation-freeze-lock.json",
+        "docs/v0.2/evidence/V2-M3-02/pre-run-ledger.json",
+        "docs/v0.2/evidence/V2-M3-02/product-tuple-lock.json"
+      ],
+      "allowedChangedPaths": [
+        ".github/workflows/v02-performance.yml",
+        ".github/workflows/v02-release-evidence.yml",
+        ".github/workflows/v02-release-packaging.yml",
+        ".github/workflows/v02-release-validation.yml",
+        ".github/workflows/v02-security-review.yml",
+        "HandOff.md",
+        "docs/v0.2/evidence/V2-M0-02/implementation-freeze-ancestry-report.json",
+        "docs/v0.2/evidence/V2-M0-02/implementation-freeze-changed-path-report.json",
+        "docs/v0.2/evidence/V2-M0-02/implementation-freeze-lock.json",
+        "docs/v0.2/evidence/V2-M3-01/validation-freeze-ancestry-report.json",
+        "docs/v0.2/evidence/V2-M3-01/validation-freeze-changed-path-report.json",
+        "docs/v0.2/evidence/V2-M3-01/validation-freeze-lock.json",
+        "docs/v0.2/evidence/V2-M3-02/independent-review.md",
+        "docs/v0.2/evidence/V2-M3-02/local-validation.md",
+        "docs/v0.2/evidence/V2-M3-02/pre-run-ledger.json",
+        "docs/v0.2/evidence/V2-M3-02/product-tuple-lock.json",
+        "docs/v0.2/evidence/V2-M3-02/tuple-verification-report.json",
+        "docs/v0.2/evidence/V2-M3-02/workflow-publication-report.json"
+      ]
+    },
+    {
+      "taskId": "V2-M3-03",
+      "dependsOn": [
+        "V2-M3-02"
+      ],
+      "requiredTrackedOutputs": [
+        "docs/v0.2/evidence/V2-M3-03/performance-run-lock.json",
+        "docs/v0.2/evidence/V2-M3-03/v02-environment.json",
+        "docs/v0.2/evidence/V2-M3-03/v02-performance-artifact-manifest.json",
+        "docs/v0.2/evidence/V2-M3-03/v02-performance-gate.json",
+        "docs/v0.2/evidence/V2-M3-03/v02-performance-results.json"
+      ],
+      "allowedChangedPaths": [
+        "HandOff.md",
+        "docs/v0.2/evidence/V2-M3-03/independent-review.md",
+        "docs/v0.2/evidence/V2-M3-03/local-validation.md",
+        "docs/v0.2/evidence/V2-M3-03/official-run.json",
+        "docs/v0.2/evidence/V2-M3-03/performance-run-lock.json",
+        "docs/v0.2/evidence/V2-M3-03/v02-environment.json",
+        "docs/v0.2/evidence/V2-M3-03/v02-performance-artifact-manifest.json",
+        "docs/v0.2/evidence/V2-M3-03/v02-performance-gate.json",
+        "docs/v0.2/evidence/V2-M3-03/v02-performance-results.json"
+      ]
+    },
+    {
+      "taskId": "V2-M3-04",
+      "dependsOn": [
+        "V2-M3-03"
+      ],
+      "requiredTrackedOutputs": [
+        "docs/v0.2/evidence/V2-M3-04/v02-compatibility-matrix.json",
+        "docs/v0.2/evidence/V2-M3-04/v02-release-validation-artifact-manifest.json",
+        "docs/v0.2/evidence/V2-M3-04/v02-release-validation-gate.json",
+        "docs/v0.2/evidence/V2-M3-04/validation-run-lock.json"
+      ],
+      "allowedChangedPaths": [
+        "HandOff.md",
+        "docs/v0.2/evidence/V2-M3-04/independent-review.md",
+        "docs/v0.2/evidence/V2-M3-04/local-validation.md",
+        "docs/v0.2/evidence/V2-M3-04/official-run.json",
+        "docs/v0.2/evidence/V2-M3-04/v02-compatibility-matrix.json",
+        "docs/v0.2/evidence/V2-M3-04/v02-release-validation-artifact-manifest.json",
+        "docs/v0.2/evidence/V2-M3-04/v02-release-validation-gate.json",
+        "docs/v0.2/evidence/V2-M3-04/validation-run-lock.json"
+      ]
+    },
+    {
+      "taskId": "V2-M4-01",
+      "dependsOn": [
+        "V2-M3-03",
+        "V2-M3-04"
+      ],
+      "requiredTrackedOutputs": [
+        "docs/v0.2/evidence/V2-M4-01/bom-v0.2.0.cdx.json",
+        "docs/v0.2/evidence/V2-M4-01/independent-review.md",
+        "docs/v0.2/evidence/V2-M4-01/local-validation.md",
+        "docs/v0.2/evidence/V2-M4-01/release-gate-v0.2.0.json",
+        "docs/v0.2/evidence/V2-M4-01/security-run-lock.json",
+        "docs/v0.2/evidence/V2-M4-01/v02-rc-component-manifest.json",
+        "docs/v0.2/evidence/V2-M4-01/v02-security-artifact-manifest.json"
+      ],
+      "allowedChangedPaths": [
+        "HandOff.md",
+        "docs/v0.2/evidence/V2-M4-01/bom-v0.2.0.cdx.json",
+        "docs/v0.2/evidence/V2-M4-01/independent-review.md",
+        "docs/v0.2/evidence/V2-M4-01/local-validation.md",
+        "docs/v0.2/evidence/V2-M4-01/official-run.json",
+        "docs/v0.2/evidence/V2-M4-01/release-gate-v0.2.0.json",
+        "docs/v0.2/evidence/V2-M4-01/security-run-lock.json",
+        "docs/v0.2/evidence/V2-M4-01/v02-rc-component-manifest.json",
+        "docs/v0.2/evidence/V2-M4-01/v02-security-artifact-manifest.json"
+      ]
+    },
+    {
+      "taskId": "V2-M4-02",
+      "dependsOn": [
+        "V2-M4-01"
+      ],
+      "requiredTrackedOutputs": [
+        "docs/v0.2/evidence/V2-M4-02/release-artifact-lock.json",
+        "docs/v0.2/evidence/V2-M4-02/v02-release-artifact-manifest.json",
+        "docs/v0.2/evidence/V2-M4-02/v02-release-packaging-gate.json"
+      ],
+      "allowedChangedPaths": [
+        "HandOff.md",
+        "docs/v0.2/evidence/V2-M4-02/independent-review.md",
+        "docs/v0.2/evidence/V2-M4-02/local-validation.md",
+        "docs/v0.2/evidence/V2-M4-02/official-run.json",
+        "docs/v0.2/evidence/V2-M4-02/release-artifact-lock.json",
+        "docs/v0.2/evidence/V2-M4-02/v02-release-artifact-manifest.json",
+        "docs/v0.2/evidence/V2-M4-02/v02-release-packaging-gate.json"
+      ]
+    },
+    {
+      "taskId": "V2-M4-03",
+      "dependsOn": [
+        "V2-M4-02"
+      ],
+      "requiredTrackedOutputs": [
+        "docs/v0.2/evidence/V2-M4-03/v02-release-evidence-artifact-manifest.json",
+        "docs/v0.2/releases/QUICKSTART.md",
+        "docs/v0.2/releases/RELEASE_NOTES_v0.2.0.md",
+        "docs/v0.2/releases/release-decision-v0.2.0.json",
+        "docs/v0.2/releases/release-evidence-v0.2.0.json"
+      ],
+      "allowedChangedPaths": [
+        "HandOff.md",
+        "README.md",
+        "docs/v0.2/evidence/V2-M4-03/independent-review.md",
+        "docs/v0.2/evidence/V2-M4-03/local-validation.md",
+        "docs/v0.2/evidence/V2-M4-03/official-run.json",
+        "docs/v0.2/evidence/V2-M4-03/v02-release-evidence-artifact-manifest.json",
+        "docs/v0.2/releases/QUICKSTART.md",
+        "docs/v0.2/releases/RELEASE_NOTES_v0.2.0.md",
+        "docs/v0.2/releases/release-decision-v0.2.0.json",
+        "docs/v0.2/releases/release-evidence-v0.2.0.json"
+      ]
+    }
+  ],
+  "evaluationRules": {
+    "stageArgumentRequired": true,
+    "phaseArgumentRequired": true,
+    "stageAndPhaseMustMatchHeadState": true,
+    "completedStagesMustBeContiguousPrefix": true,
+    "eachChangedPathMustBelongToExactlyOneStageExceptHandOff": true,
+    "handoffMayChangeAtEveryStage": true,
+    "requiredTrackedOutputsMustExistInAcceptedStageHead": true,
+    "stageMergeMustBeUniqueMergedPrClosingCanonicalIssue": true,
+    "stageMergeMethodMustBeMergeCommit": true,
+    "stageOfficialPostMergeRunAttemptMustEqual": 1,
+    "stageOfficialPostMergeRunHeadMustEqualMergeCommit": true,
+    "oldStagePathByteDriftFails": true,
+    "unknownOrAdditionalPathFails": true,
+    "buildOnlyOrExternalEvidenceFails": true
+  }
+}

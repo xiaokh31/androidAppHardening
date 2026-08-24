@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { ACTIVE_GOVERNANCE_POLICY_SURFACES } from "./active-governance-policy-surfaces.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const args = process.argv.slice(2);
@@ -17,6 +18,7 @@ if (baseRefIndex >= 0 && (!baseRef || baseRef.startsWith("--"))) {
 }
 
 const paths = {
+  agents: "AGENTS.md",
   adr: "docs/adr/0018-successor-diagnostic-execution-identity.md",
   task: "docs/tasks/M3-13-successor-diagnostic-identity-contract.md",
   m310: "docs/tasks/M3-10-startup-attribution-diagnostic.md",
@@ -219,6 +221,61 @@ function scanSensitiveText(text, label, errors) {
   }
 }
 
+function frontmatterValue(text, key) {
+  const frontmatter = text.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
+  if (!frontmatter) return null;
+  const match = frontmatter[1].match(new RegExp(`^${key}:\\s*(.*?)\\s*$`, "m"));
+  return match ? match[1].replace(/^["']|["']$/g, "") : null;
+}
+
+function hasV01RouteRestorationClaim(text) {
+  const patterns = [
+    /(?:M3-10|M3-13|M3-14|successor).{0,64}(?:retry|rerun|replacement|renewal).{0,32}(?:permitted|allowed|authorized|may|can)/isu,
+    /(?:M3-05|M3-10|M3-13|M3-14|successor).{0,64}(?:(?:\bmay\b|\bcan\b)(?:\s+be)?|is\s+(?:authorized|allowed|permitted)(?:\s+to)?|authorized(?:\s+to)?)\s+(?:retry|retried|rerun|resume|unblock|replace|renew|platform[- ]?(?:substitution|replacement))/isu,
+    /(?:M3-05|M3-10|M3-13|M3-14|successor).{0,64}(?:platform[- ]?(?:substitution|replacement)).{0,32}(?:permitted|allowed|authorized|may|can)/isu,
+    /\bretry\s+(?:is\s+)?(?:permitted|allowed|authorized)\b/isu,
+    /M3-05.{0,64}(?:resume|unblock).{0,32}(?:permitted|allowed|authorized|may|can)/isu,
+    /M3-05.{0,48}(?:可恢复|可解除|允许恢复|解除阻塞)/su,
+    /(?:M3-05|M3-10|M3-14|successor).{0,32}(?:可以|允许|授权|(?<!不)可)(?:进行|对其)?(?:重试|重跑|替换|续期|恢复|解除阻塞|换平台|平台替代|平台替换)/isu,
+    /(?:允许|授权|可以|可).{0,20}(?:换平台|平台替代|平台替换).{0,24}(?:M3-05|M3-10|M3-14|successor)/isu,
+    /(?<!not )(?<!no )M4.{0,48}(?:is\s+startable|may\s+start|can\s+start|start\s+is\s+(?:permitted|allowed|authorized))/isu,
+    /(?:允许|授权|可以|可).{0,20}(?:启动|开始)\s*M4/su,
+    /v0\.1.{0,48}release.{0,24}(?:is\s+)?(?:permitted|allowed|authorized)/isu,
+  ];
+  return patterns.some((pattern) => pattern.test(text));
+}
+
+function isStrictV02Handoff(text) {
+  const tuple = frontmatterValue(text, "product_tuple_sha256");
+  const activeTask = frontmatterValue(text, "active_task");
+  const terminalDecisionRetained = text.includes("STOP_CURRENT_V0_1_RELEASE_LINE")
+    && text.includes(PRODUCT_TUPLE)
+    && /M3-05.{0,180}(?:terminally blocked|remains blocked|cannot be resumed|终态阻塞|不可恢复)/isu.test(text)
+    && /M4.{0,180}(?:not startable|cannot be resumed|cannot start|不可启动|不得启动)/isu.test(text)
+    && /(?:cannot|must not|forbidden|prohibited|not permitted|禁止|不得|不可).{0,180}(?:retry|rerun|replacement|renewal|platform substitution|重试|重跑|替换|续期|平台替代)/isu.test(text);
+  return frontmatterValue(text, "schema_version") === "2"
+    && frontmatterValue(text, "release_line") === "v0.2"
+    && /^[0-9a-f]{64}$/.test(tuple ?? "")
+    && tuple !== PRODUCT_TUPLE
+    && /^V2-M[0-4]$/.test(frontmatterValue(text, "current_milestone") ?? "")
+    && (activeTask === "NONE" || /^V2-M[0-4]-\d{2}$/.test(activeTask ?? ""))
+    && text.includes("| M3-13 | `/root` | `main` | done |")
+    && text.includes("PR #81 merged")
+    && terminalDecisionRetained
+    && !hasV01RouteRestorationClaim(text);
+}
+
+function asV02Handoff(text, tuple) {
+  return text
+    .replace(/^schema_version:\s*1$/m, "schema_version: 2")
+    .replace(
+      /^project:\s*androidAppHardening$/m,
+      `project: androidAppHardening\nrelease_line: v0.2\nproduct_tuple_sha256: ${tuple}`,
+    )
+    .replace(/^current_milestone:.*$/m, "current_milestone: V2-M0")
+    .replace(/^active_task:.*$/m, "active_task: V2-M0-01");
+}
+
 function validateState(state) {
   const errors = [];
   const { lock, proof, texts, workflowPresence } = state;
@@ -309,6 +366,7 @@ function validateState(state) {
   validateRawOfficialEvidence(state, errors);
 
   const phrases = {
+    agents: ["STOP_CURRENT_V0_1_RELEASE_LINE", "M3-05 终态阻塞"],
     adr: [
       "M3-10 is terminally blocked",
       "zero AVD creation, zero installation attempt, zero retained samples and zero artifacts",
@@ -337,6 +395,12 @@ function validateState(state) {
   for (const [key, required] of Object.entries(phrases)) {
     for (const phrase of required) requirePhrase(texts[key], phrase, paths[key] ?? key, errors);
   }
+  if (hasV01RouteRestorationClaim(texts.agents)) errors.push(`${paths.agents}: highest-level rules must not restore the v0.1 route`);
+  for (const [key, text] of Object.entries(texts)) {
+    if (key.startsWith("policy:") && hasV01RouteRestorationClaim(text)) {
+      errors.push(`${key.slice("policy:".length)}: active governance policy must not restore the v0.1 route`);
+    }
+  }
 
   const handoffActive = texts.handoff.includes("active_task: M3-13")
     && texts.handoff.includes("| M3-13 | `/root` | `docs/m3-13-diagnostic-identity-contract` | in_progress |");
@@ -347,8 +411,9 @@ function validateState(state) {
     && texts.handoff.includes("| M3-13 | `/root` | `main` | done |")
     && texts.handoff.includes("| M3-15 | `/root` | `docs/m3-15-terminal-disposition-contract` | in_progress |")
     && texts.handoff.includes("STOP_CURRENT_V0_1_RELEASE_LINE");
-  if (!handoffActive && !handoffDone && !handoffTerminalDisposition) {
-    errors.push(`${paths.handoff}: M3-13 lifecycle must be active, merged-main done, or the exact M3-15 terminal-disposition state`);
+  const handoffV02 = isStrictV02Handoff(texts.handoff);
+  if (!handoffActive && !handoffDone && !handoffTerminalDisposition && !handoffV02) {
+    errors.push(`${paths.handoff}: M3-13 lifecycle must be active, merged-main done, the exact M3-15 terminal-disposition state, or a strict distinct v0.2 lifecycle`);
   }
 
   if (workflowPresence.diagnostic) errors.push(`${DIAGNOSTIC_WORKFLOW}: contract task must not add executable diagnostic workflow`);
@@ -374,6 +439,9 @@ function loadState() {
   const texts = {};
   for (const [key, relativePath] of Object.entries(paths)) {
     if (key !== "lock" && key !== "proof") texts[key] = read(relativePath);
+  }
+  for (const relativePath of ACTIVE_GOVERNANCE_POLICY_SURFACES) {
+    texts[`policy:${relativePath}`] = read(relativePath);
   }
   return {
     lock,
@@ -458,13 +526,45 @@ function runSelfTest(baseState) {
   cases.push({ name: "missing-m310-terminal", mutate: (state) => { state.texts.m310 = state.texts.m310.replace("terminally blocked", "retryable"); } });
   cases.push({ name: "invalid-handoff-lifecycle", mutate: (state) => {
     state.texts.handoff = state.texts.handoff
-      .replace("active_task: M3-13", "active_task: M3-05")
-      .replace("active_task: NONE", "active_task: M3-05")
-      .replace("active_task: M3-15", "active_task: M3-05")
+      .replace(/^active_task:.*$/m, "active_task: M3-05")
       .replace("| M3-13 | `/root` | `main` | done |", "| M3-13 | `/root` | `main` | review |");
+  } });
+  cases.push({ name: "v02-reuses-v01-product-tuple", mutate: (state) => {
+    state.texts.handoff = asV02Handoff(state.texts.handoff, PRODUCT_TUPLE);
+  } });
+  cases.push({ name: "v02-restores-v01-release-route", mutate: (state) => {
+    state.texts.handoff = `${asV02Handoff(state.texts.handoff, "a".repeat(64))}\nM4 is startable and authorized for v0.1.\n`;
+  } });
+  cases.push({ name: "v02-generic-retry-authorization", mutate: (state) => {
+    state.texts.handoff = `${asV02Handoff(state.texts.handoff, "a".repeat(64))}\nretry allowed\n`;
+  } });
+  cases.push({ name: "v02-task-first-modal-resume", mutate: (state) => {
+    state.texts.handoff = `${asV02Handoff(state.texts.handoff, "a".repeat(64))}\nM3-05 may resume.\n`;
+  } });
+  cases.push({ name: "v02-task-first-modal-retry", mutate: (state) => {
+    state.texts.handoff = `${asV02Handoff(state.texts.handoff, "a".repeat(64))}\nM3-14 may be retried.\n`;
+  } });
+  cases.push({ name: "v02-task-first-modal-resume-chinese", mutate: (state) => {
+    state.texts.handoff = `${asV02Handoff(state.texts.handoff, "a".repeat(64))}\nM3-05 可以恢复。\n`;
+  } });
+  cases.push({ name: "highest-rule-restores-v01", mutate: (state) => {
+    state.texts.agents = `${state.texts.agents}\nM3-05 retry is allowed.\n`;
+  } });
+  cases.push({ name: "handoff-spec-restores-v01", mutate: (state) => {
+    state.texts["policy:docs/HANDOFF_SPEC.md"] = `${state.texts["policy:docs/HANDOFF_SPEC.md"]}\nM3-05 may resume.\n`;
+  } });
+  cases.push({ name: "v02-platform-substitution-authorization", mutate: (state) => {
+    state.texts.handoff = `${asV02Handoff(state.texts.handoff, "a".repeat(64))}\nM3-05 platform substitution is allowed.\n`;
   } });
   cases.push({ name: "diagnostic-workflow-present", mutate: (state) => { state.workflowPresence.diagnostic = true; } });
   cases.push({ name: "evidence-workflow-present", mutate: (state) => { state.workflowPresence.evidence = true; } });
+
+  const v02Positive = clone(baseState);
+  v02Positive.texts.handoff = asV02Handoff(v02Positive.texts.handoff, "a".repeat(64));
+  const v02PositiveErrors = validateState(v02Positive);
+  if (v02PositiveErrors.length > 0) {
+    throw new Error(`strict v0.2 lifecycle unexpectedly rejected: ${v02PositiveErrors.join(", ")}`);
+  }
 
   for (const testCase of cases) {
     const mutated = clone(baseState);

@@ -7,9 +7,10 @@ description: Implement or review one host-side APK post-processing task in this 
 
 ## Start
 
-1. Read the mandatory documents in `docs/README_FIRST.md` order and load exactly one assigned M1 task card.
-2. Confirm the branch matches the task and inspect existing user changes before editing.
-3. Use only synthetic or explicitly authorized fixtures. Keep generated APKs and reports in ignored build or artifact directories.
+1. Read `AGENTS.md` and `HandOff.md`; route solely by the active release line in `release_line`.
+2. Load exactly one assigned task card. For v0.1, use one M1 card under `docs/tasks/`. For v0.2, use one `docs/v0.2/tasks/` V2 task whose `required_skills` explicitly contains `implement-apk-postprocessor`; do not require or invent an old M1 dependency.
+3. Read the mandatory documents from that release line, confirm the branch matches the task, and inspect existing user changes before editing.
+4. Use only synthetic or explicitly authorized fixtures. Keep generated APKs and reports in ignored build or artifact directories.
 
 ## Implement
 

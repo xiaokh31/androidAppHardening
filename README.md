@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-M0 基础建设与可行性验证、M1 Host、M2 Runtime 及大部分 M3 验证已经完成。M3-10 原始诊断在 Android 前失败；M3-13/ADR 0018 随后只允许一个 successor。M3-14 已在 Draft PR #83 消耗该唯一资格：canonical run `32611656930` 与 terminal run `32612414400` 均失败且 artifact 为零，保留页面不能证明更窄失败边界，也没有选择性能 owner。ADR 0018 禁止重试、替换或进一步续期。M3-15/Issue #84 与 PR #85 已以 `STOP_CURRENT_V0_1_RELEASE_LINE` 固定终态：M3-05/PR #63 与 M4 不可继续，不生成 v0.1 Release Candidate 或发布包；PR #83 与 PR #63 仅在 PR #85 合并后按 ADR 0019 关闭且不合并。现有源码和历史验证仍可审计，但不得称为已完成 v0.1 发布。任何未来重启都必须建立新的版本化产品 tuple、ADR 和任务图。这些控制只提高攻击成本，不承诺阻止 root、注入或进程控制攻击者。
+M0 基础建设与可行性验证、M1 Host、M2 Runtime 及大部分 M3 验证已经完成。M3-10 原始诊断在 Android 前失败；M3-13/ADR 0018 随后只允许一个 successor。M3-14 已在 Draft PR #83 消耗该唯一资格：canonical run `32611656930` 与 terminal run `32612414400` 均失败且 artifact 为零，保留页面不能证明更窄失败边界，也没有选择性能 owner。ADR 0018 禁止重试、替换或进一步续期。M3-15/Issue #84 与已合并 PR #85 以 `STOP_CURRENT_V0_1_RELEASE_LINE` 固定终态：M3-05 与 M4 不可继续，不生成 v0.1 Release Candidate 或发布包；PR #83/Issue #82 与 PR #63/Issue #22 已按 ADR 0019 关闭且未合并。现有源码和历史验证仍可审计，但不得称为已完成 v0.1 发布。任何未来重启都必须建立新的版本化产品 tuple、ADR 和任务图。这些控制只提高攻击成本，不承诺阻止 root、注入或进程控制攻击者。
 
 M2-07 Ubuntu runner 精确锁维护已关闭先前工具链阻塞；PR #74 的 exact-head 及合并后 `main` Build 均在 Ubuntu/Windows 通过。GitHub 后续分配的 Windows `20260818.207.1` 已由 Issue #77/PR #78 精确固定 runtime/ref 与逐镜像 VS/x64 tools/`cl.exe`；最终 head `88f1c11` 通过独立全零复核及双平台 Build/Governance，并确认新镜像 `cl.exe 19.51.36256`。PR #78 已以 expected-head 保护合并，PR #76 现只恢复最终 Ubuntu/Windows Build/Governance，不运行设备、KVM、fuzz、equivalence、benchmark 或 API 36 诊断。
 
@@ -45,9 +45,9 @@ M2-07 Ubuntu runner 精确锁维护已关闭先前工具链阻塞；PR #74 的 e
 | [M3-12](docs/tasks/M3-12-profile-package-retention.md) | 已完成 | PR #76/Issue #75；固定已复核 profile package 的 numeric release/asset ID、archive/member SHA-256；全零复核、双平台 Build/Governance 与 expected-head 合并已关闭 |
 | [M3-10](docs/tasks/M3-10-startup-attribution-diagnostic.md) | 已阻塞 | first-and-only run `32554806537` 在 Android 前失败且零 artifact；identity 已消耗，PR #79 必须保持 Draft |
 | [M3-13](docs/tasks/M3-13-successor-diagnostic-identity-contract.md) | 已完成 | PR #81/Issue #80；ADR 0018 固定唯一 successor identity、全历史 qualification 与不可再次续期；独立全零复核和双平台 Build/Governance 通过，本任务未运行 Android |
-| M3-14 / [Draft PR #83](https://github.com/xiaokh31/androidAppHardening/pull/83) | 终态阻塞 | 唯一 successor 与 terminal evidence 均失败且零 artifact；PR #85 合并后按 ADR 0019 关闭 PR #83/Issue #82 且不合并，禁止重试、替换或续期 |
+| M3-14 / [PR #83](https://github.com/xiaokh31/androidAppHardening/pull/83) | 已终结 | 唯一 successor 与 terminal evidence 均失败且零 artifact；PR #83/Issue #82 已按 ADR 0019 关闭且未合并，禁止重试、替换或续期 |
 | [M3-15](docs/tasks/M3-15-terminal-diagnostic-disposition.md) | 已完成 | PR #85/Issue #84；ADR 0019 固定 `STOP_CURRENT_V0_1_RELEASE_LINE`，独立复核与 Ubuntu/Windows Build/Governance 全绿，未运行设备、KVM、benchmark 或诊断 workflow |
-| [M3-05](docs/tasks/M3-05-size-startup-memory-benchmarks.md) | 终态阻塞 | PR #85 合并后关闭 PR #63/Issue #22 且不合并；不再运行 API 36 A/B 或 ARM，当前 v0.1 tuple 无豁免恢复路径 |
+| [M3-05](docs/tasks/M3-05-size-startup-memory-benchmarks.md) | 终态阻塞 | PR #63/Issue #22 已关闭且未合并；不再运行 API 36 A/B 或 ARM，当前 v0.1 tuple 无豁免恢复路径 |
 | M4 | 不可启动 | 当前 v0.1 缺少 M3-05 有效性能证据，不得生成 Release Candidate、发布包或发布就绪声明 |
 
 任务按 [`docs/tasks/INDEX.md`](docs/tasks/INDEX.md) 的依赖顺序执行。每个任务只有在 PR 合并、合并后门禁与证据完成后才在本表标记“已完成”；每个任务的收尾协调提交必须同步本 README，避免公开进度长期滞后。

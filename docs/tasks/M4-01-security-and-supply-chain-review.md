@@ -23,6 +23,8 @@ security_sensitive: true
 
 加固只能提高静态与动态分析成本，不能提供绝对防护。发布审查必须验证实现与威胁模型一致、产品无 APK 签名能力、第三方材料可追溯，并如实记录残余风险。
 
+ADR 0019 已将当前 v0.1 release line 固定为 `STOP_CURRENT_V0_1_RELEASE_LINE`。由于 M3-05 没有有效终态性能证据，本任务 not startable；M3-15 的处置文档不能替代 M3-05，也不能被解释为发布豁免。
+
 ## Inputs
 
 - M3-02 tamper/fuzz 与 sanitizer 结果。

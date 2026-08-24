@@ -343,8 +343,12 @@ function validateState(state) {
   const handoffDone = texts.handoff.includes("active_task: NONE")
     && texts.handoff.includes("| M3-13 | `/root` | `main` | done |")
     && texts.handoff.includes("PR #81 merged");
-  if (!handoffActive && !handoffDone) {
-    errors.push(`${paths.handoff}: M3-13 lifecycle must be the exact active branch state or the exact merged-main done state`);
+  const handoffTerminalDisposition = texts.handoff.includes("active_task: M3-15")
+    && texts.handoff.includes("| M3-13 | `/root` | `main` | done |")
+    && texts.handoff.includes("| M3-15 | `/root` | `docs/m3-15-terminal-disposition-contract` | in_progress |")
+    && texts.handoff.includes("STOP_CURRENT_V0_1_RELEASE_LINE");
+  if (!handoffActive && !handoffDone && !handoffTerminalDisposition) {
+    errors.push(`${paths.handoff}: M3-13 lifecycle must be active, merged-main done, or the exact M3-15 terminal-disposition state`);
   }
 
   if (workflowPresence.diagnostic) errors.push(`${DIAGNOSTIC_WORKFLOW}: contract task must not add executable diagnostic workflow`);
@@ -456,6 +460,7 @@ function runSelfTest(baseState) {
     state.texts.handoff = state.texts.handoff
       .replace("active_task: M3-13", "active_task: M3-05")
       .replace("active_task: NONE", "active_task: M3-05")
+      .replace("active_task: M3-15", "active_task: M3-05")
       .replace("| M3-13 | `/root` | `main` | done |", "| M3-13 | `/root` | `main` | review |");
   } });
   cases.push({ name: "diagnostic-workflow-present", mutate: (state) => { state.workflowPresence.diagnostic = true; } });

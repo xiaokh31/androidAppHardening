@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M3-15",
+  "issueNumber": 84,
+  "decision": "STOP_CURRENT_V0_1_RELEASE_LINE",
+  "baseCommit": "960eb9f406eb1a7b7c9b324598fb59936aa1c5b5",
+  "source": {
+    "issueNumber": 82,
+    "draftPrNumber": 83,
+    "reviewedHeadSha": "a112e4469699125a32d80e3c652cda7d4b6b7cf1",
+    "terminalReviewSha": "75e89f4e192820b8cd7f28b1c7264ea0155f16f0",
+    "publicationHeadSha": "9fe48737d97853d1566cc2e642009d8ff1b8ab52",
+    "terminalRequestHeadSha": "b0771d4853e0a7de7fb9db802cac719e34c67229",
+    "executionIdentitySha256": "96837a115f89e3866d56c315928314c9532b4b635859b6f5860c8d1c442e5357",
+    "productTupleSha256": "883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd"
+  },
+  "diagnostic": {
+    "runId": 32611656930,
+    "jobId": 97125597267,
+    "runAttempt": 1,
+    "event": "push",
+    "status": "completed",
+    "conclusion": "failure",
+    "failedStepNumber": 13,
+    "skippedUploadStepNumber": 14,
+    "artifactCount": 0
+  },
+  "terminalEvidence": {
+    "runId": 32612414400,
+    "jobId": 97127412040,
+    "runAttempt": 1,
+    "event": "push",
+    "status": "completed",
+    "conclusion": "failure",
+    "failedStepNumber": 6,
+    "skippedUploadStepNumber": 7,
+    "artifactCount": 0
+  },
+  "officialPageSha256": {
+    "diagnosticRun": "95d174a5c369dd89cb31d345620aca06111a879b78b3e4dd29bbd2dbacd54a11",
+    "diagnosticJobs": "3e2e36ed673982b61deccfc1ace4f37dd90d1edf2debe9b1204e8dc9dc113219",
+    "diagnosticArtifacts": "d3ad979d01443a9d7342e7fbe39064b41ebdb340029293f1b099bcfb6c493c42",
+    "terminalRun": "5862c875de76e180374c5a7279dad28360a06de7530a4e9846e376188fab6343",
+    "terminalJobs": "d7f8bda3c7ca1cef6a504ec7fefab08897b10d4695b81cc1c1cbbef63e18d4b3",
+    "terminalArtifacts": "d3ad979d01443a9d7342e7fbe39064b41ebdb340029293f1b099bcfb6c493c42"
+  },
+  "governedFileSha256": {
+    ".github/workflows/governance.yml": "6e12ac72f285f35aaa74f6cf70ec685817d2f38d3b1a94f40a606c2dbceecf22",
+    "HandOff.md": "93586e6d81c1ef9daffb470324046bc2bd911b1d08928c6c67d25d3ae53c54e5",
+    "README.md": "d23fb6cd1f00cfa81db1aad37bf50b8fd21871dcb18d3bc7e17d6f0e839a0ca9",
+    "docs/PRODUCT_REQUIREMENTS.md": "4873fb18733a66618291056ea683e98101974e221e3d062b6dcbe342db54ce21",
+    "docs/PROJECT_PLAN.md": "41c2620fe56bcc7e38b3405b9047cfc4a62966bd49bc7bb97bdf78748afb32c2",
+    "docs/ROADMAP.md": "59ae73e72343a8154660da5024086f0417112e3b18d91fb7d4c76726554ea9c2",
+    "docs/TEST_STRATEGY.md": "5c894246753ef0cd1ebb56a8f72664c035c80dcc841770bf97f12f9e0044f179",
+    "docs/adr/0019-terminal-diagnostic-disposition.md": "7c23ca6b1ba0d17e8ac94d607c577feb6ab0cbb49474c66d55e5af7828dd010d",
+    "docs/tasks/INDEX.md": "82ac6f22b2a3d19327253d9b17c485a8ab085dded91fc6b4d85dc095524c7bdf",
+    "docs/tasks/M3-05-size-startup-memory-benchmarks.md": "b4a8aabad6ba0aa0443bf31ad58b93bfaf0510beafa10c1095e735ebba3e189c",
+    "docs/tasks/M3-15-terminal-diagnostic-disposition.md": "26aaef485cff0a7b7c8f1e68800c8b381d8d452e2ff087761e1cda12fab8a3b5",
+    "docs/tasks/M4-01-security-and-supply-chain-review.md": "ade14358d819447539b59eec3d17c42f4e0aacaf732828ba542f712d1c9793c6",
+    "tools/governance/validate-project-package.mjs": "521c62b135413250f3cd7602f3aed4a00da55b0d1a14b8e8ccaf65d10dbd1077",
+    "tools/governance/verify-m3-08-startup-stability-contract.mjs": "23303430315e6bd97ec0201e5c979df5207d8af9a31084d996ee0230c855dbea",
+    "tools/governance/verify-m3-09-startup-attribution-contract.mjs": "7d0ec5ccc7b37b55fe9f6e43a10924bece57158ef31f21537e78cb15111bb5bb",
+    "tools/governance/verify-m3-13-diagnostic-identity-contract.mjs": "e5a4b6a3a53633615fd08e1ea3c9e8a3b3054afc7174ba2233e4008a9c0093ec"
+  },
+  "permissions": {
+    "retryPermitted": false,
+    "replacementPermitted": false,
+    "furtherRenewalPermitted": false,
+    "platformSubstitutionPermitted": false,
+    "m305ResumePermitted": false,
+    "m4StartPermitted": false,
+    "v01ReleasePermitted": false
+  },
+  "postMergeActions": {
+    "pr83": "CLOSE_UNMERGED",
+    "issue82": "CLOSE_TERMINAL_BLOCKED",
+    "pr63": "CLOSE_UNMERGED",
+    "issue22": "CLOSE_TERMINAL_BLOCKED"
+  },
+  "futureWork": {
+    "currentTupleReusable": false,
+    "requiresNewVersionedProductTuple": true,
+    "requiresNewAdr": true,
+    "requiresNewTaskGraph": true
+  }
+}

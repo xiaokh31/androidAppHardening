@@ -84,9 +84,10 @@ v0.1 的成功标准不是“不可破解”，而是在不破坏已声明兼容
 - M3-12：把已复核 M3-10 profile package 以固定 release/asset ID、archive 与 member SHA-256 保留，不允许再生。
 - M3-10：在 M3-11 exact pair 与 M3-12 exact profile asset 上实现 ADR 0016 一次性归因诊断。
 - M3-13：在 M3-10 零设备观测的终态失败后，通过 ADR 0018 固定唯一 successor diagnostic identity、资格与不可续期边界；本任务不运行 Android。
+- M3-15：记录 ADR 0018 successor 的终态失败并执行 `STOP_CURRENT_V0_1_RELEASE_LINE`；关闭当前发布路线但不重跑诊断、不修改产品实现。
 - M3-05：大小、启动和内存基准。
 
-退出门禁：完整矩阵逐格区分 `VERIFIED`、`FAILED` 与 `UNVERIFIED`，强制可获得基线和负面测试通过，基准报告完整；不存在未解释的平台差异，所有未验证组合不形成兼容承诺，已知限制与产品文档一致。
+退出门禁：完整矩阵逐格区分 `VERIFIED`、`FAILED` 与 `UNVERIFIED`，强制可获得基线和负面测试通过，基准报告完整；不存在未解释的平台差异，所有未验证组合不形成兼容承诺，已知限制与产品文档一致。当前 v0.1 因 M3-05 无法取得有效终态证据而未通过该门禁；M3-15 记录停止决定，不把失败改写成完成。
 
 ### M4 Release
 
@@ -97,6 +98,8 @@ v0.1 的成功标准不是“不可破解”，而是在不破坏已声明兼容
 - M4-03：发布证据和文档。
 
 退出门禁：发布压缩包、SHA-256、SBOM、第三方声明、测试报告和兼容性声明齐全；从干净环境能够复现构建。
+
+ADR 0019 生效后，当前 product tuple 的 M4-01/M4-02/M4-03 均不可启动，也不得生成或宣传 v0.1 Release Candidate。未来工作必须先建立新的版本化 product tuple、ADR 和任务图。
 
 ## 4. 依赖与并行策略
 

@@ -295,7 +295,7 @@ jobs:
         shell: bash
         run: |
           declare -A expected=(
-            ["host/cli/build/reports/m1-06/integration/normalized-success.json"]="11471db5fc272ee2a3b8001a6773097a9af23bd668d11652d0cde196d2d144e3"
+            ["host/cli/build/reports/m1-06/integration/normalized-success.json"]="fda9c469a1fd7e2a20316c526197c105c3fe79720e41a916dd0f6b13ab4f4df5"
             ["host/cli/build/reports/m1-06/integration/error-matrix.json"]="9de958b0855ec939d9f7523880552e2962b4144dbea76fcc37d393d9397e785e"
             ["host/cli/build/reports/m1-06/integration/cleanup-matrix.json"]="03f9f1b80b7a562db4d406fdda23deab03b688bc87fd50fb8d913283da956598"
             ["host/cli/build/reports/m1-06/unit/path-error-matrix.json"]="ea48b25b0c8f561bb533f0df578a0755f27a6a0c257ffd600a976c0687b1e4a5"
@@ -695,7 +695,7 @@ jobs:
         shell: pwsh
         run: |
           $expected = @{
-            "host/cli/build/reports/m1-06/integration/normalized-success.json" = "11471db5fc272ee2a3b8001a6773097a9af23bd668d11652d0cde196d2d144e3"
+            "host/cli/build/reports/m1-06/integration/normalized-success.json" = "fda9c469a1fd7e2a20316c526197c105c3fe79720e41a916dd0f6b13ab4f4df5"
             "host/cli/build/reports/m1-06/integration/error-matrix.json" = "9de958b0855ec939d9f7523880552e2962b4144dbea76fcc37d393d9397e785e"
             "host/cli/build/reports/m1-06/integration/cleanup-matrix.json" = "03f9f1b80b7a562db4d406fdda23deab03b688bc87fd50fb8d913283da956598"
             "host/cli/build/reports/m1-06/unit/path-error-matrix.json" = "ea48b25b0c8f561bb533f0df578a0755f27a6a0c257ffd600a976c0687b1e4a5"

@@ -144,6 +144,16 @@ if(ANDROID)
             C_VISIBILITY_PRESET hidden
             VISIBILITY_INLINES_HIDDEN YES
     )
+    if(NOT CMAKE_OBJCOPY)
+        message(FATAL_ERROR "Android toolchain did not define the pinned llvm-objcopy")
+    endif()
+    add_custom_command(
+        TARGET ah_runtime
+        POST_BUILD
+        COMMAND "${CMAKE_OBJCOPY}" --remove-section=.comment "$<TARGET_FILE:ah_runtime>"
+        VERBATIM
+        COMMENT "Removing host-dependent non-loadable compiler comments"
+    )
 else()
     enable_testing()
     find_package(Threads REQUIRED)

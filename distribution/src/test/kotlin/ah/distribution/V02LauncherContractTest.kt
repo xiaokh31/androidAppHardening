@@ -120,24 +120,23 @@ object V02LauncherContractTest {
         val (command, environment, workingDirectory) = if (windowsLauncher == null) {
             Triple(launcher + arguments, emptyMap(), null)
         } else {
-            val driver = root.resolve("invoke-launcher.cmd")
+            val driver = root.resolve("invoke-launcher.ps1")
             Files.writeString(
                 driver,
-                "@echo off\r\n" +
-                    "call \"%AH_TEST_LAUNCHER%\" protect --input \"%AH_TEST_INPUT%\" " +
-                    "--output \"%AH_TEST_OUTPUT%\" --report \"%AH_TEST_REPORT%\"\r\n" +
-                    "exit /B %ERRORLEVEL%\r\n",
+                "& \$env:AH_TEST_LAUNCHER 'protect' '--input' \$env:AH_TEST_INPUT " +
+                    "'--output' \$env:AH_TEST_OUTPUT '--report' \$env:AH_TEST_REPORT\r\n" +
+                    "exit \$LASTEXITCODE\r\n",
                 StandardCharsets.US_ASCII,
             )
             Triple(
-                listOf("cmd.exe", "/d", "/c", driver.fileName.toString()),
+                listOf("pwsh.exe", "-NoLogo", "-NoProfile", "-NonInteractive", "-File", driver.toString()),
                 mapOf(
                     "AH_TEST_LAUNCHER" to windowsLauncher.toString(),
                     "AH_TEST_INPUT" to input.toString(),
                     "AH_TEST_OUTPUT" to output.toString(),
                     "AH_TEST_REPORT" to report.toString(),
                 ),
-                root,
+                null,
             )
         }
         val result = run(

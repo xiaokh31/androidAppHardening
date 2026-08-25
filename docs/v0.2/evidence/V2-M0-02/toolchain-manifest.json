@@ -87,8 +87,8 @@
     {
       "path": "gradle/verification-metadata.xml",
       "mode": "100644",
-      "sizeBytes": 197877,
-      "sha256": "d73bef9be825ddcc6040fabcd3d4c7eec4ce3facdf416bf94f21decaf1c94e8b",
+      "sizeBytes": 194767,
+      "sha256": "086a976b5f61a1eb0c7ac0ebf520eb950654abb40734e4d9d050fe846148f375",
       "gitBlobSha1": "e74b80f7c22447b6acdb8945a062410597965d0a",
       "role": "toolchain-lock"
     },
@@ -103,8 +103,8 @@
     {
       "path": "gradle/wrapper/gradle-wrapper.jar.sha256",
       "mode": "100644",
-      "sizeBytes": 66,
-      "sha256": "3daae6363b9818beb2d9229637303f37b678221cf12a844d85f9a496359ed95b",
+      "sizeBytes": 65,
+      "sha256": "23db2c0230d8b416d4af2f29f96e0ef856d84d95849924ca0b0dfba5588de3ed",
       "gitBlobSha1": "7e9c565e0632b8f4f120fe89771032e8ac2de7aa",
       "role": "toolchain-wrapper"
     },

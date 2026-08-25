@@ -204,6 +204,14 @@ object V02ComponentBaselineValidator {
         val components = requestedComponents.toAbsolutePath().normalize()
         val expected = repository.resolve("distribution/build/v0.2/components").normalize()
         if (components != expected) throw DistributionException("component staging path is not fixed")
+        val git = gitEntries(repository)
+        fun copyTracked(path: String, target: Path) {
+            val entry = git[path] ?: throw DistributionException("component source Git path is not staged: $path")
+            if (entry.mode !in setOf("100644", "100755")) {
+                throw DistributionException("component source Git path is not regular: $path")
+            }
+            writeBytes(target, gitBlobBytes(repository, entry))
+        }
         clearOwnedDirectory(components)
         Files.createDirectories(components)
 
@@ -217,17 +225,17 @@ object V02ComponentBaselineValidator {
                 components.resolve("runtime/$abi/libah_runtime.so"),
             )
         }
-        copy(
-            repository.resolve("distribution/src/main/resources/v0.2/windows/android-app-hardening.cmd"),
+        copyTracked(
+            "distribution/src/main/resources/v0.2/windows/android-app-hardening.cmd",
             components.resolve("windows/bin/android-app-hardening.cmd"),
         )
-        copy(
-            repository.resolve("distribution/src/main/resources/v0.2/ubuntu/android-app-hardening"),
+        copyTracked(
+            "distribution/src/main/resources/v0.2/ubuntu/android-app-hardening",
             components.resolve("ubuntu/bin/android-app-hardening"),
         )
-        copy(repository.resolve("distribution/docs/QUICKSTART.md"), components.resolve("docs/QUICKSTART.md"))
-        copy(repository.resolve("LICENSE"), components.resolve("LICENSE"))
-        copy(repository.resolve("THIRD_PARTY_NOTICES.md"), components.resolve("THIRD_PARTY_NOTICES.md"))
+        copyTracked("distribution/docs/QUICKSTART.md", components.resolve("docs/QUICKSTART.md"))
+        copyTracked("LICENSE", components.resolve("LICENSE"))
+        copyTracked("THIRD_PARTY_NOTICES.md", components.resolve("THIRD_PARTY_NOTICES.md"))
 
         val placeholder = linkedMapOf<String, Any?>(
             "bomFormat" to "CycloneDX",
@@ -396,14 +404,15 @@ object V02ComponentBaselineValidator {
     }
 
     private fun expectedManifestValues(repository: Path): LinkedHashMap<String, LinkedHashMap<String, Any?>> {
-        val policyPath = repository.resolve("docs/v0.2/identity-path-policy-v1.json")
-        val policyBytes = readRegular(policyPath)
+        val allGit = gitEntries(repository)
+        val policyPath = "docs/v0.2/identity-path-policy-v1.json"
+        val policyEntry = allGit[policyPath] ?: throw DistributionException("identity path policy is not staged")
+        val policyBytes = gitBlobBytes(repository, policyEntry)
         val policyValue = StrictJson.parse(policyBytes)
         if (!policyBytes.contentEquals(CanonicalJson.prettyBytes(policyValue))) {
             throw DistributionException("identity path policy is not canonical JSON")
         }
         val policy = policyValue.asObject("identity policy")
-        val allGit = gitEntries(repository)
         val policies = policy.array("manifestPolicies").map { it.asObject("manifest policy") }
         val result = LinkedHashMap<String, LinkedHashMap<String, Any?>>()
         for (kind in MANIFEST_KINDS) {
@@ -428,9 +437,7 @@ object V02ComponentBaselineValidator {
             val entries = selected.sortedWith(V02ReleasePackager::compareUnsignedUtf8).map { path ->
                 val gitEntry = allGit.getValue(path)
                 if (gitEntry.mode !in setOf("100644", "100755")) throw DistributionException("non-regular manifest entry")
-                val bytes = readRegular(repository.resolve(path))
-                val actualBlob = git(repository, "hash-object", "--", path).trim()
-                if (actualBlob != gitEntry.blob) throw DistributionException("staged Git blob differs from working bytes: $path")
+                val bytes = gitBlobBytes(repository, gitEntry)
                 linkedMapOf<String, Any?>(
                     "path" to path,
                     "mode" to gitEntry.mode,
@@ -509,12 +516,14 @@ object V02ComponentBaselineValidator {
         val git = gitEntries(repository)
         val entries = componentSpecs(repository, components).map { spec ->
             val source = repository.resolve(spec.sourcePath).normalize()
-            val bytes = readRegular(source)
             val sourceGit = git[spec.sourceGitPath]
                 ?: throw DistributionException("component source Git path is not staged: ${spec.sourceGitPath}")
             if (sourceGit.mode !in setOf("100644", "100755")) throw DistributionException("component source Git path is not regular")
-            val actualBlob = git(repository, "hash-object", "--", spec.sourceGitPath).trim()
-            if (actualBlob != sourceGit.blob) throw DistributionException("component source Git bytes differ from index")
+            val bytes = if (spec.sourcePath == spec.sourceGitPath) {
+                gitBlobBytes(repository, sourceGit)
+            } else {
+                readRegular(source)
+            }
             linkedMapOf<String, Any?>(
                 "logicalPath" to spec.logicalPath,
                 "archivePath" to spec.archivePath,
@@ -646,6 +655,9 @@ object V02ComponentBaselineValidator {
         return result
     }
 
+    private fun gitBlobBytes(repository: Path, entry: GitEntry): ByteArray =
+        gitBytes(repository, "cat-file", "blob", entry.blob)
+
     private fun head(repository: Path): String = git(repository, "rev-parse", "HEAD").trim().also {
         if (!GIT_SHA1.matches(it)) throw DistributionException("invalid HEAD")
     }
@@ -673,7 +685,10 @@ object V02ComponentBaselineValidator {
     }
 
     private fun copy(source: Path, target: Path) {
-        val bytes = readRegular(source)
+        writeBytes(target, readRegular(source))
+    }
+
+    private fun writeBytes(target: Path, bytes: ByteArray) {
         Files.createDirectories(target.parent)
         Files.write(target, bytes)
     }

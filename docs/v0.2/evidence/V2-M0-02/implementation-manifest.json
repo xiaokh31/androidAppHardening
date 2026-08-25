@@ -7,8 +7,8 @@
     {
       "path": "LICENSE",
       "mode": "100644",
-      "sizeBytes": 11558,
-      "sha256": "1eb85fc97224598dad1852b5d6483bbcf0aa8608790dcc657a5a2a761ae9c8c6",
+      "sizeBytes": 11357,
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
       "gitBlobSha1": "261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64",
       "role": "distribution-contract"
     },
@@ -55,9 +55,9 @@
     {
       "path": "distribution/src/main/kotlin/ah/distribution/V02ComponentBaselineValidator.kt",
       "mode": "100644",
-      "sizeBytes": 38989,
-      "sha256": "a98cc9410fcc78dc888bcd75741a1d914deb41067c945176ea3d1f84b6ae3e4b",
-      "gitBlobSha1": "ada8498776ff6291d06a1bfa4e28e267d6c74e48",
+      "sizeBytes": 39417,
+      "sha256": "3a7e98d9a6f7db8c9628fe5a6f0e31d22486cb546804099e3fe0c2e1592e716e",
+      "gitBlobSha1": "40412d25c3d5c5c92b866497a9a45498eead0b53",
       "role": "distribution-source"
     },
     {
@@ -735,8 +735,8 @@
     {
       "path": "runtime/native/consumer-rules.pro",
       "mode": "100644",
-      "sizeBytes": 631,
-      "sha256": "bc2f52132f433a9a4a074a26dd1faaa32062fc56b59b0aac3ba3ef34a4304495",
+      "sizeBytes": 621,
+      "sha256": "a601aaad47112b30e58e6f354180e2f6c57dcdb8d60fdd32cbc179be84d6ad32",
       "gitBlobSha1": "de527f37ab79fd9c3dcd3ac46c7c948e3f6db47a",
       "role": "product-source"
     },
@@ -767,8 +767,8 @@
     {
       "path": "runtime/native/src/main/cpp/CMakeLists.txt",
       "mode": "100644",
-      "sizeBytes": 9303,
-      "sha256": "587b5403d15e60f16091d468dd0e90e1c82b5e260f12e1bf97ee4f6180c526ea",
+      "sizeBytes": 9072,
+      "sha256": "a505dcf9372646fe2970aefa9a211b95c791aebad32bc066938e98ca1eca38e9",
       "gitBlobSha1": "c7cc1ede0acdb6b9352f0f9b1ddd632d3afc6a75",
       "role": "product-source"
     },
@@ -791,8 +791,8 @@
     {
       "path": "runtime/native/src/main/cpp/authenticated_payload.hpp",
       "mode": "100644",
-      "sizeBytes": 3239,
-      "sha256": "715f042ffac2361b56251190be9a8ac320b49c8218bd7aec68dbd42d305cadf2",
+      "sizeBytes": 3133,
+      "sha256": "cdde8208958c2eba05d2f5042964065d365752d39d58660ca97b174b6861ff39",
       "gitBlobSha1": "ce1277dced870e05587ae02a13e9b64d4018f3bd",
       "role": "product-source"
     },
@@ -807,8 +807,8 @@
     {
       "path": "runtime/native/src/main/cpp/container_format.hpp",
       "mode": "100644",
-      "sizeBytes": 4096,
-      "sha256": "dab240d148c54111f250dcce86135f7cb617200b051760966d5aa47c9dfd0490",
+      "sizeBytes": 3976,
+      "sha256": "6b38122bc6e81c477db50941ce54b46fef21a9d09b85a09fcec077d37a681a1d",
       "gitBlobSha1": "28045e7a03c54a4f58dbb8eb435add0b63d71a1c",
       "role": "product-source"
     },
@@ -831,8 +831,8 @@
     {
       "path": "runtime/native/src/main/cpp/crypto_backend.hpp",
       "mode": "100644",
-      "sizeBytes": 1531,
-      "sha256": "aee2666f2aeece690a18168d26bdb2f9ca395f7852239448c3c4f099cb1cd95f",
+      "sizeBytes": 1467,
+      "sha256": "65fd54e7a06a364cb7cb7767c65729beb0d00cedb5c626094b366681af6326ac",
       "gitBlobSha1": "2326a94cf9971d6d187faff6c42a30347f423407",
       "role": "product-source"
     },
@@ -847,8 +847,8 @@
     {
       "path": "runtime/native/src/main/cpp/exports.map",
       "mode": "100644",
-      "sizeBytes": 519,
-      "sha256": "c4830cf26526cb84387b4d4c3de0425ef4f58bc0a77a9cc1e4920b694ad232a4",
+      "sizeBytes": 507,
+      "sha256": "7c7751e3243c02ffea231dd1db692b9ae07380776bfa15b4b4389ce9748f6131",
       "gitBlobSha1": "250059ddea796d58df6e318c6376d37f31dcbd6a",
       "role": "product-source"
     },
@@ -871,8 +871,8 @@
     {
       "path": "runtime/native/src/main/cpp/jni_exception.hpp",
       "mode": "100644",
-      "sizeBytes": 409,
-      "sha256": "cc31c1fc2c6da03d4d4ac029212b96c61bc103056197ecaf4c93ccb1cfe2776b",
+      "sizeBytes": 393,
+      "sha256": "4f3533cf805ca515613f0ef24d5b8c347937f7a21022ebe9e1544d1349cbac51",
       "gitBlobSha1": "692947b17befd1246f623f199d8686b448090b7a",
       "role": "product-source"
     },
@@ -911,8 +911,8 @@
     {
       "path": "runtime/native/src/main/cpp/mapped_apk.hpp",
       "mode": "100644",
-      "sizeBytes": 967,
-      "sha256": "1f4afaaf19976dd9697eb1420553ae5cc08aa9a3e5c20dadf63995b2e56d6eb6",
+      "sizeBytes": 926,
+      "sha256": "0e1c55f2c3c23e5c197c7b30599eeedf7d4761b26efb44cfbc4bd59bd57123c5",
       "gitBlobSha1": "f3162001a1ae3ffb5e05c7d55df8dbd58a5cbe20",
       "role": "product-source"
     },
@@ -927,8 +927,8 @@
     {
       "path": "runtime/native/src/main/cpp/memory_controls.hpp",
       "mode": "100644",
-      "sizeBytes": 958,
-      "sha256": "54d89b8056bde323deb78968500ba08ee3a4c555b639f217c6aad660841ca88f",
+      "sizeBytes": 927,
+      "sha256": "0094555fab48d3c7656ce0fc26600a5e1111da328226787dcaa061f410360d36",
       "gitBlobSha1": "7d81153d12de711720a1d94ed6b68b65d7a47c44",
       "role": "product-source"
     },
@@ -943,8 +943,8 @@
     {
       "path": "runtime/native/src/main/cpp/native_share_slot.hpp",
       "mode": "100644",
-      "sizeBytes": 292,
-      "sha256": "36173926f6ee3375af43b8e5253d3907b6d4cd5f89cbdd4e7c09a52065a0aa6f",
+      "sizeBytes": 277,
+      "sha256": "53e5861af3bcfbff946ed89786df43d1501df67c9c2e28fef0034a05b2346aca",
       "gitBlobSha1": "6318103e7f96827435227872b5a89ebcc3e896f0",
       "role": "product-source"
     },
@@ -959,8 +959,8 @@
     {
       "path": "runtime/native/src/main/cpp/payload_handle_registry.hpp",
       "mode": "100644",
-      "sizeBytes": 1012,
-      "sha256": "3f398834eb4235fc880720ae043a653a6b310dcfcf5756deebb9fb9cdb86a4bb",
+      "sizeBytes": 968,
+      "sha256": "1b510803d5b57177a534203d59753998512eac2bba332237362b62b4ae5116ea",
       "gitBlobSha1": "374f5e635768d50967870cda8cfbdab48907893c",
       "role": "product-source"
     },
@@ -975,8 +975,8 @@
     {
       "path": "runtime/native/src/main/cpp/payload_memory.hpp",
       "mode": "100644",
-      "sizeBytes": 2944,
-      "sha256": "8532d590cea1c88b9a6a72e0a11f08b07888f3a7739280fd531dedcbab224739",
+      "sizeBytes": 2844,
+      "sha256": "232009708b221741274f2996199a60ca2afcb28622533718e46492efc1c18f2f",
       "gitBlobSha1": "d84e884cd89fc8576ae4a1add08e5538d86d8750",
       "role": "product-source"
     },
@@ -991,8 +991,8 @@
     {
       "path": "runtime/native/src/main/cpp/payload_metadata.hpp",
       "mode": "100644",
-      "sizeBytes": 913,
-      "sha256": "bedef2d5972c46d555a0829d1c6900434301de97c1a9607b08186b745e9b4fee",
+      "sizeBytes": 877,
+      "sha256": "1a7f7661d7d3eaa07deca959bbdf5ba6a00e1214676da9a03cbee77c57d9db06",
       "gitBlobSha1": "1e0a0bf44449cac424903a9052ce82f303a8c712",
       "role": "product-source"
     },
@@ -1007,8 +1007,8 @@
     {
       "path": "runtime/native/src/main/cpp/risk_signals.hpp",
       "mode": "100644",
-      "sizeBytes": 916,
-      "sha256": "d1a74efa03b66f84cbae89547861aefdf35f8ff882b06146cef94f9a930d80ee",
+      "sizeBytes": 886,
+      "sha256": "3fdaa56622b36149140b63c40da5433ee02603784b8161f77579473567236638",
       "gitBlobSha1": "5746cd2008c7ab4d1c602eb94c696723d65af71f",
       "role": "product-source"
     },
@@ -1031,16 +1031,16 @@
     {
       "path": "runtime/native/src/main/cpp/secure_buffer.hpp",
       "mode": "100644",
-      "sizeBytes": 1757,
-      "sha256": "50ed95de2e55db4d05e2609cd786ad813d327208bb4b56cd931c2d668b2f33c5",
+      "sizeBytes": 1709,
+      "sha256": "777c82335669d700d1e841317593a60d3ef3009c7fa4e133b58d90defb0c009d",
       "gitBlobSha1": "40e47d1446b3471211a1ad5f2e931875ffce5d86",
       "role": "product-source"
     },
     {
       "path": "runtime/native/src/main/cpp/testdata/m2_08_topology_oob.regression.hex",
       "mode": "100644",
-      "sizeBytes": 800,
-      "sha256": "f4c1947c2b5f5cc8327793a933c29b5aec92fa59b0065a7dd2452d0d86383276",
+      "sizeBytes": 799,
+      "sha256": "772d441eed6833d62c929c2d5156bfb9a91db72dd716a30a45dadb6e88e78e3d",
       "gitBlobSha1": "bcf436456bb33032693ed5d94d9b6f5bfcdac1c6",
       "role": "product-source"
     },
@@ -1055,8 +1055,8 @@
     {
       "path": "runtime/native/src/main/cpp/zip_assets.hpp",
       "mode": "100644",
-      "sizeBytes": 558,
-      "sha256": "c40bc76ed56c9e57f3b738452b3faaba2fd1497f05f7e4e3b4be987226b9ecf2",
+      "sizeBytes": 529,
+      "sha256": "128f3e5d6f0e2e24fd6a8df0b3a9e56dd6f995738740e5c43e9eda67e7f975a2",
       "gitBlobSha1": "40f80a552c624be23ae8af48b19fdb07548871e5",
       "role": "product-source"
     },

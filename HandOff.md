@@ -3,12 +3,12 @@ schema_version: 2
 project: androidAppHardening
 release_line: v0.2
 product_tuple_sha256: 5fb0205d9fc0c2523cd33734145bf23a901303f4f563eef866e5883ca81fd4c2
-handoff_id: HO-20260824-140325
-updated_at: 2026-08-24T14:03:25+08:00
+handoff_id: HO-20260825-114330
+updated_at: 2026-08-25T11:43:30+08:00
 updated_by: /root
 state: ready
 source_branch: main
-base_commit: 102cb775b205e1b592934e74a6d5d19e73ad2b3f
+base_commit: 9ac8d6328c7a01c5645428e6b59b8c4db19d78ff
 working_tree: clean
 current_milestone: V2-M0
 active_task: V2-M0-02
@@ -23,7 +23,7 @@ Continue the isolated v0.2 release line from the non-releasable development base
 
 ## Current State
 
-- V2-M0-01 content is complete at `102cb775b205e1b592934e74a6d5d19e73ad2b3f`, independently reviewed with `P0=0/P1=0/P2=0`, and published in PR #95 for Issue #86. This merger-ready snapshot targets `main`; V2-M0-02 must not start until PR #95 exact-head Ubuntu/Windows Governance and post-merge `main` validation pass.
+- V2-M0-01 is complete. Reviewed content commit `102cb775b205e1b592934e74a6d5d19e73ad2b3f` retained `P0=0/P1=0/P2=0`; final PR head `73b76c7b06222eac621227a8c8866c8cf6fac3e9` passed Governance run `32695937803` attempt 1 on Ubuntu and Windows, and PR #95 merged with a two-parent merge commit as `9ac8d6328c7a01c5645428e6b59b8c4db19d78ff`. Issue #86 is closed. The unique post-merge `main` push Governance run `32696330686` attempt 1 passed Ubuntu job `97338981876` and Windows job `97338982010`; strict local project, v0.2, HandOff, diff and Git-object gates also pass.
 - The v0.2 source baseline is `main@7c838d7051e8eedb1607e57b6e81e7a6f3db4523`. Development tuple `5fb0205d9fc0c2523cd33734145bf23a901303f4f563eef866e5883ca81fd4c2` has `tuple_kind=development_baseline` and `releasable=false`; it is not a Release Candidate.
 - ADR 0019 remains binding with `STOP_CURRENT_V0_1_RELEASE_LINE`. Its terminal product tuple is `883da673d3bced1ec93f11323fe63152c1007112d08c46643976c70397d0b8dd`; M3-05 is terminally blocked, and the v0.1 M4 path is not startable.
 - M3-13 is complete on `main`; Issue #80 is closed and PR #81 merged. No device, KVM, emulator, ARM, API 29 or benchmark was run by V2-M0-01.
@@ -34,8 +34,8 @@ Continue the isolated v0.2 release line from the non-releasable development base
 
 | Task | Owner | Branch | Status | Depends on | Next action |
 | --- | --- | --- | --- | --- | --- |
-| V2-M0-01 | `/root` | `main` | done | None | Merge PR #95 only after exact-head Ubuntu and Windows Governance pass, then run strict post-merge validation. |
-| V2-M0-02 | `unassigned` | `not_created` | planned | V2-M0-01 | Assign `host-pipeline-agent` and create `chore/v2-m0-02-candidate-baseline` only after V2-M0-01 post-merge PASS. |
+| V2-M0-01 | `/root` | `main` | done | None | Preserve PR #95, Issue #86, merge `9ac8d6328c7a01c5645428e6b59b8c4db19d78ff` and exact-head/post-merge Governance identities as the accepted baseline transition. |
+| V2-M0-02 | `unassigned` | `not_created` | planned | V2-M0-01 | Assign `host-pipeline-agent` and create `chore/v2-m0-02-candidate-baseline`; do not create or claim an `implementationFreezeSha` before its required merge and post-merge acceptance. |
 | V2-M3-01 | `unassigned` | `not_created` | planned | V2-M0-01 | Assign `qa-governance-agent`; keep ownership disjoint from V2-M0-02 and merge only after V2-M0-02. |
 | M3-13 | `/root` | `main` | done | M3-09, M3-11, M3-12 | Preserve Issue #80, PR #81 and the no-further-successor evidence as historical facts. |
 | M3-15 | `/root` | `main` | done | M3-13 | Preserve ADR 0019, terminal lock and the stopped v0.1 route without byte rewriting. |
@@ -54,15 +54,40 @@ Continue the isolated v0.2 release line from the non-releasable development base
 ## Changes Since Previous Handoff
 
 - Replaced the cumulative schema 1 blocked snapshot with schema 2 release-line state while retaining the exact v0.1 terminal decision, old tuple and prohibited actions.
-- Added ADR 0020, the versioned v0.2 product/architecture/threat/test/compatibility package, a canonical development tuple and nine implementation-ready task cards under `docs/v0.2/`; reviewed content head is `102cb775b205e1b592934e74a6d5d19e73ad2b3f` and PR is #95.
+- Added ADR 0020, the versioned v0.2 product/architecture/threat/test/compatibility package, a canonical development tuple and nine implementation-ready task cards under `docs/v0.2/`; reviewed content head is `102cb775b205e1b592934e74a6d5d19e73ad2b3f`, final PR head is `73b76c7b06222eac621227a8c8866c8cf6fac3e9`, and PR #95 is merged as `9ac8d6328c7a01c5645428e6b59b8c4db19d78ff`.
 - Added GitHub Milestones for v0.2 M0 through M4 and Issues #86 through #94, one per task card; V2-M1 and V2-M2 remain intentionally empty unless a separately authorized product repair is required.
 - Migrated M3-15 validation to verify terminal bytes from the fixed historical Git object and to keep current terminal semantics fail closed.
 - Added schema 2 HandOff validation and a dedicated v0.2 task/package validator with negative mutations and governance-only diff enforcement.
 - Added machine-readable identity/path and post-freeze policies that fix every manifest selector and role, candidate/live workflow path, evidence-stage order, explicit `pre-run|evidence-pr|post-merge` phase and per-stage changed-path closure.
 - Closed the release supply-chain contract around pinned source profiles, pagination/ETag freshness, a zero-byte OSV configuration, an exact cross-platform environment allowlist and manifest-bound raw evidence.
 - Remediated every independent-review finding and recorded final local and read-only audit evidence under `docs/v0.2/evidence/V2-M0-01/`; the stable review result is `P0=0/P1=0/P2=0`.
+- Accepted the exact-head and post-merge lifecycle after PR Governance run `32695937803`, merge commit `9ac8d6328c7a01c5645428e6b59b8c4db19d78ff`, post-merge Governance run `32696330686`, Issue #86 closure and strict local post-merge validation all passed.
 
 ## Verification Evidence
+
+### V2-M0-01 exact-head merge and post-merge Governance
+
+- task_id: V2-M0-01
+- git_commit: 9ac8d6328c7a01c5645428e6b59b8c4db19d78ff
+- command: `gh pr view 95 --repo xiaokh31/androidAppHardening`; `gh run view 32695937803 --repo xiaokh31/androidAppHardening`; `gh run view 32696330686 --repo xiaokh31/androidAppHardening`; `gh issue view 86 --repo xiaokh31/androidAppHardening`
+- exit_code: 0
+- environment: `GitHub Actions Governance; pull_request final head 73b76c7b06222eac621227a8c8866c8cf6fac3e9; main push head 9ac8d6328c7a01c5645428e6b59b8c4db19d78ff`
+- timestamp: 2026-08-24T14:13:39+08:00
+- artifact: `.github/workflows/governance.yml`; PR #95; runs `32695937803` and `32696330686`
+- sha256: 91af283d0780d77e37fddf1fd7c4809d736129052e0fb76ae692db0b0d71929e
+- result: PASS; PR and post-merge runs are attempt 1 and success, with Ubuntu/Windows jobs `97337882906`/`97337882698` and `97338981876`/`97338982010`; Issue #86 is closed
+
+### V2-M0-01 strict local post-merge validation
+
+- task_id: V2-M0-01
+- git_commit: 9ac8d6328c7a01c5645428e6b59b8c4db19d78ff
+- command: `node tools/governance/validate-project-package.mjs`; `node tools/governance/validate-v0-2-package.mjs --self-test`; `node .agents/skills/coordinate-project-handoff/scripts/validate-handoff.mjs HandOff.md --strict`; `git diff --check`; `git fsck --full`
+- exit_code: 0
+- environment: `Microsoft Windows 10.0.19045 x64; Node.js 24.12.0; Git 2.52.0.windows.1; no Android, device, emulator, KVM, benchmark or APK execution`
+- timestamp: 2026-08-25T11:43:30+08:00
+- artifact: `tools/governance/validate-v0-2-package.mjs`
+- sha256: fffaf621d3b7b59a27f7b1e32732bb0ce70a3573ade003547ce7c6681f433276
+- result: PASS; 39 task cards, 11 core docs and 19 ADRs valid; nine V2 tasks valid; 146 mutations rejected; strict HandOff and diff checks passed; Git object database has no integrity error
 
 ### V2-M0-01 local governance package
 
@@ -118,11 +143,10 @@ None
 
 ## Ordered Next Actions
 
-1. `/root`: require Ubuntu and Windows Governance on the exact final PR #95 head, merge with a merge commit, then run the strict HandOff and v0.2 package validators on merged `main` without allowances.
-2. Assign and complete V2-M0-02 (`host-pipeline-agent`) on `chore/v2-m0-02-candidate-baseline`; it owns product/version/distribution and implementation manifest bytes but does not create a freeze lock.
-3. In parallel after V2-M0-01 post-merge PASS, assign V2-M3-01 (`qa-governance-agent`) for fresh validation tooling and workflow candidates; keep file ownership disjoint from V2-M0-02.
-4. Merge V2-M0-02 first and finish its post-merge PASS; refresh V2-M3-01 onto that exact `main`, rerun all gates and independent review, then merge V2-M3-01 second.
-5. Start V2-M3-02 only after `implementationFreezeSha` is proven to be an ancestor of `validationFreezeSha`; execute the V2-M3-01-frozen verifier/adapters, create both freeze locks and the RC lock atomically, switch HandOff to the exact candidate tuple, and publish without dispatching the five canonical workflows.
+1. Assign and complete V2-M0-02 (`host-pipeline-agent`) on `chore/v2-m0-02-candidate-baseline`; it owns product/version/distribution and implementation manifest bytes but does not create a freeze lock.
+2. In parallel, assign V2-M3-01 (`qa-governance-agent`) for fresh validation tooling and workflow candidates; keep file ownership disjoint from V2-M0-02.
+3. Merge V2-M0-02 first and finish its post-merge PASS; refresh V2-M3-01 onto that exact `main`, rerun all gates and independent review, then merge V2-M3-01 second.
+4. Start V2-M3-02 only after `implementationFreezeSha` is proven to be an ancestor of `validationFreezeSha`; execute the V2-M3-01-frozen verifier/adapters, create both freeze locks and the RC lock atomically, switch HandOff to the exact candidate tuple, and publish without dispatching the five canonical workflows.
 
 ## Relevant Files and Artifacts
 
@@ -143,15 +167,14 @@ None
 
 ## Resume Checklist
 
-1. Confirm `git status --short --branch`, merged `main` HEAD, origin and PR #95/Issue #86 identity.
-2. Run `node tools/governance/validate-project-package.mjs` and `node tools/governance/validate-v0-2-package.mjs --self-test`.
-3. Run the strict HandOff validator without `--allow-pending-clean` or `--allow-pending-branch`.
-4. Confirm PR #95 final head passed Ubuntu and Windows Governance and the merged `main` push used the same merge commit.
-5. Before assignment, read `AGENTS.md`, this HandOff, `docs/v0.2/README_FIRST.md`, the selected task card and both machine policy JSON files.
-6. Keep V2-M0-02 and V2-M3-01 ownership disjoint, and do not call either branch head a freeze SHA before its required merge/post-merge evidence exists.
+1. Confirm `git status --short --branch` and that local `main` is synchronized with `origin/main` before assignment.
+2. Read `AGENTS.md`, this HandOff, `docs/v0.2/README_FIRST.md`, the selected task card and both machine policy JSON files.
+3. Verify V2-M0-01 remains accepted at PR head `73b76c7b06222eac621227a8c8866c8cf6fac3e9`, merge `9ac8d6328c7a01c5645428e6b59b8c4db19d78ff` and post-merge Governance run `32696330686`.
+4. Run `node tools/governance/validate-project-package.mjs`, `node tools/governance/validate-v0-2-package.mjs --self-test` and the strict HandOff validator before changing ownership.
+5. Keep V2-M0-02 and V2-M3-01 ownership disjoint, and do not call either branch head a freeze SHA before its required merge/post-merge evidence exists.
 
 ## Handoff Sign-off
 
 - coordinator: `/root`
-- prepared_at: `2026-08-24T14:03:25+08:00`
-- validation: `V2-M0-01 content is locally valid and independently reviewed at P0=0/P1=0/P2=0; PR #95 exact-head and post-merge main gates remain mandatory before V2-M0-02 starts.`
+- prepared_at: `2026-08-25T11:43:30+08:00`
+- validation: `V2-M0-01 is merged and accepted: P0=0/P1=0/P2=0, exact-head and post-merge Ubuntu/Windows Governance passed, strict local post-merge gates passed, and V2-M0-02/V2-M3-01 may now be assigned under the fixed ownership and merge order.`

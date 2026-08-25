@@ -53,8 +53,8 @@ object V02LauncherContractTest {
         Files.copy(repository.resolve("distribution/build/v0.2/host/android-app-hardening.jar"), lib.resolve("android-app-hardening.jar"))
         val javaBin = Path.of(System.getProperty("java.home")).resolve("bin")
         val launcher = bin.resolve("android-app-hardening.cmd")
-        val command = { arguments: List<String> -> windowsLauncherCommand(launcher, arguments) }
-        val result = run(command(listOf("--version")), javaBin)
+        val command = listOf("cmd", "/d", "/c", launcher.toString())
+        val result = run(command + "--version", javaBin)
         check(result.first == 0 && result.second == "android-app-hardening 0.2.0\r\n" && result.third.isEmpty()) { result.toString() }
 
         val fakeHome = root.resolve("fake-java-home")
@@ -62,7 +62,7 @@ object V02LauncherContractTest {
         val systemRoot = requireNotNull(System.getenv("SystemRoot"))
         val systemBin = Path.of(systemRoot, "System32")
         val wrong = run(
-            command(listOf("--version")),
+            command + "--version",
             systemBin,
             javaHome = fakeHome,
             replacePath = true,
@@ -75,6 +75,7 @@ object V02LauncherContractTest {
             command,
             javaBin,
             signedInput,
+            windowsLauncher = launcher,
         )
     }
 
@@ -86,8 +87,8 @@ object V02LauncherContractTest {
         val repository = Path.of(requireNotNull(System.getProperty("ah.distribution.repo")))
         Files.copy(repository.resolve("distribution/build/v0.2/host/android-app-hardening.jar"), lib.resolve("android-app-hardening.jar"))
         val javaBin = Path.of(System.getProperty("java.home")).resolve("bin")
-        val command = { arguments: List<String> -> listOf(launcher.toString()) + arguments }
-        val result = run(command(listOf("--version")), javaBin)
+        val command = listOf(launcher.toString())
+        val result = run(command + "--version", javaBin)
         check(result.first == 0 && result.second == "android-app-hardening 0.2.0\n" && result.third.isEmpty())
 
         val fakeHome = root.resolve("fake-java-home")
@@ -100,19 +101,12 @@ object V02LauncherContractTest {
         protectSmoke(root, command, javaBin, signedInput)
     }
 
-    private fun windowsLauncherCommand(launcher: Path, arguments: List<String>): List<String> {
-        val commandLine = (listOf(launcher.toString()) + arguments).joinToString(" ") { value ->
-            require(value.none { it == '\u0000' || it == '\r' || it == '\n' || it == '"' })
-            "\"$value\""
-        }
-        return listOf("cmd.exe", "/d", "/s", "/c", "\"$commandLine\"")
-    }
-
     private fun protectSmoke(
         root: Path,
-        launcher: (List<String>) -> List<String>,
+        launcher: List<String>,
         javaBin: Path,
         signedInput: Path,
+        windowsLauncher: Path? = null,
     ) {
         val smoke = root.resolve("offline protect smoke").also(Files::createDirectories)
         val input = smoke.resolve("输入 signed fixture.apk")
@@ -120,11 +114,37 @@ object V02LauncherContractTest {
         val inputHash = sha256(input)
         val output = smoke.resolve("output unsigned.apk")
         val report = smoke.resolve("report result.json")
+        val arguments = listOf(
+            "protect", "--input", input.toString(), "--output", output.toString(), "--report", report.toString(),
+        )
+        val (command, environment, workingDirectory) = if (windowsLauncher == null) {
+            Triple(launcher + arguments, emptyMap(), null)
+        } else {
+            val driver = root.resolve("invoke-launcher.cmd")
+            Files.writeString(
+                driver,
+                "@echo off\r\n" +
+                    "call \"%AH_TEST_LAUNCHER%\" protect --input \"%AH_TEST_INPUT%\" " +
+                    "--output \"%AH_TEST_OUTPUT%\" --report \"%AH_TEST_REPORT%\"\r\n" +
+                    "exit /B %ERRORLEVEL%\r\n",
+                StandardCharsets.US_ASCII,
+            )
+            Triple(
+                listOf("cmd.exe", "/d", "/c", driver.fileName.toString()),
+                mapOf(
+                    "AH_TEST_LAUNCHER" to windowsLauncher.toString(),
+                    "AH_TEST_INPUT" to input.toString(),
+                    "AH_TEST_OUTPUT" to output.toString(),
+                    "AH_TEST_REPORT" to report.toString(),
+                ),
+                root,
+            )
+        }
         val result = run(
-            launcher(listOf(
-                "protect", "--input", input.toString(), "--output", output.toString(), "--report", report.toString(),
-            )),
+            command,
             javaBin,
+            additionalEnvironment = environment,
+            workingDirectory = workingDirectory,
         )
         check(
             result.first == 0 && result.second.isEmpty() &&
@@ -213,6 +233,8 @@ object V02LauncherContractTest {
         fakePath: Path,
         javaHome: Path? = null,
         replacePath: Boolean = false,
+        additionalEnvironment: Map<String, String> = emptyMap(),
+        workingDirectory: Path? = null,
     ): Triple<Int, String, String> {
         val process = ProcessBuilder(command).apply {
             val pathKey = environment().keys.singleOrNull { it.equals("PATH", ignoreCase = true) } ?: "PATH"
@@ -225,6 +247,10 @@ object V02LauncherContractTest {
             if (javaHome != null) {
                 val javaHomeKey = environment().keys.singleOrNull { it.equals("JAVA_HOME", ignoreCase = true) } ?: "JAVA_HOME"
                 environment()[javaHomeKey] = javaHome.toString()
+            }
+            environment().putAll(additionalEnvironment)
+            if (workingDirectory != null) {
+                directory(workingDirectory.toFile())
             }
         }.start()
         val stdout = process.inputStream.readAllBytes().toString(StandardCharsets.UTF_8)

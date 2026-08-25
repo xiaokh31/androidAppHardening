@@ -55,9 +55,9 @@
     {
       "path": "distribution/src/main/kotlin/ah/distribution/V02ComponentBaselineValidator.kt",
       "mode": "100644",
-      "sizeBytes": 39417,
-      "sha256": "3a7e98d9a6f7db8c9628fe5a6f0e31d22486cb546804099e3fe0c2e1592e716e",
-      "gitBlobSha1": "40412d25c3d5c5c92b866497a9a45498eead0b53",
+      "sizeBytes": 41498,
+      "sha256": "8fe1e4fe90720b7002897a8b027f0390b60d8b983bb02d7a47f223065a231a15",
+      "gitBlobSha1": "393c8cfc60131c75e0cabbde86a37098f7f31fbe",
       "role": "distribution-source"
     },
     {

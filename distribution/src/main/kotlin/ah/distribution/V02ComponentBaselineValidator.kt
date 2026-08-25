@@ -565,12 +565,53 @@ object V02ComponentBaselineValidator {
         if (!baselineBytes.contentEquals(CanonicalJson.prettyBytes(parsed)) ||
             !baselineBytes.contentEquals(CanonicalJson.prettyBytes(expectedBaseline))
         ) {
-            throw DistributionException("tracked component baseline differs from exact expected bytes")
+            throw DistributionException(
+                "tracked component baseline differs from exact expected bytes: " +
+                    describeBaselineDifference(parsed, expectedBaseline),
+            )
         }
         validateBaselineShape(parsed)
         if (candidate != null && Files.exists(candidate, LinkOption.NOFOLLOW_LINKS)) {
             val expected = CanonicalJson.prettyBytes(expectedCandidate(repository, components.toAbsolutePath().normalize(), baseline))
             if (!readRegular(candidate).contentEquals(expected)) throw DistributionException("ignored candidate manifest drifted")
+        }
+    }
+
+    private fun describeBaselineDifference(actualValue: Any?, expectedValue: Map<String, Any?>): String {
+        val actual = actualValue as? Map<*, *> ?: return "tracked baseline root is not an object"
+        val differences = ArrayList<String>()
+        for (key in BASELINE_KEYS.filter { it != "entries" }) {
+            if (actual[key] != expectedValue[key]) {
+                differences += "$key expected=${expectedValue[key]} actual=${actual[key]}"
+            }
+        }
+        val actualEntries = actual["entries"] as? List<*>
+        val expectedEntries = expectedValue["entries"] as? List<*>
+            ?: return "validator expected entries are not an array"
+        if (actualEntries == null) {
+            differences += "entries actual value is not an array"
+        } else if (actualEntries.size != expectedEntries.size) {
+            differences += "entries count expected=${expectedEntries.size} actual=${actualEntries.size}"
+        }
+        val count = minOf(actualEntries?.size ?: 0, expectedEntries.size)
+        for (index in 0 until count) {
+            val actualEntry = actualEntries!![index] as? Map<*, *>
+            val expectedEntry = expectedEntries[index] as? Map<*, *>
+            if (actualEntry == null || expectedEntry == null) {
+                differences += "entries[$index] is not an object"
+                continue
+            }
+            val logicalPath = expectedEntry["logicalPath"] ?: "index-$index"
+            for (key in BASELINE_ENTRY_KEYS) {
+                if (actualEntry[key] != expectedEntry[key]) {
+                    differences += "$logicalPath.$key expected=${expectedEntry[key]} actual=${actualEntry[key]}"
+                    if (differences.size >= 16) break
+                }
+            }
+            if (differences.size >= 16) break
+        }
+        return differences.take(16).joinToString("; ").ifEmpty {
+            "canonical byte mismatch without a semantic field difference"
         }
     }
 

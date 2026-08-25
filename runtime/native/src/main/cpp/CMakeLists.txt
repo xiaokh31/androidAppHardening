@@ -124,6 +124,7 @@ if(ANDROID)
         ah_runtime
         PRIVATE
             -Wl,--gc-sections
+            -Wl,--build-id=none
             -Wl,--exclude-libs,ALL
             -Wl,--undefined=ah_crypto_backend_anchor
             -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/exports.map

@@ -1,0 +1,153 @@
+{
+  "schemaVersion": 1,
+  "releaseLine": "v0.2",
+  "releaseVersion": "0.2.0",
+  "taskId": "V2-M0-02",
+  "networkFallback": false,
+  "productSbom": {
+    "format": "CycloneDX",
+    "specVersion": "1.6",
+    "includeBomSerialNumber": false,
+    "includeBuildSystem": false,
+    "rawFileName": "bom-v0.2.0.raw.cdx.json",
+    "canonicalFileName": "bom-v0.2.0.cdx.json",
+    "canonicalizer": "tools/supply-chain-v02/canonicalize-cyclonedx-v02.mjs",
+    "onlySemanticDiffPath": "/metadata/timestamp"
+  },
+  "cycloneDxGradlePlugin": {
+    "id": "org.cyclonedx.bom",
+    "group": "org.cyclonedx",
+    "name": "cyclonedx-gradle-plugin",
+    "version": "3.4.1",
+    "sourceProfile": "cyclonedx-gradle-plugin-maven-github-v1",
+    "coverageClass": "osv-package",
+    "sourceTag": "cyclonedx-gradle-plugin-3.4.1",
+    "sourceCommit": "cb3522fe4d78e573ef08bb6cc3bfd327ab2ddec6",
+    "releaseInitialUrl": "https://api.github.com/repos/CycloneDX/cyclonedx-gradle-plugin/releases/tags/cyclonedx-gradle-plugin-3.4.1",
+    "advisoryInitialUrl": "https://api.github.com/repos/CycloneDX/cyclonedx-gradle-plugin/security-advisories?per_page=100",
+    "artifacts": [
+      {
+        "name": "org.cyclonedx.bom.gradle.plugin-3.4.1.pom",
+        "initialUrl": "https://plugins.gradle.org/m2/org/cyclonedx/bom/org.cyclonedx.bom.gradle.plugin/3.4.1/org.cyclonedx.bom.gradle.plugin-3.4.1.pom",
+        "sizeBytes": 653,
+        "sha256": "0c2e911686234163d2702761c1043b430532c88d6275940165d9c1b36068994b"
+      },
+      {
+        "name": "cyclonedx-gradle-plugin-3.4.1.pom",
+        "initialUrl": "https://repo.maven.apache.org/maven2/org/cyclonedx/cyclonedx-gradle-plugin/3.4.1/cyclonedx-gradle-plugin-3.4.1.pom",
+        "sizeBytes": 1527,
+        "sha256": "d42027f27ca7cedd7baf84f0b328b61f4e638ce667a9cc861d7c8874d44f5b02"
+      },
+      {
+        "name": "cyclonedx-gradle-plugin-3.4.1.jar",
+        "initialUrl": "https://repo.maven.apache.org/maven2/org/cyclonedx/cyclonedx-gradle-plugin/3.4.1/cyclonedx-gradle-plugin-3.4.1.jar",
+        "sizeBytes": 78859,
+        "sha256": "61666c361da1164737c7a2f3faad88ba879c5090c3b3bdd4cd878eda153bd1b2"
+      },
+      {
+        "name": "cyclonedx-gradle-plugin-3.4.1-cyclonedx.json",
+        "initialUrl": "https://github.com/CycloneDX/cyclonedx-gradle-plugin/releases/download/cyclonedx-gradle-plugin-3.4.1/cyclonedx-gradle-plugin-3.4.1-cyclonedx.json",
+        "sizeBytes": 117889,
+        "sha256": "f428f1052de41f16f98154d040ffa5941d9802da84503b3407035e53fd09d800"
+      }
+    ]
+  },
+  "cycloneDxCli": {
+    "name": "cyclonedx-cli",
+    "version": "0.33.1",
+    "sourceProfile": "cyclonedx-cli-github-v1",
+    "coverageClass": "tool-binary",
+    "sourceTag": "v0.33.1",
+    "sourceCommit": "b3cfa4b0edc356dad07e0b6e7ab6da0a94af0246",
+    "releaseInitialUrl": "https://api.github.com/repos/CycloneDX/cyclonedx-cli/releases/tags/v0.33.1",
+    "advisoryInitialUrl": "https://api.github.com/repos/CycloneDX/cyclonedx-cli/security-advisories?per_page=100",
+    "allowedSubcommands": [
+      "validate"
+    ],
+    "assets": [
+      {
+        "platform": "windows-x86_64",
+        "name": "cyclonedx-win-x64.exe",
+        "sizeBytes": 80366454,
+        "sha256": "9b360974c41a5d612eb026fb5e3bb1fa28e08865f7a4f915665b8bc94bd3bc31"
+      },
+      {
+        "platform": "ubuntu-x86_64",
+        "name": "cyclonedx-linux-x64",
+        "sizeBytes": 80337458,
+        "sha256": "bfc8b2538da86fe239bc53658bbb63c1c8c510a293c1e6891aa5bea5d3c58746"
+      }
+    ]
+  },
+  "osvScanner": {
+    "name": "osv-scanner",
+    "version": "2.5.1",
+    "sourceProfile": "osv-scanner-github-v1",
+    "coverageClass": "tool-binary",
+    "sourceTag": "v2.5.1",
+    "sourceCommit": "c84fa4568f2526d0333e9a914ea8a0a5f74ad68b",
+    "releaseInitialUrl": "https://api.github.com/repos/google/osv-scanner/releases/tags/v2.5.1",
+    "advisoryInitialUrl": "https://api.github.com/repos/google/osv-scanner/security-advisories?per_page=100",
+    "assets": [
+      {
+        "platform": "windows-x86_64",
+        "name": "osv-scanner_windows_amd64.exe",
+        "sizeBytes": 58970112,
+        "sha256": "25e42f5ef6711fd8c0fb45390972205891dd44c6bd02ac93f0f63e8e98d9bfb6"
+      },
+      {
+        "platform": "ubuntu-x86_64",
+        "name": "osv-scanner_linux_amd64",
+        "sizeBytes": 57725090,
+        "sha256": "f9f25499a2c8cc367b3af45df2ea7eeca7fbccceab9c35079968f4b3652194be"
+      },
+      {
+        "platform": "all",
+        "name": "osv-scanner_SHA256SUMS",
+        "sizeBytes": 554,
+        "sha256": "40120ab7d670199f6663d76f9806b6d11ab3c402df808e5cc4e13c5cb0643356"
+      },
+      {
+        "platform": "all",
+        "name": "multiple.intoto.jsonl",
+        "sizeBytes": 24443,
+        "sha256": "664273601759eb6540f35bfdbfa6ff083026c09e2e9bb7ad3cded795967dd462"
+      }
+    ]
+  },
+  "lockedMavenComponentGenerator": {
+    "profile": "locked-maven-component-v1",
+    "coordinateSet": "union-of-gradle-resolved-graph-and-verification-metadata",
+    "coordinateOrder": "unsigned-utf8-group:name:version",
+    "repositoryPriority": [
+      "google-maven",
+      "maven-central"
+    ],
+    "repositories": {
+      "google-maven": "https://dl.google.com/dl/android/maven2/",
+      "maven-central": "https://repo.maven.apache.org/maven2/"
+    },
+    "mixedRepository": false,
+    "unknownFallback": false,
+    "maximumParentPomDepth": 32,
+    "requireImmutableScmTag": true,
+    "requiredArtifactFields": [
+      "sourceProfile",
+      "repositoryId",
+      "group",
+      "name",
+      "version",
+      "artifactName",
+      "artifactInitialUrl",
+      "artifactSizeBytes",
+      "artifactSha256",
+      "effectivePomSha256",
+      "scmOwner",
+      "scmRepo",
+      "scmTag",
+      "releaseInitialUrl",
+      "advisoryInitialUrl",
+      "lockedContentType"
+    ]
+  }
+}

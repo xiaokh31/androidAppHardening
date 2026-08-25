@@ -52,7 +52,9 @@ object V02LauncherContractTest {
         val repository = Path.of(requireNotNull(System.getProperty("ah.distribution.repo")))
         Files.copy(repository.resolve("distribution/build/v0.2/host/android-app-hardening.jar"), lib.resolve("android-app-hardening.jar"))
         val javaBin = Path.of(System.getProperty("java.home")).resolve("bin")
-        val result = run(listOf("cmd", "/d", "/c", bin.resolve("android-app-hardening.cmd").toString(), "--version"), javaBin)
+        val launcher = bin.resolve("android-app-hardening.cmd")
+        val command = { arguments: List<String> -> windowsLauncherCommand(launcher, arguments) }
+        val result = run(command(listOf("--version")), javaBin)
         check(result.first == 0 && result.second == "android-app-hardening 0.2.0\r\n" && result.third.isEmpty()) { result.toString() }
 
         val fakeHome = root.resolve("fake-java-home")
@@ -60,7 +62,7 @@ object V02LauncherContractTest {
         val systemRoot = requireNotNull(System.getenv("SystemRoot"))
         val systemBin = Path.of(systemRoot, "System32")
         val wrong = run(
-            listOf("cmd", "/d", "/c", bin.resolve("android-app-hardening.cmd").toString(), "--version"),
+            command(listOf("--version")),
             systemBin,
             javaHome = fakeHome,
             replacePath = true,
@@ -70,7 +72,7 @@ object V02LauncherContractTest {
         }
         protectSmoke(
             root,
-            listOf("cmd", "/d", "/c", bin.resolve("android-app-hardening.cmd").toString()),
+            command,
             javaBin,
             signedInput,
         )
@@ -84,7 +86,8 @@ object V02LauncherContractTest {
         val repository = Path.of(requireNotNull(System.getProperty("ah.distribution.repo")))
         Files.copy(repository.resolve("distribution/build/v0.2/host/android-app-hardening.jar"), lib.resolve("android-app-hardening.jar"))
         val javaBin = Path.of(System.getProperty("java.home")).resolve("bin")
-        val result = run(listOf(launcher.toString(), "--version"), javaBin)
+        val command = { arguments: List<String> -> listOf(launcher.toString()) + arguments }
+        val result = run(command(listOf("--version")), javaBin)
         check(result.first == 0 && result.second == "android-app-hardening 0.2.0\n" && result.third.isEmpty())
 
         val fakeHome = root.resolve("fake-java-home")
@@ -94,10 +97,23 @@ object V02LauncherContractTest {
         java.toFile().setExecutable(true, false)
         val wrong = run(listOf(launcher.toString(), "--version"), fake, javaHome = fakeHome)
         check(wrong.first == 78)
-        protectSmoke(root, listOf(launcher.toString()), javaBin, signedInput)
+        protectSmoke(root, command, javaBin, signedInput)
     }
 
-    private fun protectSmoke(root: Path, launcher: List<String>, javaBin: Path, signedInput: Path) {
+    private fun windowsLauncherCommand(launcher: Path, arguments: List<String>): List<String> {
+        val commandLine = (listOf(launcher.toString()) + arguments).joinToString(" ") { value ->
+            require(value.none { it == '\u0000' || it == '\r' || it == '\n' || it == '"' })
+            "\"$value\""
+        }
+        return listOf("cmd.exe", "/d", "/s", "/c", "\"$commandLine\"")
+    }
+
+    private fun protectSmoke(
+        root: Path,
+        launcher: (List<String>) -> List<String>,
+        javaBin: Path,
+        signedInput: Path,
+    ) {
         val smoke = root.resolve("offline protect smoke").also(Files::createDirectories)
         val input = smoke.resolve("输入 signed fixture.apk")
         Files.copy(signedInput, input)
@@ -105,9 +121,9 @@ object V02LauncherContractTest {
         val output = smoke.resolve("output unsigned.apk")
         val report = smoke.resolve("report result.json")
         val result = run(
-            launcher + listOf(
+            launcher(listOf(
                 "protect", "--input", input.toString(), "--output", output.toString(), "--report", report.toString(),
-            ),
+            )),
             javaBin,
         )
         check(

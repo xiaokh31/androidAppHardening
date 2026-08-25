@@ -4,7 +4,7 @@
   "releaseVersion": "0.2.0",
   "taskId": "V2-M0-02",
   "implementationManifestSha256": "da315d618bde8cb68973ff757d8718104e70c285914baa0c0475578064ee1e98",
-  "toolchainManifestSha256": "42ab91fc7d0fabdae324b9b6baf1e38639e7b0843e2ab413cea5123580f712eb",
+  "toolchainManifestSha256": "9a71b07630d98c65c1b480ffdd6267404bfc63bd3c5df1fbe820fb71e109f590",
   "productContractManifestSha256": "951663d67aea11d35610b67f2ba568b1a7a001ce0a23e6c2cc576bb7131a2e0b",
   "entries": [
     {

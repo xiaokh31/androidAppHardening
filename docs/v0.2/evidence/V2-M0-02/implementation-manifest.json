@@ -143,9 +143,9 @@
     {
       "path": "distribution/src/test/kotlin/ah/distribution/V02LauncherContractTest.kt",
       "mode": "100644",
-      "sizeBytes": 13259,
-      "sha256": "ba41b1c57f967bdde0618d1f9084ff4d0edff63001dedbab003d80714238e3bb",
-      "gitBlobSha1": "4d5a989c49fb043b3142c9703bb1a8d5bb55a9e6",
+      "sizeBytes": 13369,
+      "sha256": "d536697ee93da06b99a517d22d253d534b7eef3d3d53a8b1881142760371598f",
+      "gitBlobSha1": "6c79ae6e567582386ea4c0a4e436d1a23a841b90",
       "role": "distribution-source"
     },
     {

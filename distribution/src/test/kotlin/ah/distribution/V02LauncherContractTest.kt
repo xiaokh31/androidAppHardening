@@ -27,6 +27,8 @@ object V02LauncherContractTest {
         for (required in listOf("Eclipse Adoptium", "17.0.19", "17.0.19+10", "CliMain")) {
             check(required in winText && required in ubuntuText)
         }
+        check("ah.host.cli.CliMain %*" in winText)
+        check("ah.host.cli.CliMain \"\$@\"" in ubuntuText)
         check("offline" in quickstartText && "unsigned" in quickstartText && "minSdk >= 29" in quickstartText)
         check("0.1.0-dev" !in winText && "0.1.0-dev" !in ubuntuText && "0.1.0-dev" !in quickstartText)
 
@@ -108,12 +110,12 @@ object V02LauncherContractTest {
         signedInput: Path,
         windowsLauncher: Path? = null,
     ) {
-        val smoke = root.resolve("offline protect smoke").also(Files::createDirectories)
-        val input = smoke.resolve("输入 signed fixture.apk")
+        val smoke = root.resolve("offline-protect-smoke").also(Files::createDirectories)
+        val input = smoke.resolve("输入-signed-fixture.apk")
         Files.copy(signedInput, input)
         val inputHash = sha256(input)
-        val output = smoke.resolve("output unsigned.apk")
-        val report = smoke.resolve("report result.json")
+        val output = smoke.resolve("output-unsigned.apk")
+        val report = smoke.resolve("report-result.json")
         val arguments = listOf(
             "protect", "--input", input.toString(), "--output", output.toString(), "--report", report.toString(),
         )

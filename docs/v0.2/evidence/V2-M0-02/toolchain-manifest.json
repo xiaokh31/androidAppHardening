@@ -39,17 +39,17 @@
     {
       "path": "distribution/build.gradle.kts",
       "mode": "100644",
-      "sizeBytes": 12039,
-      "sha256": "030025d81d950ada5d50a0493cfb2b596d345d2509816ab21562b89d5b81f617",
-      "gitBlobSha1": "3c6601566aafe5f88bf9ae63070743769046e68f",
+      "sizeBytes": 12447,
+      "sha256": "77f6fb893cb70c873ca0f70edeb3ef6a75038f42001d69a75282b4befe887b03",
+      "gitBlobSha1": "f193527fdfb1c4094588fcf7f086c326b3a7548a",
       "role": "toolchain-contract"
     },
     {
       "path": "distribution/gradle.lockfile",
       "mode": "100644",
-      "sizeBytes": 4190,
-      "sha256": "99b19dcfad39325d0493346f97f77fe5f3debfa74bf62bb5058712caee82edd8",
-      "gitBlobSha1": "c94a26c19af042bf09f487f8ac2ce448eb75fc00",
+      "sizeBytes": 4342,
+      "sha256": "6f14a46b85e2aaac1a36ad86f57b37e4bd3f7c33c649f7cc479a77d3cf72599e",
+      "gitBlobSha1": "42615cd4e01086542f62aa87096cbcba5daab3f9",
       "role": "toolchain-lock"
     },
     {
@@ -327,9 +327,9 @@
     {
       "path": "tools/validation/v02-supply-chain-tools.json",
       "mode": "100644",
-      "sizeBytes": 7426262,
-      "sha256": "d3d8777531f54d8bf34bc4a4934e5abe4fb78e5b1b09f0c3b9c10d96f66bc32a",
-      "gitBlobSha1": "6a803838d840b6d25eb0a2724d238cd0814f3d3f",
+      "sizeBytes": 7426642,
+      "sha256": "17c3bfe40f4362f7ef67c43a5d08a39f4988c98eb7800584be6ac531de151385",
+      "gitBlobSha1": "9e986059b80bcf3192fe62131dd3f650fd234e49",
       "role": "toolchain-lock"
     }
   ]

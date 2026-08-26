@@ -3,8 +3,8 @@
   "releaseLine": "v0.2",
   "releaseVersion": "0.2.0",
   "taskId": "V2-M0-02",
-  "implementationManifestSha256": "00222f7bcba2aeb4d5596300659988a92272e1c9fefbf923851ebfdc8b16b5b4",
-  "toolchainManifestSha256": "ff6a7c65b45b21705a89a5f538885f2a0a1ebafd555915290de6a70396bae087",
+  "implementationManifestSha256": "bd1ae799f2781d264a7363dbf5a5316a5c4d29314634d9e4b43406725274580e",
+  "toolchainManifestSha256": "57d3845393ea90e24cf862330c0166b0caa24c75ff26a30b2252797153ea5f73",
   "productContractManifestSha256": "0391c9384cb789f0cd0a6135cc1e11f87a98c22fba0c02f2c497ca3e75f2d74a",
   "entries": [
     {
@@ -194,7 +194,7 @@
       "archivePath": "lib/android-app-hardening.jar",
       "sourcePath": "distribution/build/v0.2/components/lib/android-app-hardening.jar",
       "sourceGitPath": "distribution/build.gradle.kts",
-      "sourceGitBlobSha1": "f193527fdfb1c4094588fcf7f086c326b3a7548a",
+      "sourceGitBlobSha1": "a1f59c504e3dfbe6478fa6ec2d35a4f445195a38",
       "mode": "100644",
       "sizeBytes": 6605578,
       "sha256": "b42d00c0025c4655970bd0e2eb8c6d77019998a4e3a408cfa9334d87c96c7764",

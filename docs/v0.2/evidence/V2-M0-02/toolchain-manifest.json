@@ -39,9 +39,9 @@
     {
       "path": "distribution/build.gradle.kts",
       "mode": "100644",
-      "sizeBytes": 12447,
-      "sha256": "77f6fb893cb70c873ca0f70edeb3ef6a75038f42001d69a75282b4befe887b03",
-      "gitBlobSha1": "f193527fdfb1c4094588fcf7f086c326b3a7548a",
+      "sizeBytes": 12741,
+      "sha256": "0dc05cba1599816ace704ae827682f99c52cf00e5fa7f01a828df1ef33e17a07",
+      "gitBlobSha1": "a1f59c504e3dfbe6478fa6ec2d35a4f445195a38",
       "role": "toolchain-contract"
     },
     {

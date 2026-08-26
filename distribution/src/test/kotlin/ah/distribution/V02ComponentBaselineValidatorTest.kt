@@ -30,6 +30,35 @@ object V02ComponentBaselineValidatorTest {
                 check("\"sourceCommit\": \"${"0".repeat(40)}\"" in releaseManifest)
             }
             val bytes = Files.readAllBytes(baseline)
+            V02ComponentBaselineValidator.main(arrayOf(
+                "candidate", "--repo", repository.toString(), "--components", components.toString(),
+                "--baseline", baseline.toString(), "--output", candidate.toString(),
+            ))
+            check(Files.readAllBytes(candidate).contentEquals(bytes))
+            validate(repository, components, baseline, candidate)
+            val derived = StrictJson.parse(bytes).asObject("legacy candidate")
+            derived.remove("taskId")
+            derived["sourceCommit"] = "a".repeat(40)
+            derived["freezeEpochSeconds"] = 1_700_000_001L
+            Files.write(candidate, CanonicalJson.prettyBytes(derived))
+            expectFailure { validate(repository, components, baseline, candidate) }
+            expectFailure { V02ComponentBaselineValidator.main(arrayOf(
+                "validate", "--repo", repository.toString(), "--components", components.toString(),
+                "--baseline", baseline.toString(),
+            )) }
+            Files.delete(candidate)
+            val canaryWork = Files.createTempDirectory(repository.resolve("distribution/build/v0.2"), "baseline-canary-")
+            try {
+                for (platform in V02Platform.entries) {
+                    val output = canaryWork.resolve("${platform.wireName}.archive")
+                    V02ComponentBaselineValidator.main(arrayOf(
+                        "canary", "--repo", repository.toString(), "--components", components.toString(),
+                        "--baseline", baseline.toString(), "--platform", platform.wireName, "--output", output.toString(),
+                    ))
+                    check(Files.size(output) > 0 && !Files.exists(candidate))
+                }
+            } finally { canaryWork.toFile().deleteRecursively() }
+            println("diagnostic copy is byte-identical; derived copy rejected; absent copy permits baseline-only canary")
             val copy = repository.resolve("distribution/build/v0.2/wrong-baseline-path.json")
             Files.write(copy, bytes)
             expectFailure { validate(repository, components, copy, candidate) }
@@ -98,7 +127,7 @@ object V02ComponentBaselineValidatorTest {
         val clone = temporary.resolve("repository")
         fun git(vararg arguments: String): String {
             val process = ProcessBuilder(listOf("git", "-c", "core.hooksPath=", "-C", clone.toString()) + arguments)
-                .redirectErrorStream(true).start()
+                .redirectError(ProcessBuilder.Redirect.INHERIT).start()
             val output = process.inputStream.readAllBytes().toString(StandardCharsets.UTF_8)
             check(process.waitFor(30, TimeUnit.SECONDS) && process.exitValue() == 0) { output }
             return output.trim()
@@ -119,7 +148,10 @@ object V02ComponentBaselineValidatorTest {
             val base = git("rev-parse", "HEAD")
             val expected = V02ComponentBaselineValidator.expectedManifestBytes(clone)
             val poison = clone.resolve("poison.txt").also { Files.writeString(it, "uncommitted adversarial bytes\n") }
-            val blob = git("hash-object", "-w", poison.toString())
+            // CI can set core.autocrlf=true: a filter warning on stderr must never become a blob ID.
+            git("config", "core.autocrlf", "true")
+            val blob = git("hash-object", "-w", "--no-filters", poison.toString())
+            check(Regex("[0-9a-f]{40}").matches(blob))
             val path = "host/cli/src/main/kotlin/ah/host/cli/CliMain.kt"
             git("update-index", "--add", "--cacheinfo", "100644,$blob,$path")
             val working = clone.resolve(path); Files.createDirectories(working.parent); Files.writeString(working, "different working bytes\n")

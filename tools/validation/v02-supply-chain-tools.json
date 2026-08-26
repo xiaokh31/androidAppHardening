@@ -132,8 +132,8 @@
     },
     "resolvedGraph": {
       "path": "build/v0.2/resolved-maven-graph.json",
-      "sizeBytes": 52052,
-      "sha256": "623737225d550ad5bc02092a7b326d14ff670a614738616155a849673a638d31",
+      "sizeBytes": 52384,
+      "sha256": "8bb9fcaf4bcb56bb09195ee1b58e508c60412b62316641d07855f53c2c023f2c",
       "document": {
         "schemaVersion": 1,
         "configurations": {
@@ -333,6 +333,8 @@
           ":benchmarks:host:testRuntimeClasspath": [],
           ":distribution:classpath": [],
           ":distribution:compileClasspath": [
+            "net.java.dev.jna:jna-platform:5.19.1",
+            "net.java.dev.jna:jna:5.19.1",
             "org.jetbrains.kotlin:kotlin-stdlib:2.4.10",
             "org.jetbrains:annotations:13.0"
           ],
@@ -344,14 +346,20 @@
             "org.jetbrains:annotations:13.0"
           ],
           ":distribution:runtimeClasspath": [
+            "net.java.dev.jna:jna-platform:5.19.1",
+            "net.java.dev.jna:jna:5.19.1",
             "org.jetbrains.kotlin:kotlin-stdlib:2.4.10",
             "org.jetbrains:annotations:13.0"
           ],
           ":distribution:testCompileClasspath": [
+            "net.java.dev.jna:jna-platform:5.19.1",
+            "net.java.dev.jna:jna:5.19.1",
             "org.jetbrains.kotlin:kotlin-stdlib:2.4.10",
             "org.jetbrains:annotations:13.0"
           ],
           ":distribution:testRuntimeClasspath": [
+            "net.java.dev.jna:jna-platform:5.19.1",
+            "net.java.dev.jna:jna:5.19.1",
             "org.jetbrains.kotlin:kotlin-stdlib:2.4.10",
             "org.jetbrains:annotations:13.0"
           ],

@@ -14,6 +14,8 @@ object V02ReleasePackagerTest {
             mutation(manifest, "\"schemaVersion\": 1", "\"schemaVersion\": 2")
             mutation(manifest, "\"releaseVersion\": \"0.2.0\"", "\"releaseVersion\": \"0.1.0-dev\"")
             mutation(manifest, "\"mode\": \"100644\"", "\"mode\": \"100600\"")
+            mutation(manifest, "\"mode\": \"100644\"", "\"mode\": \"100755\"")
+            mutation(manifest, "\"mode\": \"100755\"", "\"mode\": \"100644\"")
             mutation(manifest, "\"abi\": \"arm64-v8a\"", "\"abi\": \"mips\"")
             mutation(manifest, "\"logicalPath\": \"LICENSE\"", "\"logicalPath\": \"../LICENSE\"")
             mutation(manifest, "\"logicalPath\": \"LICENSE\"", "\"logicalPath\": \"LICE\\\\NSE\"")
@@ -28,6 +30,23 @@ object V02ReleasePackagerTest {
             V02ArchiveVerifier.verifyZip(Files.readAllBytes(windows), fixture.freezeEpoch)
             V02ArchiveVerifier.verifyTarGzip(Files.readAllBytes(ubuntu), fixture.freezeEpoch)
             expectFailure { V02ReleasePackager.packageArchive(fixture.manifest, V02Platform.WINDOWS, windows) }
+
+            val hardlink = fixture.root.resolve("license-hardlink")
+            Files.createLink(hardlink, fixture.root.resolve("inputs/LICENSE"))
+            try {
+                check(Files.isSameFile(hardlink, fixture.root.resolve("inputs/LICENSE")))
+                for (platform in V02Platform.entries) {
+                    val output = fixture.root.resolve("hardlink-${platform.wireName}.archive")
+                    expectFailure { V02ReleasePackager.packageArchive(fixture.manifest, platform, output) }
+                    check(!Files.exists(output))
+                }
+            } finally { Files.delete(hardlink) }
+            val diagnostic = fixture.root.resolve("build/v0.2/candidate-component-manifest.json")
+            Files.write(diagnostic, manifest)
+            val diagnosticOutput = fixture.root.resolve("diagnostic.zip")
+            expectFailure { V02ReleasePackager.packageArchive(diagnostic, V02Platform.WINDOWS, diagnosticOutput) }
+            check(!Files.exists(diagnosticOutput))
+            println("packager input boundaries: hardlinks, valid-but-wrong modes and diagnostic preimage rejected")
 
             val forbidden = manifest.toString(StandardCharsets.UTF_8).replace(
                 "    }\n  ]",
@@ -101,7 +120,7 @@ internal object V02TestFixture {
             "productContractManifestSha256" to "3".repeat(64),
             "entries" to entries,
         )
-        val manifest = root.resolve("build/v0.2/candidate-component-manifest.json")
+        val manifest = root.resolve("build/v0.2/synthetic-packager-manifest.json")
         Files.createDirectories(manifest.parent)
         Files.write(manifest, CanonicalJson.prettyBytes(manifestValue))
         return V02Fixture(root, manifest, freeze)

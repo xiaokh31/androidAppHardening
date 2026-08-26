@@ -35,6 +35,7 @@ val v02Apksig by configurations.creating {
 }
 
 dependencies {
+    implementation(libs.jna.platform)
     hostReleaseRuntime(project(":host:cli"))
     add(v02Apksig.name, libs.android.apksig)
 }
@@ -211,16 +212,19 @@ val v02CandidateManifest by tasks.registering(JavaExec::class) {
 val packageWindowsV02 by tasks.registering(JavaExec::class) {
     group = "distribution"
     description = "Builds the deterministic non-release Windows v0.2 canary ZIP."
-    dependsOn(v02CandidateManifest, tasks.named("classes"))
+    dependsOn(stageV02Components, tasks.named("classes"))
     classpath = sourceSets["main"].runtimeClasspath
-    mainClass.set("ah.distribution.V02ReleasePackager")
+    mainClass.set("ah.distribution.V02ComponentBaselineValidator")
     val archive = layout.buildDirectory.file("v0.2/archives/android-app-hardening-0.2.0-windows.zip")
     args(
-        "--manifest", candidateManifest.asFile.absolutePath,
+        "canary", "--repo", rootProject.layout.projectDirectory.asFile.absolutePath,
+        "--components", componentRoot.get().asFile.absolutePath,
+        "--baseline", trackedBaseline.asFile.absolutePath,
         "--platform", "windows",
         "--output", archive.get().asFile.absolutePath,
     )
-    inputs.file(candidateManifest)
+    inputs.file(trackedBaseline)
+    inputs.dir(componentRoot)
     outputs.file(archive)
     doFirst {
         Files.deleteIfExists(archive.get().asFile.toPath())
@@ -230,16 +234,19 @@ val packageWindowsV02 by tasks.registering(JavaExec::class) {
 val packageUbuntuV02 by tasks.registering(JavaExec::class) {
     group = "distribution"
     description = "Builds the deterministic non-release Ubuntu v0.2 canary TAR.GZ."
-    dependsOn(v02CandidateManifest, tasks.named("classes"))
+    dependsOn(stageV02Components, tasks.named("classes"))
     classpath = sourceSets["main"].runtimeClasspath
-    mainClass.set("ah.distribution.V02ReleasePackager")
+    mainClass.set("ah.distribution.V02ComponentBaselineValidator")
     val archive = layout.buildDirectory.file("v0.2/archives/android-app-hardening-0.2.0-ubuntu.tar.gz")
     args(
-        "--manifest", candidateManifest.asFile.absolutePath,
+        "canary", "--repo", rootProject.layout.projectDirectory.asFile.absolutePath,
+        "--components", componentRoot.get().asFile.absolutePath,
+        "--baseline", trackedBaseline.asFile.absolutePath,
         "--platform", "ubuntu",
         "--output", archive.get().asFile.absolutePath,
     )
-    inputs.file(candidateManifest)
+    inputs.file(trackedBaseline)
+    inputs.dir(componentRoot)
     outputs.file(archive)
     doFirst {
         Files.deleteIfExists(archive.get().asFile.toPath())

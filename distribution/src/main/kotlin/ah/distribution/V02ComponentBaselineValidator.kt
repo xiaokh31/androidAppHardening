@@ -71,6 +71,16 @@ object V02ComponentBaselineValidator {
                 requiredPath(options, "--output"),
                 commit,
             )
+            "canary" -> {
+                val manifest = canaryManifest(
+                    repository, requiredPath(options, "--components"), requiredPath(options, "--baseline"), commit,
+                )
+                V02ReleasePackager.packageArchive(
+                    repository, manifest,
+                    V02Platform.parse(options["--platform"] ?: throw DistributionException("missing --platform")),
+                    requiredPath(options, "--output"),
+                )
+            }
             "validate" -> validate(
                 repository,
                 requiredPath(options, "--components"),
@@ -86,7 +96,7 @@ object V02ComponentBaselineValidator {
         if (values.size % 2 != 0) throw DistributionException("validator options must be key/value pairs")
         val allowed = setOf(
             "--repo", "--components", "--output", "--baseline", "--apksig", "--d8", "--android-jar",
-            "--bootstrap-aar", "--policy-aar", "--native-aar", "--runtime-templates",
+            "--bootstrap-aar", "--policy-aar", "--native-aar", "--runtime-templates", "--platform",
         )
         val result = LinkedHashMap<String, String>()
         var index = 0
@@ -648,19 +658,25 @@ object V02ComponentBaselineValidator {
     }
 
     private fun writeCandidate(repository: Path, components: Path, baseline: Path, output: Path, commit: String) {
-        val value = expectedCandidate(repository, components.toAbsolutePath().normalize(), baseline, commit)
+        val expected = CanonicalJson.prettyBytes(expectedBaseline(repository, components.toAbsolutePath().normalize(), commit))
+        val bytes = readTrackedBaseline(repository, baseline, commit)
+        validateBaselineDocument(bytes, expected)
         val fixedOutput = repository.resolve("build/v0.2/candidate-component-manifest.json").normalize()
         if (output.toAbsolutePath().normalize() != fixedOutput) throw DistributionException("candidate output path is not fixed")
-        writeCanonical(fixedOutput, value)
+        // This file is only a diagnostic copy: never add HEAD/time or remove Git provenance fields.
+        writeAtomicBytes(fixedOutput, bytes)
     }
 
     private fun validate(repository: Path, components: Path, baseline: Path, candidate: Path?, commit: String) {
         val expectedBaseline = expectedBaseline(repository, components.toAbsolutePath().normalize(), commit)
         val baselineBytes = readTrackedBaseline(repository, baseline, commit)
         validateBaselineDocument(baselineBytes, CanonicalJson.prettyBytes(expectedBaseline))
-        if (candidate != null && Files.exists(candidate, LinkOption.NOFOLLOW_LINKS)) {
-            val expected = CanonicalJson.prettyBytes(expectedCandidate(repository, components.toAbsolutePath().normalize(), baseline, commit))
-            if (!readRegular(candidate).contentEquals(expected)) throw DistributionException("ignored candidate manifest drifted")
+        val fixed = repository.resolve("build/v0.2/candidate-component-manifest.json").normalize()
+        if (candidate != null && candidate.toAbsolutePath().normalize() != fixed) {
+            throw DistributionException("candidate preimage path is not fixed")
+        }
+        if (Files.exists(fixed, LinkOption.NOFOLLOW_LINKS) && !readRegular(fixed).contentEquals(baselineBytes)) {
+            throw DistributionException("ignored candidate manifest differs from tracked baseline bytes")
         }
     }
 
@@ -734,11 +750,13 @@ object V02ComponentBaselineValidator {
         }
     }
 
-    private fun expectedCandidate(repository: Path, components: Path, baseline: Path, commit: String): LinkedHashMap<String, Any?> {
-        val expectedBaseline = expectedBaseline(repository, components, commit)
+    private fun canaryManifest(repository: Path, components: Path, baseline: Path, commit: String): V02ComponentManifest {
+        val expectedBaseline = expectedBaseline(repository, components.toAbsolutePath().normalize(), commit)
         val baselineBytes = readTrackedBaseline(repository, baseline, commit)
-        if (!baselineBytes.contentEquals(CanonicalJson.prettyBytes(expectedBaseline))) {
-            throw DistributionException("tracked component baseline is stale")
+        validateBaselineDocument(baselineBytes, CanonicalJson.prettyBytes(expectedBaseline))
+        val diagnostic = repository.resolve("build/v0.2/candidate-component-manifest.json")
+        if (Files.exists(diagnostic, LinkOption.NOFOLLOW_LINKS) && !readRegular(diagnostic).contentEquals(baselineBytes)) {
+            throw DistributionException("ignored candidate manifest differs from tracked baseline bytes")
         }
         val entries = expectedBaseline.array("entries").map { raw ->
             val value = raw.asObject("baseline entry")
@@ -755,7 +773,9 @@ object V02ComponentBaselineValidator {
                 "platform" to value.string("platform"),
             )
         }
-        return linkedMapOf(
+        // The authoritative input remains the exact tracked baseline. Canary execution context is
+        // constructed only in memory; it is not a candidate identity, freeze fact or second preimage.
+        return V02ReleasePackager.parseManifest(CanonicalJson.prettyBytes(linkedMapOf(
             "schemaVersion" to 1L,
             "releaseLine" to "v0.2",
             "releaseVersion" to "0.2.0",
@@ -765,7 +785,7 @@ object V02ComponentBaselineValidator {
             "toolchainManifestSha256" to expectedBaseline.string("toolchainManifestSha256"),
             "productContractManifestSha256" to expectedBaseline.string("productContractManifestSha256"),
             "entries" to entries,
-        )
+        )))
     }
 
     private fun validateBaselineShape(value: Any?) {
@@ -883,7 +903,10 @@ object V02ComponentBaselineValidator {
     }
 
     private fun writeCanonical(path: Path, value: Any?) {
-        val bytes = CanonicalJson.prettyBytes(value)
+        writeAtomicBytes(path, CanonicalJson.prettyBytes(value))
+    }
+
+    private fun writeAtomicBytes(path: Path, bytes: ByteArray) {
         Files.createDirectories(path.parent)
         val temp = Files.createTempFile(path.parent, ".${path.fileName}.", ".tmp")
         var moved = false

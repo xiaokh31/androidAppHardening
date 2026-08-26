@@ -1,5 +1,10 @@
 package ah.distribution
 
+import com.sun.jna.Platform
+import com.sun.jna.platform.win32.Kernel32
+import com.sun.jna.platform.win32.WinBase
+import com.sun.jna.platform.win32.WinDef
+import com.sun.jna.platform.win32.WinNT
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
@@ -81,8 +86,20 @@ object V02ReleasePackager {
         if (Files.exists(outputAbsolute, LinkOption.NOFOLLOW_LINKS)) throw DistributionException("output already exists")
 
         val repositoryRoot = locateRepositoryRoot(manifestAbsolute.parent)
+        if (manifestAbsolute == repositoryRoot.resolve("build/v0.2/candidate-component-manifest.json")) {
+            throw DistributionException("diagnostic baseline copy cannot be a packager input")
+        }
+        rejectHardlinks(manifestAbsolute)
         val manifestBytes = Files.readAllBytes(manifestAbsolute)
+        rejectHardlinks(manifestAbsolute)
         val manifest = parseManifest(manifestBytes)
+        packageArchive(repositoryRoot, manifest, platform, outputAbsolute)
+    }
+
+    internal fun packageArchive(repository: Path, manifest: V02ComponentManifest, platform: V02Platform, output: Path) {
+        val repositoryRoot = repository.toAbsolutePath().normalize()
+        val outputAbsolute = output.toAbsolutePath().normalize()
+        if (Files.exists(outputAbsolute, LinkOption.NOFOLLOW_LINKS)) throw DistributionException("output already exists")
         val files = loadArchiveFiles(repositoryRoot, manifest, platform, outputAbsolute)
         val archiveBytes = when (platform) {
             V02Platform.WINDOWS -> buildZip(files, manifest.freezeEpochSeconds)
@@ -155,6 +172,8 @@ object V02ReleasePackager {
             val sourcePath = validatePath(entry.string("sourcePath"), "sourcePath")
             val mode = entry.string("mode")
             if (mode !in setOf("100644", "100755")) throw DistributionException("invalid component mode")
+            val expectedMode = if (archivePath?.startsWith("bin/") == true) "100755" else "100644"
+            if (mode != expectedMode) throw DistributionException("component mode differs from fixed archive role")
             val size = entry.long("sizeBytes")
             if (size !in 0..MAX_COMPONENT_BYTES) throw DistributionException("component size is out of range")
             val hash = entry.hash("sha256")
@@ -210,7 +229,9 @@ object V02ReleasePackager {
             if (!Files.isRegularFile(source, LinkOption.NOFOLLOW_LINKS)) {
                 throw DistributionException("component source is not a regular file: ${component.logicalPath}")
             }
+            rejectHardlinks(source)
             val bytes = Files.readAllBytes(source)
+            rejectHardlinks(source)
             total = Math.addExact(total, bytes.size.toLong())
             if (total > MAX_TOTAL_BYTES) throw DistributionException("component set is too large")
             if (bytes.size.toLong() != component.sizeBytes || sha256(bytes) != component.sha256) {
@@ -497,6 +518,33 @@ object V02ReleasePackager {
             current = current.resolve(segment)
             if (Files.isSymbolicLink(current)) throw DistributionException("symlink path is forbidden")
         }
+    }
+
+    private fun rejectHardlinks(path: Path) {
+        val links = when {
+            Platform.isLinux() -> (Files.getAttribute(path, "unix:nlink", LinkOption.NOFOLLOW_LINKS) as Number).toLong()
+            Platform.isWindows() -> {
+                val handle = Kernel32.INSTANCE.CreateFile(
+                    path.toString(), WinNT.GENERIC_READ,
+                    WinNT.FILE_SHARE_READ or WinNT.FILE_SHARE_WRITE or WinNT.FILE_SHARE_DELETE,
+                    null, WinNT.OPEN_EXISTING, WinNT.FILE_FLAG_OPEN_REPARSE_POINT, null,
+                )
+                if (handle == WinBase.INVALID_HANDLE_VALUE) throw DistributionException("cannot inspect component link count")
+                try {
+                    val info = WinBase.FILE_STANDARD_INFO()
+                    if (!Kernel32.INSTANCE.GetFileInformationByHandleEx(
+                            handle, WinBase.FileStandardInfo, info.pointer, WinDef.DWORD(info.size().toLong()),
+                        )
+                    ) throw DistributionException("cannot inspect component link count")
+                    info.read()
+                    Integer.toUnsignedLong(info.NumberOfLinks)
+                } finally {
+                    if (!Kernel32.INSTANCE.CloseHandle(handle)) throw DistributionException("cannot close component inspection handle")
+                }
+            }
+            else -> throw DistributionException("unsupported component filesystem platform")
+        }
+        if (links != 1L) throw DistributionException("hardlinked component input is forbidden")
     }
 
     private fun validatePath(value: String, field: String): String {

@@ -63,6 +63,10 @@ security_sensitive: true
 
 ## Implementation Decisions
 
+- 2026-08-26 用户授权 ADR 0021 的限定整改：允许同一 PR 新增 `docs/adr/0021-v0-2-maven-published-artifact-source-profiles.md`、修订 `SUPPLY_CHAIN_TOOLCHAIN.md`，把该 ADR exact path追加到 identity policy并同步 `IDENTITY_MANIFESTS.md`、validator中的 policy hash pin。本卡供应链 source allowlist追加 `tools/supply-chain-v02/locked-maven-published-artifact-v2.mjs` 及其同目录 self-test，根 Gradle追加 actual resolved graph导出和两个 supply-chain self-test接线；`host/axml/gradle.lockfile` 只补现有 `apksig:9.3.0` 的 `runtimeClasspath` 缺失归属。版本、原 verification hash、其他 path ownership、post-freeze policy不变；该例外不是通用治理/tool path放宽。
+- Maven lock完成只证明 ADR 0021 定义的完整 published-artifact acquisition identity，不代表源码、vendor attribution、维护或 security PASS；UNRESOLVED/UNVERIFIED/PENDING 必须逐项保留，后续 gate不得当 PASS消费。实现 freeze后任何 profile/endpoint/lock补录需要新授权和新的 implementation/validation freezes。
+- Canonicalizer保留既有四参数 CLI；`V02_CYCLONEDX_CLI` 显式提供已预置工具路径，逐次核验固定平台 size/SHA-256且只能调用 `validate`。未提供、错误工具、raw/canonical schema失败均不发布 canonical/report，绝不写入伪造的 schema exit 0。
+- 诊断 candidate 固定路径只写 tracked baseline 的原字节并拒绝作为 packager 输入；既有两个 canary Gradle 入口从 exact tracked baseline 取得组件、仅在内存中附加本次 Git HEAD/time 上下文，不产生第二份身份 preimage。packager 对合法但错误的 archive role/mode 及实体 hardlink 均失败关闭；Windows link-count 检查复用已锁 `JNA 5.19.1`，仅补 distribution compile/runtime 配置归属，不增加坐标或改变版本/hash。
 - 产品版本只有一个生产来源；CLI 和 REPORT 不保留第二个手写常量。
 - 三个 tracked manifest 严格遵守 `docs/v0.2/IDENTITY_MANIFESTS.md`：固定顶层/entry 字段顺序、两空格 LF canonical JSON、POSIX/NFC 路径、UTF-8 字节排序、`100644|100755`、完整 Git blob/size/SHA-256 和固定 role。symlink、gitlink、self-reference、ignored artifact、空/漏/重/额外/乱序 entry 均失败。
 - `implementation` 从 freeze commit 完整枚举 `host/`、`runtime/`、`distribution/` 和规定根构建文件；`toolchain` 与 `product-contract` 使用文档固定的完整集合。三个 preimage 的 tracked 路径不可替换。

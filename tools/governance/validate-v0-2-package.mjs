@@ -31,7 +31,7 @@ const candidateLockPath = "docs/v0.2/evidence/V2-M3-02/product-tuple-lock.json";
 const identityPolicyPath = "docs/v0.2/identity-path-policy-v1.json";
 const postFreezePolicyPath = "docs/v0.2/post-freeze-path-policy-v1.json";
 const machinePolicyHashes = new Map([
-  [identityPolicyPath, "cb53c93eab5f64aad0eb4825195ac2d3fb9b54e78f47c65e865b5e9369bcd416"],
+  [identityPolicyPath, "874d788d45aaa051ca5695aeac8d5f693bebde0cba4a4e026312d1ee5cc0e58b"],
   [postFreezePolicyPath, "8cc5fae5da1de7c8be07deaea27817e469887035f23a8ff8130881a277b14329"],
 ]);
 const expectedTuple = {
@@ -78,6 +78,7 @@ const tasks = [
 
 const expectedDocs = [
   "docs/adr/0020-v0-2-product-baseline-and-version-isolation.md",
+  "docs/adr/0021-v0-2-maven-published-artifact-source-profiles.md",
   "docs/v0.2/README_FIRST.md",
   "docs/v0.2/PRODUCT_BASELINE.md",
   "docs/v0.2/PRODUCT_REQUIREMENTS.md",

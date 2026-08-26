@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://xiaokh31.github.io/androidAppHardening/v0.2/sbom-canonicalization-v1.schema.json",
+  "title": "v0.2 SBOM Canonicalization Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "releaseLine", "releaseVersion", "implementationFreezeSha", "raw", "canonical", "schemaValidation", "semanticDiffPaths"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "releaseLine": { "const": "v0.2" },
+    "releaseVersion": { "const": "0.2.0" },
+    "implementationFreezeSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "raw": { "$ref": "#/$defs/artifact" },
+    "canonical": { "$ref": "#/$defs/artifact" },
+    "schemaValidation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rawExitCode", "canonicalExitCode", "specVersion"],
+      "properties": {
+        "rawExitCode": { "const": 0 },
+        "canonicalExitCode": { "const": 0 },
+        "specVersion": { "const": "1.6" }
+      }
+    },
+    "semanticDiffPaths": { "const": ["/metadata/timestamp"] }
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sizeBytes", "sha256", "timestamp"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sizeBytes": { "type": "integer", "minimum": 1 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

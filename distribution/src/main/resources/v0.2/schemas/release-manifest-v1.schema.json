@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://xiaokh31.github.io/androidAppHardening/v0.2/release-manifest-v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "releaseLine", "releaseVersion", "sourceCommit", "platform", "entries"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "releaseLine": { "const": "v0.2" },
+    "releaseVersion": { "const": "0.2.0" },
+    "sourceCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "platform": { "enum": ["windows", "ubuntu"] },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "mode", "sizeBytes", "sha256", "role"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "mode": { "enum": ["100644", "100755"] },
+          "sizeBytes": { "type": "integer", "minimum": 0 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "role": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

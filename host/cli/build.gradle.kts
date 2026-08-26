@@ -1,9 +1,31 @@
 import org.gradle.api.tasks.JavaExec
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.OutputDirectory
+import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.bundling.Jar
 import org.gradle.api.tasks.testing.Test
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
     application
+}
+
+abstract class GenerateProductVersion : DefaultTask() {
+    @get:Input
+    abstract val productVersion: Property<String>
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun generate() {
+        val output = outputDirectory.file("ah/host/cli/ProductVersion.kt").get().asFile
+        output.parentFile.mkdirs()
+        output.writeText(
+            "package ah.host.cli\n\ninternal object ProductVersion { const val VALUE = \"${productVersion.get()}\" }\n",
+            Charsets.UTF_8,
+        )
+    }
 }
 
 kotlin {
@@ -24,6 +46,28 @@ dependencies {
 application {
     mainClass.set("ah.host.cli.CliMain")
     applicationName = "android-app-hardening"
+}
+
+val generatedProductVersion = layout.buildDirectory.dir("generated/sources/productVersion/kotlin")
+val productVersionValue = rootProject.version.toString()
+val generateProductVersion by tasks.registering(GenerateProductVersion::class) {
+    description = "Generates the CLI/REPORT product version from the root project version."
+    productVersion.set(productVersionValue)
+    outputDirectory.set(generatedProductVersion)
+}
+
+kotlin.sourceSets.named("main") {
+    kotlin.srcDir(generatedProductVersion)
+}
+
+tasks.named("compileKotlin") {
+    dependsOn(generateProductVersion)
+}
+
+tasks.named<Jar>("jar") {
+    archiveFileName.set("android-app-hardening-core.jar")
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
 }
 
 val cliTest by tasks.registering(JavaExec::class) {

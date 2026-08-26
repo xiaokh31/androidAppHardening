@@ -1,0 +1,336 @@
+{
+  "schemaVersion": 1,
+  "manifestKind": "toolchain",
+  "taskId": "V2-M0-02",
+  "releaseLine": "v0.2",
+  "entries": [
+    {
+      "path": "benchmarks/android/build.gradle.kts",
+      "mode": "100644",
+      "sizeBytes": 648,
+      "sha256": "fe95e3dec574c6f5748ba54b6f54863860e6271f589edda0b4656051d0c5caf9",
+      "gitBlobSha1": "054bece90d94088b0f7f907289ad7e6ce0c53706",
+      "role": "toolchain-contract"
+    },
+    {
+      "path": "benchmarks/android/gradle.lockfile",
+      "mode": "100644",
+      "sizeBytes": 37723,
+      "sha256": "e9a598a0424ba3c3ab8fe8cd7da4170018da00e6d605aa63342de2eb3bfd08b0",
+      "gitBlobSha1": "7dfeed6ac694141a68ea20abdb38a690de8eb85e",
+      "role": "toolchain-lock"
+    },
+    {
+      "path": "benchmarks/host/build.gradle.kts",
+      "mode": "100644",
+      "sizeBytes": 196,
+      "sha256": "6d1243910a3721ca12c1f66882bb8efb1c586a50e47570839fd3d2e786507c68",
+      "gitBlobSha1": "8040cb9a7b3a67328c477ee3ceaa2857743961c5",
+      "role": "toolchain-contract"
+    },
+    {
+      "path": "benchmarks/host/gradle.lockfile",
+      "mode": "100644",
+      "sizeBytes": 294,
+      "sha256": "32c18865f15ccad306d20447fee69d3e20022180985d3f5cdd4f564e3c363697",
+      "gitBlobSha1": "8ccf21c9ed6acc9cfe04751c601365ceccd1ec21",
+      "role": "toolchain-lock"
+    },
+    {
+      "path": "distribution/build.gradle.kts",
+      "mode": "100644",
+      "sizeBytes": 12741,
+      "sha256": "0dc05cba1599816ace704ae827682f99c52cf00e5fa7f01a828df1ef33e17a07",
+      "gitBlobSha1": "a1f59c504e3dfbe6478fa6ec2d35a4f445195a38",
+      "role": "toolchain-contract"
+    },
+    {
+      "path": "distribution/gradle.lockfile",
+      "mode": "100644",
+      "sizeBytes": 4342,
+      "sha256": "6f14a46b85e2aaac1a36ad86f57b37e4bd3f7c33c649f7cc479a77d3cf72599e",
+      "gitBlobSha1": "42615cd4e01086542f62aa87096cbcba5daab3f9",
+      "role": "toolchain-lock"
+    },
+    {
+      "path": "docs/TOOLCHAIN_AND_PROVENANCE.md",
+      "mode": "100644",
+      "sizeBytes": 17084,
+      "sha256": "f5fbb5518038a737ef10b08db1a7ee6fa9651cac6f03a91cfa773be9db2d4678",
+      "gitBlobSha1": "f5a605988bcd5c7496ad03c8936c9e9d6ba956ed",
+      "role": "toolchain-contract"
+    },
+    {
+      "path": "fixtures/android/build.gradle.kts",
+      "mode": "100644",
+      "sizeBytes": 41847,
+      "sha256": "8cef756aa3e6611d8f9a6995fe708a61f3a0644d3eca587581313add7d173606",
+      "gitBlobSha1": "742ef30957660807efb96b857f27b6067f9e0798",
+      "role": "toolchain-contract"
+    },
+    {
+      "path": "fixtures/android/gradle.lockfile",
+      "mode": "100644",
+      "sizeBytes": 72088,
+      "sha256": "c33d843266c39e961adf77f48a37aa1155571100eacff93ef9fe77770c81a1a1",
+      "gitBlobSha1": "faad5965cc7b2703d326cd55c6f631f0b50babed",
+      "role": "toolchain-lock"
+    },
+    {
+      "path": "gradle/libs.versions.toml",
+      "mode": "100644",
+      "sizeBytes": 777,
+      "sha256": "f441f1dc28c1a1d46ddccc2e9cf7f00676237f3351ec02612b8378aa2413dc55",
+      "gitBlobSha1": "c4e444c9f3c8cb2383de368311fbb98295eecbc4",
+      "role": "toolchain-lock"
+    },
+    {
+      "path": "gradle/verification-metadata.xml",
+      "mode": "100644",
+      "sizeBytes": 207112,
+      "sha256": "016200c2a1792fb5bcbfb069829d39bcd8ad3bb887de62f8aaa0dcc59de274d8",
+      "gitBlobSha1": "14e638cbe376176b2116b9d94215646cd0cf90ad",
+      "role": "toolchain-lock"
+    },
+    {
+      "path": "gradle/wrapper/gradle-wrapper.jar",
+      "mode": "100644",
+      "sizeBytes": 48462,
+      "sha256": "497c8c2a7e5031f6aa847f88104aa80a93532ec32ee17bdb8d1d2f67a194a9c7",
+      "gitBlobSha1": "b1b8ef56b44f16b14dc800fa8103a6d89abb526f",
+      "role": "toolchain-wrapper"
+    },
+    {
+      "path": "gradle/wrapper/gradle-wrapper.jar.sha256",
+      "mode": "100644",
+      "sizeBytes": 65,
+      "sha256": "23db2c0230d8b416d4af2f29f96e0ef856d84d95849924ca0b0dfba5588de3ed",
+      "gitBlobSha1": "7e9c565e0632b8f4f120fe89771032e8ac2de7aa",
+      "role": "toolchain-wrapper"
+    },
+    {
+      "path": "gradle/wrapper/gradle-wrapper.properties",
+      "mode": "100644",
+      "sizeBytes": 368,
+      "sha256": "2cb0f9ddf992a26fc4947c91019136bff5e1ccfbf93bd905402b1abf69d15bc5",
+      "gitBlobSha1": "4b271a6469f8ecd6477442c5c61eb1b97ef5171d",
+      "role": "toolchain-wrapper"
+    },
+    {
+      "path": "host/apk-inspector/build.gradle.kts",
+      "mode": "100644",
+      "sizeBytes": 1504,
+      "sha256": "ca5b446c95461e1309a327560eeb8e35499a9e71b1765b081358767190592e63",
+      "gitBlobSha1": "4d14424e0c63a9d301ef4b6e49318325e313a8ef",
+      "role": "toolchain-contract"
+    },
+    {
+      "path": "host/apk-inspector/gradle.lockfile",
+      "mode": "100644",
+      "sizeBytes": 4096,
+      "sha256": "4f412367006042b38779230de114f0138d63294abcb61f3a15876e86a09174bd",
+      "gitBlobSha1": "1010f2a41dc05618d54910dee7fb34c05bafd04f",
+      "role": "toolchain-lock"
+    },
+    {
+      "path": "host/axml/build.gradle.kts",
+      "mode": "100644",
+      "sizeBytes": 1856,
+      "sha256": "ca117859ec240b2ea9ab543141f4b6e4d82ecaac52a9332c653e76103a326f57",
+      "gitBlobSha1": "af2f2f78a461e836e05d62d776d83d46ecd65126",
+      "role": "toolchain-contract"
+    },
+    {
+      "path": "host/axml/gradle.lockfile",
+      "mode": "100644",
+      "sizeBytes": 4058,
+      "sha256": "26d344690f11ad00b114bc559337c78b493cce94938ea7ec4f38e20f272de57c",
+      "gitBlobSha1": "6f5d375a326d9d6284ebbf5d7af75ba5c02ad017",
+      "role": "toolchain-lock"
+    },
+    {
+      "path": "host/cli/build.gradle.kts",
+      "mode": "100644",
+      "sizeBytes": 3350,
+      "sha256": "f0d4baeaa3bb461db299e76360b9319a8f19f19ab6eaf352cd8f87b0f5289188",
+      "gitBlobSha1": "05440ba60e591034e7715516c34cd9ef02b31505",
+      "role": "toolchain-contract"
+    },
+    {
+      "path": "host/cli/gradle.lockfile",
+      "mode": "100644",
+      "sizeBytes": 4199,
+      "sha256": "1bad932762149bbbb5f46ad22b3de054e39c1fb03d694ce9135e0d97450d9777",
+      "gitBlobSha1": "14f5bcc75599e3247a4d8b5849c64d499bbdec68",
+      "role": "toolchain-lock"
+    },
+    {
+      "path": "host/container/build.gradle.kts",
+      "mode": "100644",
+      "sizeBytes": 2600,
+      "sha256": "19e1a11679291634cdece7d40d70549968cfe4975b41c1e85dcf5767df609b6d",
+      "gitBlobSha1": "8939210d3917b787ed19b282e4feb47a47a3c4d1",
+      "role": "toolchain-contract"
+    },
+    {
+      "path": "host/container/gradle.lockfile",
+      "mode": "100644",
+      "sizeBytes": 4058,
+      "sha256": "26d344690f11ad00b114bc559337c78b493cce94938ea7ec4f38e20f272de57c",
+      "gitBlobSha1": "6f5d375a326d9d6284ebbf5d7af75ba5c02ad017",
+      "role": "toolchain-lock"
+    },
+    {
+      "path": "host/repacker/build.gradle.kts",
+      "mode": "100644",
+      "sizeBytes": 1213,
+      "sha256": "bc1309d6ed4b6fe7eec66431d7653fd8cf76d2c913858f664dd2bff57ef3ec99",
+      "gitBlobSha1": "5bb73a8d7d2ae8837ec361fdc4aa0fec65112f1e",
+      "role": "toolchain-contract"
+    },
+    {
+      "path": "host/repacker/gradle.lockfile",
+      "mode": "100644",
+      "sizeBytes": 4275,
+      "sha256": "a7991294727dd8d7c004ec6d105c47e279a1694f1bec0093f6a6f7bfe3fec4dd",
+      "gitBlobSha1": "e891d1b929cdc73a6c5f45f2ea2298c6c94acfda",
+      "role": "toolchain-lock"
+    },
+    {
+      "path": "integration-tests/build.gradle.kts",
+      "mode": "100644",
+      "sizeBytes": 10731,
+      "sha256": "41b97fb497a69be34cca5f25769c230eab6d57b1cc894620c3157e730f7c78a9",
+      "gitBlobSha1": "d4f4e99b48d2f537fec984777d445344f174315f",
+      "role": "toolchain-contract"
+    },
+    {
+      "path": "integration-tests/gradle.lockfile",
+      "mode": "100644",
+      "sizeBytes": 4210,
+      "sha256": "838b35c16bfa6cd2106da471da0b8378f061358ad616183ece4f080bd2bf9226",
+      "gitBlobSha1": "1bad6ccb56c3b68a06f276b5829d21b3871c3398",
+      "role": "toolchain-lock"
+    },
+    {
+      "path": "runtime/bootstrap/build.gradle.kts",
+      "mode": "100644",
+      "sizeBytes": 2640,
+      "sha256": "6a11518e077c8f9043aeee1fc48240700b6d96809f0d0e09eb07cd4bf31ea468",
+      "gitBlobSha1": "7ecf90cd1f1d0f1c6e905d51edaa20561e20bc1e",
+      "role": "toolchain-contract"
+    },
+    {
+      "path": "runtime/bootstrap/gradle.lockfile",
+      "mode": "100644",
+      "sizeBytes": 38002,
+      "sha256": "5d27933161d685fac95347dd29e8ecd233ad0f6896dd41f8cdca15f7f102cd02",
+      "gitBlobSha1": "2eb21f7273644729db6ccc6fc9117e7f04be6b7e",
+      "role": "toolchain-lock"
+    },
+    {
+      "path": "runtime/native/build.gradle.kts",
+      "mode": "100644",
+      "sizeBytes": 5176,
+      "sha256": "9458c4d082cb8805aedec5845f5d8397d56134ef6d8ac31bf221b525cac7289d",
+      "gitBlobSha1": "1a9b49621763633c0b2ab20bf491410d1ebbf30a",
+      "role": "toolchain-contract"
+    },
+    {
+      "path": "runtime/native/gradle.lockfile",
+      "mode": "100644",
+      "sizeBytes": 37735,
+      "sha256": "19684e19e9b91bb72bd745ba8ace6a2f651c9cdaf453ebd258da42c14e151b33",
+      "gitBlobSha1": "72529f67929b454477dfb1d66e1be0177f135e24",
+      "role": "toolchain-lock"
+    },
+    {
+      "path": "runtime/policy/build.gradle.kts",
+      "mode": "100644",
+      "sizeBytes": 4919,
+      "sha256": "1e2b2d510c4bde247c08a9b53cc796ce08acfef643ace05b77ab86ef46a61157",
+      "gitBlobSha1": "6f3dd5b00835f61f3a8168a423934930099e2432",
+      "role": "toolchain-contract"
+    },
+    {
+      "path": "runtime/policy/gradle.lockfile",
+      "mode": "100644",
+      "sizeBytes": 38111,
+      "sha256": "5b4272fc5b1868a39ad1870e27b4a47e6e8d7252ef87c1b82ee49cffd5053805",
+      "gitBlobSha1": "62e11480ef7b598116db2f7c8e981e8bd4fe17f1",
+      "role": "toolchain-lock"
+    },
+    {
+      "path": "tools/supply-chain-v02/canonicalize-cyclonedx-v02.mjs",
+      "mode": "100755",
+      "sizeBytes": 14872,
+      "sha256": "6f11a2b612344f2eee40cefcd3495294ea745372b925ff7e938f31f0bdae3fb2",
+      "gitBlobSha1": "56c6f59411bdb419e6616f6b56af4c99360c7068",
+      "role": "toolchain-contract"
+    },
+    {
+      "path": "tools/supply-chain-v02/canonicalize-cyclonedx-v02.self-test.mjs",
+      "mode": "100755",
+      "sizeBytes": 6204,
+      "sha256": "938a64a7707c30f74061f6875a362021f1429548b16d136c687f51c45d6a7b83",
+      "gitBlobSha1": "b6ad0804d878e90513ed2d0bfebac36825ea96e4",
+      "role": "toolchain-contract"
+    },
+    {
+      "path": "tools/supply-chain-v02/component-inventory-v1.schema.json",
+      "mode": "100644",
+      "sizeBytes": 1592,
+      "sha256": "243159dfe49c6846a39df8b7d09160c28d0f82fd4e63f4c44a18f2884c3db0d3",
+      "gitBlobSha1": "b31c7c2c60c4ec1e0a70dbd0b1cfed7743f1432a",
+      "role": "toolchain-contract"
+    },
+    {
+      "path": "tools/supply-chain-v02/locked-maven-published-artifact-v2.mjs",
+      "mode": "100644",
+      "sizeBytes": 26600,
+      "sha256": "9b7e9b9a64e8d2e8f362213468822fbcd7ca07cb155b6a93211414df49a4578a",
+      "gitBlobSha1": "aa32e8910029e8612199b3e85457d492859375ca",
+      "role": "toolchain-contract"
+    },
+    {
+      "path": "tools/supply-chain-v02/locked-maven-published-artifact-v2.self-test.mjs",
+      "mode": "100644",
+      "sizeBytes": 8589,
+      "sha256": "30ddecb5c4616f9ece5362a2b73bb1335ab4fff82deb7fe0cfc7cb5223204d0b",
+      "gitBlobSha1": "0462e1e7474f4a2404907b3d871003d3c2a4ed6e",
+      "role": "toolchain-contract"
+    },
+    {
+      "path": "tools/supply-chain-v02/sbom-canonicalization-v1.schema.json",
+      "mode": "100644",
+      "sizeBytes": 1564,
+      "sha256": "13ae96f3f00b7793941740187378cd777a4a80c16d9aa2337d564bc07bff0446",
+      "gitBlobSha1": "2c3c95806335e88d25b278cf765bfd24adbdd5f3",
+      "role": "toolchain-contract"
+    },
+    {
+      "path": "tools/validation/build.gradle.kts",
+      "mode": "100644",
+      "sizeBytes": 8943,
+      "sha256": "d5f996181d6be708095b6b9e414d73ee31ba243e336fac6981bb25cc50886a31",
+      "gitBlobSha1": "1808101880dfffff249eefa9f6c5132c1bc55766",
+      "role": "toolchain-contract"
+    },
+    {
+      "path": "tools/validation/gradle.lockfile",
+      "mode": "100644",
+      "sizeBytes": 670,
+      "sha256": "50ac202168be959dba41f020c4ed2124920082347d85dcb5d3b78a03daf4ecc3",
+      "gitBlobSha1": "39e3fddde22aba6dcb0e30f3d1e8360057ff3163",
+      "role": "toolchain-lock"
+    },
+    {
+      "path": "tools/validation/v02-supply-chain-tools.json",
+      "mode": "100644",
+      "sizeBytes": 7426642,
+      "sha256": "17c3bfe40f4362f7ef67c43a5d08a39f4988c98eb7800584be6ac531de151385",
+      "gitBlobSha1": "9e986059b80bcf3192fe62131dd3f650fd234e49",
+      "role": "toolchain-lock"
+    }
+  ]
+}

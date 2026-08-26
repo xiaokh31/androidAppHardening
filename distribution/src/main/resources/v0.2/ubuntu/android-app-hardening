@@ -1,0 +1,30 @@
+#!/bin/sh
+set -u
+
+AH_APP_HOME=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P) || exit 78
+AH_JAVA_CHECK=$(mktemp "${TMPDIR:-/tmp}/android-app-hardening-java.XXXXXX") || exit 78
+AH_JAVA=java
+trap 'rm -f -- "$AH_JAVA_CHECK"' EXIT HUP INT TERM
+
+unsupported_java() {
+    echo "android-app-hardening requires Eclipse Temurin 17.0.19+10" >&2
+    exit 78
+}
+
+if [ -n "${JAVA_HOME:-}" ] && [ -x "$JAVA_HOME/bin/java" ]; then
+    AH_JAVA=$JAVA_HOME/bin/java
+fi
+if ! command -v "$AH_JAVA" >/dev/null 2>&1; then
+    unsupported_java
+fi
+if ! "$AH_JAVA" -XshowSettings:properties -version >/dev/null 2>"$AH_JAVA_CHECK"; then
+    unsupported_java
+fi
+grep -Eq '^[[:space:]]*java.vendor = Eclipse Adoptium[[:space:]]*$' "$AH_JAVA_CHECK" || unsupported_java
+grep -Eq '^[[:space:]]*java.version = 17\.0\.19[[:space:]]*$' "$AH_JAVA_CHECK" || unsupported_java
+grep -Eq '^[[:space:]]*java.runtime.version = 17\.0\.19\+10[[:space:]]*$' "$AH_JAVA_CHECK" || unsupported_java
+grep -Eq '^[[:space:]]*java.vm.version = 17\.0\.19\+10[[:space:]]*$' "$AH_JAVA_CHECK" || unsupported_java
+rm -f -- "$AH_JAVA_CHECK"
+trap - EXIT HUP INT TERM
+
+exec "$AH_JAVA" -cp "$AH_APP_HOME/lib/android-app-hardening.jar" ah.host.cli.CliMain "$@"

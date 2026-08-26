@@ -1,5 +1,17 @@
 pluginManagement {
     repositories {
+        exclusiveContent {
+            forRepository {
+                maven {
+                    name = "CycloneDxPluginPortal"
+                    url = uri("https://plugins.gradle.org/m2/")
+                }
+            }
+            filter {
+                includeGroup("org.cyclonedx.bom")
+                includeGroup("org.cyclonedx")
+            }
+        }
         google()
         mavenCentral()
     }
@@ -12,6 +24,7 @@ pluginManagement {
 
                 "org.jetbrains.kotlin.jvm" ->
                     useModule("org.jetbrains.kotlin:kotlin-gradle-plugin:${requested.version}")
+
             }
         }
     }

@@ -1,0 +1,240 @@
+{
+  "schemaVersion": 1,
+  "manifestKind": "product-contract",
+  "taskId": "V2-M0-02",
+  "releaseLine": "v0.2",
+  "entries": [
+    {
+      "path": "docs/adr/0001-apk-postprocessing-only.md",
+      "mode": "100644",
+      "sizeBytes": 3944,
+      "sha256": "512215910e752247b3c9e5ba3e941aad30c78e73561b9b776ad9b2e478aaff43",
+      "gitBlobSha1": "6af102b8a89e9133071d5e2ab6707a8cebb4480c",
+      "role": "product-contract"
+    },
+    {
+      "path": "docs/adr/0002-unsigned-output-only.md",
+      "mode": "100644",
+      "sizeBytes": 3316,
+      "sha256": "c590172353e0edc3ec00f1ec71519f8292cfe762e36271bc89d4b941d124f61c",
+      "gitBlobSha1": "051281331a07c1d068253453e12651330f1bec21",
+      "role": "product-contract"
+    },
+    {
+      "path": "docs/adr/0003-api29-public-classloader-hook.md",
+      "mode": "100644",
+      "sizeBytes": 8390,
+      "sha256": "6c0184092cb7f07b3330a22e6053db0b47fe2f71672de925a17a27f75c0bc336",
+      "gitBlobSha1": "b2c1a81aa42ff4e0a614ff0908662d1e72784462",
+      "role": "product-contract"
+    },
+    {
+      "path": "docs/adr/0004-versioned-encrypted-dex-container.md",
+      "mode": "100644",
+      "sizeBytes": 11416,
+      "sha256": "0704bb6e92033c653c944b0f2cbacbe535c583a899f88b737ef2fa947b961139",
+      "gitBlobSha1": "5d1ae06266a2efe414eeef69ba8d9cafff8e1c92",
+      "role": "product-contract"
+    },
+    {
+      "path": "docs/adr/0005-runtime-abi-policy.md",
+      "mode": "100644",
+      "sizeBytes": 3988,
+      "sha256": "6afe75cb64c0ca4288818711939845bba65cdf9232e87dc5ccb3b24bcf59d1c5",
+      "gitBlobSha1": "3df2e5ffab4b62f0fe4ccf3d017277e5eeeeac1f",
+      "role": "product-contract"
+    },
+    {
+      "path": "docs/adr/0006-offline-key-protection-boundary.md",
+      "mode": "100644",
+      "sizeBytes": 10131,
+      "sha256": "d638247ab259e75ae526f169966817818910b6462187087bfa3d0917d59913f4",
+      "gitBlobSha1": "3e6f3585ef9c91d4386a149db1fb8d87b70830b2",
+      "role": "product-contract"
+    },
+    {
+      "path": "docs/adr/0007-source-dir-startup-configuration.md",
+      "mode": "100644",
+      "sizeBytes": 11773,
+      "sha256": "528f45bf575cebaed084a34b5bb984f63a7d807c80467027428d3ab7981947e9",
+      "gitBlobSha1": "0fb1c7d63a44aba7ba254bc69851c52e07253204",
+      "role": "product-contract"
+    },
+    {
+      "path": "docs/adr/0008-chunk-authenticated-dex-container.md",
+      "mode": "100644",
+      "sizeBytes": 13114,
+      "sha256": "08577349c897a1833089ec93eadff3519eabb5f42756493c3575f4067cd0f5a4",
+      "gitBlobSha1": "b4f5f7ae7df365dfbd17a2e3dd5136c2a8cbae5e",
+      "role": "product-contract"
+    },
+    {
+      "path": "docs/adr/0009-native-cryptography-backend.md",
+      "mode": "100644",
+      "sizeBytes": 10411,
+      "sha256": "598ce356fedf11ecd3f521ad75b876ead6c2318f9c6ae510b185df08fb2e343a",
+      "gitBlobSha1": "beb5c9942abd592fde9774d3618ea10b398e40d0",
+      "role": "product-contract"
+    },
+    {
+      "path": "docs/adr/0010-environment-risk-policy.md",
+      "mode": "100644",
+      "sizeBytes": 3737,
+      "sha256": "2bc5c5986ee74aacd20a54584e811ff2c061b9021504f1c4206511b790739d03",
+      "gitBlobSha1": "aecbaf1127fa42f7da9c2ffefab1d95fbe86085f",
+      "role": "product-contract"
+    },
+    {
+      "path": "docs/adr/0011-memory-exposure-controls.md",
+      "mode": "100644",
+      "sizeBytes": 4343,
+      "sha256": "06a2ec3b9b3ec2ca5489ef2eaf0e9a052dbeee45917cc20ed609eeb016a968c4",
+      "gitBlobSha1": "f1ff23a78f10408d2ff3d7ac545b25b860a7a487",
+      "role": "product-contract"
+    },
+    {
+      "path": "docs/adr/0012-api-abi-validation-claim-boundary.md",
+      "mode": "100644",
+      "sizeBytes": 6277,
+      "sha256": "9fc83692a9e50ce69bcee0114547d5fe31cd2404e6af7d942bb9062fe5c10162",
+      "gitBlobSha1": "a11e8a8ec94e1c0e7093f207a935471e5def62f7",
+      "role": "product-contract"
+    },
+    {
+      "path": "docs/adr/0013-shell-factory-relaunch-lifecycle.md",
+      "mode": "100644",
+      "sizeBytes": 4537,
+      "sha256": "c5f680fd3cfc50cb02f05d96a59ef1d4ad845a3e7986b234302e3d047344f3ec",
+      "gitBlobSha1": "0e45ce6da1f20b85a90677450498d5e2fdeeff9b",
+      "role": "product-contract"
+    },
+    {
+      "path": "docs/adr/0014-test-only-high-benchmark-boundary.md",
+      "mode": "100644",
+      "sizeBytes": 7261,
+      "sha256": "cd66aeff3aadfa31376e486d4129faab301345450f97f5981a9bd6f9189d1c7b",
+      "gitBlobSha1": "247ce24c247150aa901cf8ca575c7c0749b08fa1",
+      "role": "product-contract"
+    },
+    {
+      "path": "docs/adr/0015-startup-performance-measurement-stability.md",
+      "mode": "100644",
+      "sizeBytes": 8349,
+      "sha256": "8fe76ee4831b68fb0d5375c795f72a9810031316b4b6a4ccb60f4c80bab066df",
+      "gitBlobSha1": "a027586bee5ebe0ad626621b4b0ce22e1ced025e",
+      "role": "product-contract"
+    },
+    {
+      "path": "docs/adr/0020-v0-2-product-baseline-and-version-isolation.md",
+      "mode": "100644",
+      "sizeBytes": 9754,
+      "sha256": "5de741d1042fa234c28ed7c997a9347cb4d8272126e6e2f7a8dcdfad4f1f0c44",
+      "gitBlobSha1": "28c06b53220a7c30d395a1791d8fa636339d2c37",
+      "role": "product-contract"
+    },
+    {
+      "path": "docs/adr/0021-v0-2-maven-published-artifact-source-profiles.md",
+      "mode": "100644",
+      "sizeBytes": 8502,
+      "sha256": "d7faef5edd39cf0bb1d49503dcf3be3532e8df9df03d1e6d368370821eb0d69c",
+      "gitBlobSha1": "e8fc0d1ca1884cce799ddf73045ea716ce568fe1",
+      "role": "product-contract"
+    },
+    {
+      "path": "docs/specs/AHDC_V2.md",
+      "mode": "100644",
+      "sizeBytes": 7485,
+      "sha256": "26c5387f3a74df8d3bf0d9709ec5ae4678f78764b700499a6a400b0afbae9ce0",
+      "gitBlobSha1": "ac936a28f514e836db780e467c48eae64f90c806",
+      "role": "public-schema"
+    },
+    {
+      "path": "docs/specs/REPORT_V1.md",
+      "mode": "100644",
+      "sizeBytes": 3172,
+      "sha256": "791ac821b11f483b25ac2c456cf1de2a9eee13a4ac9f017ba72ee352e66186a8",
+      "gitBlobSha1": "bf71980f17eb5053d32699c5169803cb5660d89e",
+      "role": "public-schema"
+    },
+    {
+      "path": "docs/specs/report-v1.schema.json",
+      "mode": "100644",
+      "sizeBytes": 7825,
+      "sha256": "784857b82b433f65fd38f5676e6f887d110d19f7795d21a7c0f47721df4e92cd",
+      "gitBlobSha1": "e6c82f404ee9c0a874daf14751a4386eb777d0e5",
+      "role": "public-schema"
+    },
+    {
+      "path": "docs/v0.2/ARCHITECTURE.md",
+      "mode": "100644",
+      "sizeBytes": 5064,
+      "sha256": "8cc477baa55414599ac2ed41779cf528de8b5e3b40b5f8b313d7db888ad6418e",
+      "gitBlobSha1": "a8f6f992f58e336c867b0668c5e26ffc6c485da3",
+      "role": "product-contract"
+    },
+    {
+      "path": "docs/v0.2/COMPATIBILITY_MATRIX.md",
+      "mode": "100644",
+      "sizeBytes": 3398,
+      "sha256": "2bf729ad6717035f66516aea24062e770a656aa2269c6391f06310e07689dd50",
+      "gitBlobSha1": "820a8dbcb1f984cb7f97bb5680b0eeb2040d305a",
+      "role": "product-contract"
+    },
+    {
+      "path": "docs/v0.2/IDENTITY_MANIFESTS.md",
+      "mode": "100644",
+      "sizeBytes": 12504,
+      "sha256": "8ebaaa8107620f3cd99b1377e825f49ed94e959844d0171bdad87b5f7ad41189",
+      "gitBlobSha1": "c2fb9075f45bcd8db9414d062afb99e3211fdd44",
+      "role": "product-contract"
+    },
+    {
+      "path": "docs/v0.2/PRODUCT_BASELINE.md",
+      "mode": "100644",
+      "sizeBytes": 4030,
+      "sha256": "8debaca7622185191822c912bae6d70ba87fc56d249f0782a111354b08babff7",
+      "gitBlobSha1": "be987a2f413ee6e72f49a3fc1e50804a7e6f69fe",
+      "role": "product-contract"
+    },
+    {
+      "path": "docs/v0.2/PRODUCT_REQUIREMENTS.md",
+      "mode": "100644",
+      "sizeBytes": 4450,
+      "sha256": "287ed1cb9a77f28659fc80569ca548f6a05f8e904766cef809fdb0d5153afe44",
+      "gitBlobSha1": "fc020a738ba9984cced277e662e610a419ddb952",
+      "role": "product-contract"
+    },
+    {
+      "path": "docs/v0.2/SUPPLY_CHAIN_TOOLCHAIN.md",
+      "mode": "100644",
+      "sizeBytes": 43994,
+      "sha256": "5053bdc1727668c29e8979b286f8c39792375f56eb94212a43a82da42f4d5592",
+      "gitBlobSha1": "26f0b3c977cce99597cb3ed2fc108fc8ce528a2a",
+      "role": "product-contract"
+    },
+    {
+      "path": "docs/v0.2/THREAT_MODEL.md",
+      "mode": "100644",
+      "sizeBytes": 3203,
+      "sha256": "c89ed41122367be1ac234813937f33299c3c9f496cf3729d45ad8b45b8ac6035",
+      "gitBlobSha1": "45dd3e1497588735c83518845e7ca9ba46000bbe",
+      "role": "product-contract"
+    },
+    {
+      "path": "docs/v0.2/identity-path-policy-v1.json",
+      "mode": "100644",
+      "sizeBytes": 14669,
+      "sha256": "874d788d45aaa051ca5695aeac8d5f693bebde0cba4a4e026312d1ee5cc0e58b",
+      "gitBlobSha1": "eae9aaedbd94e2b7d3241937a139dc8483dcbb22",
+      "role": "product-contract"
+    },
+    {
+      "path": "docs/v0.2/post-freeze-path-policy-v1.json",
+      "mode": "100644",
+      "sizeBytes": 9319,
+      "sha256": "8cc5fae5da1de7c8be07deaea27817e469887035f23a8ff8130881a277b14329",
+      "gitBlobSha1": "865857b7f91261dd5e05526e61a94f166b972012",
+      "role": "product-contract"
+    }
+  ]
+}

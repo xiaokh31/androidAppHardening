@@ -124,6 +124,7 @@ if(ANDROID)
         ah_runtime
         PRIVATE
             -Wl,--gc-sections
+            -Wl,--build-id=none
             -Wl,--exclude-libs,ALL
             -Wl,--undefined=ah_crypto_backend_anchor
             -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/exports.map
@@ -142,6 +143,16 @@ if(ANDROID)
             CXX_VISIBILITY_PRESET hidden
             C_VISIBILITY_PRESET hidden
             VISIBILITY_INLINES_HIDDEN YES
+    )
+    if(NOT CMAKE_OBJCOPY)
+        message(FATAL_ERROR "Android toolchain did not define the pinned llvm-objcopy")
+    endif()
+    add_custom_command(
+        TARGET ah_runtime
+        POST_BUILD
+        COMMAND "${CMAKE_OBJCOPY}" --remove-section=.comment "$<TARGET_FILE:ah_runtime>"
+        VERBATIM
+        COMMENT "Removing host-dependent non-loadable compiler comments"
     )
 else()
     enable_testing()

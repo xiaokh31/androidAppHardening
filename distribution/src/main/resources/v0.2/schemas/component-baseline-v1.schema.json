@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://xiaokh31.github.io/androidAppHardening/v0.2/component-baseline-v1.schema.json",
+  "title": "V0.2 tracked component baseline",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "releaseLine",
+    "releaseVersion",
+    "taskId",
+    "implementationManifestSha256",
+    "toolchainManifestSha256",
+    "productContractManifestSha256",
+    "entries"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "releaseLine": { "const": "v0.2" },
+    "releaseVersion": { "const": "0.2.0" },
+    "taskId": { "const": "V2-M0-02" },
+    "implementationManifestSha256": { "$ref": "#/$defs/sha256" },
+    "toolchainManifestSha256": { "$ref": "#/$defs/sha256" },
+    "productContractManifestSha256": { "$ref": "#/$defs/sha256" },
+    "entries": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/entry" } }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "blob": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "logicalPath", "archivePath", "sourcePath", "sourceGitPath", "sourceGitBlobSha1",
+        "mode", "sizeBytes", "sha256", "role", "variant", "abi", "platform"
+      ],
+      "properties": {
+        "logicalPath": { "type": "string", "minLength": 1 },
+        "archivePath": { "type": ["string", "null"] },
+        "sourcePath": { "type": "string", "minLength": 1 },
+        "sourceGitPath": { "type": "string", "minLength": 1 },
+        "sourceGitBlobSha1": { "$ref": "#/$defs/blob" },
+        "mode": { "enum": ["100644", "100755"] },
+        "sizeBytes": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "role": { "type": "string", "minLength": 1 },
+        "variant": { "type": "string", "minLength": 1 },
+        "abi": { "type": ["string", "null"] },
+        "platform": { "enum": ["all", "windows", "ubuntu", "contract"] }
+      }
+    }
+  }
+}

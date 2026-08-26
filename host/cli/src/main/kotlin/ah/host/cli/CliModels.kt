@@ -4,7 +4,7 @@ import java.nio.file.Path
 import java.time.Instant
 
 internal const val TOOL_NAME = "android-app-hardening"
-internal const val TOOL_VERSION = "0.1.0-dev"
+internal const val TOOL_VERSION = ProductVersion.VALUE
 internal const val REPORT_SCHEMA_VERSION = 1
 
 internal enum class PipelineStage(val wireName: String) {

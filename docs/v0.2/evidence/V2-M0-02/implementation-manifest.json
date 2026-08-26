@@ -1,0 +1,1416 @@
+{
+  "schemaVersion": 1,
+  "manifestKind": "implementation",
+  "taskId": "V2-M0-02",
+  "releaseLine": "v0.2",
+  "entries": [
+    {
+      "path": "LICENSE",
+      "mode": "100644",
+      "sizeBytes": 11357,
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "gitBlobSha1": "261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64",
+      "role": "distribution-contract"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "mode": "100644",
+      "sizeBytes": 4612,
+      "sha256": "8ad2c4a9f6b441e85db4752a5cd9fe0ec08f40f590be0b5842af34e4ae61da8c",
+      "gitBlobSha1": "712a7d8cf035e7916b7cc3e7dff7cc787633f157",
+      "role": "distribution-contract"
+    },
+    {
+      "path": "build.gradle.kts",
+      "mode": "100644",
+      "sizeBytes": 9174,
+      "sha256": "944fd6f4524e1ac7b636b54541926868251819197ebfe2f210e29d8d5894f3ba",
+      "gitBlobSha1": "9a7fe206c034520c4023b25b13dd84c64cd73116",
+      "role": "product-build"
+    },
+    {
+      "path": "distribution/build.gradle.kts",
+      "mode": "100644",
+      "sizeBytes": 12741,
+      "sha256": "0dc05cba1599816ace704ae827682f99c52cf00e5fa7f01a828df1ef33e17a07",
+      "gitBlobSha1": "a1f59c504e3dfbe6478fa6ec2d35a4f445195a38",
+      "role": "distribution-source"
+    },
+    {
+      "path": "distribution/docs/QUICKSTART.md",
+      "mode": "100644",
+      "sizeBytes": 1587,
+      "sha256": "7944a9f2628fb4440059756fcd683368bcfe34ffa83f6a3528335fc5adc21671",
+      "gitBlobSha1": "5537598a6486135586c632013ef9eb292a90db46",
+      "role": "distribution-source"
+    },
+    {
+      "path": "distribution/gradle.lockfile",
+      "mode": "100644",
+      "sizeBytes": 4342,
+      "sha256": "6f14a46b85e2aaac1a36ad86f57b37e4bd3f7c33c649f7cc479a77d3cf72599e",
+      "gitBlobSha1": "42615cd4e01086542f62aa87096cbcba5daab3f9",
+      "role": "distribution-source"
+    },
+    {
+      "path": "distribution/src/main/kotlin/ah/distribution/V02ComponentBaselineValidator.kt",
+      "mode": "100644",
+      "sizeBytes": 50737,
+      "sha256": "1e979aed22dc054406a671c40e0f957fa189789e7747a768d3735c6b9eeeefcf",
+      "gitBlobSha1": "571c477445ba98ce0272b90c3af0a741eb697f99",
+      "role": "distribution-source"
+    },
+    {
+      "path": "distribution/src/main/kotlin/ah/distribution/V02ReleasePackager.kt",
+      "mode": "100644",
+      "sizeBytes": 38785,
+      "sha256": "2989e88943602caf79918e2af0f7265474e685bfc0ee45392f234c3bb8051217",
+      "gitBlobSha1": "d38ae99b79f883b3f9e5fc9602fe9d9ebe213664",
+      "role": "distribution-source"
+    },
+    {
+      "path": "distribution/src/main/resources/v0.2/schemas/archive-byte-contract-v1.json",
+      "mode": "100644",
+      "sizeBytes": 2290,
+      "sha256": "36f776f2d572414b9fd9fef5f6b45000822b9e45ae5b395ac1b6f0dcb5b3d62c",
+      "gitBlobSha1": "827c5b9234ccd2668ab05ba7345cf160ce1b274a",
+      "role": "distribution-contract"
+    },
+    {
+      "path": "distribution/src/main/resources/v0.2/schemas/component-baseline-v1.schema.json",
+      "mode": "100644",
+      "sizeBytes": 2077,
+      "sha256": "81fc1e0102dda9dfa830609e3ac70aeda25a694a9909941bf6d8638dd2f33836",
+      "gitBlobSha1": "c7bf611ba367bfc9655096b7319cd526409073e8",
+      "role": "distribution-contract"
+    },
+    {
+      "path": "distribution/src/main/resources/v0.2/schemas/component-manifest-v1.schema.json",
+      "mode": "100644",
+      "sizeBytes": 2023,
+      "sha256": "7cece1232ecaeddce1b09698821b0a24094a3b361495021241ec5abb81c8defb",
+      "gitBlobSha1": "4f2157bb2c0428338dd4a61cadc0191d6b321d7a",
+      "role": "distribution-contract"
+    },
+    {
+      "path": "distribution/src/main/resources/v0.2/schemas/provenance-v1.schema.json",
+      "mode": "100644",
+      "sizeBytes": 693,
+      "sha256": "5417a8f320d9edafea9cb3d200f7b242bd931f18dbfe87a0d202626705608a4f",
+      "gitBlobSha1": "0764c905d9364ac426b0a53dc480b8cea2478936",
+      "role": "distribution-contract"
+    },
+    {
+      "path": "distribution/src/main/resources/v0.2/schemas/release-manifest-v1.schema.json",
+      "mode": "100644",
+      "sizeBytes": 1117,
+      "sha256": "d5461c79fcd4b830d7dcaa45ccfa7a7e1f2cbb3225d5fcca2de4821635528855",
+      "gitBlobSha1": "8fc1b53f54bab2532fdcfcee14dafe508ee501c3",
+      "role": "distribution-contract"
+    },
+    {
+      "path": "distribution/src/main/resources/v0.2/ubuntu/android-app-hardening",
+      "mode": "100755",
+      "sizeBytes": 1200,
+      "sha256": "c7c9b8f6101cf452ab541fe2d531acddc4e57649b126c1a73039397989c30db9",
+      "gitBlobSha1": "e13e3ed56b4ec00fa081ad00b233633f2e57bb1e",
+      "role": "distribution-source"
+    },
+    {
+      "path": "distribution/src/main/resources/v0.2/windows/android-app-hardening.cmd",
+      "mode": "100755",
+      "sizeBytes": 1123,
+      "sha256": "944c6ea71b2a0e6c0aea8bbbda53b86dfb9e80ce789a4adcd4c366006ddf8234",
+      "gitBlobSha1": "92b75745f70d86ac43dabdb86d43345e31cff911",
+      "role": "distribution-source"
+    },
+    {
+      "path": "distribution/src/test/kotlin/ah/distribution/V02ArchiveReproducibilityTest.kt",
+      "mode": "100644",
+      "sizeBytes": 28832,
+      "sha256": "f7644c560abb940c4ce5f544b6c7699f8a3f5f131ae1f13df914ea5d71f9844d",
+      "gitBlobSha1": "6fcc6a76fa3b3c41926e36e333719e002fed4a38",
+      "role": "distribution-source"
+    },
+    {
+      "path": "distribution/src/test/kotlin/ah/distribution/V02ComponentBaselineValidatorTest.kt",
+      "mode": "100644",
+      "sizeBytes": 12070,
+      "sha256": "c10f80511a57826d95e6e03eaa1bf7aca273fceff22df533278479daedcda035",
+      "gitBlobSha1": "4247006a45f94062b6a4ad24d8a3da615621e805",
+      "role": "distribution-source"
+    },
+    {
+      "path": "distribution/src/test/kotlin/ah/distribution/V02LauncherContractTest.kt",
+      "mode": "100644",
+      "sizeBytes": 17501,
+      "sha256": "e1d8d5ae232ad1452573561e297b23a49b069c95016d7dcac5ee1f5aa80ada03",
+      "gitBlobSha1": "d7c4c6c7f2b59456e328cd2e3794c82aecf421c7",
+      "role": "distribution-source"
+    },
+    {
+      "path": "distribution/src/test/kotlin/ah/distribution/V02ReleasePackagerTest.kt",
+      "mode": "100644",
+      "sizeBytes": 8703,
+      "sha256": "b1267885b1307e4986fb8494e0c07615bdf688b37bb597f0edb4820c68c5aff3",
+      "gitBlobSha1": "53fe84411c475308b88eae1ab68eb21074fb3139",
+      "role": "distribution-source"
+    },
+    {
+      "path": "gradle.properties",
+      "mode": "100644",
+      "sizeBytes": 289,
+      "sha256": "e278d18acd23ab348b57c8c25be4318014355fe6fd9189eb44cb1eaa093e4d41",
+      "gitBlobSha1": "f68335cec36429e976d3ca91e250d95271e851d3",
+      "role": "product-build"
+    },
+    {
+      "path": "host/apk-inspector/build.gradle.kts",
+      "mode": "100644",
+      "sizeBytes": 1504,
+      "sha256": "ca5b446c95461e1309a327560eeb8e35499a9e71b1765b081358767190592e63",
+      "gitBlobSha1": "4d14424e0c63a9d301ef4b6e49318325e313a8ef",
+      "role": "product-source"
+    },
+    {
+      "path": "host/apk-inspector/gradle.lockfile",
+      "mode": "100644",
+      "sizeBytes": 4096,
+      "sha256": "4f412367006042b38779230de114f0138d63294abcb61f3a15876e86a09174bd",
+      "gitBlobSha1": "1010f2a41dc05618d54910dee7fb34c05bafd04f",
+      "role": "product-source"
+    },
+    {
+      "path": "host/apk-inspector/src/main/kotlin/ah/host/inspector/ApkInspector.kt",
+      "mode": "100644",
+      "sizeBytes": 8314,
+      "sha256": "1656e91e8e2285626c608db3974417145f98ee1eeefd8fc82d1f1a8620856d9e",
+      "gitBlobSha1": "89a1d2a2df9286fb5f683f86bed43d7bf561102c",
+      "role": "product-source"
+    },
+    {
+      "path": "host/apk-inspector/src/main/kotlin/ah/host/inspector/BinaryData.kt",
+      "mode": "100644",
+      "sizeBytes": 8794,
+      "sha256": "c3fb40e7056712a7c4d9736969ebace58b0f04b9082094849799eb128194790d",
+      "gitBlobSha1": "c418c55c16005eadccd4644dbd9969cfd3d4e983",
+      "role": "product-source"
+    },
+    {
+      "path": "host/apk-inspector/src/main/kotlin/ah/host/inspector/BinaryManifestParser.kt",
+      "mode": "100644",
+      "sizeBytes": 22524,
+      "sha256": "0499cdc75bfdaecb72d15e62dcf4889b80144f3fd5e045acb6dc117f9ff0141a",
+      "gitBlobSha1": "640aa593ecad9f2ca49cd823e70de097a300751a",
+      "role": "product-source"
+    },
+    {
+      "path": "host/apk-inspector/src/main/kotlin/ah/host/inspector/CompatibilityRules.kt",
+      "mode": "100644",
+      "sizeBytes": 10065,
+      "sha256": "79c5f6e6ba0bcb4e69a67da55c16d5a87c258459ed9536dc6a3f77a8652fe237",
+      "gitBlobSha1": "037bbbef0d7eb431016b1c6bf096b05f504285ba",
+      "role": "product-source"
+    },
+    {
+      "path": "host/apk-inspector/src/main/kotlin/ah/host/inspector/DexParser.kt",
+      "mode": "100644",
+      "sizeBytes": 17777,
+      "sha256": "20dcccfdb2ea8c28e63aba1a34b8d37f8e71dae4c68a99c76a72a4eefc766090",
+      "gitBlobSha1": "d7ad4bf167f57325fe2e99c3c97feae375ac84c5",
+      "role": "product-source"
+    },
+    {
+      "path": "host/apk-inspector/src/main/kotlin/ah/host/inspector/InspectionLimits.kt",
+      "mode": "100644",
+      "sizeBytes": 1098,
+      "sha256": "a155c044ea16784ef3d9ad0858fb7d30b57a20871bc60daaf69dca7b2aa73fdf",
+      "gitBlobSha1": "3aa12b4a5b924783c97476f84f57e75c9f6694bd",
+      "role": "product-source"
+    },
+    {
+      "path": "host/apk-inspector/src/main/kotlin/ah/host/inspector/InspectionModels.kt",
+      "mode": "100644",
+      "sizeBytes": 4076,
+      "sha256": "e45c0bf1353e0e68f21ce9877df08d3fa317d96771dd6d1f05b61ee15180b990",
+      "gitBlobSha1": "b8e3100aefa4bf070c05b6546f6d9bacdcf4cd4e",
+      "role": "product-source"
+    },
+    {
+      "path": "host/apk-inspector/src/main/kotlin/ah/host/inspector/SignerPolicy.kt",
+      "mode": "100644",
+      "sizeBytes": 18918,
+      "sha256": "d815f3ecee3b5c5eaeb68dc309dc76622bc5abd2203a78edd616a87e0499a527",
+      "gitBlobSha1": "ebae74d20292f4b3916707da77effd1f444303e7",
+      "role": "product-source"
+    },
+    {
+      "path": "host/apk-inspector/src/main/kotlin/ah/host/inspector/ZipParser.kt",
+      "mode": "100644",
+      "sizeBytes": 18565,
+      "sha256": "dddbfc51779c849c8d4879c0b6f708287a9fe52e3c1ae7605c11381b2dc92487",
+      "gitBlobSha1": "e42d979641fd3f366eae44ab0d1c95841b446ee1",
+      "role": "product-source"
+    },
+    {
+      "path": "host/apk-inspector/src/test/kotlin/ah/host/inspector/ApkInspectorSelfTest.kt",
+      "mode": "100644",
+      "sizeBytes": 36554,
+      "sha256": "0212a9ade4f40563a072d0640aba01fa8bd8c1c3bc364f384ac09f0c0420240e",
+      "gitBlobSha1": "0837a30190c130b5865af14d594740216050ec1a",
+      "role": "product-source"
+    },
+    {
+      "path": "host/apk-inspector/src/test/kotlin/ah/host/inspector/SignerPolicySelfTest.kt",
+      "mode": "100644",
+      "sizeBytes": 36340,
+      "sha256": "5a3b637044c7f797465a2b66d5e2b09687a1e8525bb42f53ac5ebdcaecc5d41c",
+      "gitBlobSha1": "5bf9f5ddf65b4c8a959dc52e4b5759dc47ee0b6b",
+      "role": "product-source"
+    },
+    {
+      "path": "host/apk-inspector/src/test/kotlin/ah/host/inspector/SyntheticApkFixtures.kt",
+      "mode": "100644",
+      "sizeBytes": 24007,
+      "sha256": "b4e619d455d3769530187c5984622f02b258d76566cd203d0bd0507c7bb5a02a",
+      "gitBlobSha1": "5de119bd47006146e9b40a14bcace10fd1407c55",
+      "role": "product-source"
+    },
+    {
+      "path": "host/axml/build.gradle.kts",
+      "mode": "100644",
+      "sizeBytes": 1856,
+      "sha256": "ca117859ec240b2ea9ab543141f4b6e4d82ecaac52a9332c653e76103a326f57",
+      "gitBlobSha1": "af2f2f78a461e836e05d62d776d83d46ecd65126",
+      "role": "product-source"
+    },
+    {
+      "path": "host/axml/gradle.lockfile",
+      "mode": "100644",
+      "sizeBytes": 4058,
+      "sha256": "26d344690f11ad00b114bc559337c78b493cce94938ea7ec4f38e20f272de57c",
+      "gitBlobSha1": "6f5d375a326d9d6284ebbf5d7af75ba5c02ad017",
+      "role": "product-source"
+    },
+    {
+      "path": "host/axml/src/main/kotlin/ah/host/axml/BinaryManifestTransformer.kt",
+      "mode": "100644",
+      "sizeBytes": 47096,
+      "sha256": "d01650a19b422a3df4d40c54b935cf44c52bc600489afe297b00b830a8fb2160",
+      "gitBlobSha1": "0f946fced1719203a3e8e7cfdbfb9fc078d61f6b",
+      "role": "product-source"
+    },
+    {
+      "path": "host/axml/src/main/kotlin/ah/host/axml/ManifestTransformModels.kt",
+      "mode": "100644",
+      "sizeBytes": 1915,
+      "sha256": "8a42ff14648a96d0bb59d5061705ef9500b4a902285998809b2802dac1f4389a",
+      "gitBlobSha1": "36771d0879069c7e4bbce2ae464da2ca9af45044",
+      "role": "product-source"
+    },
+    {
+      "path": "host/axml/src/test/kotlin/ah/host/axml/AxmlDeviceManifestCli.kt",
+      "mode": "100644",
+      "sizeBytes": 2488,
+      "sha256": "598a941bca95f3bd51e675fc31be2baa493de0f7742de3bc39847fb39407f721",
+      "gitBlobSha1": "04d17a1607ce9f8a3aa10a261b43820ef8a4dac9",
+      "role": "product-source"
+    },
+    {
+      "path": "host/axml/src/test/kotlin/ah/host/axml/AxmlSelfTest.kt",
+      "mode": "100644",
+      "sizeBytes": 40061,
+      "sha256": "96b50ddb68f267c6a622fceffb8b438751040a64deb39d38dc5c4874b6157ed7",
+      "gitBlobSha1": "bb172dd3687cad3fecc755eb1363d2ebe11dfe0c",
+      "role": "product-source"
+    },
+    {
+      "path": "host/cli/build.gradle.kts",
+      "mode": "100644",
+      "sizeBytes": 3350,
+      "sha256": "f0d4baeaa3bb461db299e76360b9319a8f19f19ab6eaf352cd8f87b0f5289188",
+      "gitBlobSha1": "05440ba60e591034e7715516c34cd9ef02b31505",
+      "role": "product-source"
+    },
+    {
+      "path": "host/cli/gradle.lockfile",
+      "mode": "100644",
+      "sizeBytes": 4199,
+      "sha256": "1bad932762149bbbb5f46ad22b3de054e39c1fb03d694ce9135e0d97450d9777",
+      "gitBlobSha1": "14f5bcc75599e3247a4d8b5849c64d499bbdec68",
+      "role": "product-source"
+    },
+    {
+      "path": "host/cli/src/main/kotlin/ah/host/cli/CliMain.kt",
+      "mode": "100644",
+      "sizeBytes": 1688,
+      "sha256": "ffc8c1513f1753b02bbf868e2b91528d77a4b7cc769e5afeefef0cecdb4c1b7b",
+      "gitBlobSha1": "88b4443a78012d47e27cf2d82eca599f5717741d",
+      "role": "product-source"
+    },
+    {
+      "path": "host/cli/src/main/kotlin/ah/host/cli/CliModels.kt",
+      "mode": "100644",
+      "sizeBytes": 2529,
+      "sha256": "ec4093e03ec3005607360d468359381a9a2fe2537574e87fa21e7fefd76794e2",
+      "gitBlobSha1": "14383632b55fd2b9025e3e5cd10eb699f111bfd8",
+      "role": "product-source"
+    },
+    {
+      "path": "host/cli/src/main/kotlin/ah/host/cli/CliParser.kt",
+      "mode": "100644",
+      "sizeBytes": 1697,
+      "sha256": "98c3cad8cdc1cd99c6f8f86db18dc6cdfd3a04c8b4ff512941d028084190b7ee",
+      "gitBlobSha1": "943d9bedbd5a5883f93aa5622f8c3bcb651f671d",
+      "role": "product-source"
+    },
+    {
+      "path": "host/cli/src/main/kotlin/ah/host/cli/JsonReport.kt",
+      "mode": "100644",
+      "sizeBytes": 8475,
+      "sha256": "6b639d289d1673ca994a3738930e1d0de4d127610aad168bfe513f2b12c2bf95",
+      "gitBlobSha1": "8cbdd67f35386c0fd0f8ed7741272d58b39d4187",
+      "role": "product-source"
+    },
+    {
+      "path": "host/cli/src/main/kotlin/ah/host/cli/PathPolicy.kt",
+      "mode": "100644",
+      "sizeBytes": 7053,
+      "sha256": "32fe7b1fd2a76cc887ca260d0ee7846a5c875b007108ede6df4359f604b1f578",
+      "gitBlobSha1": "a006d670a3e8a02a25212b6b26455e4d171cc323",
+      "role": "product-source"
+    },
+    {
+      "path": "host/cli/src/main/kotlin/ah/host/cli/ProtectionPipeline.kt",
+      "mode": "100644",
+      "sizeBytes": 16454,
+      "sha256": "9dd41f2e6929e02af7c6726d34b0f759bed7972931f5255b976ef78a8d192a1e",
+      "gitBlobSha1": "3e03df5ccdc06f104379ca1fcc66cf62edfbc685",
+      "role": "product-source"
+    },
+    {
+      "path": "host/cli/src/main/kotlin/ah/host/cli/RuntimeBundleLoader.kt",
+      "mode": "100644",
+      "sizeBytes": 2540,
+      "sha256": "51f563649fa45898fc773f3548106126fab7f43677072ed1365fec2f373f4e38",
+      "gitBlobSha1": "09984116b5556609c94c9c2d3224110c906f1f6e",
+      "role": "product-source"
+    },
+    {
+      "path": "host/cli/src/test/kotlin/ah/host/cli/CliIntegrationSelfTest.kt",
+      "mode": "100644",
+      "sizeBytes": 25182,
+      "sha256": "688d3817f3271214f7959ff2f70f4b3ea336a194049bcf1060d291839119520a",
+      "gitBlobSha1": "89bd7b7cf8ff94ac78f9d55a0e4ea2df77a3ff20",
+      "role": "product-source"
+    },
+    {
+      "path": "host/cli/src/test/kotlin/ah/host/cli/CliSelfTest.kt",
+      "mode": "100644",
+      "sizeBytes": 9005,
+      "sha256": "c90e9e955ae348c3d4b0117ec6ce68a85716ece80e161242f34fb99cec4030dd",
+      "gitBlobSha1": "43e2b77e3887bca4fb174e2ed9fd73188ffa2a84",
+      "role": "product-source"
+    },
+    {
+      "path": "host/cli/src/test/kotlin/ah/host/cli/ReportSchemaValidator.kt",
+      "mode": "100644",
+      "sizeBytes": 4681,
+      "sha256": "e87988c9970a6395752bba7437c2d58e05cb2b2b3e753e85488b1c854335b57d",
+      "gitBlobSha1": "70b53fd33fe3fb7e3ad75c185928e0887ee1b91d",
+      "role": "product-source"
+    },
+    {
+      "path": "host/cli/src/test/kotlin/ah/host/cli/TestSupport.kt",
+      "mode": "100644",
+      "sizeBytes": 11471,
+      "sha256": "c8eec913360e609c7ac2faadc72e43cce4ad8ea9690b76e3ea508559d5fe97fd",
+      "gitBlobSha1": "9b732a3bf0dfe2cda3b919fbe12441a72e3e511d",
+      "role": "product-source"
+    },
+    {
+      "path": "host/container/build.gradle.kts",
+      "mode": "100644",
+      "sizeBytes": 2600,
+      "sha256": "19e1a11679291634cdece7d40d70549968cfe4975b41c1e85dcf5767df609b6d",
+      "gitBlobSha1": "8939210d3917b787ed19b282e4feb47a47a3c4d1",
+      "role": "product-source"
+    },
+    {
+      "path": "host/container/gradle.lockfile",
+      "mode": "100644",
+      "sizeBytes": 4058,
+      "sha256": "26d344690f11ad00b114bc559337c78b493cce94938ea7ec4f38e20f272de57c",
+      "gitBlobSha1": "6f5d375a326d9d6284ebbf5d7af75ba5c02ad017",
+      "role": "product-source"
+    },
+    {
+      "path": "host/container/src/main/kotlin/ah/host/container/BinaryCodec.kt",
+      "mode": "100644",
+      "sizeBytes": 15559,
+      "sha256": "696e50c065d2630b3c8c29d7c5d0a0f1bf9f11f8d818114de5c5b5bcf57b2b8d",
+      "gitBlobSha1": "8f537a87c3bb7522bc935496a813fa0571f715a9",
+      "role": "product-source"
+    },
+    {
+      "path": "host/container/src/main/kotlin/ah/host/container/ConfigV2.kt",
+      "mode": "100644",
+      "sizeBytes": 9415,
+      "sha256": "eaad797f2215816c87aa52dca282245edd326b4ab9dce7aabcd06d27ffda4fc0",
+      "gitBlobSha1": "9e21a3dee5d4331057c0ae892e2e9ccb9952b2c8",
+      "role": "product-source"
+    },
+    {
+      "path": "host/container/src/main/kotlin/ah/host/container/ContainerModels.kt",
+      "mode": "100644",
+      "sizeBytes": 15413,
+      "sha256": "7eff72fc36ae2b94af4ee8c3b920a6ddf9b4d7993fc5861e26d70978f0de376c",
+      "gitBlobSha1": "e38f910951578f0a60d17c18a2cacfd55c0473b4",
+      "role": "product-source"
+    },
+    {
+      "path": "host/container/src/main/kotlin/ah/host/container/CryptoPrimitives.kt",
+      "mode": "100644",
+      "sizeBytes": 7316,
+      "sha256": "17d449500fa7157f6f8a9ad07942651dc917f4fb7b8597ffeacca2bc0f8e0b21",
+      "gitBlobSha1": "0394c87a12438f5570c50873f4ba5bf535902385",
+      "role": "product-source"
+    },
+    {
+      "path": "host/container/src/main/kotlin/ah/host/container/DexCompression.kt",
+      "mode": "100644",
+      "sizeBytes": 6080,
+      "sha256": "3f93aada84ee01e7c9eb9cd0886c4dc0b3b95a43cf1800b9bc2fcbcdc1ae81b3",
+      "gitBlobSha1": "9ab56065215e5dd6216a492e86a2351b8ebf9aa8",
+      "role": "product-source"
+    },
+    {
+      "path": "host/container/src/main/kotlin/ah/host/container/DexContainerBuilder.kt",
+      "mode": "100644",
+      "sizeBytes": 24491,
+      "sha256": "9e4077ce555ea64b90676f987fe04b63b702c121a66094bde790d04b11d5c7fd",
+      "gitBlobSha1": "975a74a4812d5ab949a2056740b1ba3e9fb74991",
+      "role": "product-source"
+    },
+    {
+      "path": "host/container/src/main/kotlin/ah/host/container/DexContainerVerifier.kt",
+      "mode": "100644",
+      "sizeBytes": 16931,
+      "sha256": "6736112ad66c23a76e68cbafc29b67b1fa6da7444ccb04625bf5ec3d0455dee8",
+      "gitBlobSha1": "767889a44593fa1cde93bde0bc33016f12d59ad8",
+      "role": "product-source"
+    },
+    {
+      "path": "host/container/src/test/kotlin/ah/host/container/ContainerSelfTest.kt",
+      "mode": "100644",
+      "sizeBytes": 63342,
+      "sha256": "2d6a639ba9d456ac74479827f54d57e9cc3ff10aea7a2c3209bbb9ce2a3ff9b7",
+      "gitBlobSha1": "b10e1fd59650d781912b9f8f99d767ce30e3cc22",
+      "role": "product-source"
+    },
+    {
+      "path": "host/container/src/test/kotlin/ah/host/container/M202DeviceVectorMain.kt",
+      "mode": "100644",
+      "sizeBytes": 7211,
+      "sha256": "e6f506ee9201ce0d0980f6fb47a3d00823209526b6b328cec6b55f12021401e1",
+      "gitBlobSha1": "c95b40e45ef100be4cf46659679901014c5d4a63",
+      "role": "product-source"
+    },
+    {
+      "path": "host/repacker/build.gradle.kts",
+      "mode": "100644",
+      "sizeBytes": 1213,
+      "sha256": "bc1309d6ed4b6fe7eec66431d7653fd8cf76d2c913858f664dd2bff57ef3ec99",
+      "gitBlobSha1": "5bb73a8d7d2ae8837ec361fdc4aa0fec65112f1e",
+      "role": "product-source"
+    },
+    {
+      "path": "host/repacker/gradle.lockfile",
+      "mode": "100644",
+      "sizeBytes": 4275,
+      "sha256": "a7991294727dd8d7c004ec6d105c47e279a1694f1bec0093f6a6f7bfe3fec4dd",
+      "gitBlobSha1": "e891d1b929cdc73a6c5f45f2ea2298c6c94acfda",
+      "role": "product-source"
+    },
+    {
+      "path": "host/repacker/src/main/kotlin/ah/host/repacker/ApkRepacker.kt",
+      "mode": "100644",
+      "sizeBytes": 29519,
+      "sha256": "4d653fd0f23e928e29ac6b2f8dc0686388a9b406aa60d8fa27322a8c441e4cc7",
+      "gitBlobSha1": "e206f52c77275c7c9133386d711ad6dcdf3d5873",
+      "role": "product-source"
+    },
+    {
+      "path": "host/repacker/src/main/kotlin/ah/host/repacker/NativeAtomicPublisher.kt",
+      "mode": "100644",
+      "sizeBytes": 3262,
+      "sha256": "0ccb1eabe88b0c5d3bb901e6b43f8be578dee45ac4f605aeb32b72adfb6346ec",
+      "gitBlobSha1": "65b2d307f73826d412e13eeb186256827e33c6aa",
+      "role": "product-source"
+    },
+    {
+      "path": "host/repacker/src/main/kotlin/ah/host/repacker/NativeFileIdentity.kt",
+      "mode": "100644",
+      "sizeBytes": 1746,
+      "sha256": "9fe290c676ef73ce959d5795ce70c9ab26d2fd2df2b0fa0da44b004a9defd666",
+      "gitBlobSha1": "6c0c1e01cbd681a0c3468659bcff902c7d6ba41e",
+      "role": "product-source"
+    },
+    {
+      "path": "host/repacker/src/main/kotlin/ah/host/repacker/OutputVerifier.kt",
+      "mode": "100644",
+      "sizeBytes": 8069,
+      "sha256": "59ce048a4d689ab172ea2cb0852eaf3ce7be1ba57a922d006a23f5cb84c11288",
+      "gitBlobSha1": "3583d28beb031127018d3e885f74b86633c578fd",
+      "role": "product-source"
+    },
+    {
+      "path": "host/repacker/src/main/kotlin/ah/host/repacker/RepackModels.kt",
+      "mode": "100644",
+      "sizeBytes": 7163,
+      "sha256": "f239e0a2292969d928e97b7e43421ced35c046a29bedab0082e61a731696037a",
+      "gitBlobSha1": "e39f045fa43c625326ebaf7379241ab31ddc2040",
+      "role": "product-source"
+    },
+    {
+      "path": "host/repacker/src/main/kotlin/ah/host/repacker/RuntimeMaterializer.kt",
+      "mode": "100644",
+      "sizeBytes": 14386,
+      "sha256": "f07769910242374109ae3038d98b038e32c7621bb0c82c39ce114cd2f59b730a",
+      "gitBlobSha1": "e8e0d6b556a3b81cae879da0c37077a0894cc8a8",
+      "role": "product-source"
+    },
+    {
+      "path": "host/repacker/src/main/kotlin/ah/host/repacker/ZipIo.kt",
+      "mode": "100644",
+      "sizeBytes": 30989,
+      "sha256": "3692a5c7c9c2a067b9176c3ba973ae780e45c8dcaf5ff941f195f0dbd94e9192",
+      "gitBlobSha1": "7e98a0b2198ae476963412b6f966da6c29039724",
+      "role": "product-source"
+    },
+    {
+      "path": "host/repacker/src/test/kotlin/ah/host/repacker/RepackerSelfTest.kt",
+      "mode": "100644",
+      "sizeBytes": 41003,
+      "sha256": "c44ed260c9c6679a57cecfd94217a20dc4bd0ef4074d0025e8eb7871ff1a12b2",
+      "gitBlobSha1": "f05fe78a2de8576d349973f00a5a27f83dd81c38",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/bootstrap/build.gradle.kts",
+      "mode": "100644",
+      "sizeBytes": 2640,
+      "sha256": "6a11518e077c8f9043aeee1fc48240700b6d96809f0d0e09eb07cd4bf31ea468",
+      "gitBlobSha1": "7ecf90cd1f1d0f1c6e905d51edaa20561e20bc1e",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/bootstrap/gradle.lockfile",
+      "mode": "100644",
+      "sizeBytes": 38002,
+      "sha256": "5d27933161d685fac95347dd29e8ecd233ad0f6896dd41f8cdca15f7f102cd02",
+      "gitBlobSha1": "2eb21f7273644729db6ccc6fc9117e7f04be6b7e",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/bootstrap/src/androidTest/AndroidManifest.xml",
+      "mode": "100644",
+      "sizeBytes": 343,
+      "sha256": "b35431b91f1d4db96d7879d59167631865de09f32bbb35d388d7c6579822d775",
+      "gitBlobSha1": "3b8f38aaafcc95e1c20cc2c517175749749c0827",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/bootstrap/src/androidTest/java/ah/runtime/bootstrap/BootstrapConnectedRunner.java",
+      "mode": "100644",
+      "sizeBytes": 15457,
+      "sha256": "1ac53f1d09e653e9538d0957111d276d03ecb09f3c5511c9f94e14e30a814360",
+      "gitBlobSha1": "001480ea1225df019550cce43d0e5154bbd065bd",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/bootstrap/src/androidTest/java/ah/runtime/bootstrap/BootstrapSecondaryProcessReceiver.java",
+      "mode": "100644",
+      "sizeBytes": 1249,
+      "sha256": "edd501cdf52d33ed3f511ebc2d80127a5b784e48f8598bd90b9c2ef7c36ff4b2",
+      "gitBlobSha1": "d67878f623b99b4b384a4dfecd7fb8e37f89f847",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/bootstrap/src/main/AndroidManifest.xml",
+      "mode": "100644",
+      "sizeBytes": 52,
+      "sha256": "daa0fb1f32ba7ea85a07ef6302ab3d58c3407d7fd2aa03ec132cb9e38e8d9849",
+      "gitBlobSha1": "8072ee00dbf16d9161b7464ef3d2194a7d659bcc",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/bootstrap/src/main/java/ah/runtime/bootstrap/BootstrapFailure.java",
+      "mode": "100644",
+      "sizeBytes": 2170,
+      "sha256": "0a84bdecc803d32047154ff7eefbf60db52e2097d4feb4b037a3a5db9023c48c",
+      "gitBlobSha1": "f410059742115077552340fd273b2f57b9e6f8da",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/bootstrap/src/main/java/ah/runtime/bootstrap/BootstrapResult.java",
+      "mode": "100644",
+      "sizeBytes": 3226,
+      "sha256": "034ede47c21d1e35d24190980e74b28d65028711e4a526586ea82f039ae91ace",
+      "gitBlobSha1": "bd1e4a9dd45b84f21f079ba3406012d758656fe8",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/bootstrap/src/main/java/ah/runtime/bootstrap/ClassLoaderProbe.java",
+      "mode": "100644",
+      "sizeBytes": 5758,
+      "sha256": "f491886e3fdea3571235f2df70d308954b014b1e00b55f9891bf29d29875fac0",
+      "gitBlobSha1": "f060291b688b0e03e592afebcab86ac316c9557b",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/bootstrap/src/main/java/ah/runtime/bootstrap/EarlySignerResult.java",
+      "mode": "100644",
+      "sizeBytes": 979,
+      "sha256": "026c962597157f6d65ac31c24e297e4855c03cec40567a3f80f963580a66007f",
+      "gitBlobSha1": "a1c12261ab6f21f1a070eae98be50277b662e0b8",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/bootstrap/src/main/java/ah/runtime/bootstrap/HardeningBootstrap.java",
+      "mode": "100644",
+      "sizeBytes": 15351,
+      "sha256": "fed4babe12d3093d3cb5e88e1be06322afd5ca4c2641daba9240f632602b7f45",
+      "gitBlobSha1": "6ecdec51168b6dead002f842d3454920ed1b68d3",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/bootstrap/src/main/java/ah/runtime/bootstrap/NativeLibrarySearchPath.java",
+      "mode": "100644",
+      "sizeBytes": 1203,
+      "sha256": "1b695aeebadc920864b6e292facf84aafa62dba6b69bc6c320a67e4ef799b7a0",
+      "gitBlobSha1": "dc5913d3865ba5ae0f613eca702f8bf569a20dbc",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/bootstrap/src/main/java/ah/runtime/bootstrap/PocFailure.java",
+      "mode": "100644",
+      "sizeBytes": 1519,
+      "sha256": "aab31dea6c1cb145cc27e6f6183824c14496be37126518eac7746aaa21061864",
+      "gitBlobSha1": "57d85ba8b872f6876cbbdd79a83759f1ab4475c3",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/bootstrap/src/main/java/ah/runtime/bootstrap/ProbeEvent.java",
+      "mode": "100644",
+      "sizeBytes": 1069,
+      "sha256": "fecdcab19cd7c3c8e186cd8efac9334f2c89db05b5db1baa7a483f54275f305f",
+      "gitBlobSha1": "0d2de50391e3c81c677480020f776e29c98ca83c",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/bootstrap/src/main/java/ah/runtime/bootstrap/ShellAppComponentFactory.java",
+      "mode": "100644",
+      "sizeBytes": 5419,
+      "sha256": "ffc53480daf334c8d619cee35bbffea77fabec5429ac59e1f58ff7e3c7c72734",
+      "gitBlobSha1": "d1df94962afa40ad964454cc8cedf017cf6bc6b3",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/bootstrap/src/test/java/ah/runtime/bootstrap/BootstrapSelfTest.java",
+      "mode": "100644",
+      "sizeBytes": 18403,
+      "sha256": "50510cc20c8d8e0bbc900082782fa55d24cb5a5a1e655a684bf20f024abc6c6c",
+      "gitBlobSha1": "5608d50d308e269b3941e324e735c1e8b4c5fa42",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/build.gradle.kts",
+      "mode": "100644",
+      "sizeBytes": 5176,
+      "sha256": "9458c4d082cb8805aedec5845f5d8397d56134ef6d8ac31bf221b525cac7289d",
+      "gitBlobSha1": "1a9b49621763633c0b2ab20bf491410d1ebbf30a",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/consumer-rules.pro",
+      "mode": "100644",
+      "sizeBytes": 621,
+      "sha256": "a601aaad47112b30e58e6f354180e2f6c57dcdb8d60fdd32cbc179be84d6ad32",
+      "gitBlobSha1": "de527f37ab79fd9c3dcd3ac46c7c948e3f6db47a",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/gradle.lockfile",
+      "mode": "100644",
+      "sizeBytes": 37735,
+      "sha256": "19684e19e9b91bb72bd745ba8ace6a2f651c9cdaf453ebd258da42c14e151b33",
+      "gitBlobSha1": "72529f67929b454477dfb1d66e1be0177f135e24",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/androidTest/java/ah/runtime/nativebridge/NativeConnectedRunner.java",
+      "mode": "100644",
+      "sizeBytes": 5784,
+      "sha256": "a76e2f886b7479b5b2ec6a428f268ce1995223c45d2e2cffb349c7b445a2a01d",
+      "gitBlobSha1": "f86f72bb3641cc126f83d8e6b6eba927881647f1",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/AndroidManifest.xml",
+      "mode": "100644",
+      "sizeBytes": 52,
+      "sha256": "daa0fb1f32ba7ea85a07ef6302ab3d58c3407d7fd2aa03ec132cb9e38e8d9849",
+      "gitBlobSha1": "8072ee00dbf16d9161b7464ef3d2194a7d659bcc",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/CMakeLists.txt",
+      "mode": "100644",
+      "sizeBytes": 9484,
+      "sha256": "27ebe9e93c6c5c201ddde066e1724685dd06fadb69da2869f8e67bbb2b5d9664",
+      "gitBlobSha1": "24d33a61f8da7b09a3d0d39ef6ecd81c6ef52901",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/ah_crypto_config.h",
+      "mode": "100644",
+      "sizeBytes": 488,
+      "sha256": "75094e9ef8dbb381cfadddc7e7c89eed9c622d471331ce95a30574e93156ef35",
+      "gitBlobSha1": "0f308e1401bd753e349e9761774c79226593b939",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/authenticated_payload.cpp",
+      "mode": "100644",
+      "sizeBytes": 32445,
+      "sha256": "e5b3c21c5673611a0e113914a19506af3e3ad05fda86f624c55b2eb7ddb25e7d",
+      "gitBlobSha1": "817ed074041d4b9481d9fc69b22bff2b44d28d6e",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/authenticated_payload.hpp",
+      "mode": "100644",
+      "sizeBytes": 3133,
+      "sha256": "cdde8208958c2eba05d2f5042964065d365752d39d58660ca97b174b6861ff39",
+      "gitBlobSha1": "ce1277dced870e05587ae02a13e9b64d4018f3bd",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/container_format.cpp",
+      "mode": "100644",
+      "sizeBytes": 17849,
+      "sha256": "96ef165bc6c36fc64dac16ab30e7c5fe97d29b5bfa33ea8611f4fee2db574404",
+      "gitBlobSha1": "6045f1227dd029eaa6e3ad5e950a4af036146426",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/container_format.hpp",
+      "mode": "100644",
+      "sizeBytes": 3976,
+      "sha256": "6b38122bc6e81c477db50941ce54b46fef21a9d09b85a09fcec077d37a681a1d",
+      "gitBlobSha1": "28045e7a03c54a4f58dbb8eb435add0b63d71a1c",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/container_format_test.cpp",
+      "mode": "100644",
+      "sizeBytes": 10961,
+      "sha256": "63a2eef7be9dc0ff53552911e4065e2dbe7fbed5430967f6c9a96d8498d7916c",
+      "gitBlobSha1": "a80307594b5294046a955ae31f18869b4093b50f",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/crypto_backend.cpp",
+      "mode": "100644",
+      "sizeBytes": 10845,
+      "sha256": "3f6d019de3a2337aec22cb1317ba93d779cd0a64d88521c1035b60b93a76b29e",
+      "gitBlobSha1": "e96e249afb0492387b98fba7b86f80e9b09fc4f2",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/crypto_backend.hpp",
+      "mode": "100644",
+      "sizeBytes": 1467,
+      "sha256": "65fd54e7a06a364cb7cb7767c65729beb0d00cedb5c626094b366681af6326ac",
+      "gitBlobSha1": "2326a94cf9971d6d187faff6c42a30347f423407",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/crypto_backend_test.cpp",
+      "mode": "100644",
+      "sizeBytes": 13646,
+      "sha256": "aae2df064bcc3ba1110e8d23d929af7722cafa93d723cd69c384837eba0d1cb8",
+      "gitBlobSha1": "a95d121fc2adc25c43b84ec2c7b1603119866ce4",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/exports.map",
+      "mode": "100644",
+      "sizeBytes": 507,
+      "sha256": "7c7751e3243c02ffea231dd1db692b9ae07380776bfa15b4b4389ce9748f6131",
+      "gitBlobSha1": "250059ddea796d58df6e318c6376d37f31dcbd6a",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/jni_bridge.cpp",
+      "mode": "100644",
+      "sizeBytes": 16421,
+      "sha256": "64221ceb1a8db66aff35b4517536a52fc24dee754ad4ae0e0f13ff94cc1ebc52",
+      "gitBlobSha1": "9761cec9020705ae1cc5232b01b68484139ff3cb",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/jni_exception.cpp",
+      "mode": "100644",
+      "sizeBytes": 2687,
+      "sha256": "514d6854a43de3782aedc69b5d683e75986efb6ae1d3734532ed681a1de7f597",
+      "gitBlobSha1": "b1b944d4805c40b78d3dc8fcca2b30059d171468",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/jni_exception.hpp",
+      "mode": "100644",
+      "sizeBytes": 393,
+      "sha256": "4f3533cf805ca515613f0ef24d5b8c347937f7a21022ebe9e1544d1349cbac51",
+      "gitBlobSha1": "692947b17befd1246f623f199d8686b448090b7a",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/m2_02_foundation_test.cpp",
+      "mode": "100644",
+      "sizeBytes": 19524,
+      "sha256": "85fd97e749aacafc497e55dbba76b827eb21d66787139d0b485b4ff463c2c325",
+      "gitBlobSha1": "e4909bda81f77090c37647506191fdae61464aa4",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/m2_02_payload_vector_test.cpp",
+      "mode": "100644",
+      "sizeBytes": 18477,
+      "sha256": "d457c9a495ef9d05927e00dd2cdc71780a944e2fb130c657c56ff8fc4080a528",
+      "gitBlobSha1": "d26a1d9881b015ff505775deffd6e322cfea46ff",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/m3_02_container_fuzz.cpp",
+      "mode": "100644",
+      "sizeBytes": 2626,
+      "sha256": "69d1a291e260d9453a88d0fe97d8005634edc5ef8af1a9b31f7e1069e4ad9c42",
+      "gitBlobSha1": "c2f25ad0f57b3556d9b9782fe446029b575b4d32",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/mapped_apk.cpp",
+      "mode": "100644",
+      "sizeBytes": 1800,
+      "sha256": "3c01799dcb42ea73be37d516a5f5722b802f8ab6d54725da45f655ab74748cc6",
+      "gitBlobSha1": "f57b25057cb9927b56755777210ef88b10b2b237",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/mapped_apk.hpp",
+      "mode": "100644",
+      "sizeBytes": 926,
+      "sha256": "0e1c55f2c3c23e5c197c7b30599eeedf7d4761b26efb44cfbc4bd59bd57123c5",
+      "gitBlobSha1": "f3162001a1ae3ffb5e05c7d55df8dbd58a5cbe20",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/memory_controls.cpp",
+      "mode": "100644",
+      "sizeBytes": 6042,
+      "sha256": "13df3ce0163614165931da2719d072dc04b11942a5871f93c550d46b6060483e",
+      "gitBlobSha1": "d4528f0ab411aa9f717d093371f5fceea05e8dfb",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/memory_controls.hpp",
+      "mode": "100644",
+      "sizeBytes": 927,
+      "sha256": "0094555fab48d3c7656ce0fc26600a5e1111da328226787dcaa061f410360d36",
+      "gitBlobSha1": "7d81153d12de711720a1d94ed6b68b65d7a47c44",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/native_share_slot.cpp",
+      "mode": "100644",
+      "sizeBytes": 1280,
+      "sha256": "3f2e858e211190de521ee3f66856a1cc35a4eb708ab0e3c110ac8760b08bd7b1",
+      "gitBlobSha1": "5a796bcb12133fda4892e0ee7245ec3921d923c9",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/native_share_slot.hpp",
+      "mode": "100644",
+      "sizeBytes": 277,
+      "sha256": "53e5861af3bcfbff946ed89786df43d1501df67c9c2e28fef0034a05b2346aca",
+      "gitBlobSha1": "6318103e7f96827435227872b5a89ebcc3e896f0",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/payload_handle_registry.cpp",
+      "mode": "100644",
+      "sizeBytes": 4155,
+      "sha256": "03d7b39b03e8f220f88ec3c2ca73dd5aeaf1ac24fde078120f19feb77c954221",
+      "gitBlobSha1": "099b51d3d328b1009156008095ae91e6a27a7b39",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/payload_handle_registry.hpp",
+      "mode": "100644",
+      "sizeBytes": 968,
+      "sha256": "1b510803d5b57177a534203d59753998512eac2bba332237362b62b4ae5116ea",
+      "gitBlobSha1": "374f5e635768d50967870cda8cfbdab48907893c",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/payload_memory.cpp",
+      "mode": "100644",
+      "sizeBytes": 10538,
+      "sha256": "4add83289fa6bd745df7a42e740e23bbd94e1242896d86aeabf1badbf87aaa7f",
+      "gitBlobSha1": "906204f9a007dbdd67fac03812fb2093888cc51f",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/payload_memory.hpp",
+      "mode": "100644",
+      "sizeBytes": 2844,
+      "sha256": "232009708b221741274f2996199a60ca2afcb28622533718e46492efc1c18f2f",
+      "gitBlobSha1": "d84e884cd89fc8576ae4a1add08e5538d86d8750",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/payload_metadata.cpp",
+      "mode": "100644",
+      "sizeBytes": 3347,
+      "sha256": "0051d56e45b921451717fd78b55684d7a1a2af064c086842f4d87d441d6e75a5",
+      "gitBlobSha1": "1270d462e0aae05235d7623713837928b6553fd0",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/payload_metadata.hpp",
+      "mode": "100644",
+      "sizeBytes": 877,
+      "sha256": "1a7f7661d7d3eaa07deca959bbdf5ba6a00e1214676da9a03cbee77c57d9db06",
+      "gitBlobSha1": "1e0a0bf44449cac424903a9052ce82f303a8c712",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/risk_signals.cpp",
+      "mode": "100644",
+      "sizeBytes": 7058,
+      "sha256": "bf5001840a784afc14ffb8731a5e166760dc7418cc1f06ddda44b5a00cc0f76e",
+      "gitBlobSha1": "7ec1d67009f06a1aa2cf8733fb1bdb374e9aa020",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/risk_signals.hpp",
+      "mode": "100644",
+      "sizeBytes": 886,
+      "sha256": "3fdaa56622b36149140b63c40da5433ee02603784b8161f77579473567236638",
+      "gitBlobSha1": "5746cd2008c7ab4d1c602eb94c696723d65af71f",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/risk_signals_test.cpp",
+      "mode": "100644",
+      "sizeBytes": 5391,
+      "sha256": "1c75d9344db76ea1013b79d4d1a700953e8756f73b0bdc2b084c489330c47db1",
+      "gitBlobSha1": "16af37742698c59c85c6cfdaea0def927c628eeb",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/secure_buffer.cpp",
+      "mode": "100644",
+      "sizeBytes": 3691,
+      "sha256": "6752abf0ab04361a334c2ca64d7d95955b266f4167fa3e0afd73155309e42d4a",
+      "gitBlobSha1": "625d8c0eeede0a6df0152273f325738defce87ee",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/secure_buffer.hpp",
+      "mode": "100644",
+      "sizeBytes": 1709,
+      "sha256": "777c82335669d700d1e841317593a60d3ef3009c7fa4e133b58d90defb0c009d",
+      "gitBlobSha1": "40e47d1446b3471211a1ad5f2e931875ffce5d86",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/testdata/m2_08_topology_oob.regression.hex",
+      "mode": "100644",
+      "sizeBytes": 799,
+      "sha256": "772d441eed6833d62c929c2d5156bfb9a91db72dd716a30a45dadb6e88e78e3d",
+      "gitBlobSha1": "bcf436456bb33032693ed5d94d9b6f5bfcdac1c6",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/zip_assets.cpp",
+      "mode": "100644",
+      "sizeBytes": 10995,
+      "sha256": "154893108ab366ced9ab81a929dbea4a8f17921f0dad44d0b5a6e1603c21a6f5",
+      "gitBlobSha1": "1af465ff5e5cae9aaa8f45ff069081e7372d6a74",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/cpp/zip_assets.hpp",
+      "mode": "100644",
+      "sizeBytes": 529,
+      "sha256": "128f3e5d6f0e2e24fd6a8df0b3a9e56dd6f995738740e5c43e9eda67e7f975a2",
+      "gitBlobSha1": "40f80a552c624be23ae8af48b19fdb07548871e5",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/java/ah/runtime/loader/AuthenticatedPayloadMetadata.java",
+      "mode": "100644",
+      "sizeBytes": 6472,
+      "sha256": "596023aeec0d7b8406de3a2160aa8815b1fcd313177d7ea40029fd5098a3e56e",
+      "gitBlobSha1": "54cc480a8aded672daeac3e1aecec4b0487082ec",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/java/ah/runtime/loader/LoadedPayload.java",
+      "mode": "100644",
+      "sizeBytes": 1954,
+      "sha256": "ea26a8e309d27cc78566334a75680cf2c4d8cd851d379220c0f3d285250b4981",
+      "gitBlobSha1": "cf00cfef833053d4fca57c6959f969690a11be2b",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/java/ah/runtime/loader/MemoryProfile.java",
+      "mode": "100644",
+      "sizeBytes": 176,
+      "sha256": "04609c0288c9a580d6d1821b1756414e4a626f6b22573543720d6fcacf6caf23",
+      "gitBlobSha1": "e7be86538318842741bf6dba27f395d2cf13f2d4",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/java/ah/runtime/loader/MemoryProtectionCapabilities.java",
+      "mode": "100644",
+      "sizeBytes": 1203,
+      "sha256": "bc680845e0efe5857789576f6367d2b327ebc757539130df520ca078cf37c808",
+      "gitBlobSha1": "aed11d09a8439d78b3da0fb801bcc57e53f57917",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/java/ah/runtime/loader/NativePayloadBridge.java",
+      "mode": "100644",
+      "sizeBytes": 703,
+      "sha256": "5e1d74739d67927278d7058c66688e8691742e90ac275b4f6fef0f6b44081656",
+      "gitBlobSha1": "fffe97faa12b4596f3bf529d4b36ec28b1604695",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/java/ah/runtime/loader/PayloadClassLoaders.java",
+      "mode": "100644",
+      "sizeBytes": 6159,
+      "sha256": "22e7560bc4f59b1c108faf1f52907feb497b461a6142ca1f4e78e0f97d39aecd",
+      "gitBlobSha1": "ab818ff021baf8adb75675cc716be1259afad4b8",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/java/ah/runtime/loader/PayloadLoadException.java",
+      "mode": "100644",
+      "sizeBytes": 1056,
+      "sha256": "c43704f7210f44cf0a6e2c31cb6d63782369a1820dec51ce0e6c8cfa15f26856",
+      "gitBlobSha1": "08730771d44347b21bf8b30f860a1fffe5865833",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/java/ah/runtime/loader/PayloadMemoryHandle.java",
+      "mode": "100644",
+      "sizeBytes": 1148,
+      "sha256": "f6a66351545760499957a5f9e18f4ff49e1aba2293332136681e22f10d931585",
+      "gitBlobSha1": "54018f4936cab2491f19ec3b67936a6469c62bd4",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/java/ah/runtime/loader/PayloadRuntime.java",
+      "mode": "100644",
+      "sizeBytes": 7257,
+      "sha256": "eace38469cd7105e936f681f806ed670a5e17167efafc7588b5c38b151eaf4fc",
+      "gitBlobSha1": "f6db430e492193a71a0c80ad83da1f9e5aeb8cac",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/java/ah/runtime/loader/UntrustedPayloadBinding.java",
+      "mode": "100644",
+      "sizeBytes": 1831,
+      "sha256": "0e1f045b38af7246f0bc0c25d7d734831c30a2578236099e7a8d0a9b0d24e73b",
+      "gitBlobSha1": "217b5d88e699f4139ba1a71ffc7b97df6d716646",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/native/src/main/java/ah/runtime/risk/NativeRiskSignals.java",
+      "mode": "100644",
+      "sizeBytes": 667,
+      "sha256": "d754303cd4dd6efa6430d33e523e74178aa663971ef0e3ef2692324b72f2ace2",
+      "gitBlobSha1": "b3158409a7b0cb07a8433fa94c31715845adcf20",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/build.gradle.kts",
+      "mode": "100644",
+      "sizeBytes": 4919,
+      "sha256": "1e2b2d510c4bde247c08a9b53cc796ce08acfef643ace05b77ab86ef46a61157",
+      "gitBlobSha1": "6f3dd5b00835f61f3a8168a423934930099e2432",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/gradle.lockfile",
+      "mode": "100644",
+      "sizeBytes": 38111,
+      "sha256": "5b4272fc5b1868a39ad1870e27b4a47e6e8d7252ef87c1b82ee49cffd5053805",
+      "gitBlobSha1": "62e11480ef7b598116db2f7c8e981e8bd4fe17f1",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/androidTest/AndroidManifest.xml",
+      "mode": "100644",
+      "sizeBytes": 329,
+      "sha256": "ee93cb111763c1ac17a1cf5529447fd110f42ae5bd7348eb4891ff72382921cd",
+      "gitBlobSha1": "6ef079fb53b035e362f6b0f19774505db9d95856",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/androidTest/java/ah/runtime/guard/PolicyConnectedRunner.java",
+      "mode": "100644",
+      "sizeBytes": 12095,
+      "sha256": "0cea9b1fc22f47fe016b17b57bb7c6c18fcf0a528c7d498e8d27652092552cad",
+      "gitBlobSha1": "a318aac13141f9b8947fa12122e4e7976e4200a5",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/androidTest/java/ah/runtime/guard/PolicySecondaryProcessReceiver.java",
+      "mode": "100644",
+      "sizeBytes": 2955,
+      "sha256": "caabc4eb743b2eb58e97978112023061f9f5aac0ca0b665e24cefa24ba7ab5fa",
+      "gitBlobSha1": "73f9fdd889de2a4c210b55b97f5f7ab9fde2b044",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/androidTest/java/ah/runtime/risk/RiskConnectedAssertions.java",
+      "mode": "100644",
+      "sizeBytes": 9328,
+      "sha256": "1e8ff26b87b2dd0a2e5b25bc881fc6fafefdf7433fdff227aea40d88c9aa0865",
+      "gitBlobSha1": "03af1a9254ebcd53ce68faed7313412db591e8fd",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/main/AndroidManifest.xml",
+      "mode": "100644",
+      "sizeBytes": 52,
+      "sha256": "daa0fb1f32ba7ea85a07ef6302ab3d58c3407d7fd2aa03ec132cb9e38e8d9849",
+      "gitBlobSha1": "8072ee00dbf16d9161b7464ef3d2194a7d659bcc",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/main/java/ah/runtime/AbiCompatibility.java",
+      "mode": "100644",
+      "sizeBytes": 1465,
+      "sha256": "82ae14a824371a4cfe5d0f090f5875df7c9ddb8871c25a57a1eb0329bab54bfc",
+      "gitBlobSha1": "cb8cababb6127760f037c00368489467f9a0d0a3",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/main/java/ah/runtime/AbiCompatibilityPolicy.java",
+      "mode": "100644",
+      "sizeBytes": 1947,
+      "sha256": "6df60e3979cfbce2e89817c0732ff8dad085ed1c4d8ed174e6db0559c474c441",
+      "gitBlobSha1": "fff4e94c8326860f760b3fcdcf0be684be37ae89",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/main/java/ah/runtime/MemoryControls.java",
+      "mode": "100644",
+      "sizeBytes": 1613,
+      "sha256": "fd0363802707d1a2c93b3b1fcde3ac8326db7cbbfeec3d05f0fca991ded4d158",
+      "gitBlobSha1": "1f500f555c8c6d25eb7667716ac38b0076a0022d",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/main/java/ah/runtime/MemoryProtectionReport.java",
+      "mode": "100644",
+      "sizeBytes": 1147,
+      "sha256": "53f4eafff7b06f12f874a48dad2484071519ddf862dc6bb3d901bd6d330caac9",
+      "gitBlobSha1": "7821100f9f0e7e35dc5ec33dcde86e0abd9a40b2",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/main/java/ah/runtime/guard/IntegrityChecks.java",
+      "mode": "100644",
+      "sizeBytes": 5047,
+      "sha256": "ceedae74eaf554b7ae1eb1bc3046893774c8da16543240eb2c8ea5f4442c5af9",
+      "gitBlobSha1": "604c92651f60b8d22e723f36872bb92f12fba16d",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/main/java/ah/runtime/guard/IntegrityResult.java",
+      "mode": "100644",
+      "sizeBytes": 857,
+      "sha256": "b006a1f9cdb84d7db6062e64a6140cc9eb9283e80c96c86547709778c050f4fb",
+      "gitBlobSha1": "5b88296508eaa718a459b6b879538d96b0d2394e",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/main/java/ah/runtime/guard/RuntimeIntegrityFailure.java",
+      "mode": "100644",
+      "sizeBytes": 1905,
+      "sha256": "bebedfd1fb8772a4912ebd1379dd07edbde6161b3a1d2270c3d05f528244688f",
+      "gitBlobSha1": "71ede5e6e3a0a02337a820f75447e7398920111e",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/main/java/ah/runtime/guard/RuntimeSignerVerifier.java",
+      "mode": "100644",
+      "sizeBytes": 13518,
+      "sha256": "1045ba3185f87f4b971a86da7f9f0f57eec52fe5dade7d77ec2c4eb764ae869b",
+      "gitBlobSha1": "ecad06d3ccef82182f1c0708c1e7ea96331cbe54",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/main/java/ah/runtime/guard/RuntimeStartupGuard.java",
+      "mode": "100644",
+      "sizeBytes": 7594,
+      "sha256": "3021d453b48563f9ddfa021f6a02446069e8986c6ad979cd265b3732c512696c",
+      "gitBlobSha1": "50c1eb334289e1e4dfe8804b7d735efd7697a5a8",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/main/java/ah/runtime/guard/VerifiedPayloadSession.java",
+      "mode": "100644",
+      "sizeBytes": 1807,
+      "sha256": "94233beb471f07851366ac61475a0eaa9a1acbcc29db73ca41a63a5b54c36cff",
+      "gitBlobSha1": "45fb886dca8c4026c731209bef7c33114ba4de61",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/main/java/ah/runtime/guard/VerifiedSignerIdentity.java",
+      "mode": "100644",
+      "sizeBytes": 1182,
+      "sha256": "f008e8b71118ae6af551589eae25a27431a6405c611b4e26981e6e0bc72b8fef",
+      "gitBlobSha1": "77a8767d2aec30244cdf6fc335193bf9a515bb7a",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/main/java/ah/runtime/guard/VerifiedStartupConfiguration.java",
+      "mode": "100644",
+      "sizeBytes": 1646,
+      "sha256": "a4fc32251de8b16515bc12f774a6667446eba57e80be27582b40052a01909c63",
+      "gitBlobSha1": "109b4ee463244e8e8e5012e56124d1878a85b968",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/main/java/ah/runtime/risk/EnvironmentRiskEngine.java",
+      "mode": "100644",
+      "sizeBytes": 4752,
+      "sha256": "626724b3db934ffb51179b8e95465ad605400891fea7d3c25745b2d8e8542bf0",
+      "gitBlobSha1": "3f78769834be5dcfafbc019cd245e799c0dc7784",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/main/java/ah/runtime/risk/RiskAction.java",
+      "mode": "100644",
+      "sizeBytes": 76,
+      "sha256": "0223f13504aa69487950cfb5221aecbe61b3e46d2db3ee36b725f57cb65c4868",
+      "gitBlobSha1": "e8d9b0d48752f908fe3a5bf3b7cb4c2c983e7425",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/main/java/ah/runtime/risk/RiskLevel.java",
+      "mode": "100644",
+      "sizeBytes": 82,
+      "sha256": "1905125aeeebda5b9a26fbfb25ab75c28f5550c5f1078e61f860302662cf88a4",
+      "gitBlobSha1": "abf7e8ab98a043e4ba1b8c5738991764ae877229",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/main/java/ah/runtime/risk/RiskPolicyV1.java",
+      "mode": "100644",
+      "sizeBytes": 2395,
+      "sha256": "fe2b5e0edc64392415a9c8d170c1a4b44b48d96d09d887fa77059f89b0f9b045",
+      "gitBlobSha1": "4d74df18a490db94f41c9988dbcda03457b5c1d4",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/main/java/ah/runtime/risk/RiskReportV1.java",
+      "mode": "100644",
+      "sizeBytes": 1585,
+      "sha256": "dcea9639a5781ded1308184d37c4453468bda826bac562542040c99b8b1a64d7",
+      "gitBlobSha1": "ef006912237445a2dfafc69dbe8ccb900bf5351e",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/main/java/ah/runtime/risk/RiskSignal.java",
+      "mode": "100644",
+      "sizeBytes": 827,
+      "sha256": "d05e3b65ce3ce4b97a23b0a899b5e7b91b71f6e1cabb3fac922494969dca58a4",
+      "gitBlobSha1": "a3dd790e8a43b1dc829f27a1724377ae965f9afa",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/main/java/ah/runtime/risk/RiskSignalId.java",
+      "mode": "100644",
+      "sizeBytes": 145,
+      "sha256": "4b99b3d59beaac33d0eb6d04c256fd0ff858e4b6dcace36172e3af6976f9dba8",
+      "gitBlobSha1": "8763f75e976003c2330cdf6a8a2ebb7aef038ce1",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/main/java/ah/runtime/risk/RiskSnapshot.java",
+      "mode": "100644",
+      "sizeBytes": 854,
+      "sha256": "3926142cd73d741a42c02900e8baf529f123130f8a7f89d4de6060bca419ad57",
+      "gitBlobSha1": "360f40868983b70a3793b4275fb1d61b05760404",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/main/java/ah/runtime/risk/SignalState.java",
+      "mode": "100644",
+      "sizeBytes": 95,
+      "sha256": "1859ce5c2818d645fa6c88906379388a1b40543a50e0eddab0b25770dd5e4c3c",
+      "gitBlobSha1": "ab6c682d589b5abae1408cb4a261957efac39703",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/test/java/ah/runtime/AbiCompatibilitySelfTest.java",
+      "mode": "100644",
+      "sizeBytes": 4977,
+      "sha256": "db6b5a6149032027a4ab589d0b7d71617e6c1b2d4000631c7ac09d1df34f5284",
+      "gitBlobSha1": "a93335160a29f9d103475c09608a6dff1a241eba",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/test/java/ah/runtime/MemoryControlsSelfTest.java",
+      "mode": "100644",
+      "sizeBytes": 2062,
+      "sha256": "8a9facf7a32b4b4fe4ea538416c07fb174956c037f466ae5c00ccfaf0aa0e468",
+      "gitBlobSha1": "72d39c6efc3fd63591df71192a281dd1e8fcd5f3",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/test/java/ah/runtime/guard/PolicySelfTest.java",
+      "mode": "100644",
+      "sizeBytes": 16793,
+      "sha256": "7a50569d117639af334b5a1603a5c6538b8873eb9b0476aa8d13554ce8581d42",
+      "gitBlobSha1": "7a8decc24221bbbec8dd9cfe7968f91d015f6711",
+      "role": "product-source"
+    },
+    {
+      "path": "runtime/policy/src/test/java/ah/runtime/risk/EnvironmentRiskEngineSelfTest.java",
+      "mode": "100644",
+      "sizeBytes": 6072,
+      "sha256": "edfae31f802f70979813f9682d754bb60dda498da919f0a7265b9a752ba4963f",
+      "gitBlobSha1": "da76510a5acb28802212be01c0d0ad46dc54491a",
+      "role": "product-source"
+    },
+    {
+      "path": "settings.gradle.kts",
+      "mode": "100644",
+      "sizeBytes": 1482,
+      "sha256": "30d418f46b53e93a58496127a0c5506b32831b7d2da4c48e844cc5fcd6045745",
+      "gitBlobSha1": "bf376b69212a4e3fd4ef207e26c4b96b327d06f5",
+      "role": "product-build"
+    }
+  ]
+}

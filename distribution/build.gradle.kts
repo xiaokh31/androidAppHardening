@@ -226,6 +226,8 @@ val packageWindowsV02 by tasks.registering(JavaExec::class) {
     inputs.file(trackedBaseline)
     inputs.dir(componentRoot)
     outputs.file(archive)
+    // Recheck exact Git HEAD/time, optional diagnostic bytes and filesystem link metadata on every invocation.
+    outputs.upToDateWhen { false }
     doFirst {
         Files.deleteIfExists(archive.get().asFile.toPath())
     }
@@ -248,6 +250,8 @@ val packageUbuntuV02 by tasks.registering(JavaExec::class) {
     inputs.file(trackedBaseline)
     inputs.dir(componentRoot)
     outputs.file(archive)
+    // Recheck exact Git HEAD/time, optional diagnostic bytes and filesystem link metadata on every invocation.
+    outputs.upToDateWhen { false }
     doFirst {
         Files.deleteIfExists(archive.get().asFile.toPath())
     }

@@ -10,7 +10,7 @@
 | --- | --- | --- | --- |
 | `implementationManifestSha256` | `docs/v0.2/evidence/V2-M0-02/implementation-manifest.json` | V2-M0-02 | Host、Runtime、distribution、launcher、归档内 Quickstart、构建入口和生产锁文件 |
 | `toolchainManifestSha256` | `docs/v0.2/evidence/V2-M0-02/toolchain-manifest.json` | V2-M0-02 | Wrapper、JDK/Gradle/AGP/Kotlin/SDK/NDK/CMake/Node、依赖验证、runner/tool binary locks |
-| `productContractManifestSha256` | `docs/v0.2/evidence/V2-M0-02/product-contract-manifest.json` | V2-M0-02 | 产品需求、架构、威胁模型、兼容边界、ADR 0001–0015 与 ADR 0020、公开 schema |
+| `productContractManifestSha256` | `docs/v0.2/evidence/V2-M0-02/product-contract-manifest.json` | V2-M0-02 | 产品需求、架构、威胁模型、兼容边界、ADR 0001–0015、ADR 0020–0021、公开 schema |
 | `fixtureSourceManifestSha256` | `docs/v0.2/evidence/V2-M3-01/fixture-source-manifest.json` | V2-M3-01 | `fixtures/` 下全部 tracked regular files 与 fixture build 配置 |
 | `validationManifestSha256` | `docs/v0.2/evidence/V2-M3-01/validation-manifest.json` | V2-M3-01 | benchmark、release validation、security/SBOM、packaging/evidence validator、workflow candidate 与 schema |
 | `performanceContractSha256` | `docs/v0.2/evidence/V2-M3-01/performance-contract-manifest.json` | V2-M3-01 | 性能策略、报告 schema、统计/大小复算器和 canonical performance workflow candidate |
@@ -64,6 +64,8 @@ V2-M0-02 和 V2-M3-01 必须实现共享 manifest validator，使用 `git ls-tre
 - `release-gate-contract` 是同一机器规范中逐项列出的 task/docs、candidate workflow、schema、validator 与 identity gate exact path；不存在 glob、目录自动加入或同义替代路径。
 
 共享文件可以出现在多个 manifest，但每个集合都必须独立完整。Validator 必须先逐字读取并验证机器规范的 canonical JSON，再执行 selector；不得把 validator source 的另一个列表当作真值。机器规范的 missing/extra/reorder/path/selector/role mutation 必须失败。
+
+2026-08-26 用户授权的 ADR 0021 是候选前唯一追加：仅把该 ADR exact path 纳入 product-contract，并同步规范 hash pin；不开放动态 selector，不改变其他 manifest 所有权或 post-freeze 规则。
 
 ### 4.1 固定 canonical path
 

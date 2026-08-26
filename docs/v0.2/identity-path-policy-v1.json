@@ -168,6 +168,7 @@
         "docs/adr/0014-test-only-high-benchmark-boundary.md",
         "docs/adr/0015-startup-performance-measurement-stability.md",
         "docs/adr/0020-v0-2-product-baseline-and-version-isolation.md",
+        "docs/adr/0021-v0-2-maven-published-artifact-source-profiles.md",
         "docs/v0.2/ARCHITECTURE.md",
         "docs/v0.2/COMPATIBILITY_MATRIX.md",
         "docs/v0.2/IDENTITY_MANIFESTS.md",

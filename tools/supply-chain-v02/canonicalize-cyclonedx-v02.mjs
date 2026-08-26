@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
-import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
-import { basename, dirname, resolve } from "node:path";
+import { execFileSync, spawnSync } from "node:child_process";
+import { readFileSync, writeFileSync, lstatSync, realpathSync, mkdtempSync, rmSync, existsSync, linkSync, unlinkSync } from "node:fs";
+import { basename, dirname, resolve, isAbsolute } from "node:path";
 import { mkdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 const SHA1 = /^[0-9a-f]{40}$/u;
 const FIRST_PARTY_GROUP = "io.github.xiaokh31.androidapphardening";
@@ -236,7 +237,28 @@ function freezeTimestamp(commit) {
   return new Date(epoch * 1000).toISOString();
 }
 
+export function validatePinnedSchema(cliPath, inputPath) {
+  const assets = {
+    win32: [80366454, "9b360974c41a5d612eb026fb5e3bb1fa28e08865f7a4f915665b8bc94bd3bc31"],
+    linux: [80337458, "bfc8b2538da86fe239bc53658bbb63c1c8c510a293c1e6891aa5bea5d3c58746"],
+  };
+  const expected = assets[process.platform];
+  if (!expected || process.arch !== "x64" || !cliPath || !isAbsolute(cliPath)) fail("pinned CycloneDX CLI absolute path/platform is required");
+  const executable = resolve(cliPath);
+  const stat = lstatSync(executable);
+  if (!stat.isFile() || stat.isSymbolicLink() || realpathSync(executable) !== executable ||
+      stat.size !== expected[0] || sha256(readFileSync(executable)) !== expected[1]) fail("CycloneDX CLI identity mismatch");
+  const result = spawnSync(executable, [
+    "validate", "--input-file", inputPath, "--input-format", "json", "--input-version", "v1_6", "--fail-on-errors",
+  ], { encoding: "utf8", timeout: 60000, maxBuffer: 4 * 1024 * 1024, shell: false, windowsHide: true });
+  if (result.error || result.signal || result.status !== 0) fail(`CycloneDX schema validation failed (exit=${result.status})`);
+  if (sha256(readFileSync(executable)) !== expected[1]) fail("CycloneDX CLI changed during validation");
+  return result.status;
+}
+
 export function canonicalize(rawBytes, fixedTimestamp) {
+  if (typeof fixedTimestamp !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.000Z$/u.test(fixedTimestamp) ||
+      new Date(fixedTimestamp).toISOString() !== fixedTimestamp) fail("freeze timestamp must be exact UTC committer seconds");
   const raw = parseStrictJson(rawBytes);
   validateBom(raw);
   const originalTimestamp = raw.metadata.timestamp;
@@ -260,23 +282,48 @@ function main() {
   const canonicalBytes = Buffer.from(`${canonicalJson(result.canonical)}\n`, "utf8");
   const reparsed = parseStrictJson(canonicalBytes);
   validateBom(reparsed);
-  const report = {
+  if (existsSync(outputPath) || existsSync(reportPath)) fail("output/report must not exist");
+  mkdirSync(dirname(outputPath), { recursive: true });
+  mkdirSync(dirname(reportPath), { recursive: true });
+  const temporary = mkdtempSync(resolve(dirname(outputPath), ".v02-sbom-"));
+  let publishedOutput = false;
+  let publishedReport = false;
+  try {
+    const rawCopy = resolve(temporary, "raw.json");
+    const canonicalCopy = resolve(temporary, "canonical.json");
+    writeFileSync(rawCopy, rawBytes, { flag: "wx" });
+    writeFileSync(canonicalCopy, canonicalBytes, { flag: "wx" });
+    const rawExitCode = validatePinnedSchema(process.env.V02_CYCLONEDX_CLI, rawCopy);
+    const canonicalExitCode = validatePinnedSchema(process.env.V02_CYCLONEDX_CLI, canonicalCopy);
+    if (!readFileSync(rawCopy).equals(rawBytes) || !readFileSync(canonicalCopy).equals(canonicalBytes) ||
+        !readFileSync(rawPath).equals(rawBytes)) fail("SBOM input changed during validation");
+    const report = {
     schemaVersion: 1,
     releaseLine: "v0.2",
     releaseVersion: "0.2.0",
     implementationFreezeSha: args["--implementation-freeze"],
     raw: { path: basename(rawPath), sizeBytes: rawBytes.length, sha256: sha256(rawBytes), timestamp: result.originalTimestamp },
     canonical: { path: basename(outputPath), sizeBytes: canonicalBytes.length, sha256: sha256(canonicalBytes), timestamp },
-    schemaValidation: { rawExitCode: 0, canonicalExitCode: 0, specVersion: "1.6" },
+    schemaValidation: { rawExitCode, canonicalExitCode, specVersion: "1.6" },
     semanticDiffPaths: result.semanticDiffPaths,
   };
-  mkdirSync(dirname(outputPath), { recursive: true });
-  mkdirSync(dirname(reportPath), { recursive: true });
-  writeFileSync(outputPath, canonicalBytes, { flag: "wx" });
-  writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`, { encoding: "utf8", flag: "wx" });
+    // An exclusive hard-link publishes only already-validated complete bytes; never overwrite an existing output.
+    linkSync(canonicalCopy, outputPath);
+    publishedOutput = true;
+    const reportCopy = resolve(temporary, "report.json");
+    writeFileSync(reportCopy, `${JSON.stringify(report, null, 2)}\n`, { encoding: "utf8", flag: "wx" });
+    linkSync(reportCopy, reportPath);
+    publishedReport = true;
+  } catch (error) {
+    if (publishedOutput) unlinkSync(outputPath);
+    if (publishedReport) unlinkSync(reportPath);
+    throw error;
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
 }
 
-if (process.argv[1] !== undefined && resolve(process.argv[1]) === resolve(new URL(import.meta.url).pathname.replace(/^\/(?:[A-Za-z]:)/u, (value) => value.slice(1)))) {
+if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     main();
   } catch (error) {

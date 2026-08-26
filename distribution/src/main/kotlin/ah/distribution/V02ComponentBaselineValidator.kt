@@ -5,6 +5,7 @@ import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.text.Normalizer
 import java.util.Comparator
 import java.util.concurrent.TimeUnit
 import java.util.zip.ZipFile
@@ -24,6 +25,7 @@ private data class ComponentSpec(
 )
 
 object V02ComponentBaselineValidator {
+    private const val IDENTITY_POLICY_SHA256 = "874d788d45aaa051ca5695aeac8d5f693bebde0cba4a4e026312d1ee5cc0e58b"
     private const val CANARY_SOURCE_COMMIT = "0000000000000000000000000000000000000000"
     private const val CANARY_TIMESTAMP = "1980-01-01T00:00:00Z"
     private val SHA256 = Regex("[0-9a-f]{64}")
@@ -50,26 +52,31 @@ object V02ComponentBaselineValidator {
         val options = parseOptions(args.drop(1))
         val repository = requiredPath(options, "--repo").toAbsolutePath().normalize()
         requireRepository(repository)
+        val commit = head(repository)
         when (command) {
-            "stage" -> stage(repository, requiredPath(options, "--components"))
+            "stage" -> stage(repository, requiredPath(options, "--components"), commit)
             "runtime-bundle" -> writeRuntimeBundle(repository, options)
-            "manifests" -> writeManifests(repository, requiredPath(options, "--output"))
+            "verifier-library" -> writeVerifierLibrary(repository, options)
+            "manifests" -> writeManifests(repository, requiredPath(options, "--output"), commit)
             "baseline" -> writeBaseline(
                 repository,
                 requiredPath(options, "--components"),
                 requiredPath(options, "--baseline"),
+                commit,
             )
             "candidate" -> writeCandidate(
                 repository,
                 requiredPath(options, "--components"),
                 requiredPath(options, "--baseline"),
                 requiredPath(options, "--output"),
+                commit,
             )
             "validate" -> validate(
                 repository,
                 requiredPath(options, "--components"),
                 requiredPath(options, "--baseline"),
                 options["--output"]?.let(Path::of),
+                commit,
             )
             else -> throw DistributionException("unsupported validator command")
         }
@@ -130,6 +137,7 @@ object V02ComponentBaselineValidator {
                 target
             }
             val apksig = requireRegular(requiredPath(options, "--apksig"), "--apksig")
+            validateVerifierLibrary(apksig)
             val d8 = requireRegular(requiredPath(options, "--d8"), "--d8")
             val androidJar = requireRegular(requiredPath(options, "--android-jar"), "--android-jar")
             val dexDirectory = work.resolve("d8")
@@ -166,6 +174,7 @@ object V02ComponentBaselineValidator {
             if ("Lah/fixtures/android/" in bootstrapText) {
                 throw DistributionException("runtime bootstrap contains fixture classes")
             }
+            rejectSigningCapability(bootstrap)
             Files.write(runtimeRoot.resolve("bootstrap.dex"), bootstrap)
 
             val properties = linkedMapOf(
@@ -200,13 +209,84 @@ object V02ComponentBaselineValidator {
         return absolute
     }
 
-    private fun stage(repository: Path, requestedComponents: Path) {
+    private fun writeVerifierLibrary(repository: Path, options: Map<String, String>) {
+        val output = requiredPath(options, "--output").toAbsolutePath().normalize()
+        val expected = repository.resolve("distribution/build/intermediates/v0.2/apksig/apksig-9.3.0.jar")
+        if (output != expected) throw DistributionException("verifier library output path is not fixed")
+        val input = requireRegular(requiredPath(options, "--apksig"), "--apksig")
+        val r8 = requireRegular(requiredPath(options, "--d8"), "--d8")
+        Files.createDirectories(output.parent)
+        val rules = output.resolveSibling("verifier-only.pro")
+        val temporary = output.resolveSibling("verifier-only-pending.jar")
+        val log = output.resolveSibling("r8-output.txt")
+        Files.writeString(rules, """
+            -dontobfuscate
+            -keepattributes *
+            -keep @interface com.android.apksig.internal.asn1.Asn1Class { *; }
+            -keep @interface com.android.apksig.internal.asn1.Asn1Field { *; }
+            -keep enum com.android.apksig.internal.asn1.* { *; }
+            -keep @com.android.apksig.internal.asn1.Asn1Class class * { *; }
+            -keep class com.android.apksig.ApkVerifier { public *; }
+            -keep class com.android.apksig.ApkVerifier${'$'}* { public *; }
+            -keep interface com.android.apksig.util.DataSource { *; }
+            -keep interface com.android.apksig.util.DataSink { *; }
+            -keep class com.android.apksig.util.DataSources { public *; }
+            -keep class com.android.apksig.apk.ApkUtils { public *; }
+            -keep class com.android.apksig.SigningCertificateLineage {
+              public static com.android.apksig.SigningCertificateLineage readFromApkDataSource(com.android.apksig.util.DataSource);
+              public java.util.List getCertificatesInLineage();
+            }
+        """.trimIndent() + "\n", StandardCharsets.UTF_8)
+        Files.deleteIfExists(temporary)
+        try {
+            val javaName = if (System.getProperty("os.name").startsWith("Windows")) "java.exe" else "java"
+            val process = ProcessBuilder(
+                Path.of(System.getProperty("java.home"), "bin", javaName).toString(),
+                "-cp", r8.toString(), "com.android.tools.r8.R8", "--release", "--classfile",
+                "--lib", System.getProperty("java.home"), "--pg-conf", rules.toString(),
+                "--output", temporary.toString(), input.toString(),
+            ).redirectErrorStream(true).redirectOutput(log.toFile()).start()
+            if (!process.waitFor(2, TimeUnit.MINUTES)) {
+                process.destroyForcibly()
+                throw DistributionException("verifier-only R8 timed out")
+            }
+            if (process.exitValue() != 0) throw DistributionException("verifier-only R8 failed: ${Files.readString(log).takeLast(2000)}")
+            validateVerifierLibrary(temporary)
+            Files.move(temporary, output, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+        } finally {
+            Files.deleteIfExists(temporary)
+        }
+    }
+
+    internal fun rejectSigningCapability(bytes: ByteArray) {
+        val content = bytes.toString(StandardCharsets.ISO_8859_1)
+        for (token in listOf(
+            "java/security/PrivateKey", "java/security/KeyStore", "initSign", "generateSignature",
+            "com/android/apksig/ApkSigner", "ApkSignerEngine", "DefaultApkSignerEngine",
+            "com/android/apksig/KeyConfig", "com/android/apksig/SignerEngine", "spawnDescendant",
+        )) {
+            if (token in content) throw DistributionException("signing capability in verifier bytes: $token")
+        }
+    }
+
+    internal fun validateVerifierLibrary(path: Path) {
+        ZipFile(requireRegular(path, "verifier library").toFile()).use { zip ->
+            if (zip.getEntry("com/android/apksig/ApkVerifier.class") == null) {
+                throw DistributionException("verifier library is missing ApkVerifier")
+            }
+            zip.entries().asSequence().filter { it.name.endsWith(".class") }.forEach { entry ->
+                rejectSigningCapability(zip.getInputStream(entry).use { it.readAllBytes() })
+            }
+        }
+    }
+
+    private fun stage(repository: Path, requestedComponents: Path, commit: String) {
         val components = requestedComponents.toAbsolutePath().normalize()
         val expected = repository.resolve("distribution/build/v0.2/components").normalize()
         if (components != expected) throw DistributionException("component staging path is not fixed")
-        val git = gitEntries(repository)
+        val git = gitEntries(repository, commit)
         fun copyTracked(path: String, target: Path) {
-            val entry = git[path] ?: throw DistributionException("component source Git path is not staged: $path")
+            val entry = git[path] ?: throw DistributionException("component source path is absent from exact commit: $path")
             if (entry.mode !in setOf("100644", "100755")) {
                 throw DistributionException("component source Git path is not regular: $path")
             }
@@ -393,21 +473,27 @@ object V02ComponentBaselineValidator {
         return values.sortedWith { left, right -> V02ReleasePackager.compareUnsignedUtf8(left.logicalPath, right.logicalPath) }
     }
 
-    private fun writeManifests(repository: Path, requestedOutput: Path) {
+    private fun writeManifests(repository: Path, requestedOutput: Path, commit: String) {
         val output = requestedOutput.toAbsolutePath().normalize()
         val expected = repository.resolve("docs/v0.2/evidence/V2-M0-02").normalize()
         if (output != expected) throw DistributionException("manifest output directory is not fixed")
         Files.createDirectories(output)
-        expectedManifestValues(repository).forEach { (kind, value) ->
+        expectedManifestValues(repository, commit).forEach { (kind, value) ->
             writeCanonical(output.resolve(MANIFEST_NAMES.getValue(kind)), value)
         }
     }
 
-    private fun expectedManifestValues(repository: Path): LinkedHashMap<String, LinkedHashMap<String, Any?>> {
-        val allGit = gitEntries(repository)
+    internal fun expectedManifestBytes(repository: Path): Map<String, ByteArray> =
+        expectedManifestValues(repository, head(repository)).mapValues { CanonicalJson.prettyBytes(it.value) }
+
+    private fun expectedManifestValues(repository: Path, commit: String): LinkedHashMap<String, LinkedHashMap<String, Any?>> {
+        val allGit = gitEntries(repository, commit)
         val policyPath = "docs/v0.2/identity-path-policy-v1.json"
-        val policyEntry = allGit[policyPath] ?: throw DistributionException("identity path policy is not staged")
+        val policyEntry = allGit[policyPath] ?: throw DistributionException("identity path policy is absent from exact commit")
         val policyBytes = gitBlobBytes(repository, policyEntry)
+        if (V02ReleasePackager.sha256(policyBytes) != IDENTITY_POLICY_SHA256) {
+            throw DistributionException("identity path policy differs from the accepted V2-M0-01 contract")
+        }
         val policyValue = StrictJson.parse(policyBytes)
         if (!policyBytes.contentEquals(CanonicalJson.prettyBytes(policyValue))) {
             throw DistributionException("identity path policy is not canonical JSON")
@@ -494,30 +580,40 @@ object V02ComponentBaselineValidator {
         throw DistributionException("manifest path has no role: $path")
     }
 
-    private fun writeBaseline(repository: Path, components: Path, baseline: Path) {
+    private fun writeBaseline(repository: Path, components: Path, baseline: Path, commit: String) {
         val expectedPath = repository.resolve("docs/v0.2/evidence/V2-M0-02/v02-component-baseline.json").normalize()
         if (baseline.toAbsolutePath().normalize() != expectedPath) throw DistributionException("baseline path is not fixed")
-        val value = expectedBaseline(repository, components.toAbsolutePath().normalize())
+        val value = expectedBaseline(repository, components.toAbsolutePath().normalize(), commit, requireTrackedPreimages = false)
         writeCanonical(expectedPath, value)
     }
 
-    private fun expectedBaseline(repository: Path, components: Path): LinkedHashMap<String, Any?> {
-        val manifestValues = expectedManifestValues(repository)
+    private fun expectedBaseline(
+        repository: Path,
+        components: Path,
+        commit: String,
+        requireTrackedPreimages: Boolean = true,
+    ): LinkedHashMap<String, Any?> {
+        val manifestValues = expectedManifestValues(repository, commit)
+        val git = gitEntries(repository, commit)
         val evidence = repository.resolve("docs/v0.2/evidence/V2-M0-02")
+        val manifestHashes = LinkedHashMap<String, String>()
         for ((kind, value) in manifestValues) {
             val path = evidence.resolve(MANIFEST_NAMES.getValue(kind))
-            val bytes = readRegular(path)
+            val relative = repository.relativize(path).joinToString("/")
+            val bytes = if (requireTrackedPreimages) {
+                val entry = git[relative] ?: throw DistributionException("manifest preimage is absent from exact commit")
+                gitBlobBytes(repository, entry)
+            } else {
+                readRegular(path)
+            }
             val expectedBytes = CanonicalJson.prettyBytes(value)
-            if (!bytes.contentEquals(expectedBytes)) throw DistributionException("tracked $kind manifest differs from exact Git closure")
+            validateManifestDocument(bytes, expectedBytes)
+            manifestHashes[kind] = V02ReleasePackager.sha256(bytes)
         }
-        val manifestHashes = MANIFEST_KINDS.associateWith { kind ->
-            V02ReleasePackager.sha256(readRegular(evidence.resolve(MANIFEST_NAMES.getValue(kind))))
-        }
-        val git = gitEntries(repository)
         val entries = componentSpecs(repository, components).map { spec ->
             val source = repository.resolve(spec.sourcePath).normalize()
             val sourceGit = git[spec.sourceGitPath]
-                ?: throw DistributionException("component source Git path is not staged: ${spec.sourceGitPath}")
+                ?: throw DistributionException("component source path is absent from exact commit: ${spec.sourceGitPath}")
             if (sourceGit.mode !in setOf("100644", "100755")) throw DistributionException("component source Git path is not regular")
             val bytes = if (spec.sourcePath == spec.sourceGitPath) {
                 gitBlobBytes(repository, sourceGit)
@@ -551,19 +647,35 @@ object V02ComponentBaselineValidator {
         )
     }
 
-    private fun writeCandidate(repository: Path, components: Path, baseline: Path, output: Path) {
-        val value = expectedCandidate(repository, components.toAbsolutePath().normalize(), baseline)
+    private fun writeCandidate(repository: Path, components: Path, baseline: Path, output: Path, commit: String) {
+        val value = expectedCandidate(repository, components.toAbsolutePath().normalize(), baseline, commit)
         val fixedOutput = repository.resolve("build/v0.2/candidate-component-manifest.json").normalize()
         if (output.toAbsolutePath().normalize() != fixedOutput) throw DistributionException("candidate output path is not fixed")
         writeCanonical(fixedOutput, value)
     }
 
-    private fun validate(repository: Path, components: Path, baseline: Path, candidate: Path?) {
-        val expectedBaseline = expectedBaseline(repository, components.toAbsolutePath().normalize())
-        val baselineBytes = readRegular(baseline.toAbsolutePath().normalize())
+    private fun validate(repository: Path, components: Path, baseline: Path, candidate: Path?, commit: String) {
+        val expectedBaseline = expectedBaseline(repository, components.toAbsolutePath().normalize(), commit)
+        val baselineBytes = readTrackedBaseline(repository, baseline, commit)
+        validateBaselineDocument(baselineBytes, CanonicalJson.prettyBytes(expectedBaseline))
+        if (candidate != null && Files.exists(candidate, LinkOption.NOFOLLOW_LINKS)) {
+            val expected = CanonicalJson.prettyBytes(expectedCandidate(repository, components.toAbsolutePath().normalize(), baseline, commit))
+            if (!readRegular(candidate).contentEquals(expected)) throw DistributionException("ignored candidate manifest drifted")
+        }
+    }
+
+    internal fun validateManifestDocument(bytes: ByteArray, expectedBytes: ByteArray) {
+        val parsed = StrictJson.parse(bytes)
+        if (!bytes.contentEquals(CanonicalJson.prettyBytes(parsed)) || !bytes.contentEquals(expectedBytes)) {
+            throw DistributionException("tracked manifest differs from exact Git closure")
+        }
+    }
+
+    internal fun validateBaselineDocument(baselineBytes: ByteArray, expectedBytes: ByteArray) {
+        val expectedBaseline = StrictJson.parse(expectedBytes).asObject("expected baseline")
         val parsed = StrictJson.parse(baselineBytes)
         if (!baselineBytes.contentEquals(CanonicalJson.prettyBytes(parsed)) ||
-            !baselineBytes.contentEquals(CanonicalJson.prettyBytes(expectedBaseline))
+            !baselineBytes.contentEquals(expectedBytes)
         ) {
             throw DistributionException(
                 "tracked component baseline differs from exact expected bytes: " +
@@ -571,10 +683,17 @@ object V02ComponentBaselineValidator {
             )
         }
         validateBaselineShape(parsed)
-        if (candidate != null && Files.exists(candidate, LinkOption.NOFOLLOW_LINKS)) {
-            val expected = CanonicalJson.prettyBytes(expectedCandidate(repository, components.toAbsolutePath().normalize(), baseline))
-            if (!readRegular(candidate).contentEquals(expected)) throw DistributionException("ignored candidate manifest drifted")
-        }
+    }
+
+    private fun readTrackedBaseline(repository: Path, requested: Path, commit: String): ByteArray {
+        val relative = "docs/v0.2/evidence/V2-M0-02/v02-component-baseline.json"
+        val expected = repository.resolve(relative).normalize()
+        if (requested.toAbsolutePath().normalize() != expected) throw DistributionException("baseline preimage path is not fixed")
+        val entry = gitEntries(repository, commit)[relative]
+            ?: throw DistributionException("baseline preimage is absent from exact commit")
+        val bytes = gitBlobBytes(repository, entry)
+        if (!readRegular(expected).contentEquals(bytes)) throw DistributionException("working baseline differs from exact commit")
+        return bytes
     }
 
     private fun describeBaselineDifference(actualValue: Any?, expectedValue: Map<String, Any?>): String {
@@ -615,13 +734,12 @@ object V02ComponentBaselineValidator {
         }
     }
 
-    private fun expectedCandidate(repository: Path, components: Path, baseline: Path): LinkedHashMap<String, Any?> {
-        val expectedBaseline = expectedBaseline(repository, components)
-        val baselineBytes = readRegular(baseline.toAbsolutePath().normalize())
+    private fun expectedCandidate(repository: Path, components: Path, baseline: Path, commit: String): LinkedHashMap<String, Any?> {
+        val expectedBaseline = expectedBaseline(repository, components, commit)
+        val baselineBytes = readTrackedBaseline(repository, baseline, commit)
         if (!baselineBytes.contentEquals(CanonicalJson.prettyBytes(expectedBaseline))) {
             throw DistributionException("tracked component baseline is stale")
         }
-        val commit = head(repository)
         val entries = expectedBaseline.array("entries").map { raw ->
             val value = raw.asObject("baseline entry")
             linkedMapOf<String, Any?>(
@@ -676,21 +794,31 @@ object V02ComponentBaselineValidator {
         }
     }
 
-    private fun gitEntries(repository: Path): Map<String, GitEntry> {
-        val bytes = gitBytes(repository, "ls-files", "--stage", "-z")
+    private fun gitEntries(repository: Path, commit: String): Map<String, GitEntry> {
+        if (!GIT_SHA1.matches(commit)) throw DistributionException("exact commit is required")
+        val bytes = gitBytes(repository, "ls-tree", "-r", "-z", commit, "--")
         val text = bytes.toString(StandardCharsets.UTF_8)
+        if (!text.toByteArray(StandardCharsets.UTF_8).contentEquals(bytes)) throw DistributionException("Git paths are not UTF-8")
         val result = LinkedHashMap<String, GitEntry>()
+        val foldedPaths = HashSet<String>()
         for (record in text.split('\u0000')) {
             if (record.isEmpty()) continue
             val tab = record.indexOf('\t')
-            if (tab <= 0) throw DistributionException("invalid Git index record")
+            if (tab <= 0) throw DistributionException("invalid Git tree record")
             val metadata = record.substring(0, tab).split(' ')
-            if (metadata.size != 3 || metadata[2] != "0" || !GIT_SHA1.matches(metadata[1])) {
-                throw DistributionException("unmerged or invalid Git index record")
+            if (metadata.size != 3 || metadata[1] != "blob" || !GIT_SHA1.matches(metadata[2]) ||
+                metadata[0] !in setOf("100644", "100755")) {
+                throw DistributionException("non-regular or invalid Git tree record")
             }
             val path = record.substring(tab + 1)
-            if (result.put(path, GitEntry(path, metadata[0], metadata[1])) != null) {
-                throw DistributionException("duplicate Git index path")
+            if (path.isEmpty() || path.startsWith('/') || '\\' in path ||
+                path.split('/').any { it.isEmpty() || it == "." || it == ".." } ||
+                path.any { it.code < 32 || it.code == 127 } || !Normalizer.isNormalized(path, Normalizer.Form.NFC) ||
+                !foldedPaths.add(path.lowercase(java.util.Locale.ROOT))) {
+                throw DistributionException("non-canonical or colliding Git tree path")
+            }
+            if (result.put(path, GitEntry(path, metadata[0], metadata[2])) != null) {
+                throw DistributionException("duplicate Git tree path")
             }
         }
         return result

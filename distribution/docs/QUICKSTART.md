@@ -4,6 +4,8 @@ This package runs offline and requires a preinstalled Eclipse Temurin `17.0.19+1
 
 The package produced by V2-M0-02 is a non-release canary. Its SBOM and release-manifest identity fields are schema-valid synthetic placeholders; they are not release or security-review evidence.
 
+The bundled Android apksig `9.3.0` bytecode is modified by the pinned Android Build Tools R8 shrinker: only verification APIs and their required implementation remain in the Host JAR and bootstrap DEX. Signing/private-key APIs are excluded. The Maven acquisition lock identifies the unchanged upstream build input; the component baseline identifies the derived package bytes. See `LICENSE` and `THIRD_PARTY_NOTICES.md` for the retained Apache-2.0 attribution.
+
 Windows:
 
 ```text

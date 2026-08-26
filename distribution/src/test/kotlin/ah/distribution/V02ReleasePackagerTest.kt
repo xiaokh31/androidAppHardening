@@ -72,7 +72,9 @@ internal object V02TestFixture {
             Spec("runtime/x86_64/libah_runtime.so", "runtime/x86_64/libah_runtime.so", "x64.so", "100644", "runtime-release", "Release", "x86_64", "all"),
         ).sortedWith { left, right -> V02ReleasePackager.compareUnsignedUtf8(left.logical, right.logical) }
         val entries = specs.mapIndexed { index, spec ->
-            val bytes = "v0.2 fixture ${spec.logical} $index\n".toByteArray(StandardCharsets.UTF_8)
+            val bytes = if (spec.source == "host.jar") {
+                ByteArray(65536) { offset -> ((offset * 13 + offset / 1024 + offset % 19) % 256).toByte() }
+            } else "v0.2 fixture ${spec.logical} $index\n".toByteArray(StandardCharsets.UTF_8)
             Files.write(inputs.resolve(spec.source), bytes)
             linkedMapOf<String, Any?>(
                 "logicalPath" to spec.logical,

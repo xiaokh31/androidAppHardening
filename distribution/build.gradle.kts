@@ -52,10 +52,17 @@ val v02RuntimeTemplates = project(":runtime:native").layout.buildDirectory.dir(
     "intermediates/stripped_native_libs/release/out/lib",
 )
 
-val stageV02Apksig by tasks.registering(Sync::class) {
-    from(v02Apksig)
-    into(v02StagedApksig.map { it.asFile.parentFile })
-    rename { "apksig-9.3.0.jar" }
+val stageV02Apksig by tasks.registering(JavaExec::class) {
+    dependsOn(tasks.named("classes"))
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("ah.distribution.V02ComponentBaselineValidator")
+    inputs.files(v02Apksig, v02D8Jar)
+    outputs.file(v02StagedApksig)
+    args(
+        "verifier-library", "--repo", rootProject.layout.projectDirectory.asFile.absolutePath,
+        "--apksig", v02Apksig.singleFile.absolutePath, "--d8", v02D8Jar.get().asFile.absolutePath,
+        "--output", v02StagedApksig.get().asFile.absolutePath,
+    )
 }
 
 val generateV02RuntimeBundle by tasks.registering(JavaExec::class) {
@@ -97,7 +104,10 @@ val v02HostReleaseJar by tasks.registering(Jar::class) {
     isReproducibleFileOrder = true
     manifest.attributes["Main-Class"] = "ah.host.cli.CliMain"
     exclude("META-INF/*.SF", "META-INF/*.RSA", "META-INF/*.DSA", "META-INF/INDEX.LIST")
-    from(hostReleaseRuntime.map { archive -> zipTree(archive) })
+    from(hostReleaseRuntime.map { archive ->
+        // The original dual-purpose apksig is build input only. Both Host and DEX use the same verifier-only bytes.
+        zipTree(if (archive.name == "apksig-9.3.0.jar") v02StagedApksig.get().asFile else archive)
+    })
     from(v02RuntimeBundle)
 }
 
@@ -149,7 +159,7 @@ val stageV02Components by tasks.registering(JavaExec::class) {
 
 val writeV02IdentityManifests by tasks.registering(JavaExec::class) {
     group = "distribution"
-    description = "Writes the three canonical V2-M0-02 tracked identity manifests from the staged Git index."
+    description = "Writes the three canonical V2-M0-02 identity manifests from the exact HEAD Git tree."
     dependsOn(tasks.named("classes"))
     classpath = sourceSets["main"].runtimeClasspath
     mainClass.set("ah.distribution.V02ComponentBaselineValidator")
@@ -256,7 +266,10 @@ val launcherContractTest = registerSelfTest(
     "launcherContractTest",
     "ah.distribution.V02LauncherContractTest",
 ).also { registration ->
-    registration.configure { dependsOn(v02HostReleaseJar, ":host:apk-inspector:signerPolicyTest") }
+    registration.configure {
+        dependsOn(v02HostReleaseJar, ":host:apk-inspector:signerPolicyTest")
+        systemProperty("ah.distribution.originalApksig", v02Apksig.singleFile.absolutePath)
+    }
 }
 val archiveReproducibilityTest = registerSelfTest(
     "archiveReproducibilityTest",

@@ -3,6 +3,8 @@ package ah.distribution
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
+import java.net.URLClassLoader
+import java.lang.reflect.InvocationTargetException
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 import java.util.zip.ZipEntry
@@ -31,6 +33,19 @@ object V02LauncherContractTest {
         check("ah.host.cli.CliMain \"\$@\"" in ubuntuText)
         check("offline" in quickstartText && "unsigned" in quickstartText && "minSdk >= 29" in quickstartText)
         check("0.1.0-dev" !in winText && "0.1.0-dev" !in ubuntuText && "0.1.0-dev" !in quickstartText)
+        V02ComponentBaselineValidator.validateVerifierLibrary(repository.resolve("distribution/build/intermediates/v0.2/apksig/apksig-9.3.0.jar"))
+        ZipFile(repository.resolve("distribution/build/v0.2/host/android-app-hardening.jar").toFile()).use { zip ->
+            check(zip.getEntry("com/android/apksig/ApkVerifier.class") != null)
+            val entries = zip.entries().asSequence().filter { !it.isDirectory &&
+                (it.name.startsWith("com/android/apksig/") && it.name.endsWith(".class") || it.name == "ah/runtime/bootstrap.dex") }.toList()
+            check(entries.any { it.name == "ah/runtime/bootstrap.dex" })
+            for (entry in entries) zip.getInputStream(entry).use { V02ComponentBaselineValidator.rejectSigningCapability(it.readAllBytes()) }
+        }
+        for (forbiddenCapability in listOf("java/security/PrivateKey", "java/security/KeyStore", "initSign", "generateSignature",
+            "com/android/apksig/ApkSigner", "com/android/apksig/DefaultApkSignerEngine", "spawnDescendant")) {
+            expectFailure { V02ComponentBaselineValidator.rejectSigningCapability(forbiddenCapability.toByteArray()) }
+        }
+        compareVerifierBehavior(repository)
 
         val root = Files.createTempDirectory("v02-launcher-")
         try {
@@ -45,6 +60,42 @@ object V02LauncherContractTest {
             root.toFile().deleteRecursively()
         }
         println("V2-M0-02 launcher contract self-test PASS")
+    }
+
+    private fun compareVerifierBehavior(repository: Path) {
+        val original = Path.of(requireNotNull(System.getProperty("ah.distribution.originalApksig")))
+        expectFailure { V02ComponentBaselineValidator.validateVerifierLibrary(original) }
+        val fatJar = repository.resolve("distribution/build/v0.2/host/android-app-hardening.jar")
+        fun outcome(loader: ClassLoader, path: Path): String {
+            val inspectorType = loader.loadClass("ah.host.inspector.ApkInspector")
+            val verifierType = loader.loadClass("ah.host.inspector.SignerPolicyVerifier")
+            try {
+                val inspected = inspectorType.getMethod("inspect", Path::class.java).invoke(inspectorType.getConstructor().newInstance(), path)
+                val verified = verifierType.methods.single { it.name == "verify" && it.parameterCount == 2 }
+                    .invoke(verifierType.getConstructor().newInstance(), path, inspected)
+                return listOf("getCurrentCertificateSha256Hex", "getLineageCertificateSha256Hex", "getVerifiedSchemes")
+                    .joinToString("|") { verified.javaClass.getMethod(it).invoke(verified).toString() }
+            } catch (exception: InvocationTargetException) {
+                val failure = exception.targetException
+                check(failure.javaClass.name.startsWith("ah.host.inspector.")) { "unexpected verifier failure: $failure" }
+                return "error:${failure.javaClass.getMethod("getCode").invoke(failure)}"
+            }
+        }
+        val fixtures = repository.resolve("host/apk-inspector/build/reports/m1-02/fixtures")
+        val positive = listOf("v1", "v2", "v3", "combined", "v4", "rotated")
+        val negative = listOf("unsigned", "magic-only-unsigned", "tampered-signing-block", "malformed-signing-block",
+            "invalid-lineage", "multiple", "oversized-signing-block", "truncated-huge-signing-block", "high-bit-signing-block", "all-bits-signing-block")
+        URLClassLoader(arrayOf(original.toUri().toURL(), fatJar.toUri().toURL()), ClassLoader.getPlatformClassLoader()).use { full ->
+            URLClassLoader(arrayOf(fatJar.toUri().toURL()), ClassLoader.getPlatformClassLoader()).use { verifierOnly ->
+                for (name in positive + negative) {
+                    val expected = outcome(full, fixtures.resolve("$name.apk"))
+                    check(expected.startsWith("error:") == (name in negative)) { "$name: $expected" }
+                    val actual = outcome(verifierOnly, fixtures.resolve("$name.apk"))
+                    check(actual == expected) { "verifier-only behavioral regression $name expected=$expected actual=$actual" }
+                }
+            }
+        }
+        println("verifier-only original/artifact equivalence: ${positive.size} positive and ${negative.size} negative fixtures")
     }
 
     private fun testWindows(root: Path, launcherSource: Path, signedInput: Path) {

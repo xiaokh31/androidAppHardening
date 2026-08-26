@@ -39,9 +39,9 @@
     {
       "path": "distribution/build.gradle.kts",
       "mode": "100644",
-      "sizeBytes": 11340,
-      "sha256": "cf5849bae4dccd87bd892f3d0cacb65488ba169baa04ca7060194ae9262d8375",
-      "gitBlobSha1": "3cc300a14b355a7d8c1a026c3571d45511a66cb1",
+      "sizeBytes": 12039,
+      "sha256": "030025d81d950ada5d50a0493cfb2b596d345d2509816ab21562b89d5b81f617",
+      "gitBlobSha1": "3c6601566aafe5f88bf9ae63070743769046e68f",
       "role": "toolchain-contract"
     },
     {
@@ -87,9 +87,9 @@
     {
       "path": "gradle/verification-metadata.xml",
       "mode": "100644",
-      "sizeBytes": 194767,
-      "sha256": "086a976b5f61a1eb0c7ac0ebf520eb950654abb40734e4d9d050fe846148f375",
-      "gitBlobSha1": "e74b80f7c22447b6acdb8945a062410597965d0a",
+      "sizeBytes": 207112,
+      "sha256": "016200c2a1792fb5bcbfb069829d39bcd8ad3bb887de62f8aaa0dcc59de274d8",
+      "gitBlobSha1": "14e638cbe376176b2116b9d94215646cd0cf90ad",
       "role": "toolchain-lock"
     },
     {
@@ -143,9 +143,9 @@
     {
       "path": "host/axml/gradle.lockfile",
       "mode": "100644",
-      "sizeBytes": 4041,
-      "sha256": "13da3f3ee18fec10ef69c8dedbc6be18e0fef20d5d2a2e6bfa0f543021e25d10",
-      "gitBlobSha1": "cb526bed016c5a5e395c0877a470892ca4e4bf49",
+      "sizeBytes": 4058,
+      "sha256": "26d344690f11ad00b114bc559337c78b493cce94938ea7ec4f38e20f272de57c",
+      "gitBlobSha1": "6f5d375a326d9d6284ebbf5d7af75ba5c02ad017",
       "role": "toolchain-lock"
     },
     {
@@ -263,17 +263,17 @@
     {
       "path": "tools/supply-chain-v02/canonicalize-cyclonedx-v02.mjs",
       "mode": "100755",
-      "sizeBytes": 11964,
-      "sha256": "acd7eef4cfcf0e56a985f7ae48441dc53f1330a8e4972fb3338939cc097f6a53",
-      "gitBlobSha1": "31c9ac19d5dcaae0f8031918563687fab0c2feec",
+      "sizeBytes": 14872,
+      "sha256": "6f11a2b612344f2eee40cefcd3495294ea745372b925ff7e938f31f0bdae3fb2",
+      "gitBlobSha1": "56c6f59411bdb419e6616f6b56af4c99360c7068",
       "role": "toolchain-contract"
     },
     {
       "path": "tools/supply-chain-v02/canonicalize-cyclonedx-v02.self-test.mjs",
       "mode": "100755",
-      "sizeBytes": 2833,
-      "sha256": "c7f5ad315781d87141ae32cd1b8bba638da5cb62ba11fa5015f1f5bd300af115",
-      "gitBlobSha1": "fda44405f10640c0fcc6c706cbe6b6b26f9c96f3",
+      "sizeBytes": 6204,
+      "sha256": "938a64a7707c30f74061f6875a362021f1429548b16d136c687f51c45d6a7b83",
+      "gitBlobSha1": "b6ad0804d878e90513ed2d0bfebac36825ea96e4",
       "role": "toolchain-contract"
     },
     {
@@ -282,6 +282,22 @@
       "sizeBytes": 1592,
       "sha256": "243159dfe49c6846a39df8b7d09160c28d0f82fd4e63f4c44a18f2884c3db0d3",
       "gitBlobSha1": "b31c7c2c60c4ec1e0a70dbd0b1cfed7743f1432a",
+      "role": "toolchain-contract"
+    },
+    {
+      "path": "tools/supply-chain-v02/locked-maven-published-artifact-v2.mjs",
+      "mode": "100644",
+      "sizeBytes": 26600,
+      "sha256": "9b7e9b9a64e8d2e8f362213468822fbcd7ca07cb155b6a93211414df49a4578a",
+      "gitBlobSha1": "aa32e8910029e8612199b3e85457d492859375ca",
+      "role": "toolchain-contract"
+    },
+    {
+      "path": "tools/supply-chain-v02/locked-maven-published-artifact-v2.self-test.mjs",
+      "mode": "100644",
+      "sizeBytes": 8589,
+      "sha256": "30ddecb5c4616f9ece5362a2b73bb1335ab4fff82deb7fe0cfc7cb5223204d0b",
+      "gitBlobSha1": "0462e1e7474f4a2404907b3d871003d3c2a4ed6e",
       "role": "toolchain-contract"
     },
     {
@@ -311,9 +327,9 @@
     {
       "path": "tools/validation/v02-supply-chain-tools.json",
       "mode": "100644",
-      "sizeBytes": 5761,
-      "sha256": "58a2d53521b832077a53312cf86c779a1b51c517337d4f298f2a8b19deddd3e1",
-      "gitBlobSha1": "8fcc17695eeb6fd6683ac34fce3f86ff62288200",
+      "sizeBytes": 7426262,
+      "sha256": "d3d8777531f54d8bf34bc4a4934e5abe4fb78e5b1b09f0c3b9c10d96f66bc32a",
+      "gitBlobSha1": "6a803838d840b6d25eb0a2724d238cd0814f3d3f",
       "role": "toolchain-lock"
     }
   ]

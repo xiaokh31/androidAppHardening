@@ -133,6 +133,14 @@
       "role": "product-contract"
     },
     {
+      "path": "docs/adr/0021-v0-2-maven-published-artifact-source-profiles.md",
+      "mode": "100644",
+      "sizeBytes": 8502,
+      "sha256": "d7faef5edd39cf0bb1d49503dcf3be3532e8df9df03d1e6d368370821eb0d69c",
+      "gitBlobSha1": "e8fc0d1ca1884cce799ddf73045ea716ce568fe1",
+      "role": "product-contract"
+    },
+    {
       "path": "docs/specs/AHDC_V2.md",
       "mode": "100644",
       "sizeBytes": 7485,
@@ -175,9 +183,9 @@
     {
       "path": "docs/v0.2/IDENTITY_MANIFESTS.md",
       "mode": "100644",
-      "sizeBytes": 12270,
-      "sha256": "548df49395a229a62ce93907df801a3e24c9c78e70a721cb83ff8480927426a3",
-      "gitBlobSha1": "5d8b78cc69b1af9462e85344625b322d1e3fd4fd",
+      "sizeBytes": 12504,
+      "sha256": "8ebaaa8107620f3cd99b1377e825f49ed94e959844d0171bdad87b5f7ad41189",
+      "gitBlobSha1": "c2fb9075f45bcd8db9414d062afb99e3211fdd44",
       "role": "product-contract"
     },
     {
@@ -199,9 +207,9 @@
     {
       "path": "docs/v0.2/SUPPLY_CHAIN_TOOLCHAIN.md",
       "mode": "100644",
-      "sizeBytes": 39515,
-      "sha256": "d87fd4f78c72f7c22ae8e75ec829de20c01a24dacd151d3165c52af8a3e763d8",
-      "gitBlobSha1": "47d321590a489e73deecdd00ef1b2041df616087",
+      "sizeBytes": 43994,
+      "sha256": "5053bdc1727668c29e8979b286f8c39792375f56eb94212a43a82da42f4d5592",
+      "gitBlobSha1": "26f0b3c977cce99597cb3ed2fc108fc8ce528a2a",
       "role": "product-contract"
     },
     {
@@ -215,9 +223,9 @@
     {
       "path": "docs/v0.2/identity-path-policy-v1.json",
       "mode": "100644",
-      "sizeBytes": 14595,
-      "sha256": "cb53c93eab5f64aad0eb4825195ac2d3fb9b54e78f47c65e865b5e9369bcd416",
-      "gitBlobSha1": "e5ff771e02e880c9f3ae9755eee4d3d79ecfbb09",
+      "sizeBytes": 14669,
+      "sha256": "874d788d45aaa051ca5695aeac8d5f693bebde0cba4a4e026312d1ee5cc0e58b",
+      "gitBlobSha1": "eae9aaedbd94e2b7d3241937a139dc8483dcbb22",
       "role": "product-contract"
     },
     {

@@ -23,25 +23,25 @@
     {
       "path": "build.gradle.kts",
       "mode": "100644",
-      "sizeBytes": 5515,
-      "sha256": "fe9f0286d723b4be2229a74e8cae9c1bc4d6d28bb75c81ccd7e94f6858fecf02",
-      "gitBlobSha1": "d52ccfaf62fce5e49169c69f7218cc6a245e0520",
+      "sizeBytes": 9174,
+      "sha256": "944fd6f4524e1ac7b636b54541926868251819197ebfe2f210e29d8d5894f3ba",
+      "gitBlobSha1": "9a7fe206c034520c4023b25b13dd84c64cd73116",
       "role": "product-build"
     },
     {
       "path": "distribution/build.gradle.kts",
       "mode": "100644",
-      "sizeBytes": 11340,
-      "sha256": "cf5849bae4dccd87bd892f3d0cacb65488ba169baa04ca7060194ae9262d8375",
-      "gitBlobSha1": "3cc300a14b355a7d8c1a026c3571d45511a66cb1",
+      "sizeBytes": 12039,
+      "sha256": "030025d81d950ada5d50a0493cfb2b596d345d2509816ab21562b89d5b81f617",
+      "gitBlobSha1": "3c6601566aafe5f88bf9ae63070743769046e68f",
       "role": "distribution-source"
     },
     {
       "path": "distribution/docs/QUICKSTART.md",
       "mode": "100644",
-      "sizeBytes": 1126,
-      "sha256": "b37b026c5e7632b27a285c13d89d58bed001ce184ee6c5ee6fbe2091ea0689a1",
-      "gitBlobSha1": "59101ece7989970c166936f6cc55f0bd0058c63d",
+      "sizeBytes": 1587,
+      "sha256": "7944a9f2628fb4440059756fcd683368bcfe34ffa83f6a3528335fc5adc21671",
+      "gitBlobSha1": "5537598a6486135586c632013ef9eb292a90db46",
       "role": "distribution-source"
     },
     {
@@ -55,9 +55,9 @@
     {
       "path": "distribution/src/main/kotlin/ah/distribution/V02ComponentBaselineValidator.kt",
       "mode": "100644",
-      "sizeBytes": 41498,
-      "sha256": "8fe1e4fe90720b7002897a8b027f0390b60d8b983bb02d7a47f223065a231a15",
-      "gitBlobSha1": "393c8cfc60131c75e0cabbde86a37098f7f31fbe",
+      "sizeBytes": 49234,
+      "sha256": "0aadf045aaa2ce18e36c46472180043f072cd1855085c26285944d7a5b2c9038",
+      "gitBlobSha1": "2b51b69c043a16264be2f236190f68f0ffe6e77d",
       "role": "distribution-source"
     },
     {
@@ -127,33 +127,33 @@
     {
       "path": "distribution/src/test/kotlin/ah/distribution/V02ArchiveReproducibilityTest.kt",
       "mode": "100644",
-      "sizeBytes": 11650,
-      "sha256": "370f115ec9a73ce1bfd1cebdf422d9456905a3113afe676461e12ceb0f0701e5",
-      "gitBlobSha1": "8c80b2e7760b19c941004e256582575f8eb36f18",
+      "sizeBytes": 28832,
+      "sha256": "f7644c560abb940c4ce5f544b6c7699f8a3f5f131ae1f13df914ea5d71f9844d",
+      "gitBlobSha1": "6fcc6a76fa3b3c41926e36e333719e002fed4a38",
       "role": "distribution-source"
     },
     {
       "path": "distribution/src/test/kotlin/ah/distribution/V02ComponentBaselineValidatorTest.kt",
       "mode": "100644",
-      "sizeBytes": 3164,
-      "sha256": "9b4682bc4ec2f42534275c9c9b65d7ed2bc989fc1ca44ac77c9d7dc46c981b16",
-      "gitBlobSha1": "72933215f92f03d7d9446e2502c0ff6ef12a46e4",
+      "sizeBytes": 9893,
+      "sha256": "b2d0a701a3453328b32bb93d4be1669fc8f938c04da5a34642a6fe74a89ba2c1",
+      "gitBlobSha1": "9025e78feeb56d9b5e53fba92c2c71c2174a899e",
       "role": "distribution-source"
     },
     {
       "path": "distribution/src/test/kotlin/ah/distribution/V02LauncherContractTest.kt",
       "mode": "100644",
-      "sizeBytes": 13369,
-      "sha256": "d536697ee93da06b99a517d22d253d534b7eef3d3d53a8b1881142760371598f",
-      "gitBlobSha1": "6c79ae6e567582386ea4c0a4e436d1a23a841b90",
+      "sizeBytes": 17501,
+      "sha256": "e1d8d5ae232ad1452573561e297b23a49b069c95016d7dcac5ee1f5aa80ada03",
+      "gitBlobSha1": "d7c4c6c7f2b59456e328cd2e3794c82aecf421c7",
       "role": "distribution-source"
     },
     {
       "path": "distribution/src/test/kotlin/ah/distribution/V02ReleasePackagerTest.kt",
       "mode": "100644",
-      "sizeBytes": 7255,
-      "sha256": "73c64c724e7402732a7584b49c5402f459b2ca370dd3db12be97d93a3856ce47",
-      "gitBlobSha1": "c0cbf89dbbb273532f908d0f167d3eeeb1ebb36a",
+      "sizeBytes": 7415,
+      "sha256": "f5da3ea0177eeadc0216ed618a5c234285cb3809557bf5f29a20eaddbc734319",
+      "gitBlobSha1": "2ae10264df2cd3cd195d829420c11e515d70dbf4",
       "role": "distribution-source"
     },
     {
@@ -287,9 +287,9 @@
     {
       "path": "host/axml/gradle.lockfile",
       "mode": "100644",
-      "sizeBytes": 4041,
-      "sha256": "13da3f3ee18fec10ef69c8dedbc6be18e0fef20d5d2a2e6bfa0f543021e25d10",
-      "gitBlobSha1": "cb526bed016c5a5e395c0877a470892ca4e4bf49",
+      "sizeBytes": 4058,
+      "sha256": "26d344690f11ad00b114bc559337c78b493cce94938ea7ec4f38e20f272de57c",
+      "gitBlobSha1": "6f5d375a326d9d6284ebbf5d7af75ba5c02ad017",
       "role": "product-source"
     },
     {
